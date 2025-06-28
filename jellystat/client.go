@@ -58,7 +58,6 @@ type PlaybackHistory struct {
 	NowPlayingItemName   string    `json:"NowPlayingItemName"`
 	PlaybackDuration     int64     `json:"PlaybackDuration"`
 	ActivityDateInserted time.Time `json:"ActivityDateInserted"`
-	FullName             string    `json:"FullName,omitempty"`
 }
 
 // ItemHistoryResponse represents the response from getItemHistory
@@ -202,7 +201,6 @@ func (c *Client) GetLastPlayed(ctx context.Context, itemID string) (*LastPlayedI
 		info.LastPlayed = &recent.ActivityDateInserted
 		info.LastUser = recent.UserName
 		info.ItemName = recent.NowPlayingItemName
-		info.ItemType = recent.FullName // Use FullName as a substitute for ItemType
 
 		// Calculate total runtime from all plays
 		for _, play := range history.Results {
