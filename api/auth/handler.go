@@ -1,0 +1,72 @@
+package auth
+
+import (
+	"net/http"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+)
+
+func (p *Provider) Login(c *gin.Context) {
+	state := uuid.New().String()
+	url := p.config.AuthCodeURL(state)
+	c.Redirect(http.StatusFound, url)
+}
+
+func (p *Provider) Callback(c *gin.Context) {
+	ctx := c.Request.Context()
+	code := c.Query("code")
+
+	oauth2Token, err := p.config.Exchange(ctx, code)
+	if err != nil {
+		c.AbortWithError(http.StatusUnauthorized, err)
+		return
+	}
+
+	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+	if !ok {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	idToken, err := p.verifier.Verify(ctx, rawIDToken)
+	if err != nil {
+		c.AbortWithError(http.StatusUnauthorized, err)
+		return
+	}
+
+	var claims struct {
+		Email             string   `json:"email"`
+		Name              string   `json:"name"`
+		PreferredUsername string   `json:"preferred_username"`
+		Sub               string   `json:"sub"`
+		Groups            []string `json:"groups"`
+	}
+	if err := idToken.Claims(&claims); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	// Save user ID in session
+	session := sessions.Default(c)
+	session.Set("user_id", claims.Sub)
+	session.Set("user_email", claims.Email)
+	session.Set("user_name", claims.Name)
+	session.Set("user_username", claims.PreferredUsername)
+
+	var isAdmin bool
+	for _, group := range claims.Groups {
+		if group == p.cfg.AdminGroup {
+			isAdmin = true
+			break
+		}
+	}
+	session.Set("user_is_admin", isAdmin)
+
+	if err := session.Save(); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.Redirect(http.StatusFound, "/")
+}

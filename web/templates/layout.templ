@@ -1,0 +1,79 @@
+package templates
+
+import "github.com/jon4hz/jellysweep/api/models"
+
+templ Layout(title string, user *models.User) {
+	<!DOCTYPE html>
+	<html lang="en" class="dark">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title } - Jellysweep</title>
+			<link rel="stylesheet" href="/static/dist/style.css"/>
+			<link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
+		</head>
+		<body class="bg-gray-950 text-gray-100 min-h-screen">
+			@Navbar(user)
+			<main class="container mx-auto px-4 py-8">
+				{ children... }
+			</main>
+			<script src="/static/js/app.js"></script>
+		</body>
+	</html>
+}
+
+templ Navbar(user *models.User) {
+	<nav class="bg-gray-900 border-b border-gray-800">
+		<div class="container mx-auto px-4">
+			<div class="flex justify-between items-center h-16">
+				<div class="flex items-center space-x-4">
+					<a href="/" class="flex items-center space-x-2">
+						<div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+							<span class="text-white font-bold text-sm">JS</span>
+						</div>
+						<span class="text-xl font-semibold text-gray-100">Jellysweep</span>
+					</a>
+					if user != nil && !user.IsAdmin {
+						<div class="hidden md:flex space-x-6">
+							<a href="/" class="text-gray-300 hover:text-white transition-colors duration-200">
+								Dashboard
+							</a>
+							<a href="/media" class="text-gray-300 hover:text-white transition-colors duration-200">
+								Media Library
+							</a>
+						</div>
+					}
+					if user != nil && user.IsAdmin {
+						<div class="hidden md:flex space-x-6">
+							<a href="/" class="text-gray-300 hover:text-white transition-colors duration-200">
+								Dashboard
+							</a>
+							<a href="/media" class="text-gray-300 hover:text-white transition-colors duration-200">
+								Media Library
+							</a>
+							<a href="/admin" class="text-gray-300 hover:text-white transition-colors duration-200">
+								Admin Panel
+							</a>
+						</div>
+					}
+				</div>
+				<div class="flex items-center space-x-4">
+					if user != nil {
+						<div class="flex items-center space-x-4">
+							<span class="text-gray-300 text-sm">Welcome, { user.Name }</span>
+							<a href="/logout" class="text-gray-400 hover:text-white transition-colors duration-200">
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+								</svg>
+							</a>
+						</div>
+					} else {
+						<a href="/login" class="btn-primary">
+							Sign In
+						</a>
+					}
+				</div>
+			</div>
+		</div>
+	</nav>
+}

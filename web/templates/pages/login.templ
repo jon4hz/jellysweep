@@ -1,0 +1,50 @@
+package pages
+
+import "github.com/jon4hz/jellysweep/web/templates"
+
+templ Login() {
+	@templates.Layout("Login", nil) {
+		<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+			<div class="max-w-md w-full space-y-8">
+				<div class="text-center">
+					<div class="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6">
+						<span class="text-white font-bold text-2xl">JS</span>
+					</div>
+					<h2 class="text-3xl font-bold text-gray-100">
+						Welcome to Jellysweep
+					</h2>
+					<p class="mt-2 text-sm text-gray-400">
+						Sign in to manage your media library
+					</p>
+				</div>
+				<div class="card p-8">
+					<div class="space-y-6">
+						<div class="text-center">
+							<p class="text-gray-300 mb-6">
+								Use your OIDC provider to authenticate and access your media management dashboard.
+							</p>
+						</div>
+						<div>
+							<a href="/oauth/login" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+								<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m4 4H3m16 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+								</svg>
+								Sign in with OIDC
+							</a>
+						</div>
+						<div class="text-center">
+							<p class="text-xs text-gray-500">
+								By signing in, you agree to our terms of service and privacy policy.
+							</p>
+						</div>
+					</div>
+				</div>
+				<div class="text-center">
+					<p class="text-sm text-gray-400">
+						Don't have access? Contact your administrator.
+					</p>
+				</div>
+			</div>
+		</div>
+	}
+}

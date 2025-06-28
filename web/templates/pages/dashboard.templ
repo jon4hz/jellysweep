@@ -1,0 +1,224 @@
+package pages
+
+import "github.com/jon4hz/jellysweep/web/templates"
+import "github.com/jon4hz/jellysweep/api/models"
+import "time"
+import "fmt"
+import "github.com/mergestat/timediff"
+
+type MediaItem struct {
+	ID           string
+	Title        string
+	Type         string // "movie" or "tv"
+	Year         int
+	Library      string
+	DeletionDate time.Time
+	PosterURL    string
+	CanRequest   bool
+	HasRequested bool
+}
+
+// formatRelativeTime formats a time.Time as a relative time string like "in 3 days"
+func formatRelativeTime(t time.Time) string {
+	return timediff.TimeDiff(t)
+}
+
+// formatExactDate formats a time.Time as an exact date string for tooltips
+func formatExactDate(t time.Time) string {
+	return t.Format("January 2, 2006 at 15:04 MST")
+}
+
+// getUniqueLibraries extracts unique library names from media items
+func getUniqueLibraries(items []MediaItem) []string {
+	libraryMap := make(map[string]bool)
+	var libraries []string
+
+	for _, item := range items {
+		if item.Library != "" && !libraryMap[item.Library] {
+			libraryMap[item.Library] = true
+			libraries = append(libraries, item.Library)
+		}
+	}
+
+	return libraries
+}
+
+templ Dashboard(user *models.User, mediaItems []MediaItem) {
+	@templates.Layout("Dashboard", user) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h1 class="text-3xl font-bold text-gray-100">Media Dashboard</h1>
+					<p class="mt-1 text-sm text-gray-400">
+						Manage media scheduled for deletion from your libraries
+					</p>
+				</div>
+				<div class="mt-4 sm:mt-0">
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
+						{ len(mediaItems) } items scheduled for deletion
+					</span>
+				</div>
+			</div>
+			<!-- Filters and Search -->
+			<div class="card p-6">
+				<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
+					<div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+						<div class="relative">
+							<input type="text" id="search" placeholder="Search media..." class="input-field pl-10 pr-4 py-2 w-full sm:w-64"/>
+							<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+								<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+								</svg>
+							</div>
+						</div>
+						<select id="library-filter" class="input-field">
+							<option value="">All Libraries</option>
+							for _, library := range getUniqueLibraries(mediaItems) {
+								<option value={ library }>{ library }</option>
+							}
+						</select>
+						<select id="sort-by" class="input-field">
+							<option value="deletion-date-asc">Deletion Date (Earliest First)</option>
+							<option value="deletion-date-desc">Deletion Date (Latest First)</option>
+							<option value="title-asc">Title (A-Z)</option>
+							<option value="title-desc">Title (Z-A)</option>
+						</select>
+					</div>
+					<div class="flex items-center space-x-2">
+						<button id="refresh-btn" class="flex items-center justify-center btn-secondary">
+							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+							</svg>
+							Refresh
+						</button>
+					</div>
+				</div>
+			</div>
+			<!-- Media Grid -->
+			if len(mediaItems) == 0 {
+				@EmptyState()
+			} else {
+				<div id="media-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+					for _, item := range mediaItems {
+						@MediaCard(item)
+					}
+				</div>
+			}
+		</div>
+	}
+}
+
+templ MediaCard(item MediaItem) {
+	<div
+		class="card overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all duration-200"
+		data-title={ item.Title }
+		data-deletion-timestamp={ fmt.Sprintf("%d", item.DeletionDate.Unix()) }
+		data-library={ item.Library }
+	>
+		<div class="aspect-w-2 aspect-h-3 bg-gray-800">
+			if item.PosterURL != "" {
+				<img src={ item.PosterURL } alt={ item.Title } class="w-full h-64 object-cover"/>
+			} else {
+				<div class="w-full h-64 bg-gray-800 flex items-center justify-center">
+					<svg class="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
+					</svg>
+				</div>
+			}
+		</div>
+		<div class="p-4">
+			<div class="flex items-start justify-between">
+				<div class="flex-1 min-w-0">
+					<h3 class="text-lg font-semibold text-gray-100 truncate">{ item.Title }</h3>
+					<div class="flex items-center space-x-2 mt-1">
+						<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
+							{ item.Type }
+						</span>
+						if item.Year > 0 {
+							<span class="text-sm text-gray-400">{ string(rune(item.Year)) }</span>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="mt-3 space-y-2">
+				<div class="flex items-center text-sm text-gray-400">
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+					</svg>
+					{ item.Library }
+				</div>
+				<div class="flex items-center text-sm text-red-400" title={ formatExactDate(item.DeletionDate) }>
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+					</svg>
+					Deletes { formatRelativeTime(item.DeletionDate) }
+				</div>
+			</div>
+			<div class="mt-4">
+				if item.HasRequested {
+					<button disabled class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+						</svg>
+						Request Submitted
+					</button>
+				} else if item.CanRequest {
+					<button data-media-id={ item.ID } class="w-full flex items-center justify-center btn-primary">
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+						</svg>
+						Request to Keep
+					</button>
+				} else {
+					<button disabled class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
+						Request Unavailable
+					</button>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+templ EmptyState() {
+	<div class="text-center py-12">
+		<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+			<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+			</svg>
+		</div>
+		<h3 class="text-xl font-semibold text-gray-300 mb-2">No media scheduled for deletion</h3>
+		<p class="text-gray-500">
+			All your media is safe! Check back later or refresh to see if anything changes.
+		</p>
+		<button class="mt-4 flex items-center justify-center btn-primary">
+			<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+			</svg>
+			Refresh
+		</button>
+	</div>
+}
+
+script requestKeep(mediaID string) {
+	// This will be implemented when the backend is ready
+	fetch('/api/media/' + mediaID + '/request-keep', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
+			// Update the UI to show request submitted
+			location.reload();
+		} else {
+			alert('Failed to submit request: ' + data.error);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		alert('Failed to submit request');
+	});
+}

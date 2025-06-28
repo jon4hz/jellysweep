@@ -5,3 +5,4 @@ _devel/
 .ansible/
 .vscode/
 config.yml
+jellysweep

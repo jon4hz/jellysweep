@@ -33,6 +33,25 @@ type JellysweepConfig struct {
 	DryRun bool `yaml:"dry_run"`
 	// LogLevel is the logging level for the Jellysweep server.
 	LogLevel string `yaml:"log_level"`
+	// Auth holds the authentication configuration for the Jellysweep server.
+	Auth *AuthConfig `yaml:"auth"`
+	// SessionKey is the key used to encrypt session data.
+	SessionKey string `yaml:"session_key"`
+}
+
+// AuthConfig holds the authentication configuration for the Jellysweep server.
+type AuthConfig struct {
+	OIDC *OIDCConfig `yaml:"oidc"`
+}
+
+// OIDCConfig holds the OpenID Connect configuration for the Jellysweep server.
+type OIDCConfig struct {
+	Enabled      bool   `yaml:"enabled"`
+	Issuer       string `yaml:"issuer"`
+	ClientID     string `yaml:"client_id"`
+	ClientSecret string `yaml:"client_secret"`
+	RedirectURL  string `yaml:"redirect_url"`
+	AdminGroup   string `yaml:"admin_group"`
 }
 
 type CleanupConfig struct {
