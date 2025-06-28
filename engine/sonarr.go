@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	sonarr "github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/jellystat"
 )
 
 func sonarrAuthCtx(ctx context.Context, cfg *config.SonarrConfig) context.Context {
@@ -101,7 +102,7 @@ func (e *Engine) markSonarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 
 			// check if series has already a jellysweep delete tag
 			for _, tagID := range item.SeriesResource.GetTags() {
-				if strings.HasPrefix(e.data.sonarrTags[tagID], "jellysweep-delete-") {
+				if strings.HasPrefix(e.data.sonarrTags[tagID], jellysweepTagPrefix) {
 					log.Debugf("Sonarr series %s already marked for deletion with tag %s", item.Title, e.data.sonarrTags[tagID])
 					continue seriesLoop
 				}
@@ -111,7 +112,7 @@ func (e *Engine) markSonarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 			if cleanupDelay <= 0 {
 				cleanupDelay = 1
 			}
-			deleteTagLabel := fmt.Sprintf("jellysweep-delete-%s", time.Now().Add(time.Duration(cleanupDelay)*24*time.Hour).Format("2006-01-02"))
+			deleteTagLabel := fmt.Sprintf("%s%s", jellysweepTagPrefix, time.Now().Add(time.Duration(cleanupDelay)*24*time.Hour).Format("2006-01-02"))
 
 			if dryRun {
 				log.Infof("Dry run: Would mark Sonarr series %s for deletion with tag %s", item.Title, deleteTagLabel)
@@ -176,7 +177,7 @@ func (e *Engine) cleanupSonarrTags(ctx context.Context) error {
 		return fmt.Errorf("failed to list Sonarr tags: %w", err)
 	}
 	for _, tag := range tags {
-		if len(tag.SeriesIds) == 0 && strings.HasPrefix(tag.GetLabel(), "jellysweep-delete-") {
+		if len(tag.SeriesIds) == 0 && strings.HasPrefix(tag.GetLabel(), jellysweepTagPrefix) {
 			// If the tag is a jellysweep delete tag and has no series associated with it, delete it
 			if e.cfg.Jellysweep.DryRun {
 				log.Infof("Dry run: Would delete Sonarr tag %s", tag.GetLabel())
@@ -228,6 +229,105 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) error {
 			return fmt.Errorf("failed to delete Sonarr series %s: %w", series.GetTitle(), err)
 		}
 		log.Infof("Deleted Sonarr series %s", series.GetTitle())
+		return nil // TODO: remove
+	}
+
+	return nil
+}
+
+// removeRecentlyPlayedSonarrDeleteTags removes jellysweep-delete tags from Sonarr series that have been played recently
+func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error {
+	// Use existing data from engine.data struct
+	if e.data.sonarrItems == nil || e.data.sonarrTags == nil {
+		log.Debug("No Sonarr data available for removing recently played delete tags")
+		return nil
+	}
+
+	for _, series := range e.data.sonarrItems {
+		// Check if series has any jellysweep-delete tags
+		var deleteTagIDs []int32
+		for _, tagID := range series.GetTags() {
+			if tagName, exists := e.data.sonarrTags[tagID]; exists {
+				if strings.HasPrefix(tagName, jellysweepTagPrefix) {
+					deleteTagIDs = append(deleteTagIDs, tagID)
+				}
+			}
+		}
+
+		// Skip if no delete tags found
+		if len(deleteTagIDs) == 0 {
+			continue
+		}
+
+		// Find the matching jellystat item and library for this series from original unfiltered data
+		var matchingJellystatID string
+		var libraryName string
+
+		// Search through all jellystat items to find matching series
+		for _, jellystatItem := range e.data.jellystatItems {
+			if jellystatItem.Type == jellystat.ItemTypeSeries && jellystatItem.Name == series.GetTitle() && jellystatItem.ProductionYear == series.GetYear() {
+				matchingJellystatID = jellystatItem.ID
+				// Get library name from the library ID map
+				if libName := e.getLibraryNameByID(jellystatItem.ParentID); libName != "" {
+					libraryName = libName
+				}
+				break
+			}
+		}
+
+		if matchingJellystatID == "" || libraryName == "" {
+			log.Debugf("No matching Jellystat item or library found for Sonarr series: %s", series.GetTitle())
+			continue
+		}
+
+		// Check when the series was last played
+		lastPlayed, err := e.jellystat.GetLastPlayed(ctx, matchingJellystatID)
+		if err != nil {
+			log.Warnf("Failed to get last played time for series %s: %v", series.GetTitle(), err)
+			continue
+		}
+
+		// If the series has been played recently, remove the delete tags
+		if lastPlayed != nil && lastPlayed.LastPlayed != nil {
+			// Get the library config to get the threshold
+			libraryConfig, exists := e.cfg.Jellysweep.Libraries[libraryName]
+			if !exists {
+				log.Warnf("Library config not found for library %s, skipping", libraryName)
+				continue
+			}
+
+			timeSinceLastPlayed := time.Since(*lastPlayed.LastPlayed)
+			thresholdDuration := time.Duration(libraryConfig.LastStreamThreshold) * 24 * time.Hour
+
+			if timeSinceLastPlayed < thresholdDuration {
+				// Remove delete tags
+				updatedTags := make([]int32, 0)
+				for _, tagID := range series.GetTags() {
+					if !slices.Contains(deleteTagIDs, tagID) {
+						updatedTags = append(updatedTags, tagID)
+					}
+				}
+
+				if e.cfg.Jellysweep.DryRun {
+					log.Infof("Dry run: Would remove delete tags from recently played Sonarr series: %s (last played: %s)",
+						series.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
+					continue
+				}
+
+				// Update the series with new tags
+				series.Tags = updatedTags
+				_, _, err = e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", series.GetId())).
+					SeriesResource(series).
+					Execute()
+				if err != nil {
+					log.Errorf("Failed to update Sonarr series %s: %v", series.GetTitle(), err)
+					continue
+				}
+
+				log.Infof("Removed delete tags from recently played Sonarr series: %s (last played: %s)",
+					series.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
+			}
+		}
 	}
 
 	return nil

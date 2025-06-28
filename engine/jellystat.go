@@ -85,3 +85,11 @@ func (e *Engine) filterLastStreamThreshold(ctx context.Context) error {
 	e.data.mediaItems = filteredItems
 	return nil
 }
+
+func (e *Engine) getLibraryNameByID(libraryID string) string {
+	if name, exists := e.data.libraryIDMap[libraryID]; exists {
+		return name
+	}
+	log.Warn("Library ID not found in library ID map", "library", libraryID)
+	return ""
+}

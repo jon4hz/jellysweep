@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	radarr "github.com/devopsarr/radarr-go/radarr"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/jellystat"
 )
 
 func radarrAuthCtx(ctx context.Context, cfg *config.RadarrConfig) context.Context {
@@ -101,7 +102,7 @@ func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 
 			// check if movie has already a jellysweep delete tag
 			for _, tagID := range item.MovieResource.GetTags() {
-				if strings.HasPrefix(e.data.radarrTags[tagID], "jellysweep-delete-") {
+				if strings.HasPrefix(e.data.radarrTags[tagID], jellysweepTagPrefix) {
 					log.Debugf("Radarr movie %s already marked for deletion with tag %s", item.Title, e.data.radarrTags[tagID])
 					continue movieLoop
 				}
@@ -111,7 +112,7 @@ func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 			if cleanupDelay <= 0 {
 				cleanupDelay = 1
 			}
-			deleteTagLabel := fmt.Sprintf("jellysweep-delete-%s", time.Now().Add(time.Duration(cleanupDelay)*24*time.Hour).Format("2006-01-02"))
+			deleteTagLabel := fmt.Sprintf("%s%s", jellysweepTagPrefix, time.Now().Add(time.Duration(cleanupDelay)*24*time.Hour).Format("2006-01-02"))
 
 			if dryRun {
 				log.Infof("Dry run: Would mark Radarr movie %s for deletion with tag %s", item.Title, deleteTagLabel)
@@ -175,7 +176,7 @@ func (e *Engine) cleanupRadarrTags(ctx context.Context) error {
 		return fmt.Errorf("failed to list Radarr tags: %w", err)
 	}
 	for _, tag := range tags {
-		if len(tag.MovieIds) == 0 && strings.HasPrefix(tag.GetLabel(), "jellysweep-delete-") {
+		if len(tag.MovieIds) == 0 && strings.HasPrefix(tag.GetLabel(), jellysweepTagPrefix) {
 			// If the tag is a jellysweep delete tag and has no movies associated with it, delete it
 			if e.cfg.Jellysweep.DryRun {
 				log.Infof("Dry run: Would delete Radarr tag %s", tag.GetLabel())
@@ -227,6 +228,104 @@ func (e *Engine) deleteRadarrMedia(ctx context.Context) error {
 			return fmt.Errorf("failed to delete Radarr movie %s: %w", movie.GetTitle(), err)
 		}
 		log.Infof("Deleted Radarr movie %s", movie.GetTitle())
+	}
+
+	return nil
+}
+
+// removeRecentlyPlayedRadarrDeleteTags removes jellysweep-delete tags from Radarr movies that have been played recently
+func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) error {
+	// Use existing data from engine.data struct
+	if e.data.radarrItems == nil || e.data.radarrTags == nil {
+		log.Debug("No Radarr data available for removing recently played delete tags")
+		return nil
+	}
+
+	for _, movie := range e.data.radarrItems {
+		// Check if movie has any jellysweep-delete tags
+		var deleteTagIDs []int32
+		for _, tagID := range movie.GetTags() {
+			if tagName, exists := e.data.radarrTags[tagID]; exists {
+				if strings.HasPrefix(tagName, jellysweepTagPrefix) {
+					deleteTagIDs = append(deleteTagIDs, tagID)
+				}
+			}
+		}
+
+		// Skip if no delete tags found
+		if len(deleteTagIDs) == 0 {
+			continue
+		}
+
+		// Find the matching jellystat item and library for this movie from original unfiltered data
+		var matchingJellystatID string
+		var libraryName string
+
+		// Search through all jellystat items to find matching movie
+		for _, jellystatItem := range e.data.jellystatItems {
+			if jellystatItem.Type == jellystat.ItemTypeMovie && jellystatItem.Name == movie.GetTitle() {
+				matchingJellystatID = jellystatItem.ID
+				// Get library name from the library ID map
+				if libName := e.getLibraryNameByID(jellystatItem.ParentID); libName != "" {
+					libraryName = libName
+				}
+				break
+			}
+		}
+
+		if matchingJellystatID == "" || libraryName == "" {
+			log.Debugf("No matching Jellystat item or library found for Radarr movie: %s", movie.GetTitle())
+			continue
+		}
+
+		// Check when the movie was last played
+		lastPlayed, err := e.jellystat.GetLastPlayed(ctx, matchingJellystatID)
+		if err != nil {
+			log.Warnf("Failed to get last played time for movie %s: %v", movie.GetTitle(), err)
+			continue
+		}
+
+		// If the movie has been played recently, remove the delete tags
+		if lastPlayed != nil && lastPlayed.LastPlayed != nil {
+			// Get the library config to get the threshold
+			libraryConfig, exists := e.cfg.Jellysweep.Libraries[libraryName]
+			if !exists {
+				log.Warnf("Library config not found for library %s, skipping", libraryName)
+				continue
+			}
+
+			timeSinceLastPlayed := time.Since(*lastPlayed.LastPlayed)
+			thresholdDuration := time.Duration(libraryConfig.LastStreamThreshold) * 24 * time.Hour
+
+			if timeSinceLastPlayed < thresholdDuration {
+				// Remove delete tags
+				updatedTags := make([]int32, 0)
+				for _, tagID := range movie.GetTags() {
+					if !slices.Contains(deleteTagIDs, tagID) {
+						updatedTags = append(updatedTags, tagID)
+					}
+				}
+
+				if e.cfg.Jellysweep.DryRun {
+					log.Infof("Dry run: Would remove delete tags from recently played Radarr movie: %s (last played: %s)",
+						movie.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
+					continue
+				}
+
+				// Update the movie with new tags
+				movie.Tags = updatedTags
+				_, _, err = e.radarr.MovieAPI.UpdateMovie(radarrAuthCtx(ctx, e.cfg.Radarr), fmt.Sprintf("%d", movie.GetId())).
+					MovieResource(movie).
+					Execute()
+				if err != nil {
+					log.Errorf("Failed to update Radarr movie %s: %v", movie.GetTitle(), err)
+					continue
+				}
+
+				log.Infof("Removed delete tags from recently played Radarr movie: %s (last played: %s)",
+					movie.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
+			}
+		}
 	}
 
 	return nil

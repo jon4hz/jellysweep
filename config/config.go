@@ -31,6 +31,8 @@ type JellysweepConfig struct {
 	Libraries map[string]*CleanupConfig `yaml:"libraries"`
 	// DryRun indicates whether the cleanup job should run in dry-run mode.
 	DryRun bool `yaml:"dry_run"`
+	// LogLevel is the logging level for the Jellysweep server.
+	LogLevel string `yaml:"log_level"`
 }
 
 type CleanupConfig struct {
@@ -95,11 +97,8 @@ func Load(path string) (*Config, error) {
 	if c.Jellyseerr == nil {
 		return nil, fmt.Errorf("missing jellyseerr config")
 	}
-	if c.Sonarr == nil {
-		return nil, fmt.Errorf("missing sonarr config")
-	}
-	if c.Radarr == nil {
-		return nil, fmt.Errorf("missing radarr config")
+	if c.Sonarr == nil && c.Radarr == nil {
+		return nil, fmt.Errorf("either sonarr or radarr config must be provided")
 	}
 	return &c, nil
 }

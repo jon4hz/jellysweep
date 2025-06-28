@@ -13,6 +13,8 @@ import (
 	"github.com/samber/lo"
 )
 
+const jellysweepTagPrefix = "jellysweep-delete-"
+
 // Engine is the main engine for Jellysweep, managing interactions with sonarr, radarr, and other services.
 // It runs a cleanup job periodically to remove unwanted media.
 type Engine struct {
@@ -42,15 +44,25 @@ type data struct {
 // New creates a new Engine instance.
 func New(cfg *config.Config) (*Engine, error) {
 	jellystatClient := jellystat.New(cfg.Jellystat)
-
-	sonarrClient, err := newSonarrClient(cfg.Sonarr)
-	if err != nil {
-		return nil, err
+	var err error
+	var sonarrClient *sonarr.APIClient
+	if cfg.Sonarr != nil {
+		sonarrClient, err = newSonarrClient(cfg.Sonarr)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		log.Warn("Sonarr configuration is missing, some features will be disabled")
 	}
 
-	radarrClient, err := newRadarrClient(cfg.Radarr)
-	if err != nil {
-		return nil, err
+	var radarrClient *radarr.APIClient
+	if cfg.Radarr != nil {
+		radarrClient, err = newRadarrClient(cfg.Radarr)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		log.Warn("Radarr configuration is missing, some features will be disabled")
 	}
 
 	var jellyseerrClient *jellyseerr.Client
@@ -87,6 +99,7 @@ func (e *Engine) cleanupLoop(ctx context.Context) {
 	// Perform an initial cleanup immediately
 	e.cleanupOldTags(ctx)
 	e.markForDeletion(ctx)
+	e.removeRecentlyPlayedDeleteTags(ctx)
 	e.cleanupMedia(ctx)
 
 	// Set up a ticker to perform cleanup at the specified interval
@@ -98,8 +111,27 @@ func (e *Engine) cleanupLoop(ctx context.Context) {
 		case <-ticker.C:
 			e.cleanupOldTags(ctx)
 			e.markForDeletion(ctx)
+			e.removeRecentlyPlayedDeleteTags(ctx)
+			e.cleanupMedia(ctx)
 		case <-ctx.Done():
 			return
+		}
+	}
+}
+
+// removeRecentlyPlayedDeleteTags removes jellysweep-delete tags from media that has been played recently
+func (e *Engine) removeRecentlyPlayedDeleteTags(ctx context.Context) {
+	log.Info("Checking for recently played media with pending delete tags")
+
+	if e.sonarr != nil {
+		if err := e.removeRecentlyPlayedSonarrDeleteTags(ctx); err != nil {
+			log.Errorf("failed to remove recently played Sonarr delete tags: %v", err)
+		}
+	}
+
+	if e.radarr != nil {
+		if err := e.removeRecentlyPlayedRadarrDeleteTags(ctx); err != nil {
+			log.Errorf("failed to remove recently played Radarr delete tags: %v", err)
 		}
 	}
 }
@@ -165,7 +197,7 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 	}
 	for lib, items := range e.data.mediaItems {
 		for _, item := range items {
-			log.Debugf("Media item for deletion: %s (library: %s)", item.Title, lib)
+			log.Info("Marking media item for deletion", "name", item.Title, "library", lib)
 		}
 	}
 	log.Info("Media items filtered successfully")
@@ -206,7 +238,7 @@ func (e *Engine) mergeMediaItems() {
 		// Handle TV Series (Sonarr)
 		if item.Type == jellystat.ItemTypeSeries {
 			lo.ForEach(e.data.sonarrItems, func(s sonarr.SeriesResource, _ int) {
-				if s.GetTitle() == item.Name {
+				if s.GetTitle() == item.Name && s.GetYear() == item.ProductionYear {
 					if s.GetTmdbId() == 0 {
 						log.Warnf("Sonarr series %s has no TMDB ID, skipping", s.GetTitle())
 						return
@@ -249,7 +281,7 @@ func (e *Engine) mergeMediaItems() {
 	log.Infof("Merged %d media items across %d libraries", len(e.data.jellystatItems), len(e.data.mediaItems))
 }
 
-func (e *Engine) cleanupOldTags(ctx context.Context) error {
+func (e *Engine) cleanupOldTags(ctx context.Context) {
 	if e.sonarr != nil {
 		if err := e.cleanupSonarrTags(ctx); err != nil {
 			log.Errorf("failed to clean up Sonarr tags: %v", err)
@@ -260,10 +292,9 @@ func (e *Engine) cleanupOldTags(ctx context.Context) error {
 			log.Errorf("failed to clean up Radarr tags: %v", err)
 		}
 	}
-	return nil
 }
 
-func (e *Engine) cleanupMedia(ctx context.Context) error {
+func (e *Engine) cleanupMedia(ctx context.Context) {
 	if e.sonarr != nil {
 		if err := e.deleteSonarrMedia(ctx); err != nil {
 			log.Errorf("failed to delete Sonarr media: %v", err)
@@ -274,5 +305,4 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 			log.Errorf("failed to delete Radarr media: %v", err)
 		}
 	}
-	return nil
 }

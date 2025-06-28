@@ -89,10 +89,11 @@ type LibraryItemsRequest struct {
 
 // LibraryItem represents a single item in a library
 type LibraryItem struct {
-	ID       string `json:"Id"`
-	Name     string `json:"Name"`
-	ParentID string `json:"ParentId,omitempty"`
-	Type     string `json:"Type"`
+	ID             string `json:"Id"`
+	Name           string `json:"Name"`
+	ParentID       string `json:"ParentId,omitempty"`
+	Type           string `json:"Type"`
+	ProductionYear int32  `json:"ProductionYear,omitempty"`
 }
 
 // GetItemHistory retrieves the playback history for a specific item

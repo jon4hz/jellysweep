@@ -11,8 +11,8 @@ import (
 func (e *Engine) triggerTagIDs(tags map[int32]string) ([]int32, error) {
 	triggerTagIDs := make([]int32, 0)
 	for id, tag := range tags {
-		if strings.HasPrefix(tag, "jellysweep-delete-") {
-			tagLabel := strings.TrimPrefix(tag, "jellysweep-delete-")
+		if strings.HasPrefix(tag, jellysweepTagPrefix) {
+			tagLabel := strings.TrimPrefix(tag, jellysweepTagPrefix)
 
 			// Parse the date from the tag label
 			dateStr := strings.TrimSuffix(tagLabel, "-")
