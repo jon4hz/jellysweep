@@ -14,7 +14,8 @@ func (e *Engine) filterRequestAgeThreshold(ctx context.Context) error {
 		for _, item := range items {
 			requestTime, err := e.jellyseerr.GetRequestTime(ctx, item.TmdbId, string(item.MediaType))
 			if err != nil {
-				return err
+				log.Errorf("Failed to get request time for item %s: %v", item.Title, err)
+				continue
 			}
 			if requestTime != nil {
 				// check if the request time is longer ago than the configured threshold in days
