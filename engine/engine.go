@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	radarr "github.com/devopsarr/radarr-go/radarr"
 	sonarr "github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellyseerr"
@@ -19,6 +20,7 @@ type Engine struct {
 	jellystat  *jellystat.Client
 	jellyseerr *jellyseerr.Client
 	sonarr     *sonarr.APIClient
+	radarr     *radarr.APIClient
 
 	data *data
 }
@@ -29,6 +31,9 @@ type data struct {
 
 	sonarrItems []sonarr.SeriesResource
 	sonarrTags  map[int32]string
+
+	radarrItems []radarr.MovieResource
+	radarrTags  map[int32]string
 
 	libraryIDMap map[string]string
 	mediaItems   map[string][]MediaItem
@@ -43,6 +48,11 @@ func New(cfg *config.Config) (*Engine, error) {
 		return nil, err
 	}
 
+	radarrClient, err := newRadarrClient(cfg.Radarr)
+	if err != nil {
+		return nil, err
+	}
+
 	var jellyseerrClient *jellyseerr.Client
 	if cfg.Jellyseerr != nil {
 		jellyseerrClient = jellyseerr.New(cfg.Jellyseerr)
@@ -53,6 +63,7 @@ func New(cfg *config.Config) (*Engine, error) {
 		jellystat:  jellystatClient,
 		jellyseerr: jellyseerrClient,
 		sonarr:     sonarrClient,
+		radarr:     radarrClient,
 		data:       new(data),
 	}, nil
 }
@@ -117,12 +128,31 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		}
 		e.data.sonarrTags = sonarrTags
 	}
+	if e.radarr != nil {
+		radarrItems, err := e.getRadarrItems(ctx)
+		if err != nil {
+			log.Errorf("failed to get radarr delete candidates: %v", err)
+			return
+		}
+		e.data.radarrItems = radarrItems
+
+		radarrTags, err := e.getRadarrTags(ctx)
+		if err != nil {
+			log.Errorf("failed to get radarr tags: %v", err)
+			return
+		}
+		e.data.radarrTags = radarrTags
+	}
 
 	e.mergeMediaItems()
 	log.Info("Media items merged successfully")
 
 	if err := e.filterSonarrTags(); err != nil {
 		log.Errorf("failed to filter sonarr tags: %v", err)
+		return
+	}
+	if err := e.filterRadarrTags(); err != nil {
+		log.Errorf("failed to filter radarr tags: %v", err)
 		return
 	}
 	if err := e.filterLastStreamThreshold(ctx); err != nil {
@@ -144,6 +174,10 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		log.Errorf("failed to mark sonarr media items for deletion: %v", err)
 		return
 	}
+	if err := e.markRadarrMediaItemsForDeletion(ctx, e.cfg.Jellysweep.DryRun); err != nil {
+		log.Errorf("failed to mark radarr media items for deletion: %v", err)
+		return
+	}
 }
 
 type MediaType string
@@ -156,38 +190,60 @@ const (
 type MediaItem struct {
 	JellystatID    string
 	SeriesResource sonarr.SeriesResource
+	MovieResource  radarr.MovieResource
 	Title          string
 	TmdbId         int32
 	Tags           []string
 	MediaType      MediaType
 }
 
-// mergeMediaItems merges jellystat items and sonarr items and groups them by their library.
+// mergeMediaItems merges jellystat items and sonarr/radarr items and groups them by their library.
 func (e *Engine) mergeMediaItems() {
 	mediaItems := make(map[string][]MediaItem, 0)
 	for _, item := range e.data.jellystatItems {
-		// map jellystat items to sonarr items
-		lo.ForEach(e.data.sonarrItems, func(s sonarr.SeriesResource, _ int) {
-			if item.Type != jellystat.ItemTypeSeries {
-				return
-			}
-			if s.GetTitle() == item.Name {
-				if s.GetTmdbId() == 0 {
-					log.Warnf("Sonarr series %s has no TMDB ID, skipping", s.GetTitle())
-					return
-				}
+		libraryName := e.data.libraryIDMap[item.ParentID]
 
-				libraryName := e.data.libraryIDMap[item.ParentID]
-				mediaItems[libraryName] = append(mediaItems[libraryName], MediaItem{
-					JellystatID:    item.ID,
-					SeriesResource: s,
-					TmdbId:         s.GetTmdbId(),
-					Title:          item.Name,
-					Tags:           lo.Map(s.GetTags(), func(tag int32, _ int) string { return e.data.sonarrTags[tag] }),
-					MediaType:      MediaTypeTV,
-				})
-			}
-		})
+		// Handle TV Series (Sonarr)
+		if item.Type == jellystat.ItemTypeSeries {
+			lo.ForEach(e.data.sonarrItems, func(s sonarr.SeriesResource, _ int) {
+				if s.GetTitle() == item.Name {
+					if s.GetTmdbId() == 0 {
+						log.Warnf("Sonarr series %s has no TMDB ID, skipping", s.GetTitle())
+						return
+					}
+
+					mediaItems[libraryName] = append(mediaItems[libraryName], MediaItem{
+						JellystatID:    item.ID,
+						SeriesResource: s,
+						TmdbId:         s.GetTmdbId(),
+						Title:          item.Name,
+						Tags:           lo.Map(s.GetTags(), func(tag int32, _ int) string { return e.data.sonarrTags[tag] }),
+						MediaType:      MediaTypeTV,
+					})
+				}
+			})
+		}
+
+		// Handle Movies (Radarr)
+		if item.Type == jellystat.ItemTypeMovie {
+			lo.ForEach(e.data.radarrItems, func(m radarr.MovieResource, _ int) {
+				if m.GetTitle() == item.Name {
+					if m.GetTmdbId() == 0 {
+						log.Warnf("Radarr movie %s has no TMDB ID, skipping", m.GetTitle())
+						return
+					}
+
+					mediaItems[libraryName] = append(mediaItems[libraryName], MediaItem{
+						JellystatID:   item.ID,
+						MovieResource: m,
+						TmdbId:        m.GetTmdbId(),
+						Title:         item.Name,
+						Tags:          lo.Map(m.GetTags(), func(tag int32, _ int) string { return e.data.radarrTags[tag] }),
+						MediaType:     MediaTypeMovie,
+					})
+				}
+			})
+		}
 	}
 	e.data.mediaItems = mediaItems
 	log.Infof("Merged %d media items across %d libraries", len(e.data.jellystatItems), len(e.data.mediaItems))
@@ -199,6 +255,11 @@ func (e *Engine) cleanupOldTags(ctx context.Context) error {
 			log.Errorf("failed to clean up Sonarr tags: %v", err)
 		}
 	}
+	if e.radarr != nil {
+		if err := e.cleanupRadarrTags(ctx); err != nil {
+			log.Errorf("failed to clean up Radarr tags: %v", err)
+		}
+	}
 	return nil
 }
 
@@ -206,6 +267,11 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 	if e.sonarr != nil {
 		if err := e.deleteSonarrMedia(ctx); err != nil {
 			log.Errorf("failed to delete Sonarr media: %v", err)
+		}
+	}
+	if e.radarr != nil {
+		if err := e.deleteRadarrMedia(ctx); err != nil {
+			log.Errorf("failed to delete Radarr media: %v", err)
 		}
 	}
 	return nil

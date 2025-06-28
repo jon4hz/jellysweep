@@ -14,6 +14,8 @@ github.com/charmbracelet/x/term v0.2.1 h1:AQeHeLZ1OqSXhrAWpYUtZyX1T3zVxfpZuEQMIQ
 github.com/charmbracelet/x/term v0.2.1/go.mod h1:oQ4enTYFV7QN4m0i9mzHrViD7TQKvNEEkHUMCmsxdUg=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/devopsarr/radarr-go v1.2.0 h1:ffP+iDMbM5N9moXN0BZRAgBbBNvywdpQsgA+hl+HCeg=
+github.com/devopsarr/radarr-go v1.2.0/go.mod h1:e39qfD0vJOaSc4BzelF6/bkyZQsYtqLuVtEGVM8mDJo=
 github.com/devopsarr/sonarr-go v1.1.0 h1:R36Lve/gL1EIN5i6VMSg7oT6Kfpf6ReCxL+zAAY1J3E=
 github.com/devopsarr/sonarr-go v1.1.0/go.mod h1:jArmSulMGIBz0w/ZiEu/Ow9/oyVz/aTOiFDvSLdk6xM=
 github.com/go-logfmt/logfmt v0.6.0 h1:wGYYu3uicYdqXVgoYbvnkrPVXkuLM1p1ifugDMEdRi4=

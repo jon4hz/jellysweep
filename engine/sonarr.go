@@ -232,28 +232,3 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) error {
 
 	return nil
 }
-
-func (e *Engine) triggerTagIDs(tags map[int32]string) ([]int32, error) {
-	triggerTagIDs := make([]int32, 0)
-	for id, tag := range tags {
-		if strings.HasPrefix(tag, "jellysweep-delete-") {
-			tagLabel := strings.TrimPrefix(tag, "jellysweep-delete-")
-
-			// Parse the date from the tag label
-			dateStr := strings.TrimSuffix(tagLabel, "-")
-			date, err := time.Parse("2006-01-02", dateStr)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse date from tag label %s: %w", tagLabel, err)
-			}
-			// Check if the date is in the past
-			if date.Before(time.Now()) {
-				// If the date is in the past, add the tag ID to the trigger list
-				triggerTagIDs = append(triggerTagIDs, id)
-			} else {
-				log.Debugf("Skipping tag %s as it is not yet due for deletion", tagLabel)
-			}
-
-		}
-	}
-	return triggerTagIDs, nil
-}

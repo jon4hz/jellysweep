@@ -4,6 +4,7 @@ go 1.24.4
 
 require (
 	github.com/charmbracelet/log v0.4.2
+	github.com/devopsarr/radarr-go v1.2.0
 	github.com/devopsarr/sonarr-go v1.1.0
 	github.com/samber/lo v1.51.0
 	gopkg.in/yaml.v3 v3.0.1
