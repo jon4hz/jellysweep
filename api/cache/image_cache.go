@@ -3,7 +3,7 @@ package cache
 import (
 	"crypto/md5"
 	"fmt"
-	"io"
+	"image"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,14 +11,18 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/disintegration/imaging"
 )
 
 type ImageCache struct {
-	cacheDir string
-	client   *http.Client
+	cacheDir  string
+	client    *http.Client
+	maxWidth  int // Maximum width for scaled images
+	maxHeight int // Maximum height for scaled images
+	quality   int // JPEG quality (1-100)
 }
 
-// NewImageCache creates a new image cache manager
+// NewImageCache creates a new image cache manager with scaling options
 func NewImageCache(cacheDir string) *ImageCache {
 	// Create cache directory if it doesn't exist
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
@@ -26,7 +30,28 @@ func NewImageCache(cacheDir string) *ImageCache {
 	}
 
 	return &ImageCache{
-		cacheDir: cacheDir,
+		cacheDir:  cacheDir,
+		maxWidth:  340, // Default max width: 340px
+		maxHeight: 500, // Default max height: 500px
+		quality:   85,  // Default JPEG quality: 85%
+		client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+}
+
+// NewImageCacheWithOptions creates a new image cache manager with custom scaling options
+func NewImageCacheWithOptions(cacheDir string, maxWidth, maxHeight, quality int) *ImageCache {
+	// Create cache directory if it doesn't exist
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		log.Errorf("Failed to create cache directory: %v", err)
+	}
+
+	return &ImageCache{
+		cacheDir:  cacheDir,
+		maxWidth:  maxWidth,
+		maxHeight: maxHeight,
+		quality:   quality,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -69,10 +94,12 @@ func (ic *ImageCache) GetCachedImagePath(imageURL string) (string, error) {
 	return ic.downloadAndCache(imageURL, cacheFilePath)
 }
 
-// downloadAndCache downloads an image and saves it to the cache
+// downloadAndCache downloads an image, scales it, and saves it to the cache
 func (ic *ImageCache) downloadAndCache(imageURL, cacheFilePath string) (string, error) {
-	// Create a temporary file first
-	tempFilePath := cacheFilePath + ".tmp"
+	// Create a temporary file first - keep the original extension but add a prefix
+	dir := filepath.Dir(cacheFilePath)
+	base := filepath.Base(cacheFilePath)
+	tempFilePath := filepath.Join(dir, "tmp_"+base)
 	defer os.Remove(tempFilePath) // Clean up temp file if something goes wrong
 
 	// Download the image
@@ -92,6 +119,32 @@ func (ic *ImageCache) downloadAndCache(imageURL, cacheFilePath string) (string, 
 		return "", fmt.Errorf("invalid content type: %s", contentType)
 	}
 
+	// Decode the image
+	img, format, err := image.Decode(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	// Get original dimensions
+	bounds := img.Bounds()
+	originalWidth := bounds.Dx()
+	originalHeight := bounds.Dy()
+
+	// Check if resizing is needed
+	needsResize := originalWidth > ic.maxWidth || originalHeight > ic.maxHeight
+
+	var processedImg image.Image = img
+	if needsResize {
+		// Calculate new dimensions while maintaining aspect ratio
+		newWidth, newHeight := ic.calculateScaledDimensions(originalWidth, originalHeight)
+
+		// Resize the image using high-quality Lanczos resampling
+		processedImg = imaging.Resize(img, newWidth, newHeight, imaging.Lanczos)
+
+		log.Debugf("Resized image from %dx%d to %dx%d for: %s",
+			originalWidth, originalHeight, newWidth, newHeight, imageURL)
+	}
+
 	// Create the temporary file
 	tempFile, err := os.Create(tempFilePath)
 	if err != nil {
@@ -99,10 +152,10 @@ func (ic *ImageCache) downloadAndCache(imageURL, cacheFilePath string) (string, 
 	}
 	defer tempFile.Close()
 
-	// Copy the image data to the temporary file
-	_, err = io.Copy(tempFile, resp.Body)
+	// Save the processed image
+	err = ic.saveImage(processedImg, tempFile, format, cacheFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to save image: %w", err)
+		return "", fmt.Errorf("failed to save processed image: %w", err)
 	}
 
 	// Move the temporary file to the final location (atomic operation)
@@ -111,7 +164,14 @@ func (ic *ImageCache) downloadAndCache(imageURL, cacheFilePath string) (string, 
 		return "", fmt.Errorf("failed to move temp file: %w", err)
 	}
 
-	log.Infof("Cached image: %s -> %s", imageURL, cacheFilePath)
+	if needsResize {
+		log.Infof("Cached and resized image: %s -> %s (original: %dx%d, cached: %dx%d)",
+			imageURL, cacheFilePath, originalWidth, originalHeight,
+			processedImg.Bounds().Dx(), processedImg.Bounds().Dy())
+	} else {
+		log.Infof("Cached image: %s -> %s", imageURL, cacheFilePath)
+	}
+
 	return cacheFilePath, nil
 }
 
@@ -207,4 +267,54 @@ func (ic *ImageCache) CleanupOldImages(maxAge time.Duration) error {
 
 		return nil
 	})
+}
+
+// calculateScaledDimensions calculates new dimensions while maintaining aspect ratio
+func (ic *ImageCache) calculateScaledDimensions(originalWidth, originalHeight int) (int, int) {
+	// If both dimensions are within limits, don't scale
+	if originalWidth <= ic.maxWidth && originalHeight <= ic.maxHeight {
+		return originalWidth, originalHeight
+	}
+
+	// Calculate scaling factors for width and height
+	widthRatio := float64(ic.maxWidth) / float64(originalWidth)
+	heightRatio := float64(ic.maxHeight) / float64(originalHeight)
+
+	// Use the smaller ratio to ensure both dimensions fit within limits
+	ratio := widthRatio
+	if heightRatio < widthRatio {
+		ratio = heightRatio
+	}
+
+	// Calculate new dimensions
+	newWidth := int(float64(originalWidth) * ratio)
+	newHeight := int(float64(originalHeight) * ratio)
+
+	return newWidth, newHeight
+}
+
+// saveImage saves the processed image to the file with appropriate format and quality
+func (ic *ImageCache) saveImage(img image.Image, file *os.File, originalFormat, filePath string) error {
+	// Determine output format based on file extension and original format
+	ext := strings.ToLower(filepath.Ext(filePath))
+
+	switch ext {
+	case ".jpg", ".jpeg":
+		// Save as JPEG with specified quality
+		return imaging.Save(img, file.Name(), imaging.JPEGQuality(ic.quality))
+	case ".png":
+		// Save as PNG (lossless)
+		return imaging.Save(img, file.Name(), imaging.PNGCompressionLevel(6))
+	case ".webp":
+		// Try to save as WebP, fallback to JPEG if not supported
+		if err := imaging.Save(img, file.Name()); err != nil {
+			log.Debugf("WebP save failed, falling back to JPEG: %v", err)
+			return imaging.Save(img, file.Name(), imaging.JPEGQuality(ic.quality))
+		}
+		return nil
+	default:
+		// For unknown formats, save as JPEG
+		log.Debugf("Unknown format %s, saving as JPEG", ext)
+		return imaging.Save(img, file.Name(), imaging.JPEGQuality(ic.quality))
+	}
 }
