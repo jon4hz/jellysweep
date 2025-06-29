@@ -16,6 +16,7 @@ import (
 	"github.com/jon4hz/jellysweep/jellyseerr"
 	"github.com/jon4hz/jellysweep/jellystat"
 	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -452,28 +453,40 @@ func (e *Engine) DeclineKeepRequest(ctx context.Context, mediaID string) error {
 func (e *Engine) ResetAllTags(ctx context.Context) error {
 	log.Info("Resetting all jellysweep tags...")
 
+	g, ctx := errgroup.WithContext(ctx)
 	// Reset Sonarr tags
 	if e.sonarr != nil {
-		log.Info("Removing jellysweep tags from Sonarr series...")
-		if err := e.resetSonarrTags(ctx); err != nil {
-			return fmt.Errorf("failed to reset Sonarr tags: %w", err)
-		}
-		log.Info("Cleaning up all Sonarr jellysweep tags...")
-		if err := e.cleanupAllSonarrTags(ctx); err != nil {
-			return fmt.Errorf("failed to cleanup Sonarr tags: %w", err)
-		}
+		g.Go(func() error {
+			log.Info("Removing jellysweep tags from Sonarr series...")
+			if err := e.resetSonarrTags(ctx); err != nil {
+				return fmt.Errorf("failed to reset Sonarr tags: %w", err)
+			}
+			log.Info("Cleaning up all Sonarr jellysweep tags...")
+			if err := e.cleanupAllSonarrTags(ctx); err != nil {
+				return fmt.Errorf("failed to cleanup Sonarr tags: %w", err)
+			}
+			return nil
+		})
+
 	}
 
 	// Reset Radarr tags
 	if e.radarr != nil {
-		log.Info("Removing jellysweep tags from Radarr movies...")
-		if err := e.resetRadarrTags(ctx); err != nil {
-			return fmt.Errorf("failed to reset Radarr tags: %w", err)
-		}
-		log.Info("Cleaning up all Radarr jellysweep tags...")
-		if err := e.cleanupAllRadarrTags(ctx); err != nil {
-			return fmt.Errorf("failed to cleanup Radarr tags: %w", err)
-		}
+		g.Go(func() error {
+			log.Info("Removing jellysweep tags from Radarr movies...")
+			if err := e.resetRadarrTags(ctx); err != nil {
+				return fmt.Errorf("failed to reset Radarr tags: %w", err)
+			}
+			log.Info("Cleaning up all Radarr jellysweep tags...")
+			if err := e.cleanupAllRadarrTags(ctx); err != nil {
+				return fmt.Errorf("failed to cleanup Radarr tags: %w", err)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		log.Error(err)
+		return fmt.Errorf("error while resetting tags")
 	}
 
 	log.Info("All jellysweep tags have been successfully reset!")
