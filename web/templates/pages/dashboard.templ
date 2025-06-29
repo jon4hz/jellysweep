@@ -94,6 +94,12 @@ templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
 				</div>
 			}
 		</div>
+		<!-- Include shared utility scripts -->
+		@templates.ToastScript()
+		@templates.ButtonLoadingUtils()
+		@templates.ApiUtils()
+		@templates.DebounceUtil()
+		@dashboardScripts()
 	}
 }
 
@@ -152,7 +158,7 @@ templ MediaCard(item models.MediaItem) {
 						Request Submitted
 					</button>
 				} else if item.CanRequest {
-					<button data-media-id={ item.ID } class="w-full flex items-center justify-center btn-primary">
+					<button id={ "request-" + item.ID } data-media-id={ item.ID } class="w-full flex items-center justify-center btn-primary">
 						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
 						</svg>
@@ -182,25 +188,168 @@ templ EmptyState() {
 	</div>
 }
 
-script requestKeep(mediaID string) {
-	// This will be implemented when the backend is ready
-	fetch('/api/media/' + mediaID + '/request-keep', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-		},
-	})
-	.then(response => response.json())
-	.then(data => {
-		if (data.success) {
-			// Update the UI to show request submitted
-			location.reload();
-		} else {
-			alert('Failed to submit request: ' + data.error);
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		alert('Failed to submit request');
+script dashboardScripts() {
+	// Initialize all functionality when DOM loads
+	document.addEventListener('DOMContentLoaded', function() {
+		initializeFilters();
+		initializeMediaRequests();
+		initializeAutoRefresh();
 	});
+
+	function initializeFilters() {
+		const searchInput = document.getElementById('search');
+		const libraryFilter = document.getElementById('library-filter');
+		const sortBy = document.getElementById('sort-by');
+		const refreshBtn = document.getElementById('refresh-btn');
+
+		if (searchInput) {
+			searchInput.addEventListener('input', window.debounce ? window.debounce(filterMedia, 300) : filterMedia);
+		}
+
+		if (libraryFilter) {
+			libraryFilter.addEventListener('change', filterMedia);
+		}
+
+		if (sortBy) {
+			sortBy.addEventListener('change', sortMedia);
+		}
+
+		if (refreshBtn) {
+			refreshBtn.addEventListener('click', refreshMedia);
+		}
+	}
+
+	function initializeMediaRequests() {
+		// Add click handlers for all request buttons
+		document.addEventListener('click', function(e) {
+			if (e.target.matches('button[data-media-id]')) {
+				const mediaId = e.target.getAttribute('data-media-id');
+				requestKeepMedia(mediaId, e.target);
+			}
+		});
+	}
+
+	function initializeAutoRefresh() {
+		// Auto-refresh every 5 minutes
+		setInterval(() => {
+			const refreshBtn = document.getElementById('refresh-btn');
+			if (refreshBtn && !refreshBtn.disabled) {
+				refreshMedia();
+			}
+		}, 300000); // 5 minutes
+	}
+
+	function filterMedia() {
+		const searchTerm = document.getElementById('search')?.value.toLowerCase() || '';
+		const libraryFilter = document.getElementById('library-filter')?.value || '';
+
+		const mediaCards = document.querySelectorAll('#media-grid > div');
+
+		mediaCards.forEach(card => {
+			const title = (card.getAttribute('data-title') || '').toLowerCase();
+			const library = card.getAttribute('data-library') || '';
+
+			const matchesSearch = title.includes(searchTerm);
+			const matchesLibrary = !libraryFilter || library === libraryFilter;
+
+			if (matchesSearch && matchesLibrary) {
+				card.style.display = 'block';
+			} else {
+				card.style.display = 'none';
+			}
+		});
+	}
+
+	function sortMedia() {
+		const sortBy = document.getElementById('sort-by')?.value || 'deletion-date-asc';
+		const mediaGrid = document.getElementById('media-grid');
+
+		if (!mediaGrid) return;
+
+		const cards = Array.from(mediaGrid.children);
+
+		cards.sort((a, b) => {
+			let aValue, bValue;
+
+			switch (sortBy) {
+				case 'title-asc':
+					aValue = a.getAttribute('data-title') || '';
+					bValue = b.getAttribute('data-title') || '';
+					return aValue.localeCompare(bValue);
+
+				case 'title-desc':
+					aValue = a.getAttribute('data-title') || '';
+					bValue = b.getAttribute('data-title') || '';
+					return bValue.localeCompare(aValue);
+
+				case 'deletion-date-asc':
+					aValue = parseInt(a.getAttribute('data-deletion-timestamp')) || 0;
+					bValue = parseInt(b.getAttribute('data-deletion-timestamp')) || 0;
+					return aValue - bValue; // Earlier dates first
+
+				case 'deletion-date-desc':
+					aValue = parseInt(a.getAttribute('data-deletion-timestamp')) || 0;
+					bValue = parseInt(b.getAttribute('data-deletion-timestamp')) || 0;
+					return bValue - aValue; // Later dates first
+
+				default:
+					return 0;
+			}
+		});
+
+		// Re-append sorted cards
+		cards.forEach(card => mediaGrid.appendChild(card));
+	}
+
+	function requestKeepMedia(mediaId, button) {
+		if (!mediaId || button.disabled) return;
+
+		const buttonId = button.id;
+		const originalContent = window.setButtonLoading(buttonId, 'Submitting...');
+		if (!originalContent) return;
+
+		window.makeApiRequest('/api/media/' + mediaId + '/request-keep')
+		.then(data => {
+			if (data.success) {
+				window.setButtonSuccess(buttonId, 'Request Submitted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+				
+				// Update button styling
+				button.classList.remove('btn-primary');
+				button.classList.add('btn-secondary', 'opacity-50', 'cursor-not-allowed');
+
+				window.showToast('Request submitted successfully', 'success');
+			} else {
+				throw new Error(data.message || 'Unknown error');
+			}
+		})
+		.catch(error => {
+			console.error('Error:', error);
+			window.showToast('Failed to submit request: ' + error.message, 'error');
+			window.restoreButton(buttonId, originalContent);
+		});
+	}
+
+	function refreshMedia() {
+		const buttonId = 'refresh-btn';
+		const originalContent = window.setButtonLoading(buttonId, 'Refreshing...');
+		if (!originalContent) return;
+
+		window.makeApiRequest('/api/refresh')
+		.then(data => {
+			if (data.success) {
+				window.showToast('Data refreshed successfully', 'success');
+				// Reload the page to show fresh data
+				setTimeout(() => {
+					window.location.reload();
+				}, 1000);
+			} else {
+				throw new Error(data.message || 'Failed to refresh data');
+			}
+		})
+		.catch(error => {
+			console.error('Error:', error);
+			window.showToast('Failed to refresh data: ' + error.message, 'error');
+			window.restoreButton(buttonId, originalContent);
+		});
+	}
 }

@@ -8,6 +8,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/devopsarr/radarr-go v1.2.0
 	github.com/devopsarr/sonarr-go v1.1.0
+	github.com/disintegration/imaging v1.6.2
 	github.com/gin-contrib/sessions v1.0.4
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0
@@ -33,7 +34,6 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cli/browser v1.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
-	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
