@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -38,4 +39,57 @@ func (e *Engine) triggerTagIDs(tags map[int32]string) ([]int32, error) {
 		}
 	}
 	return triggerTagIDs, nil
+}
+
+func (e *Engine) filterMediaTags() {
+	filteredItems := make(map[string][]MediaItem, 0)
+	for lib, items := range e.data.mediaItems {
+		for _, item := range items {
+			// Check if the item has any tags that are not in the exclude list
+			hasExcludedTag := false
+			for _, tagName := range item.Tags {
+				// Check if the tag is in the exclude list
+				if slices.Contains(e.cfg.Jellysweep.Libraries[lib].ExcludeTags, tagName) {
+					hasExcludedTag = true
+					log.Debugf("Excluding item %s due to tag: %s", item.Title, tagName)
+					break
+				}
+				// Check for jellysweep-must-keep- tags
+				if strings.HasPrefix(tagName, jellysweepKeepPrefix) {
+					// Parse the date to check if the keep tag is still valid
+					dateStr := strings.TrimPrefix(tagName, jellysweepKeepPrefix)
+					keepDate, err := time.Parse("2006-01-02", dateStr)
+					if err != nil {
+						log.Warnf("Failed to parse date from keep tag %s: %v", tagName, err)
+						continue
+					}
+					if time.Now().Before(keepDate) {
+						log.Debugf("Item %s has active keep tag: %s", item.Title, tagName)
+						hasExcludedTag = true
+						break
+					} else {
+						log.Debugf("Item %s has expired keep tag: %s", item.Title, tagName)
+					}
+				}
+				// Check for jellysweep-must-delete-for-sure tags
+				if strings.HasPrefix(tagName, jellysweepDeleteForSureTag) {
+					// This tag indicates the item should be deleted regardless of other tags
+					log.Debugf("Item %s has must-delete-for-sure tag: %s", item.Title, tagName)
+					hasExcludedTag = true
+					break
+				}
+				// Check for existing jellysweep-delete- tags
+				if strings.HasPrefix(tagName, jellysweepTagPrefix) {
+					// This tag indicates the item is already marked for deletion
+					log.Debugf("Item %s already marked for deletion with tag: %s", item.Title, tagName)
+					hasExcludedTag = true
+					break
+				}
+			}
+			if !hasExcludedTag {
+				filteredItems[lib] = append(filteredItems[lib], item)
+			}
+		}
+	}
+	e.data.mediaItems = filteredItems
 }

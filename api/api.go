@@ -109,11 +109,18 @@ func (s *Server) setupRoutes() {
 
 func (s *Server) setupAdminRoutes() {
 	adminGroup := s.ginEngine.Group("/admin")
-	h := handler.NewAdmin()
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
-	_ = h
+	h := handler.NewAdmin(s.engine)
 
+	// Admin panel page
+	adminGroup.GET("", h.AdminPanel)
+	adminGroup.GET("/", h.AdminPanel)
+
+	// Admin API routes
+	adminAPI := adminGroup.Group("/api")
+	adminAPI.POST("/keep-requests/:id/accept", h.AcceptKeepRequest)
+	adminAPI.POST("/keep-requests/:id/decline", h.DeclineKeepRequest)
 }
 
 func (s *Server) Run() error {

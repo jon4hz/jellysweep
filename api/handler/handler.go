@@ -110,14 +110,22 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 	mediaID := c.Param("id")
 	user := c.MustGet("user").(*models.User)
 
-	// TODO: Implement actual logic to store the request
-	// For now, just return success
-	_ = mediaID
-	_ = user
+	err := h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.Sub)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Clear the user's cache since media status has changed
+	userID := user.Sub
+	h.cacheManager.Clear(userID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Request submitted successfully",
+		"message": "Keep request submitted successfully",
 	})
 }
 

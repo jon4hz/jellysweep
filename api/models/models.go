@@ -21,4 +21,20 @@ type MediaItem struct {
 	PosterURL    string
 	CanRequest   bool
 	HasRequested bool
+	MustDelete   bool // Indicates if this item is marked for deletion for sure
+}
+
+// KeepRequest represents a user request to keep a media item
+type KeepRequest struct {
+	ID           string
+	MediaID      string
+	Title        string
+	Type         string // "movie" or "tv"
+	Year         int
+	Library      string
+	DeletionDate time.Time
+	PosterURL    string
+	RequestedBy  string
+	RequestDate  time.Time
+	ExpiryDate   time.Time
 }

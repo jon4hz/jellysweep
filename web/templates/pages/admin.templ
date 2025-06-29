@@ -1,0 +1,179 @@
+package pages
+
+import "github.com/jon4hz/jellysweep/api/models"
+import "github.com/jon4hz/jellysweep/web/templates"
+import "fmt"
+
+templ AdminPanel(user *models.User, keepRequests []models.KeepRequest) {
+	@templates.Layout("Admin Panel", user) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h1 class="text-3xl font-bold text-gray-100">Admin Panel</h1>
+					<p class="mt-1 text-sm text-gray-400">
+						Manage keep requests from users
+					</p>
+				</div>
+				<div class="mt-4 sm:mt-0">
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+						{ len(keepRequests) } pending requests
+					</span>
+				</div>
+			</div>
+			<!-- Keep Requests List -->
+			if len(keepRequests) == 0 {
+				@AdminEmptyState()
+			} else {
+				<div class="card">
+					<div class="px-4 py-5 sm:p-6">
+						<h3 class="text-lg font-medium text-gray-100 mb-4">Keep Requests</h3>
+						<div class="space-y-4">
+							for _, request := range keepRequests {
+								@AdminKeepRequestCard(request)
+							}
+						</div>
+					</div>
+				</div>
+			}
+		</div>
+	}
+}
+
+templ AdminKeepRequestCard(request models.KeepRequest) {
+	<div class="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-700">
+		<div class="flex items-center space-x-4">
+			<!-- Poster/Icon -->
+			<div class="flex-shrink-0">
+				if request.PosterURL != "" {
+					<img src={ request.PosterURL } alt={ request.Title } class="w-16 h-24 object-cover rounded"/>
+				} else {
+					<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
+						<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
+						</svg>
+					</div>
+				}
+			</div>
+			<!-- Details -->
+			<div class="flex-1 min-w-0">
+				<div class="flex items-center space-x-2">
+					<h4 class="text-lg font-medium text-gray-100 truncate">{ request.Title }</h4>
+					<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
+						{ request.Type }
+					</span>
+					if request.Year > 0 {
+						<span class="text-sm text-gray-400">{ fmt.Sprint(request.Year) }</span>
+					}
+				</div>
+				<div class="mt-1 flex items-center space-x-4 text-sm text-gray-400">
+					<div class="flex items-center">
+						<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+						</svg>
+						{ request.Library }
+					</div>
+					if !request.DeletionDate.IsZero() {
+						<div class="flex items-center">
+							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+							</svg>
+							Deletes { formatRelativeTime(request.DeletionDate) }
+						</div>
+					}
+					<div class="flex items-center">
+						<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4M5 7h14l-1 14H6L5 7z"></path>
+						</svg>
+						Expires { formatRelativeTime(request.ExpiryDate) }
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- Actions -->
+		<div class="flex items-center space-x-2">
+			<button
+				onclick={ acceptKeepRequest(request.MediaID) }
+				class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+			>
+				<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+				</svg>
+				Accept
+			</button>
+			<button
+				onclick={ declineKeepRequest(request.MediaID) }
+				class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+			>
+				<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+				</svg>
+				Decline
+			</button>
+		</div>
+	</div>
+}
+
+templ AdminEmptyState() {
+	<div class="text-center py-12">
+		<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+			<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+			</svg>
+		</div>
+		<h3 class="text-xl font-semibold text-gray-300 mb-2">No pending keep requests</h3>
+		<p class="text-gray-500">
+			All keep requests have been processed. Check back later for new requests.
+		</p>
+	</div>
+}
+
+script acceptKeepRequest(mediaID string) {
+	if (!confirm('Are you sure you want to accept this keep request? This will remove the deletion schedule for this media.')) {
+		return;
+	}
+	
+	fetch('/admin/api/keep-requests/' + mediaID + '/accept', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
+			location.reload();
+		} else {
+			alert('Failed to accept request: ' + data.error);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		alert('Failed to accept request');
+	});
+}
+
+script declineKeepRequest(mediaID string) {
+	if (!confirm('Are you sure you want to decline this keep request? This will permanently prevent future keep requests for this media.')) {
+		return;
+	}
+	
+	fetch('/admin/api/keep-requests/' + mediaID + '/decline', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
+			location.reload();
+		} else {
+			alert('Failed to decline request: ' + data.error);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		alert('Failed to decline request');
+	});
+}
