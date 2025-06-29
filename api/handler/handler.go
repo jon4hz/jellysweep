@@ -2,64 +2,84 @@ package handler
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/jon4hz/jellysweep/api/cache"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 )
 
-type Handler struct {
+// CacheManager interface for managing user-specific caches
+type CacheManager interface {
+	Get(userID string) (map[string][]models.MediaItem, bool)
+	Set(userID string, data map[string][]models.MediaItem)
+	Clear(userID string)
 }
 
-func New() *Handler {
-	return &Handler{}
+type Handler struct {
+	engine       *engine.Engine
+	cacheManager CacheManager
+	imageCache   *cache.ImageCache // Assuming you have an image cache manager
+}
+
+func New(eng *engine.Engine, cm CacheManager, im *cache.ImageCache) *Handler {
+	return &Handler{
+		engine:       eng,
+		cacheManager: cm,
+		imageCache:   im,
+	}
 }
 
 func (h *Handler) Home(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
-	// Mock data for now - replace with actual data from your engine
-	now := time.Now()
-	mockMediaItems := []pages.MediaItem{
-		{
-			ID:           "1",
-			Title:        "The Matrix",
-			Type:         "movie",
-			Year:         1999,
-			Library:      "Movies",
-			DeletionDate: now.AddDate(0, 0, 7), // in 7 days
-			PosterURL:    "",
-			CanRequest:   true,
-			HasRequested: false,
-		},
-		{
-			ID:           "2",
-			Title:        "Breaking Bad",
-			Type:         "tv",
-			Year:         2008,
-			Library:      "TV Shows",
-			DeletionDate: now.AddDate(0, 0, 3), // in 3 days
-			PosterURL:    "",
-			CanRequest:   true,
-			HasRequested: true,
-		},
-		{
-			ID:           "3",
-			Title:        "Inception",
-			Type:         "movie",
-			Year:         2010,
-			Library:      "Movies",
-			DeletionDate: now.AddDate(0, 0, 14), // in 14 days
-			PosterURL:    "",
-			CanRequest:   true,
-			HasRequested: false,
-		},
+	// Create cache key based on user
+	userID := user.Sub // Use the subject from OIDC token as user ID
+
+	// Check if this is a forced refresh
+	cacheControl := c.GetHeader("Cache-Control")
+	pragma := c.GetHeader("Pragma")
+	forceRefresh := c.Query("refresh") == "true" ||
+		cacheControl == "no-cache" ||
+		cacheControl == "max-age=0" ||
+		pragma == "no-cache"
+
+	var mediaItemsMap map[string][]models.MediaItem
+	var err error
+
+	// Try to get from cache first (if not forced refresh)
+	if !forceRefresh {
+		if cachedData, found := h.cacheManager.Get(userID); found {
+			mediaItemsMap = cachedData
+		}
+	}
+
+	// If not in cache or forced refresh, get fresh data
+	if mediaItemsMap == nil || forceRefresh {
+		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+		if err != nil {
+			// Log error and fall back to empty data
+			c.Header("Content-Type", "text/html")
+			pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer)
+			return
+		}
+
+		// Store in cache
+		h.cacheManager.Set(userID, mediaItemsMap)
+	}
+
+	// Convert to flat list for the dashboard
+	var mediaItems []models.MediaItem
+	for _, libraryItems := range mediaItemsMap {
+		for _, item := range libraryItems {
+			mediaItems = append(mediaItems, item)
+		}
 	}
 
 	c.Header("Content-Type", "text/html")
-	pages.Dashboard(user, mockMediaItems).Render(c.Request.Context(), c.Writer)
+	pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer)
 }
 
 func (h *Handler) Login(c *gin.Context) {
@@ -99,4 +119,43 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 		"success": true,
 		"message": "Request submitted successfully",
 	})
+}
+
+// RefreshData forces a refresh of the cached data for the current user
+func (h *Handler) RefreshData(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+	userID := user.Sub
+
+	// Clear the user's cache
+	h.cacheManager.Clear(userID)
+
+	// Get fresh data from the engine
+	_, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to refresh data",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Data refreshed successfully",
+	})
+}
+
+// ImageCache serves cached images or downloads them if not cached
+func (h *Handler) ImageCache(c *gin.Context) {
+	imageURL := c.Query("url")
+	if imageURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "url parameter is required"})
+		return
+	}
+
+	// Serve the cached image
+	err := h.imageCache.ServeImage(imageURL, c.Writer, c.Request)
+	if err != nil {
+		// Error is already handled in ServeImage
+		return
+	}
 }

@@ -6,3 +6,4 @@ _devel/
 .vscode/
 config.yml
 jellysweep
+/data/cache/

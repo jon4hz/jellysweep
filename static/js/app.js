@@ -43,11 +43,6 @@ function initializeMediaRequests() {
   });
 }
 
-function initializeAutoRefresh() {
-  // Refresh every 5 minutes
-  setInterval(refreshMedia, 5 * 60 * 1000);
-}
-
 function filterMedia() {
   const searchTerm =
     document.getElementById("search")?.value.toLowerCase() || "";
@@ -175,10 +170,40 @@ function refreshMedia() {
         `;
   }
 
-  // Reload the page to get fresh data
-  setTimeout(() => {
-    window.location.reload();
-  }, 1000);
+  // Call the refresh API endpoint to force cache refresh
+  fetch("/api/refresh", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        showToast("Data refreshed successfully", "success");
+        // Reload the page to show fresh data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        throw new Error(data.message || "Failed to refresh data");
+      }
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      showToast("Failed to refresh data: " + error.message, "error");
+
+      // Restore button state
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = `
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Refresh
+            `;
+      }
+    });
 }
 
 function showToast(message, type = "info") {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	sonarr "github.com/devopsarr/sonarr-go/sonarr"
+	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellystat"
 )
@@ -331,4 +332,64 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 	}
 
 	return nil
+}
+
+// getSonarrMediaItemsMarkedForDeletion returns all Sonarr series that are marked for deletion
+func (e *Engine) getSonarrMediaItemsMarkedForDeletion(ctx context.Context) ([]models.MediaItem, error) {
+	var result []models.MediaItem
+
+	if e.sonarr == nil {
+		return result, nil
+	}
+
+	// Get all series from Sonarr
+	sonarrItems, err := e.getSonarrItems(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sonarr items: %w", err)
+	}
+
+	// Get Sonarr tags
+	sonarrTags, err := e.getSonarrTags(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sonarr tags: %w", err)
+	}
+
+	// Process each series
+	for _, series := range sonarrItems {
+		for _, tagID := range series.GetTags() {
+			tagName := sonarrTags[tagID]
+			if strings.HasPrefix(tagName, jellysweepTagPrefix) {
+				deletionDate, err := e.parseDeletionDateFromTag(tagName)
+				if err != nil {
+					log.Warnf("failed to parse deletion date from tag %s: %v", tagName, err)
+					continue
+				}
+
+				imageURL := ""
+				for _, image := range series.GetImages() {
+					if image.GetCoverType() == sonarr.MEDIACOVERTYPES_POSTER {
+						imageURL = image.GetRemoteUrl()
+						break // Use the first poster image found
+					}
+				}
+
+				mediaItem := models.MediaItem{
+					ID:           fmt.Sprintf("sonarr-%d", series.GetId()),
+					Title:        series.GetTitle(),
+					Type:         "tv",
+					Year:         int(series.GetYear()),
+					Library:      "TV Shows",
+					DeletionDate: deletionDate,
+					PosterURL:    getCachedImageURL(imageURL),
+					CanRequest:   true,
+					HasRequested: false, // Would need to check against a database
+				}
+
+				result = append(result, mediaItem)
+				break // Only add once per series, even if multiple deletion tags
+			}
+		}
+	}
+
+	return result, nil
 }

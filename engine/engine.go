@@ -2,18 +2,23 @@ package engine
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/charmbracelet/log"
 	radarr "github.com/devopsarr/radarr-go/radarr"
 	sonarr "github.com/devopsarr/sonarr-go/sonarr"
+	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellyseerr"
 	"github.com/jon4hz/jellysweep/jellystat"
 	"github.com/samber/lo"
 )
 
-const jellysweepTagPrefix = "jellysweep-delete-"
+const (
+	jellysweepTagPrefix = "jellysweep-delete-"
+)
 
 // Engine is the main engine for Jellysweep, managing interactions with sonarr, radarr, and other services.
 // It runs a cleanup job periodically to remove unwanted media.
@@ -305,4 +310,41 @@ func (e *Engine) cleanupMedia(ctx context.Context) {
 			log.Errorf("failed to delete Radarr media: %v", err)
 		}
 	}
+}
+
+// GetMediaItemsMarkedForDeletion returns all media items that are marked for deletion
+func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context) (map[string][]models.MediaItem, error) {
+	result := make(map[string][]models.MediaItem)
+
+	// Get Sonarr items marked for deletion
+	sonarrItems, err := e.getSonarrMediaItemsMarkedForDeletion(ctx)
+	if err != nil {
+		log.Errorf("failed to get sonarr media items marked for deletion: %v", err)
+	} else {
+		if len(sonarrItems) > 0 {
+			result["TV Shows"] = sonarrItems
+		}
+	}
+
+	// Get Radarr items marked for deletion
+	radarrItems, err := e.getRadarrMediaItemsMarkedForDeletion(ctx)
+	if err != nil {
+		log.Errorf("failed to get radarr media items marked for deletion: %v", err)
+	} else {
+		if len(radarrItems) > 0 {
+			result["Movies"] = radarrItems
+		}
+	}
+
+	return result, nil
+}
+
+// getCachedImageURL converts a direct image URL to a cached URL
+func getCachedImageURL(imageURL string) string {
+	if imageURL == "" {
+		return ""
+	}
+	// Encode the original URL and return a cache endpoint URL
+	encoded := url.QueryEscape(imageURL)
+	return fmt.Sprintf("/api/images/cache?url=%s", encoded)
 }

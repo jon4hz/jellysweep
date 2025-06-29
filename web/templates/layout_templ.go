@@ -94,13 +94,13 @@ func Navbar(user *models.User) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if user != nil && !user.IsAdmin {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"hidden md:flex space-x-6\"><a href=\"/\" class=\"text-gray-300 hover:text-white transition-colors duration-200\">Dashboard</a> <a href=\"/media\" class=\"text-gray-300 hover:text-white transition-colors duration-200\">Media Library</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"hidden md:flex space-x-6\"><a href=\"/\" class=\"text-gray-300 hover:text-white transition-colors duration-200\">Dashboard</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if user != nil && user.IsAdmin {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"hidden md:flex space-x-6\"><a href=\"/\" class=\"text-gray-300 hover:text-white transition-colors duration-200\">Dashboard</a> <a href=\"/media\" class=\"text-gray-300 hover:text-white transition-colors duration-200\">Media Library</a> <a href=\"/admin\" class=\"text-gray-300 hover:text-white transition-colors duration-200\">Admin Panel</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"hidden md:flex space-x-6\"><a href=\"/\" class=\"text-gray-300 hover:text-white transition-colors duration-200\">Dashboard</a> <a href=\"/admin\" class=\"text-gray-300 hover:text-white transition-colors duration-200\">Admin Panel</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -117,7 +117,7 @@ func Navbar(user *models.User) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(user.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layout.templ`, Line: 63, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layout.templ`, Line: 57, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {

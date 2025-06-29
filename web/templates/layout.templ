@@ -38,18 +38,12 @@ templ Navbar(user *models.User) {
 							<a href="/" class="text-gray-300 hover:text-white transition-colors duration-200">
 								Dashboard
 							</a>
-							<a href="/media" class="text-gray-300 hover:text-white transition-colors duration-200">
-								Media Library
-							</a>
 						</div>
 					}
 					if user != nil && user.IsAdmin {
 						<div class="hidden md:flex space-x-6">
 							<a href="/" class="text-gray-300 hover:text-white transition-colors duration-200">
 								Dashboard
-							</a>
-							<a href="/media" class="text-gray-300 hover:text-white transition-colors duration-200">
-								Media Library
 							</a>
 							<a href="/admin" class="text-gray-300 hover:text-white transition-colors duration-200">
 								Admin Panel

@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	radarr "github.com/devopsarr/radarr-go/radarr"
+	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellystat"
 )
@@ -329,4 +330,64 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) error
 	}
 
 	return nil
+}
+
+// getRadarrMediaItemsMarkedForDeletion returns all Radarr movies that are marked for deletion
+func (e *Engine) getRadarrMediaItemsMarkedForDeletion(ctx context.Context) ([]models.MediaItem, error) {
+	var result []models.MediaItem
+
+	if e.radarr == nil {
+		return result, nil
+	}
+
+	// Get all movies from Radarr
+	radarrItems, err := e.getRadarrItems(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get radarr items: %w", err)
+	}
+
+	// Get Radarr tags
+	radarrTags, err := e.getRadarrTags(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+
+	// Process each movie
+	for _, movie := range radarrItems {
+		for _, tagID := range movie.GetTags() {
+			tagName := radarrTags[tagID]
+			if strings.HasPrefix(tagName, jellysweepTagPrefix) {
+				deletionDate, err := e.parseDeletionDateFromTag(tagName)
+				if err != nil {
+					log.Warnf("failed to parse deletion date from tag %s: %v", tagName, err)
+					continue
+				}
+
+				imageURL := ""
+				for _, image := range movie.GetImages() {
+					if image.GetCoverType() == radarr.MEDIACOVERTYPES_POSTER {
+						imageURL = image.GetRemoteUrl()
+						break // Use the first poster image found
+					}
+				}
+
+				mediaItem := models.MediaItem{
+					ID:           fmt.Sprintf("radarr-%d", movie.GetId()),
+					Title:        movie.GetTitle(),
+					Type:         "movie",
+					Year:         int(movie.GetYear()),
+					Library:      "Movies",
+					DeletionDate: deletionDate,
+					PosterURL:    getCachedImageURL(imageURL),
+					CanRequest:   true,
+					HasRequested: false, // Would need to check against a database
+				}
+
+				result = append(result, mediaItem)
+				break // Only add once per movie, even if multiple deletion tags
+			}
+		}
+	}
+
+	return result, nil
 }
