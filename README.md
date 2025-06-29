@@ -1,4 +1,4 @@
-# 🪼🧹 JellySweep
+# 🧹🪼 JellySweep
 
 > 🎬 A smart, stateless cleanup service for Jellyfin that automatically manages your media library
 
