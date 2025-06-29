@@ -1,50 +1,251 @@
 # 🧹🪼 JellySweep
 
-> 🎬 A smart, stateless cleanup service for Jellyfin that automatically manages your media library
+> **Intelligent Media Library Management for Jellyfin**  
+> Automatically clean up your media collection with smart, data-driven decisions
 
-JellySweep intelligently removes unwanted media from your Jellyfin server by integrating with multiple services to make informed deletion decisions. Say goodbye to manual cleanup and hello to automated media management! ✨
+JellySweep is a sophisticated automation tool that intelligently manages your Jellyfin media library by analyzing viewing patterns, request history, and custom rules to safely remove unwanted content. It integrates seamlessly with your existing *arr stack to make informed cleanup decisions.
 
-## 🚀 How does it work?
+---
 
-JellySweep orchestrates multiple tools in the Jellyfin ecosystem to create a comprehensive cleanup strategy:
+## ✨ Key Features
 
-### 🔍 **Data Sources & Rules**
+- 🤖 **Fully Automated** - Set it and forget it scheduling
+- 🧠 **Smart Analytics** - Uses actual viewing data, not just file age
+- 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags
+- � **User Requests** - Built-in keep request system for community servers
+- ⚡ **Stateless Design** - No database required, clean runs every time
+- 🌐 **Web Interface** - Modern UI for monitoring and management
 
-- **Jellyseerr Integration**
-  - 🗓️ Automatically remove media requested more than X days ago
+## 🚀 How It Works
 
-- **Sonarr Integration** 
-  - 🔖 Include or exclude TV shows based on custom tags
+JellySweep follows a intelligent multi-stage process:
 
-- **Radarr Integration**
-  - 🏷️ Include or exclude movies based on custom tags  
+### 1. **Data Collection**
+- Fetches media from Sonarr & Radarr
+- Retrieves viewing statistics from Jellystat
+- Analyzes request history from Jellyseerr
+- Maps media across libraries and services
 
-- **Jellystat Integration**
-  - ⏰ Remove media that hasn't been watched for X days
+### 2. **Smart Filtering** 
+- Applies configurable age thresholds
+- Respects custom exclude tags
+- Honors user keep requests
 
-### ⚡ **Smart Decision Engine**
+### 3. **Staged Deletion**
+- Marks media with dated deletion tags
+- Provides grace period for objections
+- Removes recently played content from deletion queue
+- Executes final cleanup after delay
 
-1. **🔍 Discovery**: Fetches media from Sonarr and Radarr as deletion candidates
-2. **🧠 Analysis**: Cross-references with Jellyseerr request history and Jellystat viewing data  
-3. **✅ Validation**: Ensures ALL configured conditions are met before deletion
-4. **🗑️ Cleanup**: Safely removes media using the Sonarr/Radarr APIs
+### 4. **User Interaction**
+- Users can request to keep specific media
+- Admins can approve/decline requests
+- Automatic cleanup of expired requests
+- Force deletion override for admins
 
-## 🎯 Why JellySweep?
+---
 
-No other cleanup service provided the **flexibility** and **intelligence** needed for sophisticated media management. JellySweep fills this gap by:
+## 🔧 Installation
 
-- 🧩 **Multi-service Integration**: Works seamlessly across your entire *arr stack
-- 🎛️ **Granular Control**: Tag-based filtering and multiple threshold options
-- 📊 **Data-Driven**: Uses actual viewing statistics, not just file age
-- 🔒 **Safe Operations**: Multiple validation layers prevent accidental deletions
-- ⚡ **Stateless Design**: No database required, runs clean every time
-- 🔄 **Automated**: Set it and forget it - runs on configurable intervals
+### Prerequisites
+- Go 1.24.2 or later
+- Access to your Jellyfin ecosystem:
+  - Sonarr (optional)
+  - Radarr (optional) 
+  - Jellystat (optional)
+  - Jellyseerr (optional)
 
-## 🛠️ Features
+### Quick Start
 
-- ✨ **Smart Filtering**: Multiple criteria ensure only truly unwanted media is removed
-- 🏷️ **Tag Support**: Leverage your existing Sonarr/Radarr tag system
-- 📊 **Usage Analytics**: Integrated Jellystat support for viewing-based decisions
-- 🔧 **Highly Configurable**: Customizable thresholds and rules for every use case
-- 🚀 **Lightweight**: Minimal resource footprint with stateless architecture
-- 🔐 **Secure**: Uses official APIs with proper authentication
+1. **Download & Build**
+   ```bash
+   git clone https://github.com/yourusername/jellysweep.git
+   cd jellysweep
+   go build -o jellysweep .
+   ```
+
+2. **Configuration**
+   ```bash
+   cp config.example.yml config.yml
+   # Edit config.yml with your service URLs and API keys
+   ```
+
+3. **Run**
+   ```bash
+   # Start the service
+   ./jellysweep
+   
+   # Reset all tags (cleanup command)
+   ./jellysweep reset
+   ```
+
+---
+
+## ⚙️ Configuration
+
+JellySweep uses a YAML configuration file with the following structure:
+
+```yaml
+jellysweep:
+  dry_run: false                    # Set to true for testing
+  log_level: "info"                 # debug, info, warn, error
+  listen: "0.0.0.0:3002"           # Web interface address and port
+  cleanup_interval: 24              # Hours between cleanup runs
+  session_key: "your-session-key"  # Random string for session encryption
+  
+  # Authentication (optional)
+  auth:
+    oidc:
+      enabled: true
+      issuer: "https://your-oidc-provider.com/application/o/jellysweep/"
+      client_id: "your-client-id"
+      client_secret: "your-client-secret"
+      redirect_url: "http://localhost:3002/oauth/callback"
+      admin_group: "jellyfin-admins"     # OIDC group for admin access
+  
+  # Library-specific settings
+  libraries:
+    "Movies":
+      enabled: true
+      request_age_threshold: 30     # Days since Jellyseerr request
+      last_stream_threshold: 60     # Days since last viewed
+      cleanup_delay: 7              # Grace period before deletion
+      exclude_tags:
+        - "jellysweep-exclude"
+        - "keep"
+        - "favorites"
+    
+    "TV Shows":
+      enabled: true
+      request_age_threshold: 45
+      last_stream_threshold: 90
+      cleanup_delay: 14
+      exclude_tags:
+        - "jellysweep-exclude"
+        - "ongoing"
+        - "keep"
+
+# Service integrations (all optional)
+jellyseerr:
+  url: "http://localhost:5055"
+  api_key: "your-jellyseerr-api-key"
+
+sonarr:
+  url: "http://localhost:8989"
+  api_key: "your-sonarr-api-key"
+
+radarr:
+  url: "http://localhost:7878"
+  api_key: "your-radarr-api-key"
+
+jellystat:
+  url: "http://localhost:3001"
+  api_key: "your-jellystat-api-key"
+```
+
+---
+
+## 🏷️ Tag System
+
+JellySweep uses a the tagging feature from sonarr and radarr to track media state:
+
+### Automatic Tags
+- `jellysweep-delete-YYYY-MM-DD` - Media marked for deletion on date
+- `jellysweep-keep-request-YYYY-MM-DD` - User requested to keep (expires)
+- `jellysweep-must-keep-YYYY-MM-DD` - Admin approved keep (expires)
+- `jellysweep-must-delete-for-sure` - Admin forced deletion
+
+### Custom Tags
+Configure custom tags in your Sonarr/Radarr to:
+- **Exclude from deletion**: Add tags to `exclude_tags` list
+
+---
+
+## 🌐 Web Interface
+
+Access the web interface at `http://localhost:3002` to:
+
+- 📊 **Dashboard**: View deletion queue
+- � **Keep Requests**: Submit and manage keep requests
+- ⚙️ **Admin Panel**: Approve requests and force deletions
+
+### User Features
+- Browse upcoming deletions
+- Submit keep requests with reason (TODO)
+
+### Admin Features  
+- Review and approve/deny keep requests
+- Add permanent keep tags (TODO)
+
+---
+
+## �️ Safety Features
+
+JellySweep includes multiple safety mechanisms:
+
+### Validation Layers
+- ✅ **Multi-criteria validation** - All conditions must be met
+- ✅ **Grace period** - Configurable delay before actual deletion
+- ✅ **Recent play protection** - Recently viewed media is protected
+- ✅ **Tag-based exclusions** - Respect custom exclude tags
+
+
+### Dry Run Mode
+- Test your configuration safely
+- Preview what would be deleted
+- Validate tag assignments
+- Debug filtering logic
+
+---
+
+## 🔧 Commands
+
+```bash
+# Start the main service
+./jellysweep
+
+# Reset all JellySweep tags (cleanup)
+./jellysweep reset
+
+# Validate configuration
+./jellysweep --dry-run
+
+# Enable debug logging
+./jellysweep --log-level debug
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions of all kinds are welcome!
+
+### Development Setup
+```bash
+git clone https://github.com/yourusername/jellysweep.git
+cd jellysweep
+go mod download
+go run . --dry-run
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## � Acknowledgments
+
+- [Jellyfin](https://jellyfin.org/) - The amazing media server
+- [Sonarr](https://sonarr.tv/) & [Radarr](https://radarr.video/) - Media management
+- [Jellyseerr](https://github.com/Fallenbagel/jellyseerr) - Request management
+- [Jellystat](https://github.com/CyferShepard/Jellystat) - Analytics platform
+
+---
+
+<p align="center">
+  <strong>⚠️ Always test with dry-run mode first!</strong><br>
+  <em>JellySweep is powerful - use responsibly</em>
+</p>
