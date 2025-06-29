@@ -80,7 +80,7 @@ func (e *Engine) markSonarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 				}
 			}
 
-			cleanupDelay := e.cfg.Jellysweep.Libraries[lib].CleanupDelay
+			cleanupDelay := e.cfg.JellySweep.Libraries[lib].CleanupDelay
 			if cleanupDelay <= 0 {
 				cleanupDelay = 1
 			}
@@ -150,7 +150,7 @@ func (e *Engine) cleanupSonarrTags(ctx context.Context) error {
 	for _, tag := range tags {
 		if len(tag.SeriesIds) == 0 && (strings.HasPrefix(tag.GetLabel(), jellysweepTagPrefix) || strings.HasPrefix(tag.GetLabel(), jellysweepKeepRequestPrefix)) {
 			// If the tag is a jellysweep delete tag and has no series associated with it, delete it
-			if e.cfg.Jellysweep.DryRun {
+			if e.cfg.JellySweep.DryRun {
 				log.Infof("Dry run: Would delete Sonarr tag %s", tag.GetLabel())
 				continue
 			}
@@ -188,7 +188,7 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) error {
 			continue
 		}
 
-		if e.cfg.Jellysweep.DryRun {
+		if e.cfg.JellySweep.DryRun {
 			log.Infof("Dry run: Would delete Sonarr series %s", series.GetTitle())
 			continue
 		}
@@ -247,7 +247,7 @@ func (e *Engine) removeExpiredSonarrKeepTags(ctx context.Context) error {
 			// No expired keep tags to remove
 			continue
 		}
-		if e.cfg.Jellysweep.DryRun {
+		if e.cfg.JellySweep.DryRun {
 			log.Infof("Dry run: Would remove expired keep tags from Sonarr series %s", series.GetTitle())
 			continue
 		}
@@ -320,7 +320,7 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 		// If the series has been played recently, remove the delete tags
 		if lastPlayed != nil && lastPlayed.LastPlayed != nil {
 			// Get the library config to get the threshold
-			libraryConfig, exists := e.cfg.Jellysweep.Libraries[libraryName]
+			libraryConfig, exists := e.cfg.JellySweep.Libraries[libraryName]
 			if !exists {
 				log.Warnf("Library config not found for library %s, skipping", libraryName)
 				continue
@@ -338,7 +338,7 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 					}
 				}
 
-				if e.cfg.Jellysweep.DryRun {
+				if e.cfg.JellySweep.DryRun {
 					log.Infof("Dry run: Would remove delete tags from recently played Sonarr series: %s (last played: %s)",
 						series.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
 					continue
@@ -762,7 +762,7 @@ func (e *Engine) resetSonarrTags(ctx context.Context) error {
 
 		// Update series if it had jellysweep tags
 		if hasJellysweepTags {
-			if e.cfg.Jellysweep.DryRun {
+			if e.cfg.JellySweep.DryRun {
 				log.Infof("Dry run: Would remove jellysweep tags from Sonarr series: %s", s.GetTitle())
 				seriesUpdated++
 				continue
@@ -805,7 +805,7 @@ func (e *Engine) cleanupAllSonarrTags(ctx context.Context) error {
 			tagName == jellysweepDeleteForSureTag
 
 		if isJellysweepTag {
-			if e.cfg.Jellysweep.DryRun {
+			if e.cfg.JellySweep.DryRun {
 				log.Infof("Dry run: Would delete Sonarr tag: %s", tagName)
 				tagsDeleted++
 				continue

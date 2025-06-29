@@ -8,7 +8,7 @@ templ Layout(title string, user *models.User) {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>{ title } - Jellysweep</title>
+			<title>{ title } - JellySweep</title>
 			<link rel="stylesheet" href="/static/dist/style.css"/>
 			<link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
 		</head>
@@ -31,7 +31,7 @@ templ Navbar(user *models.User) {
 						<div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
 							<span class="text-white font-bold text-sm">JS</span>
 						</div>
-						<span class="text-xl font-semibold text-gray-100">Jellysweep</span>
+						<span class="text-xl font-semibold text-gray-100">JellySweep</span>
 					</a>
 					if user != nil && !user.IsAdmin {
 						<div class="hidden md:flex space-x-6">

@@ -10,7 +10,7 @@ import (
 var resetCmd = &cobra.Command{
 	Use:   "reset",
 	Short: "Reset all tags in sonarr and radarr",
-	Long:  `This command resets all jellysweep tags in Sonarr and Radarr, removing any custom tags that were added by Jellysweep.`,
+	Long:  `This command resets all jellysweep tags in Sonarr and Radarr, removing any custom tags that were added by JellySweep.`,
 	Run:   reset,
 }
 
@@ -20,7 +20,7 @@ func reset(cmd *cobra.Command, _ []string) {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	setLogLevel(cfg.Jellysweep.LogLevel)
+	setLogLevel(cfg.JellySweep.LogLevel)
 
 	engine, err := engine.New(cfg)
 	if err != nil {

@@ -19,7 +19,7 @@ func (e *Engine) filterRequestAgeThreshold(ctx context.Context) error {
 			}
 			if requestTime != nil {
 				// check if the request time is longer ago than the configured threshold in days
-				if time.Since(*requestTime) > time.Duration(e.cfg.Jellysweep.Libraries[lib].RequestAgeThreshold)*24*time.Hour {
+				if time.Since(*requestTime) > time.Duration(e.cfg.JellySweep.Libraries[lib].RequestAgeThreshold)*24*time.Hour {
 					filteredItems[lib] = append(filteredItems[lib], item)
 				} else {
 					log.Debugf("Excluding item %s due to recent request: %s", item.Title, requestTime.Format(time.RFC3339))

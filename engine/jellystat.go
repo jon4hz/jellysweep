@@ -38,7 +38,7 @@ func (e *Engine) getJellystatEnabledLibraryIDs(ctx context.Context) ([]string, e
 	}
 	var enabledLibraryIDs []string
 	for _, library := range libraries {
-		if slices.Contains(lo.Keys(e.cfg.Jellysweep.Libraries), library.Name) {
+		if slices.Contains(lo.Keys(e.cfg.JellySweep.Libraries), library.Name) {
 			enabledLibraryIDs = append(enabledLibraryIDs, library.ID)
 			e.data.libraryIDMap[library.ID] = library.Name
 		}
@@ -75,7 +75,7 @@ func (e *Engine) filterLastStreamThreshold(ctx context.Context) error {
 				continue
 			}
 			// Check if the last streamed time is older than the configured threshold
-			if time.Since(lastStreamed) > time.Duration(e.cfg.Jellysweep.Libraries[lib].LastStreamThreshold)*24*time.Hour {
+			if time.Since(lastStreamed) > time.Duration(e.cfg.JellySweep.Libraries[lib].LastStreamThreshold)*24*time.Hour {
 				filteredItems[lib] = append(filteredItems[lib], item)
 				continue
 			}

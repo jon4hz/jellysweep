@@ -85,7 +85,7 @@ func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 				}
 			}
 
-			cleanupDelay := e.cfg.Jellysweep.Libraries[lib].CleanupDelay
+			cleanupDelay := e.cfg.JellySweep.Libraries[lib].CleanupDelay
 			if cleanupDelay <= 0 {
 				cleanupDelay = 1
 			}
@@ -155,7 +155,7 @@ func (e *Engine) cleanupRadarrTags(ctx context.Context) error {
 	for _, tag := range tags {
 		if len(tag.MovieIds) == 0 && strings.HasPrefix(tag.GetLabel(), jellysweepTagPrefix) {
 			// If the tag is a jellysweep delete tag and has no movies associated with it, delete it
-			if e.cfg.Jellysweep.DryRun {
+			if e.cfg.JellySweep.DryRun {
 				log.Infof("Dry run: Would delete Radarr tag %s", tag.GetLabel())
 				continue
 			}
@@ -193,7 +193,7 @@ func (e *Engine) deleteRadarrMedia(ctx context.Context) error {
 			continue
 		}
 
-		if e.cfg.Jellysweep.DryRun {
+		if e.cfg.JellySweep.DryRun {
 			log.Infof("Dry run: Would delete Radarr movie %s", movie.GetTitle())
 			continue
 		}
@@ -265,7 +265,7 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) error
 		// If the movie has been played recently, remove the delete tags
 		if lastPlayed != nil && lastPlayed.LastPlayed != nil {
 			// Get the library config to get the threshold
-			libraryConfig, exists := e.cfg.Jellysweep.Libraries[libraryName]
+			libraryConfig, exists := e.cfg.JellySweep.Libraries[libraryName]
 			if !exists {
 				log.Warnf("Library config not found for library %s, skipping", libraryName)
 				continue
@@ -283,7 +283,7 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) error
 					}
 				}
 
-				if e.cfg.Jellysweep.DryRun {
+				if e.cfg.JellySweep.DryRun {
 					log.Infof("Dry run: Would remove delete tags from recently played Radarr movie: %s (last played: %s)",
 						movie.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
 					continue
@@ -349,7 +349,7 @@ func (e *Engine) removeExpiredRadarrKeepTags(ctx context.Context) error {
 			// No expired keep tags to remove
 			continue
 		}
-		if e.cfg.Jellysweep.DryRun {
+		if e.cfg.JellySweep.DryRun {
 			log.Infof("Dry run: Would remove expired keep tags from Radarr movie %s", movie.GetTitle())
 			continue
 		}
@@ -776,7 +776,7 @@ func (e *Engine) resetRadarrTags(ctx context.Context) error {
 
 		// Update movie if it had jellysweep tags
 		if hasJellysweepTags {
-			if e.cfg.Jellysweep.DryRun {
+			if e.cfg.JellySweep.DryRun {
 				log.Infof("Dry run: Would remove jellysweep tags from Radarr movie: %s", m.GetTitle())
 				moviesUpdated++
 				continue
@@ -819,7 +819,7 @@ func (e *Engine) cleanupAllRadarrTags(ctx context.Context) error {
 			tagName == jellysweepDeleteForSureTag
 
 		if isJellysweepTag {
-			if e.cfg.Jellysweep.DryRun {
+			if e.cfg.JellySweep.DryRun {
 				log.Infof("Dry run: Would delete Radarr tag: %s", tagName)
 				tagsDeleted++
 				continue

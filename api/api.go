@@ -31,7 +31,7 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine) (*Server, er
 		return nil, fmt.Errorf("config is required")
 	}
 	// TODO: make oidc optional and add jellyfin auth
-	authProvider, err := auth.New(ctx, cfg.Jellysweep.Auth.OIDC)
+	authProvider, err := auth.New(ctx, cfg.JellySweep.Auth.OIDC)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth provider: %w", err)
 	}
@@ -61,7 +61,7 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine) (*Server, er
 	}()
 
 	return &Server{
-		cfg:          cfg.Jellysweep,
+		cfg:          cfg.JellySweep,
 		ginEngine:    gin.Default(),
 		authProvider: authProvider,
 		engine:       e,

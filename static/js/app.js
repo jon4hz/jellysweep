@@ -1,4 +1,4 @@
-// Jellysweep Frontend JavaScript
+// JellySweep Frontend JavaScript
 document.addEventListener("DOMContentLoaded", function () {
   // Initialize search and filtering
   initializeFilters();

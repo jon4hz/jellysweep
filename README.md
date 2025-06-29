@@ -1,12 +1,12 @@
-# 🪼🧹 Jellysweep
+# 🪼🧹 JellySweep
 
 > 🎬 A smart, stateless cleanup service for Jellyfin that automatically manages your media library
 
-Jellysweep intelligently removes unwanted media from your Jellyfin server by integrating with multiple services to make informed deletion decisions. Say goodbye to manual cleanup and hello to automated media management! ✨
+JellySweep intelligently removes unwanted media from your Jellyfin server by integrating with multiple services to make informed deletion decisions. Say goodbye to manual cleanup and hello to automated media management! ✨
 
 ## 🚀 How does it work?
 
-Jellysweep orchestrates multiple tools in the Jellyfin ecosystem to create a comprehensive cleanup strategy:
+JellySweep orchestrates multiple tools in the Jellyfin ecosystem to create a comprehensive cleanup strategy:
 
 ### 🔍 **Data Sources & Rules**
 
@@ -29,9 +29,9 @@ Jellysweep orchestrates multiple tools in the Jellyfin ecosystem to create a com
 3. **✅ Validation**: Ensures ALL configured conditions are met before deletion
 4. **🗑️ Cleanup**: Safely removes media using the Sonarr/Radarr APIs
 
-## 🎯 Why Jellysweep?
+## 🎯 Why JellySweep?
 
-No other cleanup service provided the **flexibility** and **intelligence** needed for sophisticated media management. Jellysweep fills this gap by:
+No other cleanup service provided the **flexibility** and **intelligence** needed for sophisticated media management. JellySweep fills this gap by:
 
 - 🧩 **Multi-service Integration**: Works seamlessly across your entire *arr stack
 - 🎛️ **Granular Control**: Tag-based filtering and multiple threshold options

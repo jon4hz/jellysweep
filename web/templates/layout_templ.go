@@ -5,10 +5,11 @@ package templates
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import "github.com/a-h/templ"
-import templruntime "github.com/a-h/templ/runtime"
-
-import "github.com/jon4hz/jellysweep/api/models"
+import (
+	"github.com/a-h/templ"
+	templruntime "github.com/a-h/templ/runtime"
+	"github.com/jon4hz/jellysweep/api/models"
+)
 
 func Layout(title string, user *models.User) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -44,7 +45,7 @@ func Layout(title string, user *models.User) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - Jellysweep</title><link rel=\"stylesheet\" href=\"/static/dist/style.css\"><link rel=\"icon\" type=\"image/x-icon\" href=\"/static/favicon.ico\"></head><body class=\"bg-gray-950 text-gray-100 min-h-screen\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - JellySweep</title><link rel=\"stylesheet\" href=\"/static/dist/style.css\"><link rel=\"icon\" type=\"image/x-icon\" href=\"/static/favicon.ico\"></head><body class=\"bg-gray-950 text-gray-100 min-h-screen\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -89,7 +90,7 @@ func Navbar(user *models.User) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<nav class=\"bg-gray-900 border-b border-gray-800\"><div class=\"container mx-auto px-4\"><div class=\"flex justify-between items-center h-16\"><div class=\"flex items-center space-x-4\"><a href=\"/\" class=\"flex items-center space-x-2\"><div class=\"w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center\"><span class=\"text-white font-bold text-sm\">JS</span></div><span class=\"text-xl font-semibold text-gray-100\">Jellysweep</span></a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<nav class=\"bg-gray-900 border-b border-gray-800\"><div class=\"container mx-auto px-4\"><div class=\"flex justify-between items-center h-16\"><div class=\"flex items-center space-x-4\"><a href=\"/\" class=\"flex items-center space-x-2\"><div class=\"w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center\"><span class=\"text-white font-bold text-sm\">JS</span></div><span class=\"text-xl font-semibold text-gray-100\">JellySweep</span></a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

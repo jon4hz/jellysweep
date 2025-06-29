@@ -1,4 +1,4 @@
-# SSH Config Example for Jellysweep Services
+# SSH Config Example for JellySweep Services
 # Ajust the connection options and add this to your ~/.ssh/config file
 
 Host jellysweep-devel

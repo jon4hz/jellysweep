@@ -7,10 +7,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds the configuration for the Jellysweep server and its dependencies.
+// Config holds the configuration for the JellySweep server and its dependencies.
 type Config struct {
-	// Jellysweep holds the configuration for the Jellysweep server.
-	Jellysweep *JellysweepConfig `yaml:"jellysweep"`
+	// JellySweep holds the configuration for the JellySweep server.
+	JellySweep *JellysweepConfig `yaml:"jellysweep"`
 	// Jellyseerr holds the configuration for the Jellyseerr server.
 	Jellyseerr *JellyseerrConfig `yaml:"jellyseerr"`
 	// Sonarr holds the configuration for the Sonarr server.
@@ -21,9 +21,9 @@ type Config struct {
 	Jellystat *JellystatConfig `yaml:"jellystat"`
 }
 
-// JellysweepConfig holds the configuration for the Jellysweep server.
+// JellysweepConfig holds the configuration for the JellySweep server.
 type JellysweepConfig struct {
-	// Listen is the address the Jellysweep server will listen on.
+	// Listen is the address the JellySweep server will listen on.
 	Listen string `yaml:"listen"`
 	// CleanupInterval is the interval in hours for the cleanup job.
 	CleanupInterval int `yaml:"cleanup_interval"`
@@ -31,20 +31,20 @@ type JellysweepConfig struct {
 	Libraries map[string]*CleanupConfig `yaml:"libraries"`
 	// DryRun indicates whether the cleanup job should run in dry-run mode.
 	DryRun bool `yaml:"dry_run"`
-	// LogLevel is the logging level for the Jellysweep server.
+	// LogLevel is the logging level for the JellySweep server.
 	LogLevel string `yaml:"log_level"`
-	// Auth holds the authentication configuration for the Jellysweep server.
+	// Auth holds the authentication configuration for the JellySweep server.
 	Auth *AuthConfig `yaml:"auth"`
 	// SessionKey is the key used to encrypt session data.
 	SessionKey string `yaml:"session_key"`
 }
 
-// AuthConfig holds the authentication configuration for the Jellysweep server.
+// AuthConfig holds the authentication configuration for the JellySweep server.
 type AuthConfig struct {
 	OIDC *OIDCConfig `yaml:"oidc"`
 }
 
-// OIDCConfig holds the OpenID Connect configuration for the Jellysweep server.
+// OIDCConfig holds the OpenID Connect configuration for the JellySweep server.
 type OIDCConfig struct {
 	Enabled      bool   `yaml:"enabled"`
 	Issuer       string `yaml:"issuer"`
@@ -110,7 +110,7 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c.Jellysweep == nil {
+	if c.JellySweep == nil {
 		return nil, fmt.Errorf("missing jellysweep config")
 	}
 	if c.Jellyseerr == nil {

@@ -20,8 +20,8 @@ func init() {
 
 var rootCmd = &cobra.Command{
 	Use:     "jellysweep",
-	Short:   "Jellysweep is a tool to manage media libraries with automatic deletion and user requests",
-	Long:    `Jellysweep helps you manage your media libraries by automatically deleting items that are no longer wanted, while allowing users to request to keep certain items.`,
+	Short:   "JellySweep is a tool to manage media libraries with automatic deletion and user requests",
+	Long:    `JellySweep helps you manage your media libraries by automatically deleting items that are no longer wanted, while allowing users to request to keep certain items.`,
 	Example: `jellysweep --config config.yml`,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
@@ -36,7 +36,7 @@ func root(cmd *cobra.Command, _ []string) {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	setLogLevel(cfg.Jellysweep.LogLevel)
+	setLogLevel(cfg.JellySweep.LogLevel)
 
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
@@ -60,7 +60,7 @@ func root(cmd *cobra.Command, _ []string) {
 
 	// Start the API server in a goroutine
 	go func() {
-		log.Info("starting API server", "listen", cfg.Jellysweep.Listen)
+		log.Info("starting API server", "listen", cfg.JellySweep.Listen)
 		if err := server.Run(); err != nil {
 			log.Error("API server error", "error", err)
 		}

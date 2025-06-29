@@ -25,7 +25,7 @@ const (
 	jellysweepDeleteForSureTag  = "jellysweep-must-delete-for-sure"
 )
 
-// Engine is the main engine for Jellysweep, managing interactions with sonarr, radarr, and other services.
+// Engine is the main engine for JellySweep, managing interactions with sonarr, radarr, and other services.
 // It runs a cleanup job periodically to remove unwanted media.
 type Engine struct {
 	cfg        *config.Config
@@ -114,7 +114,7 @@ func (e *Engine) cleanupLoop(ctx context.Context) {
 	e.cleanupMedia(ctx)
 
 	// Set up a ticker to perform cleanup at the specified interval
-	ticker := time.NewTicker(time.Duration(e.cfg.Jellysweep.CleanupInterval) * time.Hour)
+	ticker := time.NewTicker(time.Duration(e.cfg.JellySweep.CleanupInterval) * time.Hour)
 	defer ticker.Stop()
 
 	for {
@@ -225,11 +225,11 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 	}
 	log.Info("Media items filtered successfully")
 
-	if err := e.markSonarrMediaItemsForDeletion(ctx, e.cfg.Jellysweep.DryRun); err != nil {
+	if err := e.markSonarrMediaItemsForDeletion(ctx, e.cfg.JellySweep.DryRun); err != nil {
 		log.Errorf("failed to mark sonarr media items for deletion: %v", err)
 		return
 	}
-	if err := e.markRadarrMediaItemsForDeletion(ctx, e.cfg.Jellysweep.DryRun); err != nil {
+	if err := e.markRadarrMediaItemsForDeletion(ctx, e.cfg.JellySweep.DryRun); err != nil {
 		log.Errorf("failed to mark radarr media items for deletion: %v", err)
 		return
 	}
