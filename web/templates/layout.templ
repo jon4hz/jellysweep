@@ -10,7 +10,7 @@ templ Layout(title string, user *models.User) {
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title } - JellySweep</title>
 			<link rel="stylesheet" href="/static/dist/style.css"/>
-			<link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
+			<link rel="icon" type="image/png" href="/static/jellysweep.png"/>
 		</head>
 		<body class="bg-gray-950 text-gray-100 min-h-screen">
 			@Navbar(user)
@@ -28,9 +28,7 @@ templ Navbar(user *models.User) {
 			<div class="flex justify-between items-center h-16">
 				<div class="flex items-center space-x-4">
 					<a href="/" class="flex items-center space-x-2">
-						<div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-							<span class="text-white font-bold text-sm">JS</span>
-						</div>
+						<img src="/static/jellysweep.png" alt="JellySweep" class="w-8 h-8 rounded-lg"/>
 						<span class="text-xl font-semibold text-gray-100">JellySweep</span>
 					</a>
 					if user != nil && !user.IsAdmin {
