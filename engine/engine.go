@@ -15,6 +15,8 @@ import (
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellyseerr"
 	"github.com/jon4hz/jellysweep/jellystat"
+	"github.com/jon4hz/jellysweep/notify/email"
+	"github.com/jon4hz/jellysweep/notify/ntfy"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
@@ -34,6 +36,8 @@ type Engine struct {
 	jellyseerr *jellyseerr.Client
 	sonarr     *sonarr.APIClient
 	radarr     *radarr.APIClient
+	emailSvc   *email.NotificationService
+	ntfySvc    *ntfy.Client
 
 	data *data
 }
@@ -50,6 +54,9 @@ type data struct {
 
 	libraryIDMap map[string]string
 	mediaItems   map[string][]MediaItem
+
+	// userNotifications tracks which users should be notified about which media items
+	userNotifications map[string][]MediaItem // key: user email, value: media items
 }
 
 // New creates a new Engine instance.
@@ -81,13 +88,37 @@ func New(cfg *config.Config) (*Engine, error) {
 		jellyseerrClient = jellyseerr.New(cfg.Jellyseerr)
 	}
 
+	// Initialize email notification service
+	var emailService *email.NotificationService
+	if cfg.JellySweep.Email != nil {
+		emailService = email.New(cfg.JellySweep.Email)
+	}
+
+	// Initialize ntfy client
+	var ntfyClient *ntfy.Client
+	if cfg.JellySweep.Ntfy != nil && cfg.JellySweep.Ntfy.Enabled {
+		ntfyConfig := &ntfy.Config{
+			Enabled:   cfg.JellySweep.Ntfy.Enabled,
+			ServerURL: cfg.JellySweep.Ntfy.ServerURL,
+			Topic:     cfg.JellySweep.Ntfy.Topic,
+			Username:  cfg.JellySweep.Ntfy.Username,
+			Password:  cfg.JellySweep.Ntfy.Password,
+			Token:     cfg.JellySweep.Ntfy.Token,
+		}
+		ntfyClient = ntfy.NewClient(ntfyConfig)
+	}
+
 	return &Engine{
 		cfg:        cfg,
 		jellystat:  jellystatClient,
 		jellyseerr: jellyseerrClient,
 		sonarr:     sonarrClient,
 		radarr:     radarrClient,
-		data:       new(data),
+		emailSvc:   emailService,
+		ntfySvc:    ntfyClient,
+		data: &data{
+			userNotifications: make(map[string][]MediaItem),
+		},
 	}, nil
 }
 
@@ -234,6 +265,18 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		log.Errorf("failed to mark radarr media items for deletion: %v", err)
 		return
 	}
+
+	// Send email notifications before marking for deletion
+	if err := e.sendEmailNotifications(); err != nil {
+		log.Errorf("failed to send email notifications: %v", err)
+		// Don't return here, continue with the cleanup process
+	}
+
+	// Send ntfy deletion summary notification
+	if err := e.sendNtfyDeletionSummary(); err != nil {
+		log.Errorf("failed to send ntfy deletion summary: %v", err)
+		// Don't return here, continue with the cleanup process
+	}
 }
 
 type MediaType string
@@ -251,6 +294,9 @@ type MediaItem struct {
 	TmdbId         int32
 	Tags           []string
 	MediaType      MediaType
+	// User information for the person who requested this media
+	RequestedBy string    // User email or username
+	RequestDate time.Time // When the media was requested
 }
 
 // mergeMediaItems merges jellystat items and sonarr/radarr items and groups them by their library.
@@ -363,23 +409,55 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, userID string) e
 	// Parse media ID to determine if it's a Sonarr or Radarr item
 	log.Debug("Requesting keep media", "mediaID", mediaID, "userID", userID)
 
+	var mediaTitle string
+	var mediaType string
+	var err error
+
 	if strings.HasPrefix(mediaID, "sonarr-") {
 		seriesIDStr := strings.TrimPrefix(mediaID, "sonarr-")
-		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", err)
+		seriesID, parseErr := strconv.ParseInt(seriesIDStr, 10, 32)
+		if parseErr != nil {
+			return fmt.Errorf("invalid sonarr series ID: %w", parseErr)
 		}
-		return e.addSonarrKeepRequestTag(ctx, int32(seriesID))
+
+		// Get series title before adding tag
+		if e.sonarr != nil {
+			series, _, getErr := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), int32(seriesID)).Execute()
+			if getErr == nil {
+				mediaTitle = series.GetTitle()
+			}
+		}
+		mediaType = "TV Show"
+		err = e.addSonarrKeepRequestTag(ctx, int32(seriesID))
 	} else if strings.HasPrefix(mediaID, "radarr-") {
 		movieIDStr := strings.TrimPrefix(mediaID, "radarr-")
-		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", err)
+		movieID, parseErr := strconv.ParseInt(movieIDStr, 10, 32)
+		if parseErr != nil {
+			return fmt.Errorf("invalid radarr movie ID: %w", parseErr)
 		}
-		return e.addRadarrKeepRequestTag(ctx, int32(movieID))
+
+		// Get movie title before adding tag
+		if e.radarr != nil {
+			movie, _, getErr := e.radarr.MovieAPI.GetMovieById(radarrAuthCtx(ctx, e.cfg.Radarr), int32(movieID)).Execute()
+			if getErr == nil {
+				mediaTitle = movie.GetTitle()
+			}
+		}
+		mediaType = "Movie"
+		err = e.addRadarrKeepRequestTag(ctx, int32(movieID))
+	} else {
+		return fmt.Errorf("unsupported media ID format: %s", mediaID)
 	}
 
-	return fmt.Errorf("unsupported media ID format: %s", mediaID)
+	// Send ntfy notification if the tag was added successfully
+	if err == nil && e.ntfySvc != nil {
+		if ntfyErr := e.ntfySvc.SendKeepRequest(mediaTitle, mediaType, userID); ntfyErr != nil {
+			log.Errorf("Failed to send ntfy keep request notification: %v", ntfyErr)
+			// Don't return error for notification failure, just log it
+		}
+	}
+
+	return err
 }
 
 // GetKeepRequests returns all media items that have keep request tags

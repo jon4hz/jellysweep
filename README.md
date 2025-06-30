@@ -12,7 +12,8 @@ JellySweep is a sophisticated automation tool that intelligently manages your Je
 - 🤖 **Fully Automated** - Set it and forget it scheduling
 - 🧠 **Smart Analytics** - Uses actual viewing data, not just file age
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags
-- � **User Requests** - Built-in keep request system for community servers
+- 👥 **User Requests** - Built-in keep request system for community servers
+- 🔔 **Smart Notifications** - Email users and ntfy alerts for admins
 - ⚡ **Stateless Design** - No database required, clean runs every time
 - 🌐 **Web Interface** - Modern UI for monitoring and management
 
@@ -48,12 +49,11 @@ JellySweep follows a intelligent multi-stage process:
 ## 🔧 Installation
 
 ### Prerequisites
-- Go 1.24.2 or later
 - Access to your Jellyfin ecosystem:
-  - Sonarr (optional)
-  - Radarr (optional) 
-  - Jellystat (optional)
-  - Jellyseerr (optional)
+  - Sonarr
+  - Radarr
+  - Jellystat
+  - Jellyseerr
 
 ### Quick Start
 
@@ -141,6 +141,30 @@ radarr:
 jellystat:
   url: "http://localhost:3001"
   api_key: "your-jellystat-api-key"
+
+# Notifications (optional)
+jellysweep:
+  # Email notifications for users about upcoming deletions
+  email:
+    enabled: true
+    smtp_host: "mail.example.com"
+    smtp_port: 587
+    username: "your-smtp-username"
+    password: "your-smtp-password"
+    from_email: "jellysweep@example.com"
+    from_name: "JellySweep"
+    use_tls: true              # Use STARTTLS
+    use_ssl: false             # Use implicit SSL/TLS
+
+  # Ntfy notifications for admins about keep requests and deletions
+  ntfy:
+    enabled: true
+    server_url: "https://ntfy.sh"  # Or your own ntfy server
+    topic: "jellysweep"
+    # Authentication options (choose one):
+    username: ""               # Username/password auth
+    password: ""
+    token: ""                  # Token auth (takes precedence)
 ```
 
 ---

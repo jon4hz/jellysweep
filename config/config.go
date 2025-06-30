@@ -37,21 +37,72 @@ type JellysweepConfig struct {
 	Auth *AuthConfig `yaml:"auth"`
 	// SessionKey is the key used to encrypt session data.
 	SessionKey string `yaml:"session_key"`
+	// Email holds the email notification configuration.
+	Email *EmailConfig `yaml:"email"`
+	// Ntfy holds the ntfy notification configuration.
+	Ntfy *NtfyConfig `yaml:"ntfy"`
 }
 
 // AuthConfig holds the authentication configuration for the JellySweep server.
 type AuthConfig struct {
+	// OIDC holds the OpenID Connect configuration.
 	OIDC *OIDCConfig `yaml:"oidc"`
 }
 
 // OIDCConfig holds the OpenID Connect configuration for the JellySweep server.
 type OIDCConfig struct {
-	Enabled      bool   `yaml:"enabled"`
-	Issuer       string `yaml:"issuer"`
-	ClientID     string `yaml:"client_id"`
+	// Enabled indicates whether OIDC authentication is enabled.
+	Enabled bool `yaml:"enabled"`
+	// Issuer is the OIDC issuer URL.
+	Issuer string `yaml:"issuer"`
+	// ClientID is the OIDC client ID.
+	ClientID string `yaml:"client_id"`
+	// ClientSecret is the OIDC client secret.
 	ClientSecret string `yaml:"client_secret"`
-	RedirectURL  string `yaml:"redirect_url"`
-	AdminGroup   string `yaml:"admin_group"`
+	// RedirectURL is the redirect URL for the oidc flow.
+	RedirectURL string `yaml:"redirect_url"`
+	// AdminGroup is the group that has admin privileges.
+	AdminGroup string `yaml:"admin_group"`
+}
+
+// EmailConfig holds the email notification configuration.
+type EmailConfig struct {
+	// Enabled indicates whether email notifications are enabled.
+	Enabled bool `yaml:"enabled"`
+	// SMTPHost is the SMTP server host.
+	SMTPHost string `yaml:"smtp_host"`
+	// SMTPPort is the SMTP server port.
+	SMTPPort int `yaml:"smtp_port"`
+	// Username is the SMTP username.
+	Username string `yaml:"username"`
+	// Password is the SMTP password.
+	Password string `yaml:"password"`
+	// FromEmail is the email address from which notifications are sent.
+	FromEmail string `yaml:"from_email"`
+	// FromName is the name from which notifications are sent.
+	FromName string `yaml:"from_name"`
+	// UseTLS indicates whether to use TLS for the SMTP connection.
+	UseTLS bool `yaml:"use_tls"`
+	// UseSSL indicates whether to use SSL for the SMTP connection.
+	UseSSL bool `yaml:"use_ssl"`
+	// InsecureSkipVerify indicates whether to skip TLS certificate verification.
+	InsecureSkipVerify bool `yaml:"insecure_skip_verify"`
+}
+
+// NtfyConfig holds the ntfy notification configuration.
+type NtfyConfig struct {
+	// Enabled indicates whether ntfy notifications are enabled.
+	Enabled bool `yaml:"enabled"`
+	// ServerURL is the URL of the ntfy server.
+	ServerURL string `yaml:"server_url"`
+	// Topic is the ntfy topic to publish notifications to.
+	Topic string `yaml:"topic"`
+	// Username is the ntfy username for authentication.
+	Username string `yaml:"username"`
+	// Password is the ntfy password for authentication.
+	Password string `yaml:"password"`
+	// Token is the ntfy token for authentication.
+	Token string `yaml:"token"`
 }
 
 type CleanupConfig struct {

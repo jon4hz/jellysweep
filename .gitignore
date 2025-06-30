@@ -7,3 +7,4 @@ _devel/
 config.yml
 jellysweep
 /data/cache/
+jellysweep.log

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,6 +17,14 @@ import (
 
 func init() {
 	rootCmd.AddCommand(resetCmd)
+}
+
+var rootCmdFlags struct {
+	LogFile string
+}
+
+func init() {
+	rootCmd.Flags().StringVar(&rootCmdFlags.LogFile, "log-file", "", "File to write logs to")
 }
 
 var rootCmd = &cobra.Command{
@@ -37,6 +46,7 @@ func root(cmd *cobra.Command, _ []string) {
 	}
 
 	setLogLevel(cfg.JellySweep.LogLevel)
+	logToFile()
 
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
@@ -93,6 +103,23 @@ func setLogLevel(level string) {
 		log.Warnf("unknown log level %s, defaulting to info", level)
 		log.SetLevel(log.InfoLevel)
 	}
+}
+
+func logToFile() {
+	if rootCmdFlags.LogFile == "" {
+		log.Info("no log file specified, logging to console only")
+		return
+	}
+	file, err := os.OpenFile(rootCmdFlags.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Errorf("failed to open log file: %v", err)
+		return
+	}
+
+	// Create a multi-writer that writes to both console and file
+	multiWriter := io.MultiWriter(os.Stdout, file)
+	log.SetOutput(multiWriter)
+	log.Info("logging to both console and file", "file", rootCmdFlags.LogFile)
 }
 
 func Execute() error {

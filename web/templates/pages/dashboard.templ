@@ -43,9 +43,15 @@ templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
 					</p>
 				</div>
 				<div class="mt-4 sm:mt-0">
-					<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
-						{ len(mediaItems) } items scheduled for deletion
-					</span>
+					if len(mediaItems) == 0 {
+						<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-900 text-green-200">
+							No items scheduled for deletion
+						</span>
+					} else {
+						<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
+							{ len(mediaItems) } items scheduled for deletion
+						</span>
+					}
 				</div>
 			</div>
 			<!-- Filters and Search -->

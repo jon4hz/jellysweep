@@ -37,7 +37,16 @@ type MediaInfo struct {
 
 // MediaRequest represents a media request
 type MediaRequest struct {
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt   time.Time `json:"createdAt"`
+	RequestedBy User      `json:"requestedBy"`
+}
+
+// User represents a user from Jellyseerr
+type User struct {
+	ID          int    `json:"id"`
+	Email       string `json:"email"`
+	Username    string `json:"username"`
+	DisplayName string `json:"displayName"`
 }
 
 // MovieDetails represents detailed movie information from /movie/{movieId}
@@ -197,4 +206,50 @@ func (c *Client) GetRequestTime(ctx context.Context, tmdbID int32, mediaType str
 	}
 
 	return nil, nil
+}
+
+// RequestInfo contains information about a media request
+type RequestInfo struct {
+	RequestTime *time.Time
+	UserEmail   string
+	UserName    string
+}
+
+// GetRequestInfo returns detailed information about who requested specific media and when
+func (c *Client) GetRequestInfo(ctx context.Context, tmdbID int32, mediaType string) (*RequestInfo, error) {
+	mediaItem, err := c.GetMediaItem(ctx, tmdbID, mediaType)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the last (newest) request for this media
+	if len(mediaItem.Requests) > 0 {
+		var lastRequest *MediaRequest
+		for _, request := range mediaItem.Requests {
+			if lastRequest == nil || request.CreatedAt.After(lastRequest.CreatedAt) {
+				lastRequest = &request
+			}
+		}
+
+		if lastRequest != nil {
+			return &RequestInfo{
+				RequestTime: &lastRequest.CreatedAt,
+				UserEmail:   lastRequest.RequestedBy.Email,
+				UserName:    getDisplayName(lastRequest.RequestedBy),
+			}, nil
+		}
+	}
+
+	return &RequestInfo{}, nil
+}
+
+// getDisplayName returns the best display name for a user
+func getDisplayName(user User) string {
+	if user.DisplayName != "" {
+		return user.DisplayName
+	}
+	if user.Username != "" {
+		return user.Username
+	}
+	return user.Email
 }
