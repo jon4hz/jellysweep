@@ -3,7 +3,11 @@
 > **Intelligent Media Library Management for Jellyfin**  
 > Automatically clean up your media collection with smart, data-driven decisions
 
+<img src="static/jellysweep.png" alt="JellySweep Logo" width="40%" height="20%">
+
 JellySweep is a sophisticated automation tool that intelligently manages your Jellyfin media library by analyzing viewing patterns, request history, and custom rules to safely remove unwanted content. It integrates seamlessly with your existing *arr stack to make informed cleanup decisions.
+
+
 
 ---
 
