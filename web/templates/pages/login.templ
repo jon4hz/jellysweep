@@ -25,11 +25,11 @@ templ Login(authConfig *config.AuthConfig) {
 							<form id="jellyfin-login-form" method="POST" action="/auth/jellyfin/login" class="space-y-4">
 								<div>
 									<label for="username" class="block text-sm font-medium text-gray-300">Username</label>
-									<input type="text" id="username" name="username" required class="mt-1 block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+									<input type="text" id="username" name="username" required class="mt-1 block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
 								</div>
 								<div>
 									<label for="password" class="block text-sm font-medium text-gray-300">Password</label>
-									<input type="password" id="password" name="password" required class="mt-1 block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+									<input type="password" id="password" name="password" required class="mt-1 block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
 								</div>
 								<div>
 									<button type="submit" id="login-button" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
