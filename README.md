@@ -1,29 +1,54 @@
 # 🧹🪼 JellySweep
 
-> **Intelligent Media Library Management for Jellyfin**  
-> Automatically clean up your media collection with smart, data-driven decisions
-
 <img src="static/jellysweep.png" alt="JellySweep Logo" width="40%" height="20%">
 
-JellySweep is a sophisticated automation tool that intelligently manages your Jellyfin media library by analyzing viewing patterns, request history, and custom rules to safely remove unwanted content. It integrates seamlessly with your existing *arr stack to make informed cleanup decisions.
+JellySweep is a smart cleanup tool for your Jellyfin media server.  
+It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests.
 
+> [!CAUTION]  
+> Always test with dry-run mode first!  
+> JellySweep is powerful - configure it correctly!
 
 
 ---
 
 ## ✨ Key Features
 
-- 🤖 **Fully Automated** - Set it and forget it scheduling
-- 🧠 **Smart Analytics** - Uses actual viewing data, not just file age
-- 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags
-- 👥 **User Requests** - Built-in keep request system for community servers
-- 🔔 **Smart Notifications** - Email users and ntfy alerts for admins
+- 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat of stats
+- 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
+- 👥 **User Requests** - Built-in keep request system for your users
+- 🔔 **Notifications** - Email users and ntfy alerts for admins
 - ⚡ **Stateless Design** - No database required, clean runs every time
 - 🌐 **Web Interface** - Modern UI for monitoring and management
 
-## 🚀 How It Works
 
-JellySweep follows a intelligent multi-stage process:
+## 📋 Table of Contents
+
+- [🧹🪼 JellySweep](#-jellysweep)
+  - [✨ Key Features](#-key-features)
+  - [📋 Table of Contents](#-table-of-contents)
+  - [🚀 How It Works](#-how-it-works)
+    - [1. **Data Collection**](#1-data-collection)
+    - [2. **Media Filtering**](#2-media-filtering)
+    - [3. **Delayed Deletion**](#3-delayed-deletion)
+    - [4. **User Interaction**](#4-user-interaction)
+  - [🔧 Installation](#-installation)
+    - [Prerequisites](#prerequisites)
+    - [Quick Start](#quick-start)
+  - [🔐 Authentication](#-authentication)
+    - [1. **OIDC/SSO Authentication** (Recommended)](#1-oidcsso-authentication-recommended)
+    - [2. **Jellyfin Authentication**](#2-jellyfin-authentication)
+    - [3. **Mixed Authentication**](#3-mixed-authentication)
+  - [⚙️ Configuration](#️-configuration)
+  - [🏷️ Tag System](#️-tag-system)
+    - [Automatic Tags](#automatic-tags)
+    - [Custom Tags](#custom-tags)
+  - [🔧 Commands](#-commands)
+  - [🤝 Contributing](#-contributing)
+    - [Development Setup](#development-setup)
+  - [📄 License](#-license)
+
+## 🚀 How It Works
 
 ### 1. **Data Collection**
 - Fetches media from Sonarr & Radarr
@@ -31,12 +56,12 @@ JellySweep follows a intelligent multi-stage process:
 - Analyzes request history from Jellyseerr
 - Maps media across libraries and services
 
-### 2. **Smart Filtering** 
+### 2. **Media Filtering** 
 - Applies configurable age thresholds
 - Respects custom exclude tags
-- Honors user keep requests
+- Respects user keep requests
 
-### 3. **Staged Deletion**
+### 3. **Delayed Deletion**
 - Marks media with dated deletion tags
 - Provides grace period for objections
 - Removes recently played content from deletion queue
@@ -85,27 +110,83 @@ JellySweep follows a intelligent multi-stage process:
 
 ---
 
+## 🔐 Authentication
+
+JellySweep supports multiple authentication methods to secure your web interface:
+
+### 1. **OIDC/SSO Authentication** (Recommended)
+Perfect for organizations with existing SSO infrastructure:
+
+- **Tested Providers**: Authentik
+- **Group-based Admin Access**: Read admin groups from `group` claim.
+- **Single Sign-On**: Users authenticate once and access JellySweep seamlessly
+
+**Configuration:**
+```yaml
+jellysweep:
+  auth:
+    oidc:
+      enabled: true
+      issuer: "https://your-sso-provider.com/application/o/jellysweep/"
+      client_id: "your-client-id"
+      client_secret: "your-client-secret"
+      redirect_url: "http://localhost:3002/auth/oidc/callback"
+      admin_group: "jellyfin-admins"  # Users in this group get admin access
+```
+
+### 2. **Jellyfin Authentication**
+Use your existing Jellyfin user accounts:
+
+- **Direct Integration**: Leverages your existing Jellyfin user database
+- **Admin Detection**: Jellyfin administrators automatically get admin access in JellySweep
+- **No Additional Setup**: Works out of the box with your Jellyfin instance
+- **Form-based Login**: Traditional username/password login form
+
+**Configuration:**
+```yaml
+jellysweep:
+  auth:
+    jellyfin:
+      enabled: true
+      url: "http://localhost:8096"  # Your Jellyfin server URL
+```
+
+### 3. **Mixed Authentication**
+You can enable both methods simultaneously:
+- OIDC users get seamless SSO experience
+- Jellyfin users can still log in with their existing credentials
+- Both user types can coexist with appropriate admin privileges
+
+---
+
 ## ⚙️ Configuration
 
 JellySweep uses a YAML configuration file with the following structure:
 
 ```yaml
 jellysweep:
-  dry_run: false                    # Set to true for testing
-  log_level: "info"                 # debug, info, warn, error
+  dry_run: false                   # Set to true for testing
+  log_level: "info"                # debug, info, warn, error
   listen: "0.0.0.0:3002"           # Web interface address and port
-  cleanup_interval: 24              # Hours between cleanup runs
+  cleanup_interval: 12             # Hours between cleanup runs
   session_key: "your-session-key"  # Random string for session encryption
   
-  # Authentication (optional)
+  # Authentication (optional - choose one or both)
   auth:
+    # OpenID Connect (OIDC) Authentication
     oidc:
       enabled: true
       issuer: "https://your-oidc-provider.com/application/o/jellysweep/"
       client_id: "your-client-id"
       client_secret: "your-client-secret"
-      redirect_url: "http://localhost:3002/oauth/callback"
+      redirect_url: "http://localhost:3002/auth/oidc/callback"
       admin_group: "jellyfin-admins"     # OIDC group for admin access
+    
+    # Jellyfin Authentication
+    # Use existing Jellyfin user accounts for authentication
+    jellyfin:
+      enabled: false                     # Set to true to enable
+      url: "http://localhost:8096"       # Your Jellyfin server URL
   
   # Library-specific settings
   libraries:
@@ -128,26 +209,7 @@ jellysweep:
         - "jellysweep-exclude"
         - "ongoing"
         - "keep"
-
-# Service integrations (all optional)
-jellyseerr:
-  url: "http://localhost:5055"
-  api_key: "your-jellyseerr-api-key"
-
-sonarr:
-  url: "http://localhost:8989"
-  api_key: "your-sonarr-api-key"
-
-radarr:
-  url: "http://localhost:7878"
-  api_key: "your-radarr-api-key"
-
-jellystat:
-  url: "http://localhost:3001"
-  api_key: "your-jellystat-api-key"
-
-# Notifications (optional)
-jellysweep:
+    
   # Email notifications for users about upcoming deletions
   email:
     enabled: true
@@ -169,13 +231,34 @@ jellysweep:
     username: ""               # Username/password auth
     password: ""
     token: ""                  # Token auth (takes precedence)
+
+# Service integrations (all optional)
+jellyseerr:
+  url: "http://localhost:5055"
+  api_key: "your-jellyseerr-api-key"
+
+sonarr:
+  url: "http://localhost:8989"
+  api_key: "your-sonarr-api-key"
+
+radarr:
+  url: "http://localhost:7878"
+  api_key: "your-radarr-api-key"
+
+jellystat:
+  url: "http://localhost:3001"
+  api_key: "your-jellystat-api-key"
+
+# Notifications (optional)
+jellysweep:
+  
 ```
 
 ---
 
 ## 🏷️ Tag System
 
-JellySweep uses a the tagging feature from sonarr and radarr to track media state:
+JellySweep uses the tagging feature from sonarr and radarr to track media state:
 
 ### Automatic Tags
 - `jellysweep-delete-YYYY-MM-DD` - Media marked for deletion on date
@@ -186,43 +269,6 @@ JellySweep uses a the tagging feature from sonarr and radarr to track media stat
 ### Custom Tags
 Configure custom tags in your Sonarr/Radarr to:
 - **Exclude from deletion**: Add tags to `exclude_tags` list
-
----
-
-## 🌐 Web Interface
-
-Access the web interface at `http://localhost:3002` to:
-
-- 📊 **Dashboard**: View deletion queue
-- � **Keep Requests**: Submit and manage keep requests
-- ⚙️ **Admin Panel**: Approve requests and force deletions
-
-### User Features
-- Browse upcoming deletions
-- Submit keep requests with reason (TODO)
-
-### Admin Features  
-- Review and approve/deny keep requests
-- Add permanent keep tags (TODO)
-
----
-
-## �️ Safety Features
-
-JellySweep includes multiple safety mechanisms:
-
-### Validation Layers
-- ✅ **Multi-criteria validation** - All conditions must be met
-- ✅ **Grace period** - Configurable delay before actual deletion
-- ✅ **Recent play protection** - Recently viewed media is protected
-- ✅ **Tag-based exclusions** - Respect custom exclude tags
-
-
-### Dry Run Mode
-- Test your configuration safely
-- Preview what would be deleted
-- Validate tag assignments
-- Debug filtering logic
 
 ---
 
@@ -260,20 +306,9 @@ go run . --dry-run
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## � Acknowledgments
 
-- [Jellyfin](https://jellyfin.org/) - The amazing media server
-- [Sonarr](https://sonarr.tv/) & [Radarr](https://radarr.video/) - Media management
-- [Jellyseerr](https://github.com/Fallenbagel/jellyseerr) - Request management
-- [Jellystat](https://github.com/CyferShepard/Jellystat) - Analytics platform
 
----
-
-<p align="center">
-  <strong>⚠️ Always test with dry-run mode first!</strong><br>
-  <em>JellySweep is powerful - use responsibly</em>
-</p>

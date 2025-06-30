@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/cache"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 )
@@ -21,14 +22,16 @@ type CacheManager interface {
 type Handler struct {
 	engine       *engine.Engine
 	cacheManager CacheManager
-	imageCache   *cache.ImageCache // Assuming you have an image cache manager
+	imageCache   *cache.ImageCache
+	authConfig   *config.AuthConfig
 }
 
-func New(eng *engine.Engine, cm CacheManager, im *cache.ImageCache) *Handler {
+func New(eng *engine.Engine, cm CacheManager, im *cache.ImageCache, authConfig *config.AuthConfig) *Handler {
 	return &Handler{
 		engine:       eng,
 		cacheManager: cm,
 		imageCache:   im,
+		authConfig:   authConfig,
 	}
 }
 
@@ -92,7 +95,7 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html")
-	pages.Login().Render(c.Request.Context(), c.Writer)
+	pages.Login(h.authConfig).Render(c.Request.Context(), c.Writer)
 }
 
 func (h *Handler) Logout(c *gin.Context) {
@@ -110,7 +113,7 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 	mediaID := c.Param("id")
 	user := c.MustGet("user").(*models.User)
 
-	err := h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.Sub)
+	err := h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.Username)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

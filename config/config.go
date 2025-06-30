@@ -47,6 +47,8 @@ type JellysweepConfig struct {
 type AuthConfig struct {
 	// OIDC holds the OpenID Connect configuration.
 	OIDC *OIDCConfig `yaml:"oidc"`
+	// Jellyfin holds the Jellyfin authentication configuration.
+	Jellyfin *JellyfinConfig `yaml:"jellyfin"`
 }
 
 // OIDCConfig holds the OpenID Connect configuration for the JellySweep server.
@@ -63,6 +65,14 @@ type OIDCConfig struct {
 	RedirectURL string `yaml:"redirect_url"`
 	// AdminGroup is the group that has admin privileges.
 	AdminGroup string `yaml:"admin_group"`
+}
+
+// JellyfinConfig holds the Jellyfin authentication configuration for the JellySweep server.
+type JellyfinConfig struct {
+	// Enabled indicates whether Jellyfin authentication is enabled.
+	Enabled bool `yaml:"enabled"`
+	// URL is the Jellyfin server URL.
+	URL string `yaml:"url"`
 }
 
 // EmailConfig holds the email notification configuration.

@@ -8,13 +8,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func (p *Provider) Login(c *gin.Context) {
+func (p *OIDCProvider) Login(c *gin.Context) {
 	state := uuid.New().String()
 	url := p.config.AuthCodeURL(state)
 	c.Redirect(http.StatusFound, url)
 }
 
-func (p *Provider) Callback(c *gin.Context) {
+func (p *OIDCProvider) Callback(c *gin.Context) {
 	ctx := c.Request.Context()
 	code := c.Query("code")
 

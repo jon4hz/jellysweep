@@ -21,7 +21,7 @@ type Server struct {
 	cfg          *config.JellysweepConfig
 	ginEngine    *gin.Engine
 	engine       *engine.Engine
-	authProvider *auth.Provider
+	authProvider auth.AuthProvider
 	cacheManager *cache.CacheManager
 	imageCache   *cache.ImageCache
 }
@@ -30,8 +30,8 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine) (*Server, er
 	if cfg == nil {
 		return nil, fmt.Errorf("config is required")
 	}
-	// TODO: make oidc optional and add jellyfin auth
-	authProvider, err := auth.New(ctx, cfg.JellySweep.Auth.OIDC)
+
+	authProvider, err := auth.NewProvider(ctx, cfg.JellySweep.Auth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth provider: %w", err)
 	}
@@ -85,12 +85,15 @@ func (s *Server) setupSession() {
 func (s *Server) setupRoutes() {
 	s.setupSession()
 
-	h := handler.New(s.engine, s.cacheManager, s.imageCache)
+	h := handler.New(s.engine, s.cacheManager, s.imageCache, s.authProvider.GetAuthConfig())
 
 	s.ginEngine.Static("/static", "./static")
 	s.ginEngine.GET("/login", h.Login)
-	s.ginEngine.GET("/oauth/login", s.authProvider.Login)
-	s.ginEngine.GET("/oauth/callback", s.authProvider.Callback)
+
+	// Auth routes
+	s.ginEngine.POST("/auth/jellyfin/login", s.authProvider.Login)
+	s.ginEngine.GET("//auth/oidc/callback", s.authProvider.Callback)
+	s.ginEngine.GET("/auth/oidc/login", s.authProvider.Login)
 
 	protected := s.ginEngine.Group("/")
 	protected.Use(s.authProvider.RequireAuth())

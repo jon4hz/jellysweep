@@ -9,8 +9,9 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import "github.com/jon4hz/jellysweep/web/templates"
+import "github.com/jon4hz/jellysweep/config"
 
-func Login() templ.Component {
+func Login(authConfig *config.AuthConfig) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -43,9 +44,41 @@ func Login() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"min-h-screen flex items-start justify-center pt-16 pb-4 px-4 sm:px-6 lg:px-8\"><div class=\"max-w-md w-full space-y-6\"><div class=\"text-center\"><div class=\"mx-auto w-32 h-32 mb-4 flex items-center justify-center\"><img src=\"/static/jellysweep.png\" alt=\"JellySweep\" class=\"w-32 h-32\"></div><h2 class=\"text-3xl font-bold text-gray-100\">Welcome to JellySweep</h2><p class=\"mt-2 text-sm text-gray-400\">Sign in to manage your media library</p></div><div class=\"card p-8\"><div class=\"space-y-6\"><div><a href=\"/oauth/login\" class=\"w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200\"><svg class=\"w-5 h-5 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11 16l-4-4m0 0l4-4m4 4H3m16 0a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg> Sign in with OIDC</a></div></div></div><div class=\"text-center\"><p class=\"text-sm text-gray-400\">Don't have access? Contact your administrator.</p></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"min-h-screen flex items-start justify-center pt-16 pb-4 px-4 sm:px-6 lg:px-8\"><div class=\"max-w-md w-full space-y-6\"><div class=\"text-center\"><div class=\"mx-auto w-32 h-32 mb-4 flex items-center justify-center\"><img src=\"/static/jellysweep.png\" alt=\"JellySweep\" class=\"w-32 h-32\"></div><h2 class=\"text-3xl font-bold text-gray-100\">Welcome to JellySweep</h2><p class=\"mt-2 text-sm text-gray-400\">Sign in to manage your media library</p></div><div class=\"card p-8\"><div class=\"space-y-6\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
+			}
+			if authConfig != nil && authConfig.Jellyfin != nil && authConfig.Jellyfin.Enabled {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<!-- Jellyfin Login Form --> <form id=\"jellyfin-login-form\" method=\"POST\" action=\"/auth/jellyfin/login\" class=\"space-y-4\"><div><label for=\"username\" class=\"block text-sm font-medium text-gray-300\">Username</label> <input type=\"text\" id=\"username\" name=\"username\" required class=\"mt-1 block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent\"></div><div><label for=\"password\" class=\"block text-sm font-medium text-gray-300\">Password</label> <input type=\"password\" id=\"password\" name=\"password\" required class=\"mt-1 block w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent\"></div><div><button type=\"submit\" id=\"login-button\" class=\"w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200\"><svg class=\"w-5 h-5 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11 16l-4-4m0 0l4-4m4 4H3m16 0a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg> Sign in with Jellyfin</button></div></form>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			if authConfig != nil && authConfig.OIDC != nil && authConfig.OIDC.Enabled {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<!-- OIDC Login --> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if authConfig.Jellyfin != nil && authConfig.Jellyfin.Enabled {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"relative\"><div class=\"absolute inset-0 flex items-center\"><div class=\"w-full border-t border-gray-600\"></div></div><div class=\"relative flex justify-center text-sm\"><span class=\"px-2 bg-gray-900 text-gray-400\">Or</span></div></div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " <div><a href=\"/auth/oidc/login\" class=\"w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200\"><svg class=\"w-5 h-5 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z\"></path></svg> Sign in with OIDC</a></div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div></div><div class=\"text-center\"><p class=\"text-sm text-gray-400\">Don't have access? Contact your administrator.</p></div></div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if authConfig != nil && authConfig.Jellyfin != nil && authConfig.Jellyfin.Enabled {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<script>\n\t\t\t\tdocument.getElementById('jellyfin-login-form').addEventListener('submit', async function(e) {\n\t\t\t\t\te.preventDefault();\n\t\t\t\t\t\n\t\t\t\t\tconst button = document.getElementById('login-button');\n\t\t\t\t\tconst originalText = button.innerHTML;\n\t\t\t\t\tbutton.innerHTML = '<svg class=\"w-5 h-5 mr-2 animate-spin\" fill=\"none\" viewBox=\"0 0 24 24\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle><path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\"></path></svg>Signing in...';\n\t\t\t\t\tbutton.disabled = true;\n\t\t\t\t\t\n\t\t\t\t\ttry {\n\t\t\t\t\t\tconst formData = new FormData(this);\n\t\t\t\t\t\tconst response = await fetch('/auth/jellyfin/login', {\n\t\t\t\t\t\t\tmethod: 'POST',\n\t\t\t\t\t\t\tbody: formData\n\t\t\t\t\t\t});\n\t\t\t\t\t\t\n\t\t\t\t\t\tconst data = await response.json();\n\t\t\t\t\t\t\n\t\t\t\t\t\tif (data.success) {\n\t\t\t\t\t\t\twindow.location.href = data.redirect || '/';\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\talert(data.error || 'Login failed');\n\t\t\t\t\t\t}\n\t\t\t\t\t} catch (error) {\n\t\t\t\t\t\talert('Login failed: ' + error.message);\n\t\t\t\t\t} finally {\n\t\t\t\t\t\tbutton.innerHTML = originalText;\n\t\t\t\t\t\tbutton.disabled = false;\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t</script>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
 			return nil
 		})
