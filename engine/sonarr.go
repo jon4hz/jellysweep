@@ -120,7 +120,7 @@ func (e *Engine) getSonarrTagIDByLabel(label string) (int32, error) {
 			return id, nil
 		}
 	}
-	return 0, fmt.Errorf("Sonarr tag with label %s not found", label)
+	return 0, fmt.Errorf("sonarr tag with label %s not found", label)
 }
 
 func (e *Engine) ensureSonarrTagExists(ctx context.Context, deleteTagLabel string) error {

@@ -125,7 +125,7 @@ func (e *Engine) getRadarrTagIDByLabel(label string) (int32, error) {
 			return id, nil
 		}
 	}
-	return 0, fmt.Errorf("Radarr tag with label %s not found", label)
+	return 0, fmt.Errorf("radarr tag with label %s not found", label)
 }
 
 func (e *Engine) ensureRadarrTagExists(ctx context.Context, deleteTagLabel string) error {
@@ -847,12 +847,4 @@ func (e *Engine) cleanupAllRadarrTags(ctx context.Context) error {
 
 	log.Infof("Deleted %d Radarr tags", tagsDeleted)
 	return nil
-}
-
-// getMovieFileSize extracts the file size from a Radarr movie
-func getMovieFileSize(movie radarr.MovieResource) int64 {
-	if movie.HasSizeOnDisk() {
-		return movie.GetSizeOnDisk()
-	}
-	return 0
 }
