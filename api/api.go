@@ -87,7 +87,7 @@ func (s *Server) setupRoutes() {
 
 	h := handler.New(s.engine, s.cacheManager, s.imageCache, s.authProvider.GetAuthConfig())
 
-	s.ginEngine.Static("/static", "./static")
+	s.ginEngine.Static("/static", "./static") // TODO: make this an embedded file system
 	s.ginEngine.GET("/login", h.Login)
 
 	// Auth routes

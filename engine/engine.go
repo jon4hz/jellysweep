@@ -246,6 +246,8 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		log.Errorf("failed to filter last stream threshold: %v", err)
 		return
 	}
+	// TODO: dont just consider request age. Consider that the file might have been downloaded at a later date
+	// add a third filter option for available since date
 	if err := e.filterRequestAgeThreshold(ctx); err != nil {
 		log.Errorf("failed to filter request age threshold: %v", err)
 		return

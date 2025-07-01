@@ -275,12 +275,12 @@ func DashboardTabs(mediaItems []models.MediaItem) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<!-- Tab Navigation --><div class=\"flex justify-left mb-6\"><div class=\"bg-gray-900/90 backdrop-blur-sm rounded-xl p-1.5 border border-indigo-500/30 shadow-lg inline-flex\"><nav class=\"flex space-x-2 relative\"><!-- Animated sliding background --><div id=\"tab-slider\" class=\"absolute top-0 left-0 bg-indigo-600 rounded-lg transition-all duration-300 ease-out shadow-md\" style=\"width: 0; height: 100%; z-index: 0;\"></div><button id=\"deletion-queue-tab\" class=\"tab-button tab-active flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 relative z-10 text-white shadow-sm\" data-tab=\"deletion-queue\"><svg class=\"w-4 h-4 mr-2.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg> Overview</button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<!-- Tab Navigation --><div class=\"flex justify-start mb-6\"><div class=\"inline-flex bg-gray-800/90 backdrop-blur-sm rounded-xl p-1.5 border border-gray-700/20 shadow-lg\"><nav class=\"flex space-x-1 relative\"><!-- Animated sliding background --><div id=\"tab-slider\" class=\"absolute top-1.5 left-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-lg transition-all duration-300 ease-in-out shadow-md\" style=\"width: 0; height: calc(100% - 12px); z-index: 0;\"></div><button id=\"deletion-queue-tab\" class=\"tab-button tab-active relative z-10 flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 text-white shadow-sm\" data-tab=\"deletion-queue\"><svg class=\"w-4 h-4 mr-2.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg> Overview</button> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(mediaItems) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<button id=\"cleanup-timeline-tab\" class=\"tab-button flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 relative z-10 text-gray-400 hover:text-gray-200 hover:bg-gray-700/30\" data-tab=\"cleanup-timeline\"><svg class=\"w-4 h-4 mr-2.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z\"></path></svg> Stats</button>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<button id=\"cleanup-timeline-tab\" class=\"tab-button relative z-10 flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 text-gray-400 hover:text-gray-200 hover:bg-gray-700/30\" data-tab=\"cleanup-timeline\"><svg class=\"w-4 h-4 mr-2.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z\"></path></svg> Stats</button>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -684,8 +684,8 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_3434`,
-		Function: `function __templ_dashboardScripts_3434(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_dde8`,
+		Function: `function __templ_dashboardScripts_dde8(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs();
 		initializeFilters();
@@ -714,8 +714,10 @@ func dashboardScripts() templ.ComponentScript {
 				this.classList.add('tab-active', 'text-white');
 				this.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
 				
-				// Update slider position
-				updateSliderPosition();
+				// Update slider position with a small delay to ensure DOM is updated
+				setTimeout(() => {
+					updateSliderPosition();
+				}, 10);
 				
 				// Update content visibility
 				tabContents.forEach(content => {
@@ -741,12 +743,20 @@ func dashboardScripts() templ.ComponentScript {
 		function updateSliderPosition() {
 			const activeTab = document.querySelector('.tab-button.tab-active');
 			if (activeTab && tabSlider) {
-				const rect = activeTab.getBoundingClientRect();
-				const container = activeTab.parentElement.getBoundingClientRect();
+				// Force a reflow to ensure accurate measurements
+				activeTab.offsetHeight;
+				
+				// Calculate position relative to the nav container
+				const navContainer = activeTab.parentElement;
+				const containerRect = navContainer.getBoundingClientRect();
+				const activeRect = activeTab.getBoundingClientRect();
+				
+				// Calculate the left position relative to the nav container
+				const leftPosition = activeRect.left - containerRect.left;
 				
 				tabSlider.style.width = activeTab.offsetWidth + 'px';
-				tabSlider.style.height = activeTab.offsetHeight + 'px';
-				tabSlider.style.left = (activeTab.offsetLeft) + 'px';
+				tabSlider.style.height = (activeTab.offsetHeight) + 'px';
+				tabSlider.style.left = leftPosition + 'px';
 				tabSlider.style.top = '0px';
 			}
 		}
@@ -1036,8 +1046,8 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_3434`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_3434`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_dde8`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_dde8`),
 	}
 }
 
@@ -1074,7 +1084,7 @@ func OverviewTab(mediaItems []models.MediaItem) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 694, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 704, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
@@ -1087,7 +1097,7 @@ func OverviewTab(mediaItems []models.MediaItem) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 694, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 704, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
