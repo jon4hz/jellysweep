@@ -45,7 +45,7 @@ templ AdminPanel(user *models.User, keepRequests []models.KeepRequest) {
 }
 
 templ AdminKeepRequestCard(request models.KeepRequest) {
-	<div class="card">
+	<div class="card" id={ "request-" + request.MediaID }>
 		<div class="flex items-center justify-between p-6">
 			<div class="flex items-center space-x-4">
 				<!-- Poster/Icon -->
@@ -151,9 +151,21 @@ script acceptKeepRequest(mediaID string) {
 	.then(data => {
 		if (data.success) {
 			window.setButtonSuccess(buttonId, 'Accepted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-			setTimeout(() => {
-				location.reload();
-			}, 500);
+			
+			// Hide the request card with a smooth animation
+			const requestCard = document.getElementById('request-' + mediaID);
+			if (requestCard) {
+				requestCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+				requestCard.style.opacity = '0';
+				requestCard.style.transform = 'translateX(20px)';
+				setTimeout(() => {
+					requestCard.remove();
+					updatePendingCount(-1);
+					checkForEmptyState();
+				}, 300);
+			}
+			
+			window.showToast('Keep request accepted successfully', 'success');
 		} else {
 			throw new Error(data.error || 'Unknown error');
 		}
@@ -174,9 +186,21 @@ script declineKeepRequest(mediaID string) {
 	.then(data => {
 		if (data.success) {
 			window.setButtonSuccess(buttonId, 'Declined', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>');
-			setTimeout(() => {
-				location.reload();
-			}, 500);
+			
+			// Hide the request card with a smooth animation
+			const requestCard = document.getElementById('request-' + mediaID);
+			if (requestCard) {
+				requestCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+				requestCard.style.opacity = '0';
+				requestCard.style.transform = 'translateX(-20px)';
+				setTimeout(() => {
+					requestCard.remove();
+					updatePendingCount(-1);
+					checkForEmptyState();
+				}, 300);
+			}
+			
+			window.showToast('Keep request declined successfully', 'success');
 		} else {
 			throw new Error(data.error || 'Unknown error');
 		}
@@ -186,4 +210,48 @@ script declineKeepRequest(mediaID string) {
 		window.showToast('Failed to decline request: ' + error.message, 'error');
 		window.restoreButton(buttonId, originalContent);
 	});
+}
+
+script updatePendingCount(delta int) {
+	const badge = document.querySelector('.bg-blue-900.text-blue-200');
+	if (badge) {
+		const currentText = badge.textContent.trim();
+		const currentCount = parseInt(currentText.match(/\d+/)[0]);
+		const newCount = Math.max(0, currentCount + delta);
+		badge.textContent = newCount + ' pending requests';
+	}
+}
+
+script checkForEmptyState() {
+	const requestCards = document.querySelectorAll('[id^="request-"]');
+	const requestsList = document.querySelector('.space-y-4 h3').parentElement;
+	const emptyState = document.querySelector('.text-center.py-12');
+	
+	if (requestCards.length === 0) {
+		// Hide the requests list and show empty state
+		if (requestsList) {
+			requestsList.style.display = 'none';
+		}
+		
+		// Create and show empty state if it doesn't exist
+		if (!emptyState) {
+			const emptyStateHTML = `
+				<div class="text-center py-12">
+					<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+						<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+						</svg>
+					</div>
+					<h3 class="text-xl font-semibold text-gray-300 mb-2">No pending keep requests</h3>
+					<p class="text-gray-500">
+						All keep requests have been processed. Check back later for new requests.
+					</p>
+				</div>
+			`;
+			const mainDiv = document.querySelector('.space-y-6');
+			if (mainDiv) {
+				mainDiv.insertAdjacentHTML('beforeend', emptyStateHTML);
+			}
+		}
+	}
 }
