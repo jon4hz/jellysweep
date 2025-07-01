@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/charmbracelet/log"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/cache"
@@ -68,12 +69,18 @@ func (h *Handler) Home(c *gin.Context) {
 			if user.IsAdmin {
 				// Try to get pending requests for admin even on error
 				if keepRequests, keepErr := h.engine.GetKeepRequests(c.Request.Context()); keepErr == nil {
-					pages.DashboardWithPendingRequests(user, []models.MediaItem{}, len(keepRequests)).Render(c.Request.Context(), c.Writer)
+					if err := pages.DashboardWithPendingRequests(user, []models.MediaItem{}, len(keepRequests)).Render(c.Request.Context(), c.Writer); err != nil {
+						log.Error("Failed to render dashboard with pending requests", "error", err)
+					}
 				} else {
-					pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer)
+					if err := pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer); err != nil {
+						log.Error("Failed to render dashboard", "error", err)
+					}
 				}
 			} else {
-				pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer)
+				if err := pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer); err != nil {
+					log.Error("Failed to render dashboard", "error", err)
+				}
 			}
 			return
 		}
@@ -85,9 +92,7 @@ func (h *Handler) Home(c *gin.Context) {
 	// Convert to flat list for the dashboard
 	var mediaItems []models.MediaItem
 	for _, libraryItems := range mediaItemsMap {
-		for _, item := range libraryItems {
-			mediaItems = append(mediaItems, item)
-		}
+		mediaItems = append(mediaItems, libraryItems...)
 	}
 
 	c.Header("Content-Type", "text/html")
@@ -97,12 +102,18 @@ func (h *Handler) Home(c *gin.Context) {
 		keepRequests, err := h.engine.GetKeepRequests(c.Request.Context())
 		if err != nil {
 			// Log error but continue without pending count
-			pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer)
+			if err := pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+				log.Error("Failed to render dashboard", "error", err)
+			}
 			return
 		}
-		pages.DashboardWithPendingRequests(user, mediaItems, len(keepRequests)).Render(c.Request.Context(), c.Writer)
+		if err := pages.DashboardWithPendingRequests(user, mediaItems, len(keepRequests)).Render(c.Request.Context(), c.Writer); err != nil {
+			log.Error("Failed to render dashboard with pending requests", "error", err)
+		}
 	} else {
-		pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer)
+		if err := pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+			log.Error("Failed to render dashboard", "error", err)
+		}
 	}
 }
 
@@ -116,14 +127,18 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html")
-	pages.Login(h.authConfig).Render(c.Request.Context(), c.Writer)
+	if err := pages.Login(h.authConfig).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Error("Failed to render login page", "error", err)
+	}
 }
 
 func (h *Handler) Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
 	if err := session.Save(); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		if err := c.AbortWithError(http.StatusInternalServerError, err); err != nil {
+			log.Error("Failed to abort with error", "error", err)
+		}
 		return
 	}
 	c.Redirect(http.StatusFound, "/login")

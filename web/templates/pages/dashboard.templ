@@ -2,27 +2,16 @@ package pages
 
 import (
 	"fmt"
-	"github.com/dustin/go-humanize"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/web/templates"
-	"github.com/mergestat/timediff"
+	"github.com/jon4hz/jellysweep/web/templates/components"
 	"sort"
 	"time"
 )
 
-// formatRelativeTime formats a time.Time as a relative time string like "in 3 days"
-func formatRelativeTime(t time.Time) string {
-	return timediff.TimeDiff(t)
-}
-
 // formatExactDate formats a time.Time as an exact date string for tooltips
 func formatExactDate(t time.Time) string {
 	return t.Format("January 2, 2006 at 15:04 MST")
-}
-
-// formatFileSize formats a file size in bytes to a human-readable string
-func formatFileSize(bytes int64) string {
-	return humanize.Bytes(uint64(bytes))
 }
 
 // getUniqueLibraries extracts unique library names from media items
@@ -171,47 +160,29 @@ templ DashboardContent(user *models.User, mediaItems []models.MediaItem) {
 	@templates.ButtonLoadingUtils()
 	@templates.ApiUtils()
 	@templates.DebounceUtil()
+	<!-- Include tab functionality -->
+	@components.TabsScript()
 	@dashboardScripts()
 }
 
 // DashboardTabs creates the tab interface for the dashboard
 templ DashboardTabs(mediaItems []models.MediaItem) {
-	<!-- Tab Navigation -->
-	<div class="flex justify-start mb-6">
-		<div class="inline-flex bg-gray-800/90 backdrop-blur-sm rounded-xl p-1.5 border border-gray-700/20 shadow-lg">
-			<nav class="flex space-x-1 relative">
-				<!-- Animated sliding background -->
-				<div id="tab-slider" class="absolute top-1.5 left-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-lg transition-all duration-300 ease-in-out shadow-md" style="width: 0; height: calc(100% - 12px); z-index: 0;"></div>
-				<button id="deletion-queue-tab" class="tab-button tab-active relative z-10 flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 text-white shadow-sm" data-tab="deletion-queue">
-					<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-					</svg>
-					Overview
-				</button>
-				if len(mediaItems) > 0 {
-					<button id="cleanup-timeline-tab" class="tab-button relative z-10 flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 text-gray-400 hover:text-gray-200 hover:bg-gray-700/30" data-tab="cleanup-timeline">
-						<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-						</svg>
-						Stats
-					</button>
-				}
-			</nav>
-		</div>
-	</div>
-	<!-- Tab Content -->
-	<div id="tab-content">
-		<!-- Deletion Queue Tab -->
-		<div id="deletion-queue-content" class="tab-content tab-content-active">
-			@OverviewTab(mediaItems)
-		</div>
-		<!-- Stats Tab -->
+	@components.TabContainer("dashboard-tabs") {
+		@components.TabButton("deletion-queue", "Overview", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>`, true)
 		if len(mediaItems) > 0 {
-			<div id="cleanup-timeline-content" class="tab-content hidden">
-				@StatsTab(mediaItems)
-			</div>
+			@components.TabButton("cleanup-timeline", "Stats", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`, false)
 		}
-	</div>
+	}
+	@components.TabContentContainer() {
+		@components.TabContent("deletion-queue", true) {
+			@OverviewTab(mediaItems)
+		}
+		if len(mediaItems) > 0 {
+			@components.TabContent("cleanup-timeline", false) {
+				@StatsTab(mediaItems)
+			}
+		}
+	}
 }
 
 templ StorageCleanupGraph(cleanupPoints []StorageCleanupPoint, totalStorage int64) {
@@ -222,7 +193,7 @@ templ StorageCleanupGraph(cleanupPoints []StorageCleanupPoint, totalStorage int6
 				<p class="text-sm text-gray-400 mt-1">Cumulative storage freed over time</p>
 			</div>
 			<div class="text-right">
-				<div class="text-lg font-semibold text-green-400">{ formatFileSize(totalStorage) }</div>
+				<div class="text-lg font-semibold text-green-400">{ components.FormatFileSize(totalStorage) }</div>
 				<div class="text-sm text-gray-400">Total to be freed</div>
 			</div>
 		</div>
@@ -288,13 +259,13 @@ templ MediaCard(item models.MediaItem) {
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
 					</svg>
-					{ formatFileSize(item.FileSize) }
+					{ components.FormatFileSize(item.FileSize) }
 				</div>
 				<div class="flex items-center text-sm text-red-400" title={ formatExactDate(item.DeletionDate) }>
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 					</svg>
-					Deletes { formatRelativeTime(item.DeletionDate) }
+					Deletes { components.FormatRelativeTime(item.DeletionDate) }
 				</div>
 			</div>
 			<div class="mt-4">
@@ -339,84 +310,23 @@ templ EmptyState() {
 script dashboardScripts() {
 	// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
-		initializeTabs();
+		initializeTabs('dashboard-tabs');
 		initializeFilters();
 		initializeMediaRequests();
 		initializeAutoRefresh();
-		initializeStorageChart();	});
-
-	function initializeTabs() {
-		const tabButtons = document.querySelectorAll('.tab-button');
-		const tabContents = document.querySelectorAll('.tab-content');
-		const tabSlider = document.getElementById('tab-slider');
-
-		// Initialize the slider position
-		updateSliderPosition();
-
-		tabButtons.forEach(button => {
-			button.addEventListener('click', function() {
-				const targetTab = this.getAttribute('data-tab');
-				
-				// Update button states
-				tabButtons.forEach(btn => {
-					btn.classList.remove('tab-active', 'text-white');
-					btn.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
-				});
-				
-				this.classList.add('tab-active', 'text-white');
-				this.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
-				
-				// Update slider position with a small delay to ensure DOM is updated
+		initializeStorageChart();
+		
+		// Add custom handler for chart reinitializtion when switching to stats tab
+		const statsTabButton = document.getElementById('cleanup-timeline');
+		if (statsTabButton) {
+			statsTabButton.addEventListener('click', function() {
 				setTimeout(() => {
-					updateSliderPosition();
-				}, 10);
-				
-				// Update content visibility
-				tabContents.forEach(content => {
-					content.classList.add('hidden');
-					content.classList.remove('tab-content-active');
-				});
-				
-				const targetContent = document.getElementById(targetTab + '-content');
-				if (targetContent) {
-					targetContent.classList.remove('hidden');
-					targetContent.classList.add('tab-content-active');
-					
-					// Reinitialize chart if switching to cleanup timeline tab
-					if (targetTab === 'cleanup-timeline') {
-						setTimeout(() => {
-							initializeStorageChart();
-						}, 100);
-					}
-				}
+					initializeStorageChart();
+				}, 100);
 			});
-		});
-		
-		function updateSliderPosition() {
-			const activeTab = document.querySelector('.tab-button.tab-active');
-			if (activeTab && tabSlider) {
-				// Force a reflow to ensure accurate measurements
-				activeTab.offsetHeight;
-				
-				// Calculate position relative to the nav container
-				const navContainer = activeTab.parentElement;
-				const containerRect = navContainer.getBoundingClientRect();
-				const activeRect = activeTab.getBoundingClientRect();
-				
-				// Calculate the left position relative to the nav container
-				const leftPosition = activeRect.left - containerRect.left;
-				
-				tabSlider.style.width = activeTab.offsetWidth + 'px';
-				tabSlider.style.height = (activeTab.offsetHeight) + 'px';
-				tabSlider.style.left = leftPosition + 'px';
-				tabSlider.style.top = '0px';
-			}
 		}
-		
-		// Update slider on window resize
-		window.addEventListener('resize', updateSliderPosition);
-	}
-	
+	});
+
 	function initializeStorageChart() {
 		const canvas = document.getElementById('storage-cleanup-chart');
 		const dataScript = document.getElementById('cleanup-data');

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/engine"
@@ -29,8 +30,23 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 		return
 	}
 
+	// Get media items for the keep/delete tab
+	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
+		return
+	}
+
+	// Flatten the map to a slice
+	var mediaItems []models.MediaItem
+	for _, libraryItems := range mediaItemsMap {
+		mediaItems = append(mediaItems, libraryItems...)
+	}
+
 	c.Header("Content-Type", "text/html")
-	pages.AdminPanel(user, keepRequests).Render(c.Request.Context(), c.Writer)
+	if err := pages.AdminPanel(user, keepRequests, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Error("Failed to render admin panel", "error", err)
+	}
 }
 
 // AcceptKeepRequest accepts a keep request

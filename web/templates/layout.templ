@@ -3,7 +3,9 @@ package templates
 import "github.com/jon4hz/jellysweep/api/models"
 
 templ Layout(title string, user *models.User) {
-	@LayoutWithPendingRequests(title, user, 0)
+	@LayoutWithPendingRequests(title, user, 0) {
+		{ children... }
+	}
 }
 
 templ LayoutWithPendingRequests(title string, user *models.User, pendingRequestsCount int) {
