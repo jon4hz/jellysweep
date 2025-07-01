@@ -111,7 +111,7 @@ func AdminPanel(user *models.User, keepRequests []models.KeepRequest) templ.Comp
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = templates.Layout("Admin Panel", user).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templates.LayoutWithPendingRequests("Admin Panel", user, len(keepRequests)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

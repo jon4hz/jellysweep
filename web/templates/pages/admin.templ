@@ -7,7 +7,7 @@ import (
 )
 
 templ AdminPanel(user *models.User, keepRequests []models.KeepRequest) {
-	@templates.Layout("Admin Panel", user) {
+	@templates.LayoutWithPendingRequests("Admin Panel", user, len(keepRequests)) {
 		<div class="space-y-6">
 			<!-- Header -->
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">

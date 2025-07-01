@@ -127,37 +127,51 @@ func generateCleanupData(points []StorageCleanupPoint, totalStorage int64) Chart
 }
 
 templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
-	@templates.Layout("Dashboard", user) {
-		<div class="space-y-6">
-			<!-- Header -->
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 class="text-3xl font-bold text-gray-100">Media Dashboard</h1>
-					<p class="mt-1 text-sm text-gray-400">
-						Manage media scheduled for deletion from your libraries
-					</p>
-				</div>
-				<div class="mt-4 sm:mt-0">
-					if len(mediaItems) == 0 {
-						<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-900 text-green-200">
-							No items scheduled for deletion
-						</span>
-					} else {
-						<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
-							{ len(mediaItems) } items scheduled for deletion
-						</span>
-					}
-				</div>
-			</div>
-			@DashboardTabs(mediaItems)
-		</div>
-		<!-- Include shared utility scripts -->
-		@templates.ToastScript()
-		@templates.ButtonLoadingUtils()
-		@templates.ApiUtils()
-		@templates.DebounceUtil()
-		@dashboardScripts()
+	@DashboardWithPendingRequests(user, mediaItems, 0)
+}
+
+templ DashboardWithPendingRequests(user *models.User, mediaItems []models.MediaItem, pendingRequestsCount int) {
+	if user != nil && user.IsAdmin {
+		@templates.LayoutWithPendingRequests("Dashboard", user, pendingRequestsCount) {
+			@DashboardContent(user, mediaItems)
+		}
+	} else {
+		@templates.Layout("Dashboard", user) {
+			@DashboardContent(user, mediaItems)
+		}
 	}
+}
+
+templ DashboardContent(user *models.User, mediaItems []models.MediaItem) {
+	<div class="space-y-6">
+		<!-- Header -->
+		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+			<div>
+				<h1 class="text-3xl font-bold text-gray-100">Media Dashboard</h1>
+				<p class="mt-1 text-sm text-gray-400">
+					Manage media scheduled for deletion from your libraries
+				</p>
+			</div>
+			<div class="mt-4 sm:mt-0">
+				if len(mediaItems) == 0 {
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-900 text-green-200">
+						No items scheduled for deletion
+					</span>
+				} else {
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
+						{ len(mediaItems) } items scheduled for deletion
+					</span>
+				}
+			</div>
+		</div>
+		@DashboardTabs(mediaItems)
+	</div>
+	<!-- Include shared utility scripts -->
+	@templates.ToastScript()
+	@templates.ButtonLoadingUtils()
+	@templates.ApiUtils()
+	@templates.DebounceUtil()
+	@dashboardScripts()
 }
 
 // DashboardTabs creates the tab interface for the dashboard

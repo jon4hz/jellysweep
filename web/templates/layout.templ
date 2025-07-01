@@ -3,6 +3,10 @@ package templates
 import "github.com/jon4hz/jellysweep/api/models"
 
 templ Layout(title string, user *models.User) {
+	@LayoutWithPendingRequests(title, user, 0)
+}
+
+templ LayoutWithPendingRequests(title string, user *models.User, pendingRequestsCount int) {
 	<!DOCTYPE html>
 	<html lang="en" class="dark">
 		<head>
@@ -14,7 +18,7 @@ templ Layout(title string, user *models.User) {
 			<script src="/static/dist/chart.js"></script>
 		</head>
 		<body class="bg-gray-950 text-gray-100 min-h-screen">
-			@Navbar(user)
+			@Navbar(user, pendingRequestsCount)
 			<main class="container mx-auto px-4 py-8">
 				{ children... }
 			</main>
@@ -22,7 +26,7 @@ templ Layout(title string, user *models.User) {
 	</html>
 }
 
-templ Navbar(user *models.User) {
+templ Navbar(user *models.User, pendingRequestsCount int) {
 	<nav class="bg-gray-900 border-b border-gray-800">
 		<div class="container mx-auto px-4">
 			<div class="flex justify-between items-center h-16">
@@ -43,8 +47,11 @@ templ Navbar(user *models.User) {
 							<a href="/" class="text-gray-300 hover:text-white transition-colors duration-200">
 								Dashboard
 							</a>
-							<a href="/admin" class="text-gray-300 hover:text-white transition-colors duration-200">
+							<a href="/admin" class="relative text-gray-300 hover:text-white transition-colors duration-200">
 								Admin Panel
+								if pendingRequestsCount > 0 {
+									<span class="absolute -top-1.5 -right-1.5 bg-red-500 rounded-full w-2.5 h-2.5 animate-pulse"></span>
+								}
 							</a>
 						</div>
 					}

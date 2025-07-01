@@ -65,7 +65,16 @@ func (h *Handler) Home(c *gin.Context) {
 		if err != nil {
 			// Log error and fall back to empty data
 			c.Header("Content-Type", "text/html")
-			pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer)
+			if user.IsAdmin {
+				// Try to get pending requests for admin even on error
+				if keepRequests, keepErr := h.engine.GetKeepRequests(c.Request.Context()); keepErr == nil {
+					pages.DashboardWithPendingRequests(user, []models.MediaItem{}, len(keepRequests)).Render(c.Request.Context(), c.Writer)
+				} else {
+					pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer)
+				}
+			} else {
+				pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer)
+			}
 			return
 		}
 
@@ -82,7 +91,19 @@ func (h *Handler) Home(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html")
-	pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer)
+
+	// If user is admin, get pending requests count for navbar indicator
+	if user.IsAdmin {
+		keepRequests, err := h.engine.GetKeepRequests(c.Request.Context())
+		if err != nil {
+			// Log error but continue without pending count
+			pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer)
+			return
+		}
+		pages.DashboardWithPendingRequests(user, mediaItems, len(keepRequests)).Render(c.Request.Context(), c.Writer)
+	} else {
+		pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer)
+	}
 }
 
 func (h *Handler) Login(c *gin.Context) {
