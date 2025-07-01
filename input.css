@@ -34,4 +34,15 @@
   .input-field {
     @apply bg-gray-800 border border-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent;
   }
+  
+  .tab-button {
+    @apply whitespace-nowrap font-medium text-sm flex items-center transition-all duration-200 cursor-pointer;
+  }
+  .tab-content {
+    @apply pt-6;
+  }
+  
+  .tab-content-active {
+    @apply block;
+  }
 }

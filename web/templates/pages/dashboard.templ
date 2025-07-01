@@ -149,55 +149,7 @@ templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
 					}
 				</div>
 			</div>
-			<!-- Storage Cleanup Graph -->
-			if len(mediaItems) > 0 {
-				@StorageCleanupGraph(calculateStorageCleanupData(mediaItems), getTotalStorageToFree(mediaItems))
-			}
-			<!-- Filters and Search -->
-			<div class="card p-6">
-				<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
-					<div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
-						<div class="relative">
-							<input type="text" id="search" placeholder="Search media..." class="input-field pl-10 pr-4 py-2 w-full sm:w-64"/>
-							<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-								<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-								</svg>
-							</div>
-						</div>
-						<select id="library-filter" class="input-field">
-							<option value="">All Libraries</option>
-							for _, library := range getUniqueLibraries(mediaItems) {
-								<option value={ library }>{ library }</option>
-							}
-						</select>
-						<select id="sort-by" class="input-field">
-							<option value="deletion-date-asc">Deletion Date (Earliest First)</option>
-							<option value="deletion-date-desc">Deletion Date (Latest First)</option>
-							<option value="title-asc">Title (A-Z)</option>
-							<option value="title-desc">Title (Z-A)</option>
-						</select>
-					</div>
-					<div class="flex items-center space-x-2">
-						<button id="refresh-btn" class="flex items-center justify-center btn-secondary">
-							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-							</svg>
-							Refresh
-						</button>
-					</div>
-				</div>
-			</div>
-			<!-- Media Grid -->
-			if len(mediaItems) == 0 {
-				@EmptyState()
-			} else {
-				<div id="media-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-					for _, item := range mediaItems {
-						@MediaCard(item)
-					}
-				</div>
-			}
+			@DashboardTabs(mediaItems)
 		</div>
 		<!-- Include shared utility scripts -->
 		@templates.ToastScript()
@@ -206,6 +158,46 @@ templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
 		@templates.DebounceUtil()
 		@dashboardScripts()
 	}
+}
+
+// DashboardTabs creates the tab interface for the dashboard
+templ DashboardTabs(mediaItems []models.MediaItem) {
+	<!-- Tab Navigation -->
+	<div class="flex justify-left mb-6">
+		<div class="bg-gray-900/90 backdrop-blur-sm rounded-xl p-1.5 border border-indigo-500/30 shadow-lg inline-flex">
+			<nav class="flex space-x-2 relative">
+				<!-- Animated sliding background -->
+				<div id="tab-slider" class="absolute top-0 left-0 bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-lg transition-all duration-300 ease-out shadow-md" style="width: 0; height: 100%; z-index: 0;"></div>
+				<button id="deletion-queue-tab" class="tab-button tab-active flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 relative z-10 text-white shadow-sm" data-tab="deletion-queue">
+					<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+					</svg>
+					Overview
+				</button>
+				if len(mediaItems) > 0 {
+					<button id="cleanup-timeline-tab" class="tab-button flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 relative z-10 text-gray-400 hover:text-gray-200 hover:bg-gray-700/30" data-tab="cleanup-timeline">
+						<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+						</svg>
+						Stats
+					</button>
+				}
+			</nav>
+		</div>
+	</div>
+	<!-- Tab Content -->
+	<div id="tab-content">
+		<!-- Deletion Queue Tab -->
+		<div id="deletion-queue-content" class="tab-content tab-content-active">
+			@OverviewTab(mediaItems)
+		</div>
+		<!-- Stats Tab -->
+		if len(mediaItems) > 0 {
+			<div id="cleanup-timeline-content" class="tab-content hidden">
+				@StatsTab(mediaItems)
+			</div>
+		}
+	</div>
 }
 
 templ StorageCleanupGraph(cleanupPoints []StorageCleanupPoint, totalStorage int64) {
@@ -280,7 +272,7 @@ templ MediaCard(item models.MediaItem) {
 				</div>
 				<div class="flex items-center text-sm text-gray-400">
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
 					</svg>
 					{ formatFileSize(item.FileSize) }
 				</div>
@@ -333,12 +325,74 @@ templ EmptyState() {
 script dashboardScripts() {
 	// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
+		initializeTabs();
 		initializeFilters();
 		initializeMediaRequests();
 		initializeAutoRefresh();
-		initializeStorageChart();
-	});
+		initializeStorageChart();	});
 
+	function initializeTabs() {
+		const tabButtons = document.querySelectorAll('.tab-button');
+		const tabContents = document.querySelectorAll('.tab-content');
+		const tabSlider = document.getElementById('tab-slider');
+
+		// Initialize the slider position
+		updateSliderPosition();
+
+		tabButtons.forEach(button => {
+			button.addEventListener('click', function() {
+				const targetTab = this.getAttribute('data-tab');
+				
+				// Update button states
+				tabButtons.forEach(btn => {
+					btn.classList.remove('tab-active', 'text-white');
+					btn.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
+				});
+				
+				this.classList.add('tab-active', 'text-white');
+				this.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
+				
+				// Update slider position
+				updateSliderPosition();
+				
+				// Update content visibility
+				tabContents.forEach(content => {
+					content.classList.add('hidden');
+					content.classList.remove('tab-content-active');
+				});
+				
+				const targetContent = document.getElementById(targetTab + '-content');
+				if (targetContent) {
+					targetContent.classList.remove('hidden');
+					targetContent.classList.add('tab-content-active');
+					
+					// Reinitialize chart if switching to cleanup timeline tab
+					if (targetTab === 'cleanup-timeline') {
+						setTimeout(() => {
+							initializeStorageChart();
+						}, 100);
+					}
+				}
+			});
+		});
+		
+		function updateSliderPosition() {
+			const activeTab = document.querySelector('.tab-button.tab-active');
+			if (activeTab && tabSlider) {
+				const rect = activeTab.getBoundingClientRect();
+				const container = activeTab.parentElement.getBoundingClientRect();
+				
+				tabSlider.style.width = activeTab.offsetWidth + 'px';
+				tabSlider.style.height = activeTab.offsetHeight + 'px';
+				tabSlider.style.left = (activeTab.offsetLeft) + 'px';
+				tabSlider.style.top = '0px';
+			}
+		}
+		
+		// Update slider on window resize
+		window.addEventListener('resize', updateSliderPosition);
+	}
+	
 	function initializeStorageChart() {
 		const canvas = document.getElementById('storage-cleanup-chart');
 		const dataScript = document.getElementById('cleanup-data');
@@ -619,4 +673,56 @@ script dashboardScripts() {
 			window.restoreButton(buttonId, originalContent);
 		});
 	}
+}
+
+templ OverviewTab(mediaItems []models.MediaItem) {
+	<!-- Filters and Search -->
+	<div class="card p-6 mb-6">
+		<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
+			<div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+				<div class="relative">
+					<input type="text" id="search" placeholder="Search media..." class="input-field pl-10 pr-4 py-2 w-full sm:w-64"/>
+					<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+						<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+						</svg>
+					</div>
+				</div>
+				<select id="library-filter" class="input-field">
+					<option value="">All Libraries</option>
+					for _, library := range getUniqueLibraries(mediaItems) {
+						<option value={ library }>{ library }</option>
+					}
+				</select>
+				<select id="sort-by" class="input-field">
+					<option value="deletion-date-asc">Deletion Date (Earliest First)</option>
+					<option value="deletion-date-desc">Deletion Date (Latest First)</option>
+					<option value="title-asc">Title (A-Z)</option>
+					<option value="title-desc">Title (Z-A)</option>
+				</select>
+			</div>
+			<div class="flex items-center space-x-2">
+				<button id="refresh-btn" class="flex items-center justify-center btn-secondary">
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+					</svg>
+					Refresh
+				</button>
+			</div>
+		</div>
+	</div>
+	<!-- Media Grid -->
+	if len(mediaItems) == 0 {
+		@EmptyState()
+	} else {
+		<div id="media-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			for _, item := range mediaItems {
+				@MediaCard(item)
+			}
+		</div>
+	}
+}
+
+templ StatsTab(mediaItems []models.MediaItem) {
+	@StorageCleanupGraph(calculateStorageCleanupData(mediaItems), getTotalStorageToFree(mediaItems))
 }
