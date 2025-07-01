@@ -8,8 +8,10 @@ package pages
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/jon4hz/jellysweep/web/templates"
-import "github.com/jon4hz/jellysweep/config"
+import (
+	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/web/templates"
+)
 
 func Login(authConfig *config.AuthConfig) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

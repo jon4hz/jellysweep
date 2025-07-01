@@ -169,14 +169,16 @@ func (e *Engine) cleanupRadarrTags(ctx context.Context) error {
 	return nil
 }
 
-func (e *Engine) deleteRadarrMedia(ctx context.Context) error {
+func (e *Engine) deleteRadarrMedia(ctx context.Context) ([]MediaItem, error) {
+	var deletedItems []MediaItem
+
 	triggerTagIDs, err := e.triggerTagIDs(e.data.radarrTags)
 	if err != nil {
-		return err
+		return deletedItems, err
 	}
 	if len(triggerTagIDs) == 0 {
 		log.Info("No Radarr tags found for deletion")
-		return nil
+		return deletedItems, nil
 	}
 
 	for _, movie := range e.data.radarrItems {
@@ -202,12 +204,19 @@ func (e *Engine) deleteRadarrMedia(ctx context.Context) error {
 			DeleteFiles(true).
 			Execute()
 		if err != nil {
-			return fmt.Errorf("failed to delete Radarr movie %s: %w", movie.GetTitle(), err)
+			return deletedItems, fmt.Errorf("failed to delete Radarr movie %s: %w", movie.GetTitle(), err)
 		}
 		log.Infof("Deleted Radarr movie %s", movie.GetTitle())
+
+		// Add to deleted items list
+		deletedItems = append(deletedItems, MediaItem{
+			Title:     movie.GetTitle(),
+			MediaType: MediaTypeMovie,
+			Year:      movie.GetYear(),
+		})
 	}
 
-	return nil
+	return deletedItems, nil
 }
 
 // removeRecentlyPlayedRadarrDeleteTags removes jellysweep-delete tags from Radarr movies that have been played recently
@@ -433,13 +442,14 @@ func (e *Engine) getRadarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 					ID:           fmt.Sprintf("radarr-%d", movie.GetId()),
 					Title:        movie.GetTitle(),
 					Type:         "movie",
-					Year:         int(movie.GetYear()),
+					Year:         movie.GetYear(),
 					Library:      "Movies",
 					DeletionDate: deletionDate,
 					PosterURL:    getCachedImageURL(imageURL),
 					CanRequest:   canRequest,
 					HasRequested: hasRequested,
 					MustDelete:   mustDelete,
+					FileSize:     movie.GetSizeOnDisk(),
 				}
 
 				result = append(result, mediaItem)
@@ -837,4 +847,12 @@ func (e *Engine) cleanupAllRadarrTags(ctx context.Context) error {
 
 	log.Infof("Deleted %d Radarr tags", tagsDeleted)
 	return nil
+}
+
+// getMovieFileSize extracts the file size from a Radarr movie
+func getMovieFileSize(movie radarr.MovieResource) int64 {
+	if movie.HasSizeOnDisk() {
+		return movie.GetSizeOnDisk()
+	}
+	return 0
 }

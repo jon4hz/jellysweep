@@ -11,6 +11,7 @@ templ Layout(title string, user *models.User) {
 			<title>{ title } - JellySweep</title>
 			<link rel="stylesheet" href="/static/dist/style.css"/>
 			<link rel="icon" type="image/png" href="/static/jellysweep.png"/>
+			<script src="/static/dist/chart.js"></script>
 		</head>
 		<body class="bg-gray-950 text-gray-100 min-h-screen">
 			@Navbar(user)

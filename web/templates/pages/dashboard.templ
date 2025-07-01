@@ -1,10 +1,14 @@
 package pages
 
-import "github.com/jon4hz/jellysweep/web/templates"
-import "github.com/jon4hz/jellysweep/api/models"
-import "time"
-import "fmt"
-import "github.com/mergestat/timediff"
+import (
+	"fmt"
+	"github.com/dustin/go-humanize"
+	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/web/templates"
+	"github.com/mergestat/timediff"
+	"sort"
+	"time"
+)
 
 // formatRelativeTime formats a time.Time as a relative time string like "in 3 days"
 func formatRelativeTime(t time.Time) string {
@@ -14,6 +18,11 @@ func formatRelativeTime(t time.Time) string {
 // formatExactDate formats a time.Time as an exact date string for tooltips
 func formatExactDate(t time.Time) string {
 	return t.Format("January 2, 2006 at 15:04 MST")
+}
+
+// formatFileSize formats a file size in bytes to a human-readable string
+func formatFileSize(bytes int64) string {
+	return humanize.Bytes(uint64(bytes))
 }
 
 // getUniqueLibraries extracts unique library names from media items
@@ -29,6 +38,92 @@ func getUniqueLibraries(items []models.MediaItem) []string {
 	}
 
 	return libraries
+}
+
+// StorageCleanupPoint represents a point in time with cumulative storage freed
+type StorageCleanupPoint struct {
+	Date            time.Time
+	CumulativeBytes int64
+	ItemsDeleted    int
+}
+
+// calculateStorageCleanupData processes media items to create data points for the storage cleanup graph
+func calculateStorageCleanupData(items []models.MediaItem) []StorageCleanupPoint {
+	if len(items) == 0 {
+		return []StorageCleanupPoint{}
+	}
+
+	// Sort items by deletion date
+	sortedItems := make([]models.MediaItem, len(items))
+	copy(sortedItems, items)
+	sort.Slice(sortedItems, func(i, j int) bool {
+		return sortedItems[i].DeletionDate.Before(sortedItems[j].DeletionDate)
+	})
+
+	var points []StorageCleanupPoint
+	var cumulativeBytes int64
+	var itemsDeleted int
+
+	// Start from the first deletion date instead of now
+	firstDeletionDate := sortedItems[0].DeletionDate
+	points = append(points, StorageCleanupPoint{
+		Date:            firstDeletionDate,
+		CumulativeBytes: 0,
+		ItemsDeleted:    0,
+	})
+
+	// Calculate cumulative storage freed at each deletion date
+	for _, item := range sortedItems {
+		cumulativeBytes += item.FileSize
+		itemsDeleted++
+
+		points = append(points, StorageCleanupPoint{
+			Date:            item.DeletionDate,
+			CumulativeBytes: cumulativeBytes,
+			ItemsDeleted:    itemsDeleted,
+		})
+	}
+
+	return points
+}
+
+// getTotalStorageToFree calculates the total storage that will be freed
+func getTotalStorageToFree(items []models.MediaItem) int64 {
+	var total int64
+	for _, item := range items {
+		total += item.FileSize
+	}
+	return total
+}
+
+// ChartData represents the structure for chart JSON data
+type ChartData struct {
+	Points       []ChartPoint `json:"points"`
+	TotalStorage int64        `json:"totalStorage"`
+}
+
+// ChartPoint represents a single data point for the chart with proper JSON formatting
+type ChartPoint struct {
+	Date            string `json:"date"`
+	CumulativeBytes int64  `json:"cumulativeBytes"`
+	ItemsDeleted    int    `json:"itemsDeleted"`
+}
+
+// generateCleanupData creates the data structure for the cleanup chart
+func generateCleanupData(points []StorageCleanupPoint, totalStorage int64) ChartData {
+	chartPoints := make([]ChartPoint, len(points))
+	for i, point := range points {
+		chartPoints[i] = ChartPoint{
+			Date:            point.Date.Format("2006-01-02T15:04:05Z07:00"),
+			CumulativeBytes: point.CumulativeBytes,
+			ItemsDeleted:    point.ItemsDeleted,
+		}
+	}
+
+	return ChartData{
+		Points:       chartPoints,
+		TotalStorage: totalStorage,
+	}
 }
 
 templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
@@ -54,6 +149,10 @@ templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
 					}
 				</div>
 			</div>
+			<!-- Storage Cleanup Graph -->
+			if len(mediaItems) > 0 {
+				@StorageCleanupGraph(calculateStorageCleanupData(mediaItems), getTotalStorageToFree(mediaItems))
+			}
 			<!-- Filters and Search -->
 			<div class="card p-6">
 				<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
@@ -109,12 +208,43 @@ templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
 	}
 }
 
+templ StorageCleanupGraph(cleanupPoints []StorageCleanupPoint, totalStorage int64) {
+	<div class="card p-6">
+		<div class="flex items-center justify-between mb-6">
+			<div>
+				<h2 class="text-xl font-semibold text-gray-100">Storage Cleanup Timeline</h2>
+				<p class="text-sm text-gray-400 mt-1">Cumulative storage freed over time</p>
+			</div>
+			<div class="text-right">
+				<div class="text-lg font-semibold text-green-400">{ formatFileSize(totalStorage) }</div>
+				<div class="text-sm text-gray-400">Total to be freed</div>
+			</div>
+		</div>
+		if len(cleanupPoints) > 1 {
+			<div class="relative">
+				<!-- Chart.js Canvas -->
+				<canvas id="storage-cleanup-chart" class="w-full h-64"></canvas>
+				<!-- Hidden data for JavaScript -->
+				@templ.JSONScript("cleanup-data", generateCleanupData(cleanupPoints, totalStorage))
+			</div>
+		} else {
+			<div class="text-center py-8 text-gray-400">
+				<svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+				</svg>
+				<p>Not enough data points for graph</p>
+			</div>
+		}
+	</div>
+}
+
 templ MediaCard(item models.MediaItem) {
 	<div
 		class="card overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all duration-200"
 		data-title={ item.Title }
 		data-deletion-timestamp={ fmt.Sprintf("%d", item.DeletionDate.Unix()) }
 		data-library={ item.Library }
+		data-size={ item.FileSize }
 	>
 		<div class="aspect-w-2 aspect-h-3 bg-gray-800">
 			if item.PosterURL != "" {
@@ -147,6 +277,12 @@ templ MediaCard(item models.MediaItem) {
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
 					</svg>
 					{ item.Library }
+				</div>
+				<div class="flex items-center text-sm text-gray-400">
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+					</svg>
+					{ formatFileSize(item.FileSize) }
 				</div>
 				<div class="flex items-center text-sm text-red-400" title={ formatExactDate(item.DeletionDate) }>
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,7 +336,132 @@ script dashboardScripts() {
 		initializeFilters();
 		initializeMediaRequests();
 		initializeAutoRefresh();
+		initializeStorageChart();
 	});
+
+	function initializeStorageChart() {
+		const canvas = document.getElementById('storage-cleanup-chart');
+		const dataScript = document.getElementById('cleanup-data');
+		
+		if (!canvas || !dataScript) return;
+		
+		try {
+			const data = JSON.parse(dataScript.textContent);
+			const points = data.points || [];
+			
+			if (points.length < 2) return;
+			
+			// Format data for Chart.js
+			const chartData = points.map(point => ({
+				x: new Date(point.date),
+				y: point.cumulativeBytes
+			}));
+			
+			// Initialize Chart.js
+			new Chart(canvas, {
+				type: 'line',
+				data: {
+					datasets: [{
+						label: 'Storage Freed',
+						data: chartData,
+						borderColor: 'rgb(34, 197, 94)',
+						backgroundColor: 'rgba(34, 197, 94, 0.1)',
+						fill: true,
+						tension: 0.2,
+						pointBackgroundColor: 'rgb(59, 130, 246)',
+						pointBorderColor: 'rgb(59, 130, 246)',
+						pointRadius: 4,
+						pointHoverRadius: 6
+					}]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					plugins: {
+						legend: {
+							display: false
+						},
+						tooltip: {
+							backgroundColor: 'rgba(17, 24, 39, 0.95)',
+							titleColor: 'rgb(229, 231, 235)',
+							bodyColor: 'rgb(156, 163, 175)',
+							borderColor: 'rgb(75, 85, 99)',
+							borderWidth: 1,
+							callbacks: {
+								title: function(context) {
+									const date = new Date(context[0].parsed.x);
+									return date.toLocaleDateString('en-US', { 
+										month: 'short', 
+										day: 'numeric',
+										year: 'numeric'
+									});
+								},
+								label: function(context) {
+									const bytes = context.parsed.y;
+									const pointIndex = context.dataIndex;
+									const point = points[pointIndex];
+									
+									return [
+										'Storage freed: ' + formatBytes(bytes),
+										'Items to delete: ' + point.itemsDeleted
+									];
+								}
+							}
+						}
+					},
+					scales: {
+						x: {
+							type: 'time',
+							time: {
+								unit: 'day',
+								displayFormats: {
+									day: 'MMM d',
+									week: 'MMM d',
+									month: 'MMM yyyy'
+								},
+								tooltipFormat: 'MMM d, yyyy'
+							},
+							grid: {
+								color: 'rgba(75, 85, 99, 0.3)'
+							},
+							ticks: {
+								color: 'rgb(156, 163, 175)',
+								maxTicksLimit: 30
+							}
+						},
+						y: {
+							beginAtZero: true,
+							grid: {
+								color: 'rgba(75, 85, 99, 0.3)'
+							},
+							ticks: {
+								color: 'rgb(156, 163, 175)',
+								callback: function(value) {
+									return formatBytes(value);
+								}
+							}
+						}
+					},
+					interaction: {
+						intersect: false,
+						mode: 'index'
+					}
+				}
+			});
+		} catch (error) {
+			console.error('Error initializing storage chart:', error);
+		}
+	}
+	
+	function formatBytes(bytes) {
+		if (bytes === 0) return '0 Bytes';
+		
+		const k = 1024;
+		const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+	}
 
 	function initializeFilters() {
 		const searchInput = document.getElementById('search');

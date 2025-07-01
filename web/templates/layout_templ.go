@@ -44,7 +44,7 @@ func Layout(title string, user *models.User) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - JellySweep</title><link rel=\"stylesheet\" href=\"/static/dist/style.css\"><link rel=\"icon\" type=\"image/png\" href=\"/static/jellysweep.png\"></head><body class=\"bg-gray-950 text-gray-100 min-h-screen\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - JellySweep</title><link rel=\"stylesheet\" href=\"/static/dist/style.css\"><link rel=\"icon\" type=\"image/png\" href=\"/static/jellysweep.png\"><script src=\"/static/dist/chart.js\"></script></head><body class=\"bg-gray-950 text-gray-100 min-h-screen\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -117,7 +117,7 @@ func Navbar(user *models.User) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(user.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layout.templ`, Line: 54, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layout.templ`, Line: 55, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {

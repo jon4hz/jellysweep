@@ -15,13 +15,14 @@ type MediaItem struct {
 	ID           string
 	Title        string
 	Type         string // "movie" or "tv"
-	Year         int
+	Year         int32
 	Library      string
 	DeletionDate time.Time
 	PosterURL    string
 	CanRequest   bool
 	HasRequested bool
-	MustDelete   bool // Indicates if this item is marked for deletion for sure
+	MustDelete   bool  // Indicates if this item is marked for deletion for sure
+	FileSize     int64 // Size in bytes
 }
 
 // KeepRequest represents a user request to keep a media item

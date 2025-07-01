@@ -94,6 +94,7 @@ type LibraryItem struct {
 	ParentID       string `json:"ParentId,omitempty"`
 	Type           string `json:"Type"`
 	ProductionYear int32  `json:"ProductionYear,omitempty"`
+	Archived       bool   `json:"Archived,omitempty"`
 }
 
 // GetItemHistory retrieves the playback history for a specific item

@@ -46,8 +46,20 @@ func (e *Engine) getJellystatEnabledLibraryIDs(ctx context.Context) ([]string, e
 	return enabledLibraryIDs, nil
 }
 
+// getJellystatLibraryItems retrieves all items from a specific Jellystat library and filters out archived items.
 func (e *Engine) getJellystatLibraryItems(ctx context.Context, libraryID string) ([]jellystat.LibraryItem, error) {
-	return e.jellystat.GetLibraryItems(ctx, libraryID)
+	items, err := e.jellystat.GetLibraryItems(ctx, libraryID)
+	if err != nil {
+		return nil, err
+	}
+	// Filter out archived items
+	var filteredItems []jellystat.LibraryItem
+	for _, item := range items {
+		if !item.Archived {
+			filteredItems = append(filteredItems, item)
+		}
+	}
+	return filteredItems, nil
 }
 
 func (e *Engine) getMediaItemLastStreamed(ctx context.Context, m MediaItem) (time.Time, error) {

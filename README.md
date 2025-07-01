@@ -28,17 +28,12 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [✨ Key Features](#-key-features)
   - [📋 Table of Contents](#-table-of-contents)
   - [🚀 How It Works](#-how-it-works)
-    - [1. **Data Collection**](#1-data-collection)
-    - [2. **Media Filtering**](#2-media-filtering)
-    - [3. **Delayed Deletion**](#3-delayed-deletion)
-    - [4. **User Interaction**](#4-user-interaction)
   - [🔧 Installation](#-installation)
     - [Prerequisites](#prerequisites)
     - [Quick Start](#quick-start)
   - [🔐 Authentication](#-authentication)
-    - [1. **OIDC/SSO Authentication** (Recommended)](#1-oidcsso-authentication-recommended)
-    - [2. **Jellyfin Authentication**](#2-jellyfin-authentication)
-    - [3. **Mixed Authentication**](#3-mixed-authentication)
+    - [OIDC/SSO Authentication](#oidcsso-authentication)
+    - [Jellyfin Authentication](#jellyfin-authentication)
   - [⚙️ Configuration](#️-configuration)
   - [🏷️ Tag System](#️-tag-system)
     - [Automatic Tags](#automatic-tags)
@@ -49,36 +44,35 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [📄 License](#-license)
 
 ## 🚀 How It Works
+1. **Data Collection**
+   - Fetches media from Sonarr & Radarr
+   - Retrieves viewing statistics from Jellystat
+   - Analyzes request history from Jellyseerr
+   - Maps media across libraries and services
 
-### 1. **Data Collection**
-- Fetches media from Sonarr & Radarr
-- Retrieves viewing statistics from Jellystat
-- Analyzes request history from Jellyseerr
-- Maps media across libraries and services
+2. **Media Filtering**
+   - Applies configurable age thresholds
+   - Respects custom exclude tags
+   - Respects user keep requests
 
-### 2. **Media Filtering** 
-- Applies configurable age thresholds
-- Respects custom exclude tags
-- Respects user keep requests
+3. **Delayed Deletion**
+   - Marks media with dated deletion tags
+   - Provides grace period for objections
+   - Removes recently played content from deletion queue
+   - Executes final cleanup after delay
 
-### 3. **Delayed Deletion**
-- Marks media with dated deletion tags
-- Provides grace period for objections
-- Removes recently played content from deletion queue
-- Executes final cleanup after delay
-
-### 4. **User Interaction**
-- Users can request to keep specific media
-- Admins can approve/decline requests
-- Automatic cleanup of expired requests
-- Force deletion override for admins
+4. **User Interaction**
+   - Users can request to keep specific media
+   - Admins can approve/decline requests
+   - Automatic cleanup of expired requests
+   - Force deletion override for admins
 
 ---
 
 ## 🔧 Installation
 
 ### Prerequisites
-- Access to your Jellyfin ecosystem:
+- Access to your Jellyfin ecosystem including:
   - Sonarr
   - Radarr
   - Jellystat
@@ -114,8 +108,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 JellySweep supports multiple authentication methods to secure your web interface:
 
-### 1. **OIDC/SSO Authentication** (Recommended)
-Perfect for organizations with existing SSO infrastructure:
+### OIDC/SSO Authentication
 
 - **Tested Providers**: Authentik
 - **Group-based Admin Access**: Read admin groups from `group` claim.
@@ -134,8 +127,7 @@ jellysweep:
       admin_group: "jellyfin-admins"  # Users in this group get admin access
 ```
 
-### 2. **Jellyfin Authentication**
-Use your existing Jellyfin user accounts:
+### Jellyfin Authentication
 
 - **Direct Integration**: Leverages your existing Jellyfin user database
 - **Admin Detection**: Jellyfin administrators automatically get admin access in JellySweep
@@ -150,12 +142,6 @@ jellysweep:
       enabled: true
       url: "http://localhost:8096"  # Your Jellyfin server URL
 ```
-
-### 3. **Mixed Authentication**
-You can enable both methods simultaneously:
-- OIDC users get seamless SSO experience
-- Jellyfin users can still log in with their existing credentials
-- Both user types can coexist with appropriate admin privileges
 
 ---
 
@@ -248,10 +234,6 @@ radarr:
 jellystat:
   url: "http://localhost:3001"
   api_key: "your-jellystat-api-key"
-
-# Notifications (optional)
-jellysweep:
-  
 ```
 
 ---
@@ -307,8 +289,3 @@ go run . --dry-run
 ## 📄 License
 
 This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details.
-
----
-
-
-

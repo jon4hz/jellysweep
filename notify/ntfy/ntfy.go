@@ -89,6 +89,7 @@ func (c *Client) SendMessage(msg Message) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Markdown", "yes")
 
 	// Authentication: Token takes precedence over username/password
 	if c.token != "" {
@@ -121,16 +122,21 @@ func (c *Client) SendMessage(msg Message) error {
 }
 
 // SendKeepRequest sends a notification about a new keep request
-func (c *Client) SendKeepRequest(mediaTitle, mediaType, userID string) error {
+func (c *Client) SendKeepRequest(mediaTitle, mediaType, username string) error {
 	// Choose appropriate emoji based on media type
 	emoji := "📺"
 	if mediaType == "Movie" {
 		emoji = "🎬"
 	}
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("🛡️ **User:** %s\n", username))
+	b.WriteString(fmt.Sprintf("📋 **Type:** %s\n", mediaType))
+	b.WriteString(fmt.Sprintf("🎯 **Title:** %s\n\n", mediaTitle))
+	b.WriteString("⚠️ Please review this keep request in the admin panel.")
 
 	msg := Message{
 		Title:    fmt.Sprintf("%s Keep Request", emoji),
-		Message:  fmt.Sprintf("🛡️ **User:** %s\n📋 **Type:** %s\n🎯 **Title:** %s\n\n⚠️ Please review this keep request in the admin panel.", userID, mediaType, mediaTitle),
+		Message:  b.String(),
 		Priority: 4, // High priority
 		Tags:     []string{"warning", "jellysweep", "keep-request"},
 	}
@@ -138,41 +144,112 @@ func (c *Client) SendKeepRequest(mediaTitle, mediaType, userID string) error {
 	return c.SendMessage(msg)
 }
 
+// MediaItem represents a media item for notifications
+type MediaItem struct {
+	Title string
+	Type  string // "movie" or "tv"
+	Year  int32
+}
+
 // SendDeletionSummary sends a summary of media marked for deletion
-func (c *Client) SendDeletionSummary(totalItems int, libraries map[string]int) error {
+func (c *Client) SendDeletionSummary(totalItems int, libraries map[string][]MediaItem) error {
 	if totalItems == 0 {
 		log.Debug("No media marked for deletion, skipping ntfy notification")
 		return nil
 	}
 
 	var libraryDetails []string
-	for library, count := range libraries {
+	var mediaDetails []string
+
+	for library, items := range libraries {
 		emoji := "📚"
 		if library == "Movies" {
 			emoji = "🎬"
 		} else if library == "TV Shows" {
 			emoji = "📺"
 		}
-		libraryDetails = append(libraryDetails, fmt.Sprintf("  %s **%s:** %d items", emoji, library, count))
+
+		// Add library header to summary
+		libraryDetails = append(libraryDetails, fmt.Sprintf("  %s **%s:** %d items", emoji, library, len(items)))
+
+		// Add library section to detailed list
+		mediaDetails = append(mediaDetails, fmt.Sprintf("\n%s **%s:**", emoji, library))
+
+		// Add all media titles to detailed list
+		for _, item := range items {
+			mediaDetails = append(mediaDetails, fmt.Sprintf("  • %s (%d)", item.Title, item.Year))
+		}
 	}
 
-	// Format the message with better structure
-	message := fmt.Sprintf("🗑️ **Total Items:** %d\n\n📊 **Breakdown:**\n%s\n\n⏰ Media will be deleted after the cleanup delay period.",
-		totalItems, strings.Join(libraryDetails, "\n"))
-
-	// Determine priority based on number of items
-	priority := 3 // Default
-	if totalItems >= 50 {
-		priority = 4 // High priority for large deletions
-	} else if totalItems <= 5 {
-		priority = 2 // Lower priority for small deletions
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("🗑️ **Total Items:** %d\n\n", totalItems))
+	b.WriteString("📊 **Summary:**\n")
+	for _, detail := range libraryDetails {
+		b.WriteString(fmt.Sprintf("%s\n", detail))
 	}
+	b.WriteString("\n📋 **Details:**")
+	for _, detail := range mediaDetails {
+		b.WriteString(fmt.Sprintf("%s\n", detail))
+	}
+	b.WriteString("\n⏰ Media will be deleted after the cleanup delay period.")
 
 	msg := Message{
-		Title:    "🧹 Cleanup Summary",
-		Message:  message,
-		Priority: priority,
+		Title:    "🧹🪼 Cleanup Summary",
+		Message:  b.String(),
+		Priority: 4,
 		Tags:     []string{"information", "jellysweep", "cleanup"},
+	}
+
+	return c.SendMessage(msg)
+}
+
+// SendDeletionCompletedSummary sends a summary of media that was actually deleted
+func (c *Client) SendDeletionCompletedSummary(totalItems int, libraries map[string][]MediaItem) error {
+	if totalItems == 0 {
+		log.Debug("No media was deleted, skipping ntfy notification")
+		return nil
+	}
+
+	var libraryDetails []string
+	var mediaDetails []string
+
+	for library, items := range libraries {
+		emoji := "📚"
+		if library == "Movies" {
+			emoji = "🎬"
+		} else if library == "TV Shows" {
+			emoji = "📺"
+		}
+
+		// Add library header to summary
+		libraryDetails = append(libraryDetails, fmt.Sprintf("  %s **%s:** %d items", emoji, library, len(items)))
+
+		// Add library section to detailed list
+		mediaDetails = append(mediaDetails, fmt.Sprintf("\n%s **%s:**", emoji, library))
+
+		// Add all media titles to detailed list
+		for _, item := range items {
+			mediaDetails = append(mediaDetails, fmt.Sprintf("  • %s (%d)", item.Title, item.Year))
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("✅ **Total Items Deleted:** %d\n\n", totalItems))
+	b.WriteString("📊 **Summary:**\n")
+	for _, detail := range libraryDetails {
+		b.WriteString(fmt.Sprintf("%s\n", detail))
+	}
+	b.WriteString("\n📋 **Deleted Media:**")
+	for _, detail := range mediaDetails {
+		b.WriteString(fmt.Sprintf("%s\n", detail))
+	}
+	b.WriteString("\n🎉 Cleanup completed successfully!")
+
+	msg := Message{
+		Title:    "✅🪼 Cleanup Completed",
+		Message:  b.String(),
+		Priority: 4,
+		Tags:     []string{"success", "jellysweep", "cleanup-completed"},
 	}
 
 	return c.SendMessage(msg)

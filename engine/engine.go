@@ -36,8 +36,8 @@ type Engine struct {
 	jellyseerr *jellyseerr.Client
 	sonarr     *sonarr.APIClient
 	radarr     *radarr.APIClient
-	emailSvc   *email.NotificationService
-	ntfySvc    *ntfy.Client
+	email      *email.NotificationService
+	ntfy       *ntfy.Client
 
 	data *data
 }
@@ -114,8 +114,8 @@ func New(cfg *config.Config) (*Engine, error) {
 		jellyseerr: jellyseerrClient,
 		sonarr:     sonarrClient,
 		radarr:     radarrClient,
-		emailSvc:   emailService,
-		ntfySvc:    ntfyClient,
+		email:      emailService,
+		ntfy:       ntfyClient,
 		data: &data{
 			userNotifications: make(map[string][]MediaItem),
 		},
@@ -292,6 +292,7 @@ type MediaItem struct {
 	MovieResource  radarr.MovieResource
 	Title          string
 	TmdbId         int32
+	Year           int32
 	Tags           []string
 	MediaType      MediaType
 	// User information for the person who requested this media
@@ -308,7 +309,7 @@ func (e *Engine) mergeMediaItems() {
 		// Handle TV Series (Sonarr)
 		if item.Type == jellystat.ItemTypeSeries {
 			lo.ForEach(e.data.sonarrItems, func(s sonarr.SeriesResource, _ int) {
-				if s.GetTitle() == item.Name && s.GetYear() == item.ProductionYear {
+				if s.GetTitle() == item.Name && s.GetYear() == item.ProductionYear && !item.Archived {
 					if s.GetTmdbId() == 0 {
 						log.Warnf("Sonarr series %s has no TMDB ID, skipping", s.GetTitle())
 						return
@@ -318,6 +319,7 @@ func (e *Engine) mergeMediaItems() {
 						JellystatID:    item.ID,
 						SeriesResource: s,
 						TmdbId:         s.GetTmdbId(),
+						Year:           s.GetYear(),
 						Title:          item.Name,
 						Tags:           lo.Map(s.GetTags(), func(tag int32, _ int) string { return e.data.sonarrTags[tag] }),
 						MediaType:      MediaTypeTV,
@@ -329,7 +331,7 @@ func (e *Engine) mergeMediaItems() {
 		// Handle Movies (Radarr)
 		if item.Type == jellystat.ItemTypeMovie {
 			lo.ForEach(e.data.radarrItems, func(m radarr.MovieResource, _ int) {
-				if m.GetTitle() == item.Name {
+				if m.GetTitle() == item.Name && m.GetYear() == item.ProductionYear && !item.Archived {
 					if m.GetTmdbId() == 0 {
 						log.Warnf("Radarr movie %s has no TMDB ID, skipping", m.GetTitle())
 						return
@@ -340,6 +342,7 @@ func (e *Engine) mergeMediaItems() {
 						MovieResource: m,
 						TmdbId:        m.GetTmdbId(),
 						Title:         item.Name,
+						Year:          m.GetYear(),
 						Tags:          lo.Map(m.GetTags(), func(tag int32, _ int) string { return e.data.radarrTags[tag] }),
 						MediaType:     MediaTypeMovie,
 					})
@@ -365,14 +368,27 @@ func (e *Engine) cleanupOldTags(ctx context.Context) {
 }
 
 func (e *Engine) cleanupMedia(ctx context.Context) {
+	deletedItems := make(map[string][]MediaItem)
+
 	if e.sonarr != nil {
-		if err := e.deleteSonarrMedia(ctx); err != nil {
+		if sonarrDeleted, err := e.deleteSonarrMedia(ctx); err != nil {
 			log.Errorf("failed to delete Sonarr media: %v", err)
+		} else if len(sonarrDeleted) > 0 {
+			deletedItems["TV Shows"] = sonarrDeleted
 		}
 	}
 	if e.radarr != nil {
-		if err := e.deleteRadarrMedia(ctx); err != nil {
+		if radarrDeleted, err := e.deleteRadarrMedia(ctx); err != nil {
 			log.Errorf("failed to delete Radarr media: %v", err)
+		} else if len(radarrDeleted) > 0 {
+			deletedItems["Movies"] = radarrDeleted
+		}
+	}
+
+	// Send completion notification if any items were deleted
+	if len(deletedItems) > 0 {
+		if err := e.sendNtfyDeletionCompletedNotification(deletedItems); err != nil {
+			log.Errorf("failed to send deletion completed notification: %v", err)
 		}
 	}
 }
@@ -405,9 +421,9 @@ func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context) (map[string
 }
 
 // RequestKeepMedia adds a keep request tag to the specified media item
-func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, userID string) error {
+func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
-	log.Debug("Requesting keep media", "mediaID", mediaID, "userID", userID)
+	log.Debug("Requesting keep media", "mediaID", mediaID, "username", username)
 
 	var mediaTitle string
 	var mediaType string
@@ -450,8 +466,8 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, userID string) e
 	}
 
 	// Send ntfy notification if the tag was added successfully
-	if err == nil && e.ntfySvc != nil {
-		if ntfyErr := e.ntfySvc.SendKeepRequest(mediaTitle, mediaType, userID); ntfyErr != nil {
+	if err == nil && e.ntfy != nil {
+		if ntfyErr := e.ntfy.SendKeepRequest(mediaTitle, mediaType, username); ntfyErr != nil {
 			log.Errorf("Failed to send ntfy keep request notification: %v", ntfyErr)
 			// Don't return error for notification failure, just log it
 		}

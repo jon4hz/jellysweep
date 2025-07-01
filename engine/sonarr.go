@@ -164,14 +164,16 @@ func (e *Engine) cleanupSonarrTags(ctx context.Context) error {
 	return nil
 }
 
-func (e *Engine) deleteSonarrMedia(ctx context.Context) error {
+func (e *Engine) deleteSonarrMedia(ctx context.Context) ([]MediaItem, error) {
+	var deletedItems []MediaItem
+
 	triggerTagIDs, err := e.triggerTagIDs(e.data.sonarrTags)
 	if err != nil {
-		return err
+		return deletedItems, err
 	}
 	if len(triggerTagIDs) == 0 {
 		log.Info("No Sonarr tags found for deletion")
-		return nil
+		return deletedItems, nil
 	}
 
 	for _, series := range e.data.sonarrItems {
@@ -197,13 +199,19 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) error {
 			DeleteFiles(true).
 			Execute()
 		if err != nil {
-			return fmt.Errorf("failed to delete Sonarr series %s: %w", series.GetTitle(), err)
+			return deletedItems, fmt.Errorf("failed to delete Sonarr series %s: %w", series.GetTitle(), err)
 		}
 		log.Infof("Deleted Sonarr series %s", series.GetTitle())
-		return nil // TODO: remove
+
+		// Add to deleted items list
+		deletedItems = append(deletedItems, MediaItem{
+			Title:     series.GetTitle(),
+			MediaType: MediaTypeTV,
+			Year:      series.GetYear(),
+		})
 	}
 
-	return nil
+	return deletedItems, nil
 }
 
 // removeExpiredSonarrKeepTags removes jellysweep-keep-request and jellysweep-keep tags from Sonarr series that have expired
@@ -428,13 +436,14 @@ func (e *Engine) getSonarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 					ID:           fmt.Sprintf("sonarr-%d", series.GetId()),
 					Title:        series.GetTitle(),
 					Type:         "tv",
-					Year:         int(series.GetYear()),
+					Year:         series.GetYear(),
 					Library:      "TV Shows",
 					DeletionDate: deletionDate,
 					PosterURL:    getCachedImageURL(imageURL),
 					CanRequest:   canRequest,
 					HasRequested: hasRequested,
 					MustDelete:   mustDelete,
+					FileSize:     getSeriesFileSize(series),
 				}
 
 				result = append(result, mediaItem)
@@ -823,4 +832,15 @@ func (e *Engine) cleanupAllSonarrTags(ctx context.Context) error {
 
 	log.Infof("Deleted %d Sonarr tags", tagsDeleted)
 	return nil
+}
+
+// getSeriesFileSize extracts the file size from a Sonarr series statistics
+func getSeriesFileSize(series sonarr.SeriesResource) int64 {
+	if series.HasStatistics() {
+		stats := series.GetStatistics()
+		if stats.HasSizeOnDisk() {
+			return stats.GetSizeOnDisk()
+		}
+	}
+	return 0
 }

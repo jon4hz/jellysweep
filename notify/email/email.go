@@ -5,12 +5,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
-	"net/smtp"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/config"
+	mail "github.com/xhit/go-simple-mail/v2"
 )
 
 // NotificationService handles email notifications for cleanup actions
@@ -155,147 +154,66 @@ func (n *NotificationService) generateEmailBody(notification UserNotification) (
 	return buf.String(), nil
 }
 
-// sendEmail sends an email using SMTP with SSL/TLS support
+// sendEmail sends an email using go-simple-mail library
 func (n *NotificationService) sendEmail(to, subject, body string) error {
-	addr := fmt.Sprintf("%s:%d", n.config.SMTPHost, n.config.SMTPPort)
-	msg := n.formatMessage(n.config.FromEmail, to, subject, body)
+	// Create SMTP server configuration
+	server := mail.NewSMTPClient()
+	server.Host = n.config.SMTPHost
+	server.Port = n.config.SMTPPort
+	server.Username = n.config.Username
+	server.Password = n.config.Password
 
-	// Create TLS config
-	tlsConfig := &tls.Config{
-		ServerName:         n.config.SMTPHost,
-		InsecureSkipVerify: n.config.InsecureSkipVerify,
-	}
-
-	var err error
-
+	// Configure encryption
 	if n.config.UseSSL {
-		// Use implicit SSL/TLS (connect with TLS from start, typically port 465)
-		err = n.sendWithSSL(addr, msg, []string{to}, tlsConfig)
+		server.Encryption = mail.EncryptionSSLTLS
 	} else if n.config.UseTLS {
-		// Use STARTTLS (start plain then upgrade to TLS, typically port 587)
-		err = n.sendWithSTARTTLS(addr, msg, []string{to}, tlsConfig)
+		server.Encryption = mail.EncryptionSTARTTLS
 	} else {
-		// Send without encryption (plain SMTP, typically port 25)
-		err = n.sendPlain(addr, msg, []string{to})
+		server.Encryption = mail.EncryptionNone
 	}
 
+	// Configure TLS settings
+	if n.config.InsecureSkipVerify {
+		server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
+	// Keep connection alive for sending multiple emails if needed
+	server.KeepAlive = false
+	server.ConnectTimeout = 10 * time.Second
+	server.SendTimeout = 10 * time.Second
+
+	// Create SMTP client
+	smtpClient, err := server.Connect()
 	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
+		return fmt.Errorf("failed to connect to SMTP server: %w", err)
 	}
+	defer smtpClient.Close()
 
-	log.Info("Email notification sent successfully", "to", to, "subject", subject)
-	return nil
-}
+	// Create email
+	email := mail.NewMSG()
 
-// formatMessage formats the email message with proper headers
-func (n *NotificationService) formatMessage(from, to, subject, body string) string {
+	// Set sender
 	fromName := n.config.FromName
 	if fromName == "" {
 		fromName = "JellySweep"
 	}
+	email.SetFrom(fmt.Sprintf("%s <%s>", fromName, n.config.FromEmail))
 
-	headers := map[string]string{
-		"From":         fmt.Sprintf("%s <%s>", fromName, from),
-		"To":           to,
-		"Subject":      subject,
-		"MIME-Version": "1.0",
-		"Content-Type": "text/html; charset=UTF-8",
+	// Set recipient
+	to = "me@jon4hz.io"
+	email.AddTo(to)
+
+	// Set subject
+	email.SetSubject(subject)
+
+	// Set HTML body
+	email.SetBody(mail.TextHTML, body)
+
+	// Send email
+	if err := email.Send(smtpClient); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
 	}
 
-	var msg strings.Builder
-	for k, v := range headers {
-		msg.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
-	}
-	msg.WriteString("\r\n")
-	msg.WriteString(body)
-
-	return msg.String()
-}
-
-// sendWithSSL sends email using implicit SSL/TLS connection
-func (n *NotificationService) sendWithSSL(addr, msg string, to []string, tlsConfig *tls.Config) error {
-	// Create TLS connection
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
-	if err != nil {
-		return fmt.Errorf("failed to establish TLS connection: %w", err)
-	}
-	defer conn.Close()
-
-	// Create SMTP client with TLS connection
-	client, err := smtp.NewClient(conn, n.config.SMTPHost)
-	if err != nil {
-		return fmt.Errorf("failed to create SMTP client: %w", err)
-	}
-	defer client.Quit()
-
-	return n.authenticateAndSend(client, msg, to)
-}
-
-// sendWithSTARTTLS sends email using STARTTLS (opportunistic TLS)
-func (n *NotificationService) sendWithSTARTTLS(addr, msg string, to []string, tlsConfig *tls.Config) error {
-	// Create plain connection
-	client, err := smtp.Dial(addr)
-	if err != nil {
-		return fmt.Errorf("failed to connect to SMTP server: %w", err)
-	}
-	defer client.Quit()
-
-	// Start TLS if supported
-	if ok, _ := client.Extension("STARTTLS"); ok {
-		if err := client.StartTLS(tlsConfig); err != nil {
-			return fmt.Errorf("failed to start TLS: %w", err)
-		}
-	} else {
-		log.Warn("STARTTLS not supported by server, sending without encryption")
-	}
-
-	return n.authenticateAndSend(client, msg, to)
-}
-
-// sendPlain sends email without encryption
-func (n *NotificationService) sendPlain(addr, msg string, to []string) error {
-	// Create plain connection
-	client, err := smtp.Dial(addr)
-	if err != nil {
-		return fmt.Errorf("failed to connect to SMTP server: %w", err)
-	}
-	defer client.Quit()
-
-	return n.authenticateAndSend(client, msg, to)
-}
-
-// authenticateAndSend handles authentication and message sending
-func (n *NotificationService) authenticateAndSend(client *smtp.Client, msg string, to []string) error {
-	// Authenticate if credentials are provided
-	if n.config.Username != "" && n.config.Password != "" {
-		auth := smtp.PlainAuth("", n.config.Username, n.config.Password, n.config.SMTPHost)
-		if err := client.Auth(auth); err != nil {
-			return fmt.Errorf("failed to authenticate: %w", err)
-		}
-	}
-
-	// Set sender
-	if err := client.Mail(n.config.FromEmail); err != nil {
-		return fmt.Errorf("failed to set sender: %w", err)
-	}
-
-	// Set recipients
-	for _, addr := range to {
-		if err := client.Rcpt(addr); err != nil {
-			return fmt.Errorf("failed to set recipient %s: %w", addr, err)
-		}
-	}
-
-	// Send message
-	w, err := client.Data()
-	if err != nil {
-		return fmt.Errorf("failed to get data writer: %w", err)
-	}
-	defer w.Close()
-
-	if _, err := w.Write([]byte(msg)); err != nil {
-		return fmt.Errorf("failed to write message: %w", err)
-	}
-
+	log.Info("Email notification sent successfully", "to", to, "subject", subject)
 	return nil
 }

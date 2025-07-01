@@ -1,7 +1,9 @@
 package pages
 
-import "github.com/jon4hz/jellysweep/web/templates"
-import "github.com/jon4hz/jellysweep/config"
+import (
+	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/web/templates"
+)
 
 templ Login(authConfig *config.AuthConfig) {
 	@templates.Layout("Login", nil) {

@@ -1,8 +1,10 @@
 package pages
 
-import "github.com/jon4hz/jellysweep/api/models"
-import "github.com/jon4hz/jellysweep/web/templates"
-import "fmt"
+import (
+	"fmt"
+	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/web/templates"
+)
 
 templ AdminPanel(user *models.User, keepRequests []models.KeepRequest) {
 	@templates.Layout("Admin Panel", user) {
