@@ -27,11 +27,12 @@ type MediaItem struct {
 
 // UserNotification contains the data for a user's notification email
 type UserNotification struct {
-	UserEmail   string
-	UserName    string
-	MediaItems  []MediaItem
-	CleanupDate time.Time
-	DryRun      bool
+	UserEmail     string
+	UserName      string
+	MediaItems    []MediaItem
+	CleanupDate   time.Time
+	JellySweepURL string
+	DryRun        bool
 }
 
 // New creates a new email notification service
@@ -54,14 +55,6 @@ func (n *NotificationService) SendCleanupNotification(notification UserNotificat
 	}
 
 	subject := fmt.Sprintf("[JellySweep] Media Cleanup Notification - %d items affected", len(notification.MediaItems))
-	if notification.DryRun {
-		subject = "[JellySweep] Dry Run - " + subject
-	}
-
-	body, err := n.generateEmailBody(notification)
-	if err != nil {
-		return fmt.Errorf("failed to generate email body: %w", err)
-	}
 
 	// In dry run mode, only log what would be sent
 	if notification.DryRun {
@@ -72,6 +65,11 @@ func (n *NotificationService) SendCleanupNotification(notification UserNotificat
 		return nil
 	}
 
+	body, err := n.generateEmailBody(notification)
+	if err != nil {
+		return fmt.Errorf("failed to generate email body: %w", err)
+	}
+
 	return n.sendEmail(notification.UserEmail, subject, body)
 }
 
@@ -79,64 +77,331 @@ func (n *NotificationService) SendCleanupNotification(notification UserNotificat
 func (n *NotificationService) generateEmailBody(notification UserNotification) (string, error) {
 	tmpl := `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JellySweep Media Cleanup Notification</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .header { background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
-        .content { margin-bottom: 20px; }
-        .media-list { background-color: #f8f9fa; padding: 15px; border-radius: 5px; }
-        .media-item { margin-bottom: 10px; padding: 10px; background-color: white; border-radius: 3px; }
-        .media-title { font-weight: bold; color: #2c3e50; }
-        .media-details { color: #7f8c8d; font-size: 0.9em; margin-top: 5px; }
-        .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .dry-run { background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .footer { margin-top: 30px; color: #7f8c8d; font-size: 0.9em; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: #0d1117;
+            color: #f3f4f6;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #1f2937;
+            border-bottom: 1px solid #374151;
+            padding: 24px;
+        }
+        
+        .header-brand {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background-color: #4f46e5;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+        
+        .brand-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #f3f4f6;
+        }
+        
+        .header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f3f4f6;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: #d1d5db;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 24px;
+        }
+        
+        .dry-run-notice {
+            background-color: #1e40af;
+            border: 1px solid #3b82f6;
+            color: #dbeafe;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .dry-run-notice::before {
+            content: "ℹ";
+            font-weight: bold;
+            margin-right: 8px;
+            font-size: 18px;
+        }
+        
+        .description {
+            color: #d1d5db;
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .media-section {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .media-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #f3f4f6;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .media-section h3::before {
+            content: "📁";
+            margin-right: 8px;
+        }
+        
+        .media-item {
+            background-color: #111827;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        
+        .media-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .media-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #f3f4f6;
+            margin-bottom: 8px;
+        }
+        
+        .media-details {
+            font-size: 14px;
+            color: #9ca3af;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        
+        .media-detail-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .media-detail-item::before {
+            content: "•";
+            margin-right: 8px;
+            color: #6b7280;
+        }
+        
+        .media-detail-item:first-child::before {
+            content: none;
+        }
+        
+        .warning-notice {
+            background-color: #dc2626;
+            border: 1px solid #ef4444;
+            color: #fecaca;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .warning-notice::before {
+            content: "⚠";
+            font-weight: bold;
+            margin-right: 8px;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .warning-content {
+            flex: 1;
+        }
+        
+        .warning-content strong {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        
+        .footer {
+            background-color: #1f2937;
+            border-top: 1px solid #374151;
+            padding: 20px 24px;
+            text-align: center;
+        }
+        
+        .footer p {
+            color: #9ca3af;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .footer p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .footer-logo {
+            color: #6b7280;
+            font-size: 12px;
+            margin-top: 16px;
+        }
+        
+        .jellysweep-link {
+            display: inline-flex;
+            align-items: center;
+            background-color: #4f46e5;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .jellysweep-link:hover {
+            background-color: #4338ca;
+            text-decoration: none;
+        }
+        
+        .jellysweep-link-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 6px;
+            border-radius: 4px;
+        }
+        
+        .brand-icon-img {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+            
+            .header, .content, .footer {
+                padding: 16px;
+            }
+            
+            .media-details {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2>JellySweep Media Cleanup Notification</h2>
-        <p>Hello {{.UserName}},</p>
-    </div>
+    <div class="container">
+        <div class="header">
+            <div class="header-brand">
+                <div class="brand-icon">
+                    {{if .JellySweepURL}}
+                    <img src="{{.JellySweepURL}}/static/jellysweep.png" alt="JellySweep" class="brand-icon-img" />
+                    {{else}}
+                    🧹
+                    {{end}}
+                </div>
+                <div class="brand-name">JellySweep</div>
+            </div>
+            <h2>Media Cleanup Notification</h2>
+            <p>Hello {{.UserName}},</p>
+        </div>
 
-    {{if .DryRun}}
-    <div class="dry-run">
-        <strong>This is a DRY RUN notification.</strong> No media will actually be deleted.
-    </div>
-    {{end}}
+        <div class="content">
+            <div class="description">
+                The following media items you requested have been marked for deletion:
+            </div>
 
-    <div class="content">
-        {{if .DryRun}}
-        <p>The following media items you requested would be marked for deletion during the next cleanup:</p>
-        {{else}}
-        <p>The following media items you requested have been marked for deletion:</p>
-        {{end}}
-    </div>
-
-    <div class="media-list">
-        <h3>Media Items ({{len .MediaItems}} total):</h3>
-        {{range .MediaItems}}
-        <div class="media-item">
-            <div class="media-title">{{.Title}}</div>
-            <div class="media-details">
-                Type: {{.MediaType}} | Requested: {{.RequestDate.Format "January 2, 2006"}}
+            <div class="media-section">
+                <h3>Media Items ({{len .MediaItems}} total)</h3>
+                {{range .MediaItems}}
+                <div class="media-item">
+                    <div class="media-title">{{.Title}}</div>
+                    <div class="media-details">
+                        <div class="media-detail-item">{{.MediaType}}</div>
+                        <div class="media-detail-item">Requested {{.RequestDate.Format "January 2, 2006"}}</div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            <div class="warning-notice">
+                <div class="warning-content">
+                    <strong>Action Required</strong>
+                    These items will be permanently deleted on {{.CleanupDate.Format "January 2, 2006"}}. 
+                    If you wish to keep any of these items, please submit a request using the link below:
+                    <br><br>
+                    {{if .JellySweepURL}}
+                    <a href="{{.JellySweepURL}}" target="_blank" class="jellysweep-link">
+                        <img src="{{.JellySweepURL}}/static/jellysweep.png" alt="JellySweep" class="jellysweep-link-icon" />
+                        Open JellySweep
+                    </a>
+                    {{else}}
+                    Please contact your administrator.
+                    {{end}}
+                </div>
             </div>
         </div>
-        {{end}}
-    </div>
 
-    {{if not .DryRun}}
-    <div class="warning">
-        <strong>Action Required:</strong> These items will be permanently deleted on {{.CleanupDate.Format "January 2, 2006"}}. 
-        If you wish to keep any of these items, please contact your administrator immediately.
-    </div>
-    {{end}}
-
-    <div class="footer">
-        <p>This notification was sent by JellySweep automated cleanup system.</p>
-        <p>If you have any questions, please contact your administrator.</p>
+        <div class="footer">
+            <p>This notification was sent by JellySweep automated cleanup system.</p>
+            <p>If you have any questions, please contact your administrator.</p>
+            <div class="footer-logo">
+                Powered by JellySweep
+            </div>
+        </div>
     </div>
 </body>
 </html>`
@@ -153,8 +418,6 @@ func (n *NotificationService) generateEmailBody(notification UserNotification) (
 
 	return buf.String(), nil
 }
-
-// TODO: fix email
 
 // sendEmail sends an email using go-simple-mail library
 func (n *NotificationService) sendEmail(to, subject, body string) error {
@@ -189,7 +452,11 @@ func (n *NotificationService) sendEmail(to, subject, body string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to SMTP server: %w", err)
 	}
-	defer smtpClient.Close()
+	defer func() {
+		if closeErr := smtpClient.Close(); closeErr != nil {
+			log.Warn("Failed to close SMTP client", "error", closeErr)
+		}
+	}()
 
 	// Create email
 	email := mail.NewMSG()

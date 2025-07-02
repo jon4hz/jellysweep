@@ -41,6 +41,8 @@ type JellysweepConfig struct {
 	Email *EmailConfig `yaml:"email"`
 	// Ntfy holds the ntfy notification configuration.
 	Ntfy *NtfyConfig `yaml:"ntfy"`
+	// ServerURL is the base URL of the JellySweep server.
+	ServerURL string `yaml:"server_url"`
 }
 
 // AuthConfig holds the authentication configuration for the JellySweep server.

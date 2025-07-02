@@ -55,11 +55,12 @@ func (e *Engine) sendEmailNotifications() error {
 		}
 
 		notification := email.UserNotification{
-			UserEmail:   userEmail,
-			UserName:    userEmail, // Use email as name for now, could be enhanced
-			MediaItems:  emailMediaItems,
-			CleanupDate: cleanupDate,
-			DryRun:      e.cfg.JellySweep.DryRun,
+			UserEmail:     userEmail,
+			UserName:      userEmail, // Use email as name for now, could be enhanced
+			MediaItems:    emailMediaItems,
+			CleanupDate:   cleanupDate,
+			DryRun:        e.cfg.JellySweep.DryRun,
+			JellySweepURL: e.cfg.JellySweep.ServerURL,
 		}
 
 		// TODO: remove

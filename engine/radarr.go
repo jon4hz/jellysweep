@@ -228,6 +228,14 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) error
 	}
 
 	for _, movie := range e.data.radarrItems {
+		select {
+		case <-ctx.Done():
+			log.Warn("Context cancelled, stopping removal of recently played Radarr delete tags")
+			return ctx.Err()
+		default:
+			// Continue processing if context is not cancelled
+		}
+
 		// Check if movie has any jellysweep-delete tags
 		var deleteTagIDs []int32
 		for _, tagID := range movie.GetTags() {

@@ -183,13 +183,14 @@ jellysweep:
   listen: "0.0.0.0:3002"           # Web interface address and port
   cleanup_interval: 12             # Hours between cleanup runs
   session_key: "your-session-key"  # Random string for session encryption
-  
+  server_url: "https://jellysweep.mydomain.com"
+
   # Authentication (optional - choose one or both)
   auth:
     # OpenID Connect (OIDC) Authentication
     oidc:
       enabled: true
-      issuer: "https://your-oidc-provider.com/application/o/jellysweep/"
+      issuer: "https://login.mydomain.com/application/o/jellysweep/"
       client_id: "your-client-id"
       client_secret: "your-client-secret"
       redirect_url: "http://localhost:3002/auth/oidc/callback"

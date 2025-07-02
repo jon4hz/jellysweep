@@ -244,6 +244,14 @@ func (e *Engine) removeExpiredSonarrKeepTags(ctx context.Context) error {
 	}
 
 	for _, series := range e.data.sonarrItems {
+		select {
+		case <-ctx.Done():
+			log.Warn("Context cancelled, stopping removal of recently played Sonarr delete tags")
+			return ctx.Err()
+		default:
+			// Continue processing if context is not cancelled
+		}
+
 		// get list of tags to keep
 		keepTagIDs := make([]int32, 0)
 		for _, tagID := range series.GetTags() {
