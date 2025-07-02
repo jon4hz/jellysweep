@@ -19,14 +19,14 @@ const (
 	ItemTypeMovie  = "Movie"
 )
 
-// Client represents a Jellystat API client
+// Client represents a Jellystat API client.
 type Client struct {
 	baseURL string
 	apiKey  string
 	client  *http.Client
 }
 
-// New creates a new Jellystat client
+// New creates a new Jellystat client.
 func New(cfg *config.JellystatConfig) *Client {
 	return &Client{
 		baseURL: cfg.URL,
@@ -37,12 +37,12 @@ func New(cfg *config.JellystatConfig) *Client {
 	}
 }
 
-// ItemHistoryRequest represents the request body for getItemHistory
+// ItemHistoryRequest represents the request body for getItemHistory.
 type ItemHistoryRequest struct {
 	ItemID string `json:"itemid"`
 }
 
-// ItemHistoryParams represents query parameters for getItemHistory
+// ItemHistoryParams represents query parameters for getItemHistory.
 type ItemHistoryParams struct {
 	Size    int    `json:"size,omitempty"`
 	Page    int    `json:"page,omitempty"`
@@ -52,7 +52,7 @@ type ItemHistoryParams struct {
 	Filters string `json:"filters,omitempty"`
 }
 
-// PlaybackHistory represents a single playback history entry
+// PlaybackHistory represents a single playback history entry.
 type PlaybackHistory struct {
 	UserName             string    `json:"UserName"`
 	NowPlayingItemName   string    `json:"NowPlayingItemName"`
@@ -60,12 +60,12 @@ type PlaybackHistory struct {
 	ActivityDateInserted time.Time `json:"ActivityDateInserted"`
 }
 
-// ItemHistoryResponse represents the response from getItemHistory
+// ItemHistoryResponse represents the response from getItemHistory.
 type ItemHistoryResponse struct {
 	Results []PlaybackHistory `json:"results"`
 }
 
-// LastPlayedInfo contains information about when an item was last played
+// LastPlayedInfo contains information about when an item was last played.
 type LastPlayedInfo struct {
 	ItemID       string
 	ItemName     string
@@ -76,18 +76,18 @@ type LastPlayedInfo struct {
 	TotalRuntime int64
 }
 
-// LibraryMetadata represents metadata for a library
+// LibraryMetadata represents metadata for a library.
 type LibraryMetadata struct {
 	ID   string `json:"Id"`
 	Name string `json:"Name"`
 }
 
-// LibraryItemsRequest represents the request body for getLibraryItems
+// LibraryItemsRequest represents the request body for getLibraryItems.
 type LibraryItemsRequest struct {
 	LibraryID string `json:"libraryid"`
 }
 
-// LibraryItem represents a single item in a library
+// LibraryItem represents a single item in a library.
 type LibraryItem struct {
 	ID             string `json:"Id"`
 	Name           string `json:"Name"`
@@ -97,7 +97,7 @@ type LibraryItem struct {
 	Archived       bool   `json:"Archived,omitempty"`
 }
 
-// GetItemHistory retrieves the playback history for a specific item
+// GetItemHistory retrieves the playback history for a specific item.
 func (c *Client) GetItemHistory(ctx context.Context, itemID string, params *ItemHistoryParams) (*ItemHistoryResponse, error) {
 	if params == nil {
 		params = &ItemHistoryParams{}
@@ -155,7 +155,7 @@ func (c *Client) GetItemHistory(ctx context.Context, itemID string, params *Item
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -177,7 +177,7 @@ func (c *Client) GetItemHistory(ctx context.Context, itemID string, params *Item
 	return &result, nil
 }
 
-// GetLastPlayed retrieves information about when an item was last played
+// GetLastPlayed retrieves information about when an item was last played.
 func (c *Client) GetLastPlayed(ctx context.Context, itemID string) (*LastPlayedInfo, error) {
 	// Get history sorted by date (most recent first)
 	params := &ItemHistoryParams{
@@ -215,12 +215,12 @@ func (c *Client) GetLastPlayed(ctx context.Context, itemID string) (*LastPlayedI
 
 // GetItemsLastPlayedBefore returns items that were last played before the specified time
 // This would typically require a different API endpoint that lists all items,
-// but for now we'll return an error indicating this functionality needs implementation
+// but for now we'll return an error indicating this functionality needs implementation.
 func (c *Client) GetItemsLastPlayedBefore(ctx context.Context, before time.Time) ([]LastPlayedInfo, error) {
 	return nil, fmt.Errorf("GetItemsLastPlayedBefore requires iteration over all items - not implemented yet")
 }
 
-// GetLibraryMetadata retrieves metadata for all libraries
+// GetLibraryMetadata retrieves metadata for all libraries.
 func (c *Client) GetLibraryMetadata(ctx context.Context) ([]LibraryMetadata, error) {
 	// Build URL
 	u, err := url.Parse(c.baseURL + "/stats/getLibraryMetadata")
@@ -242,7 +242,7 @@ func (c *Client) GetLibraryMetadata(ctx context.Context) ([]LibraryMetadata, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -264,7 +264,7 @@ func (c *Client) GetLibraryMetadata(ctx context.Context) ([]LibraryMetadata, err
 	return result, nil
 }
 
-// GetLibraryItems retrieves items from a specific library
+// GetLibraryItems retrieves items from a specific library.
 func (c *Client) GetLibraryItems(ctx context.Context, libraryID string) ([]LibraryItem, error) {
 	// Prepare request body
 	reqBody := LibraryItemsRequest{
@@ -297,7 +297,7 @@ func (c *Client) GetLibraryItems(ctx context.Context, libraryID string) ([]Libra
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)

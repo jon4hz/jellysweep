@@ -2,6 +2,7 @@ package models
 
 import "time"
 
+// User represents a user in the system, including their authentication details and admin status.
 type User struct {
 	Sub      string
 	Email    string
@@ -10,7 +11,7 @@ type User struct {
 	IsAdmin  bool
 }
 
-// MediaItem represents a media item for display in the UI and for deletion tracking
+// MediaItem represents a media item for display in the UI and for deletion tracking.
 type MediaItem struct {
 	ID           string
 	Title        string
@@ -25,7 +26,7 @@ type MediaItem struct {
 	FileSize     int64 // Size in bytes
 }
 
-// KeepRequest represents a user request to keep a media item
+// KeepRequest represents a user request to keep a media item.
 type KeepRequest struct {
 	ID           string
 	MediaID      string

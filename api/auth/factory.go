@@ -11,7 +11,7 @@ import (
 	"github.com/jon4hz/jellysweep/config"
 )
 
-// AuthProvider defines the interface for authentication providers
+// AuthProvider defines the interface for authentication providers.
 type AuthProvider interface {
 	// Login handles the login process for the provider
 	Login(c *gin.Context)
@@ -29,14 +29,14 @@ type AuthProvider interface {
 	GetAuthConfig() *config.AuthConfig
 }
 
-// MultiProvider wraps multiple auth providers
+// MultiProvider wraps multiple auth providers.
 type MultiProvider struct {
 	oidcProvider     *OIDCProvider
 	jellyfinProvider *JellyfinProvider
 	cfg              *config.AuthConfig
 }
 
-// NewProvider creates a multi-provider that supports both OIDC and Jellyfin authentication
+// NewProvider creates a multi-provider that supports both OIDC and Jellyfin authentication.
 func NewProvider(ctx context.Context, cfg *config.AuthConfig) (AuthProvider, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("auth config is required")
@@ -66,7 +66,7 @@ func NewProvider(ctx context.Context, cfg *config.AuthConfig) (AuthProvider, err
 	return mp, nil
 }
 
-// Login handles login for the appropriate provider
+// Login handles login for the appropriate provider.
 func (mp *MultiProvider) Login(c *gin.Context) {
 	// Check if this is a Jellyfin login request (has username/password form data)
 	if c.Request.Method == "POST" && (c.PostForm("username") != "" || c.PostForm("password") != "") {
@@ -85,7 +85,7 @@ func (mp *MultiProvider) Login(c *gin.Context) {
 	c.JSON(http.StatusBadRequest, gin.H{"error": "No authentication method available"})
 }
 
-// Callback handles OAuth callbacks (OIDC only)
+// Callback handles OAuth callbacks (OIDC only).
 func (mp *MultiProvider) Callback(c *gin.Context) {
 	if mp.oidcProvider != nil {
 		mp.oidcProvider.Callback(c)
@@ -95,7 +95,7 @@ func (mp *MultiProvider) Callback(c *gin.Context) {
 	c.JSON(http.StatusNotFound, gin.H{"error": "OAuth callback not supported"})
 }
 
-// RequireAuth returns middleware that works with both providers
+// RequireAuth returns middleware that works with both providers.
 func (mp *MultiProvider) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
@@ -121,7 +121,7 @@ func (mp *MultiProvider) RequireAuth() gin.HandlerFunc {
 	}
 }
 
-// RequireAdmin returns middleware that checks for admin privileges
+// RequireAdmin returns middleware that checks for admin privileges.
 func (mp *MultiProvider) RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := c.MustGet("user").(*models.User)
@@ -134,12 +134,12 @@ func (mp *MultiProvider) RequireAdmin() gin.HandlerFunc {
 	}
 }
 
-// GetAuthConfig returns the authentication configuration for templates
+// GetAuthConfig returns the authentication configuration for templates.
 func (mp *MultiProvider) GetAuthConfig() *config.AuthConfig {
 	return mp.cfg
 }
 
-// Helper methods for the MultiProvider
+// Helper methods for the MultiProvider.
 func (mp *MultiProvider) HasOIDC() bool {
 	return mp.oidcProvider != nil
 }
@@ -148,7 +148,7 @@ func (mp *MultiProvider) HasJellyfin() bool {
 	return mp.jellyfinProvider != nil
 }
 
-// Helper functions to safely get session values
+// Helper functions to safely get session values.
 func getSessionString(session sessions.Session, key string) string {
 	if val := session.Get(key); val != nil {
 		if str, ok := val.(string); ok {

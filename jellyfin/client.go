@@ -14,13 +14,13 @@ import (
 	"github.com/jon4hz/jellysweep/version"
 )
 
-// Client represents a Jellyfin API client
+// Client represents a Jellyfin API client.
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
 }
 
-// New creates a new Jellyfin client
+// New creates a new Jellyfin client.
 func New(cfg *config.JellyfinConfig) *Client {
 	return &Client{
 		baseURL:    cfg.URL,
@@ -28,7 +28,7 @@ func New(cfg *config.JellyfinConfig) *Client {
 	}
 }
 
-// AuthResponse represents the response from the authentication endpoint
+// AuthResponse represents the response from the authentication endpoint.
 type AuthResponse struct {
 	User        User `json:"User"`
 	SessionInfo struct {
@@ -37,7 +37,7 @@ type AuthResponse struct {
 	AccessToken string `json:"AccessToken"`
 }
 
-// User represents a Jellyfin user
+// User represents a Jellyfin user.
 type User struct {
 	ID                        string `json:"Id"`
 	Name                      string `json:"Name"`
@@ -55,7 +55,7 @@ type User struct {
 	} `json:"Configuration"`
 }
 
-// AuthenticateByName authenticates a user by username and password
+// AuthenticateByName authenticates a user by username and password.
 func (c *Client) AuthenticateByName(ctx context.Context, username, password string) (*AuthResponse, error) {
 	authURL, err := url.JoinPath(c.baseURL, "/Users/AuthenticateByName")
 	if err != nil {
@@ -85,7 +85,7 @@ func (c *Client) AuthenticateByName(ctx context.Context, username, password stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

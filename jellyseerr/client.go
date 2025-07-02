@@ -12,14 +12,14 @@ import (
 	"github.com/jon4hz/jellysweep/config"
 )
 
-// Client represents a Jellyseerr API client
+// Client represents a Jellyseerr API client.
 type Client struct {
 	baseURL    string
 	apiKey     string
 	httpClient *http.Client
 }
 
-// NewClient creates a new Jellyseerr API client
+// NewClient creates a new Jellyseerr API client.
 func New(cfg *config.JellyseerrConfig) *Client {
 	return &Client{
 		baseURL:    cfg.URL,
@@ -28,20 +28,20 @@ func New(cfg *config.JellyseerrConfig) *Client {
 	}
 }
 
-// MediaInfo represents media information from the API
+// MediaInfo represents media information from the API.
 type MediaInfo struct {
 	ID       int            `json:"id"`
 	TmdbID   int            `json:"tmdbId"`
 	Requests []MediaRequest `json:"requests"`
 }
 
-// MediaRequest represents a media request
+// MediaRequest represents a media request.
 type MediaRequest struct {
 	CreatedAt   time.Time `json:"createdAt"`
 	RequestedBy User      `json:"requestedBy"`
 }
 
-// User represents a user from Jellyseerr
+// User represents a user from Jellyseerr.
 type User struct {
 	ID          int    `json:"id"`
 	Email       string `json:"email"`
@@ -49,7 +49,7 @@ type User struct {
 	DisplayName string `json:"displayName"`
 }
 
-// MovieDetails represents detailed movie information from /movie/{movieId}
+// MovieDetails represents detailed movie information from /movie/{movieId}.
 type MovieDetails struct {
 	ID          int       `json:"id"`
 	Title       string    `json:"title"`
@@ -57,7 +57,7 @@ type MovieDetails struct {
 	MediaInfo   MediaInfo `json:"mediaInfo"`
 }
 
-// TvDetails represents detailed TV show information from /tv/{tvId}
+// TvDetails represents detailed TV show information from /tv/{tvId}.
 type TvDetails struct {
 	ID           int       `json:"id"`
 	Name         string    `json:"name"`
@@ -65,7 +65,7 @@ type TvDetails struct {
 	MediaInfo    MediaInfo `json:"mediaInfo"`
 }
 
-// MediaItem represents a generic media item that can be either a movie or TV show
+// MediaItem represents a generic media item that can be either a movie or TV show.
 type MediaItem struct {
 	ID           int            `json:"id"`
 	TmdbID       int            `json:"tmdbId"`
@@ -77,7 +77,7 @@ type MediaItem struct {
 	Requests     []MediaRequest `json:"requests,omitempty"`
 }
 
-// doRequest performs an HTTP request to the Jellyseerr API
+// doRequest performs an HTTP request to the Jellyseerr API.
 func (c *Client) doRequest(ctx context.Context, method, endpoint string, body interface{}) (*http.Response, error) {
 	var reqBody io.Reader
 	if body != nil {
@@ -103,7 +103,7 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
@@ -111,7 +111,7 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body in
 	return resp, nil
 }
 
-// GetMovie retrieves movie details by TMDB ID
+// GetMovie retrieves movie details by TMDB ID.
 func (c *Client) GetMovie(ctx context.Context, tmdbID int32) (*MovieDetails, error) {
 	endpoint := fmt.Sprintf("/api/v1/movie/%d", tmdbID)
 
@@ -119,7 +119,7 @@ func (c *Client) GetMovie(ctx context.Context, tmdbID int32) (*MovieDetails, err
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var movie MovieDetails
 	if err := json.NewDecoder(resp.Body).Decode(&movie); err != nil {
@@ -129,7 +129,7 @@ func (c *Client) GetMovie(ctx context.Context, tmdbID int32) (*MovieDetails, err
 	return &movie, nil
 }
 
-// GetTvShow retrieves TV show details by TMDB ID
+// GetTvShow retrieves TV show details by TMDB ID.
 func (c *Client) GetTvShow(ctx context.Context, tmdbID int32) (*TvDetails, error) {
 	endpoint := fmt.Sprintf("/api/v1/tv/%d", tmdbID)
 
@@ -137,7 +137,7 @@ func (c *Client) GetTvShow(ctx context.Context, tmdbID int32) (*TvDetails, error
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var tvShow TvDetails
 	if err := json.NewDecoder(resp.Body).Decode(&tvShow); err != nil {
@@ -147,7 +147,7 @@ func (c *Client) GetTvShow(ctx context.Context, tmdbID int32) (*TvDetails, error
 	return &tvShow, nil
 }
 
-// GetMediaItem retrieves media details by TMDB ID, trying both movie and TV endpoints
+// GetMediaItem retrieves media details by TMDB ID, trying both movie and TV endpoints.
 func (c *Client) GetMediaItem(ctx context.Context, tmdbID int32, mediaType string) (*MediaItem, error) {
 	var mediaItem MediaItem
 
@@ -187,7 +187,7 @@ func (c *Client) GetMediaItem(ctx context.Context, tmdbID int32, mediaType strin
 	return &mediaItem, nil
 }
 
-// GetRequestTime returns when a specific TV show or movie was requested
+// GetRequestTime returns when a specific TV show or movie was requested.
 func (c *Client) GetRequestTime(ctx context.Context, tmdbID int32, mediaType string) (*time.Time, error) {
 	mediaItem, err := c.GetMediaItem(ctx, tmdbID, mediaType)
 	if err != nil {
@@ -208,14 +208,14 @@ func (c *Client) GetRequestTime(ctx context.Context, tmdbID int32, mediaType str
 	return nil, nil
 }
 
-// RequestInfo contains information about a media request
+// RequestInfo contains information about a media request.
 type RequestInfo struct {
 	RequestTime *time.Time
 	UserEmail   string
 	UserName    string
 }
 
-// GetRequestInfo returns detailed information about who requested specific media and when
+// GetRequestInfo returns detailed information about who requested specific media and when.
 func (c *Client) GetRequestInfo(ctx context.Context, tmdbID int32, mediaType string) (*RequestInfo, error) {
 	mediaItem, err := c.GetMediaItem(ctx, tmdbID, mediaType)
 	if err != nil {
@@ -243,7 +243,7 @@ func (c *Client) GetRequestInfo(ctx context.Context, tmdbID int32, mediaType str
 	return &RequestInfo{}, nil
 }
 
-// getDisplayName returns the best display name for a user
+// getDisplayName returns the best display name for a user.
 func getDisplayName(user User) string {
 	if user.DisplayName != "" {
 		return user.DisplayName

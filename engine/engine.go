@@ -30,7 +30,7 @@ const (
 	jellysweepMustDeleteTag     = "must-delete"
 )
 
-// Exported constants for API handlers
+// Exported constants for API handlers.
 const (
 	TagKeep       = jellysweepKeepTag
 	TagMustDelete = jellysweepMustDeleteTag
@@ -70,23 +70,16 @@ type data struct {
 // New creates a new Engine instance.
 func New(cfg *config.Config) (*Engine, error) {
 	jellystatClient := jellystat.New(cfg.Jellystat)
-	var err error
 	var sonarrClient *sonarr.APIClient
 	if cfg.Sonarr != nil {
-		sonarrClient, err = newSonarrClient(cfg.Sonarr)
-		if err != nil {
-			return nil, err
-		}
+		sonarrClient = newSonarrClient(cfg.Sonarr)
 	} else {
 		log.Warn("Sonarr configuration is missing, some features will be disabled")
 	}
 
 	var radarrClient *radarr.APIClient
 	if cfg.Radarr != nil {
-		radarrClient, err = newRadarrClient(cfg.Radarr)
-		if err != nil {
-			return nil, err
-		}
+		radarrClient = newRadarrClient(cfg.Radarr)
 	} else {
 		log.Warn("Radarr configuration is missing, some features will be disabled")
 	}
@@ -171,30 +164,25 @@ func (e *Engine) cleanupLoop(ctx context.Context) {
 	}
 }
 
-// removeRecentlyPlayedDeleteTags removes jellysweep-delete tags from media that has been played recently
+// removeRecentlyPlayedDeleteTags removes jellysweep-delete tags from media that has been played recently.
 func (e *Engine) removeRecentlyPlayedDeleteTags(ctx context.Context) {
 	log.Info("Checking for recently played media with pending delete tags")
 
 	if e.sonarr != nil {
-		if err := e.removeRecentlyPlayedSonarrDeleteTags(ctx); err != nil {
-			log.Errorf("failed to remove recently played Sonarr delete tags: %v", err)
-		}
+		e.removeRecentlyPlayedSonarrDeleteTags(ctx)
 	}
 
 	if e.radarr != nil {
-		if err := e.removeRecentlyPlayedRadarrDeleteTags(ctx); err != nil {
-			log.Errorf("failed to remove recently played Radarr delete tags: %v", err)
-		}
+		e.removeRecentlyPlayedRadarrDeleteTags(ctx)
 	}
 }
 
-// removeExpiredKeepTags removes keep request tags that have expired
+// removeExpiredKeepTags removes keep request tags that have expired.
 func (e *Engine) removeExpiredKeepTags(ctx context.Context) {
 	log.Info("Removing expired keep request tags")
 	if e.sonarr != nil {
 		if err := e.removeExpiredSonarrKeepTags(ctx); err != nil {
 			log.Errorf("failed to remove expired Sonarr keep tags: %v", err)
-
 		}
 	}
 
@@ -256,10 +244,8 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 	}
 	// TODO: dont just consider request age. Consider that the file might have been downloaded at a later date
 	// add a third filter option for available since date
-	if err := e.filterRequestAgeThreshold(ctx); err != nil {
-		log.Errorf("failed to filter request age threshold: %v", err)
-		return
-	}
+	e.filterRequestAgeThreshold(ctx)
+
 	for lib, items := range e.data.mediaItems {
 		for _, item := range items {
 			log.Info("Marking media item for deletion", "name", item.Title, "library", lib)
@@ -277,13 +263,10 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 	}
 
 	// Send email notifications before marking for deletion
-	if err := e.sendEmailNotifications(); err != nil {
-		log.Errorf("failed to send email notifications: %v", err)
-		// Don't return here, continue with the cleanup process
-	}
+	e.sendEmailNotifications()
 
 	// Send ntfy deletion summary notification
-	if err := e.sendNtfyDeletionSummary(); err != nil {
+	if err := e.sendNtfyDeletionSummary(ctx); err != nil {
 		log.Errorf("failed to send ntfy deletion summary: %v", err)
 		// Don't return here, continue with the cleanup process
 	}
@@ -397,13 +380,13 @@ func (e *Engine) cleanupMedia(ctx context.Context) {
 
 	// Send completion notification if any items were deleted
 	if len(deletedItems) > 0 {
-		if err := e.sendNtfyDeletionCompletedNotification(deletedItems); err != nil {
+		if err := e.sendNtfyDeletionCompletedNotification(ctx, deletedItems); err != nil {
 			log.Errorf("failed to send deletion completed notification: %v", err)
 		}
 	}
 }
 
-// GetMediaItemsMarkedForDeletion returns all media items that are marked for deletion
+// GetMediaItemsMarkedForDeletion returns all media items that are marked for deletion.
 func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context) (map[string][]models.MediaItem, error) {
 	result := make(map[string][]models.MediaItem)
 
@@ -430,7 +413,7 @@ func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context) (map[string
 	return result, nil
 }
 
-// RequestKeepMedia adds a keep request tag to the specified media item
+// RequestKeepMedia adds a keep request tag to the specified media item.
 func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
 	log.Debug("Requesting keep media", "mediaID", mediaID, "username", username)
@@ -447,10 +430,11 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 
 		// Get series title before adding tag
 		if e.sonarr != nil {
-			series, _, getErr := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), int32(seriesID)).Execute()
+			series, resp, getErr := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), int32(seriesID)).Execute()
 			if getErr == nil {
 				mediaTitle = series.GetTitle()
 			}
+			defer resp.Body.Close() //nolint: errcheck
 		}
 		mediaType = "TV Show"
 		err = e.addSonarrKeepRequestTag(ctx, int32(seriesID))
@@ -462,10 +446,11 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 
 		// Get movie title before adding tag
 		if e.radarr != nil {
-			movie, _, getErr := e.radarr.MovieAPI.GetMovieById(radarrAuthCtx(ctx, e.cfg.Radarr), int32(movieID)).Execute()
+			movie, resp, getErr := e.radarr.MovieAPI.GetMovieById(radarrAuthCtx(ctx, e.cfg.Radarr), int32(movieID)).Execute()
 			if getErr == nil {
 				mediaTitle = movie.GetTitle()
 			}
+			defer resp.Body.Close() //nolint: errcheck
 		}
 		mediaType = "Movie"
 		err = e.addRadarrKeepRequestTag(ctx, int32(movieID))
@@ -475,7 +460,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 
 	// Send ntfy notification if the tag was added successfully
 	if err == nil && e.ntfy != nil {
-		if ntfyErr := e.ntfy.SendKeepRequest(mediaTitle, mediaType, username); ntfyErr != nil {
+		if ntfyErr := e.ntfy.SendKeepRequest(ctx, mediaTitle, mediaType, username); ntfyErr != nil {
 			log.Errorf("Failed to send ntfy keep request notification: %v", ntfyErr)
 			// Don't return error for notification failure, just log it
 		}
@@ -484,7 +469,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 	return err
 }
 
-// GetKeepRequests returns all media items that have keep request tags
+// GetKeepRequests returns all media items that have keep request tags.
 func (e *Engine) GetKeepRequests(ctx context.Context) ([]models.KeepRequest, error) {
 	var result []models.KeepRequest
 
@@ -507,7 +492,7 @@ func (e *Engine) GetKeepRequests(ctx context.Context) ([]models.KeepRequest, err
 	return result, nil
 }
 
-// AcceptKeepRequest removes the keep request tag and delete tag from the media item
+// AcceptKeepRequest removes the keep request tag and delete tag from the media item.
 func (e *Engine) AcceptKeepRequest(ctx context.Context, mediaID string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
 	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
@@ -527,7 +512,7 @@ func (e *Engine) AcceptKeepRequest(ctx context.Context, mediaID string) error {
 	return fmt.Errorf("unsupported media ID format: %s", mediaID)
 }
 
-// DeclineKeepRequest removes the keep request tag and adds a delete-for-sure tag
+// DeclineKeepRequest removes the keep request tag and adds a delete-for-sure tag.
 func (e *Engine) DeclineKeepRequest(ctx context.Context, mediaID string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
 	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
@@ -547,9 +532,13 @@ func (e *Engine) DeclineKeepRequest(ctx context.Context, mediaID string) error {
 	return fmt.Errorf("unsupported media ID format: %s", mediaID)
 }
 
-// ResetAllTags removes all jellysweep tags from all media in Sonarr and Radarr
+// ResetAllTags removes all jellysweep tags from all media in Sonarr and Radarr.
 func (e *Engine) ResetAllTags(ctx context.Context) error {
 	log.Info("Resetting all jellysweep tags...")
+
+	if e.sonarr == nil && e.radarr == nil {
+		return fmt.Errorf("no Sonarr or Radarr client configured, cannot reset tags")
+	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	// Reset Sonarr tags
@@ -565,7 +554,6 @@ func (e *Engine) ResetAllTags(ctx context.Context) error {
 			}
 			return nil
 		})
-
 	}
 
 	// Reset Radarr tags
@@ -591,7 +579,7 @@ func (e *Engine) ResetAllTags(ctx context.Context) error {
 	return nil
 }
 
-// getCachedImageURL converts a direct image URL to a cached URL
+// getCachedImageURL converts a direct image URL to a cached URL.
 func getCachedImageURL(imageURL string) string {
 	if imageURL == "" {
 		return ""
@@ -601,7 +589,7 @@ func getCachedImageURL(imageURL string) string {
 	return fmt.Sprintf("/api/images/cache?url=%s", encoded)
 }
 
-// AddTagToMedia adds a specific tag to a media item (supports jellysweep-keep and must-delete)
+// AddTagToMedia adds a specific tag to a media item (supports jellysweep-keep and must-delete).
 func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
 	if strings.HasPrefix(mediaID, "sonarr-") {
@@ -661,7 +649,7 @@ func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName stri
 	return fmt.Errorf("unsupported media ID format: %s", mediaID)
 }
 
-// RemoveConflictingTags removes jellysweep-keep-request and jellysweep-must-keep tags from a media item
+// RemoveConflictingTags removes jellysweep-keep-request and jellysweep-must-keep tags from a media item.
 func (e *Engine) RemoveConflictingTags(ctx context.Context, mediaID string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
 	if strings.HasPrefix(mediaID, "sonarr-") {

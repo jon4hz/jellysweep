@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,16 +10,16 @@ import (
 	"github.com/jon4hz/jellysweep/notify/ntfy"
 )
 
-// sendEmailNotifications sends email notifications to users about their media being marked for deletion
-func (e *Engine) sendEmailNotifications() error {
+// sendEmailNotifications sends email notifications to users about their media being marked for deletion.
+func (e *Engine) sendEmailNotifications() {
 	if e.email == nil {
 		log.Debug("Email service not configured, skipping notifications")
-		return nil
+		return
 	}
 
 	if len(e.data.userNotifications) == 0 {
 		log.Debug("No user notifications to send")
-		return nil
+		return
 	}
 
 	for userEmail, mediaItems := range e.data.userNotifications {
@@ -72,12 +73,10 @@ func (e *Engine) sendEmailNotifications() error {
 			log.Infof("Sent cleanup notification to %s for %d media items", userEmail, len(emailMediaItems))
 		}
 	}
-
-	return nil
 }
 
-// sendNtfyDeletionSummary sends a summary notification about media marked for deletion
-func (e *Engine) sendNtfyDeletionSummary() error {
+// sendNtfyDeletionSummary sends a summary notification about media marked for deletion.
+func (e *Engine) sendNtfyDeletionSummary(ctx context.Context) error {
 	if e.ntfy == nil {
 		log.Debug("Ntfy service not configured, skipping deletion summary notification")
 		return nil
@@ -120,7 +119,7 @@ func (e *Engine) sendNtfyDeletionSummary() error {
 	}
 
 	// Send the notification
-	if err := e.ntfy.SendDeletionSummary(totalItems, libraries); err != nil {
+	if err := e.ntfy.SendDeletionSummary(ctx, totalItems, libraries); err != nil {
 		return fmt.Errorf("failed to send deletion summary notification: %w", err)
 	}
 
@@ -128,8 +127,8 @@ func (e *Engine) sendNtfyDeletionSummary() error {
 	return nil
 }
 
-// sendNtfyDeletionCompletedNotification sends a notification summary of media that was actually deleted
-func (e *Engine) sendNtfyDeletionCompletedNotification(deletedItems map[string][]MediaItem) error {
+// sendNtfyDeletionCompletedNotification sends a notification summary of media that was actually deleted.
+func (e *Engine) sendNtfyDeletionCompletedNotification(ctx context.Context, deletedItems map[string][]MediaItem) error {
 	if e.ntfy == nil {
 		log.Debug("Ntfy service not configured, skipping deletion completed notification")
 		return nil
@@ -172,7 +171,7 @@ func (e *Engine) sendNtfyDeletionCompletedNotification(deletedItems map[string][
 	}
 
 	// Send the notification
-	if err := e.ntfy.SendDeletionCompletedSummary(totalItems, libraries); err != nil {
+	if err := e.ntfy.SendDeletionCompletedSummary(ctx, totalItems, libraries); err != nil {
 		return fmt.Errorf("failed to send deletion completed notification: %w", err)
 	}
 

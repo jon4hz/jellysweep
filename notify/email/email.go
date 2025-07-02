@@ -12,12 +12,12 @@ import (
 	mail "github.com/xhit/go-simple-mail/v2"
 )
 
-// NotificationService handles email notifications for cleanup actions
+// NotificationService handles email notifications for cleanup actions.
 type NotificationService struct {
 	config *config.EmailConfig
 }
 
-// MediaItem represents a media item that was marked for deletion
+// MediaItem represents a media item that was marked for deletion.
 type MediaItem struct {
 	Title       string
 	MediaType   string
@@ -25,7 +25,7 @@ type MediaItem struct {
 	RequestDate time.Time
 }
 
-// UserNotification contains the data for a user's notification email
+// UserNotification contains the data for a user's notification email.
 type UserNotification struct {
 	UserEmail     string
 	UserName      string
@@ -35,14 +35,14 @@ type UserNotification struct {
 	DryRun        bool
 }
 
-// New creates a new email notification service
+// New creates a new email notification service.
 func New(cfg *config.EmailConfig) *NotificationService {
 	return &NotificationService{
 		config: cfg,
 	}
 }
 
-// SendCleanupNotification sends an email notification to users about their media being marked for deletion
+// SendCleanupNotification sends an email notification to users about their media being marked for deletion.
 func (n *NotificationService) SendCleanupNotification(notification UserNotification) error {
 	if !n.config.Enabled {
 		log.Debug("Email notifications are disabled, skipping notification")
@@ -73,7 +73,7 @@ func (n *NotificationService) SendCleanupNotification(notification UserNotificat
 	return n.sendEmail(notification.UserEmail, subject, body)
 }
 
-// generateEmailBody creates the HTML email body
+// generateEmailBody creates the HTML email body.
 func (n *NotificationService) generateEmailBody(notification UserNotification) (string, error) {
 	tmpl := `
 <!DOCTYPE html>
@@ -349,7 +349,7 @@ func (n *NotificationService) generateEmailBody(notification UserNotification) (
             <div class="header-brand">
                 <div class="brand-icon">
                     {{if .JellySweepURL}}
-                    <img src="{{.JellySweepURL}}/static/jellysweep.png" alt="JellySweep" class="brand-icon-img" />
+                    <img src="{{.JellySweepURL}}/static/jellysweep.png" alt="🧹" class="brand-icon-img" />
                     {{else}}
                     🧹
                     {{end}}
@@ -385,7 +385,7 @@ func (n *NotificationService) generateEmailBody(notification UserNotification) (
                     <br><br>
                     {{if .JellySweepURL}}
                     <a href="{{.JellySweepURL}}" target="_blank" class="jellysweep-link">
-                        <img src="{{.JellySweepURL}}/static/jellysweep.png" alt="JellySweep" class="jellysweep-link-icon" />
+                        <img src="{{.JellySweepURL}}/static/jellysweep.png" alt="🧹" class="jellysweep-link-icon" />
                         Open JellySweep
                     </a>
                     {{else}}
@@ -419,7 +419,7 @@ func (n *NotificationService) generateEmailBody(notification UserNotification) (
 	return buf.String(), nil
 }
 
-// sendEmail sends an email using go-simple-mail library
+// sendEmail sends an email using go-simple-mail library.
 func (n *NotificationService) sendEmail(to, subject, body string) error {
 	// Create SMTP server configuration
 	server := mail.NewSMTPClient()
@@ -439,7 +439,7 @@ func (n *NotificationService) sendEmail(to, subject, body string) error {
 
 	// Configure TLS settings
 	if n.config.InsecureSkipVerify {
-		server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+		server.TLSConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
 	}
 
 	// Keep connection alive for sending multiple emails if needed

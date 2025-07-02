@@ -20,19 +20,19 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 
 	oauth2Token, err := p.config.Exchange(ctx, code)
 	if err != nil {
-		c.AbortWithError(http.StatusUnauthorized, err)
+		c.AbortWithError(http.StatusUnauthorized, err) //nolint:errcheck
 		return
 	}
 
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 	if !ok {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
 		return
 	}
 
 	idToken, err := p.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		c.AbortWithError(http.StatusUnauthorized, err)
+		c.AbortWithError(http.StatusUnauthorized, err) //nolint:errcheck
 		return
 	}
 
@@ -44,7 +44,7 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 		Groups            []string `json:"groups"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
 		return
 	}
 
@@ -65,7 +65,7 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 	session.Set("user_is_admin", isAdmin)
 
 	if err := session.Save(); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
 		return
 	}
 	c.Redirect(http.StatusFound, "/")

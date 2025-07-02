@@ -8,20 +8,20 @@ import (
 	"github.com/jon4hz/jellysweep/api/models"
 )
 
-// CacheEntry represents a cached item with its expiration time
+// CacheEntry represents a cached item with its expiration time.
 type CacheEntry struct {
 	Data      map[string][]models.MediaItem
 	ExpiresAt time.Time
 }
 
-// CacheManager manages user-specific caches
+// CacheManager manages user-specific caches.
 type CacheManager struct {
 	cache map[string]*CacheEntry // key is user ID
 	mutex sync.RWMutex
 	ttl   time.Duration
 }
 
-// NewCacheManager creates a new cache manager
+// NewCacheManager creates a new cache manager.
 func NewCacheManager(ttl time.Duration) *CacheManager {
 	return &CacheManager{
 		cache: make(map[string]*CacheEntry),
@@ -30,7 +30,7 @@ func NewCacheManager(ttl time.Duration) *CacheManager {
 	}
 }
 
-// Get retrieves cached data for a user
+// Get retrieves cached data for a user.
 func (cm *CacheManager) Get(userID string) (map[string][]models.MediaItem, bool) {
 	cm.mutex.RLock()
 	defer cm.mutex.RUnlock()
@@ -44,7 +44,7 @@ func (cm *CacheManager) Get(userID string) (map[string][]models.MediaItem, bool)
 	return entry.Data, true
 }
 
-// Set stores data in cache for a user
+// Set stores data in cache for a user.
 func (cm *CacheManager) Set(userID string, data map[string][]models.MediaItem) {
 	cm.mutex.Lock()
 	defer cm.mutex.Unlock()
@@ -56,7 +56,7 @@ func (cm *CacheManager) Set(userID string, data map[string][]models.MediaItem) {
 	log.Debug("Cache set for user", "userID", userID, "expiresAt", cm.cache[userID].ExpiresAt)
 }
 
-// Clear removes cached data for a user
+// Clear removes cached data for a user.
 func (cm *CacheManager) Clear(userID string) {
 	cm.mutex.Lock()
 	defer cm.mutex.Unlock()
@@ -65,7 +65,7 @@ func (cm *CacheManager) Clear(userID string) {
 	log.Debug("Cache cleared for user", "userID", userID)
 }
 
-// CleanupExpired removes expired cache entries
+// CleanupExpired removes expired cache entries.
 func (cm *CacheManager) CleanupExpired() {
 	cm.mutex.Lock()
 	defer cm.mutex.Unlock()

@@ -1,7 +1,8 @@
 package cache
 
 import (
-	"crypto/md5"
+	"context"
+	"crypto/sha256"
 	"fmt"
 	"image"
 	"net/http"
@@ -22,10 +23,10 @@ type ImageCache struct {
 	quality   int // JPEG quality (1-100)
 }
 
-// NewImageCache creates a new image cache manager with scaling options
+// NewImageCache creates a new image cache manager with scaling options.
 func NewImageCache(cacheDir string) *ImageCache {
 	// Create cache directory if it doesn't exist
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil { //nolint:gosec
 		log.Errorf("Failed to create cache directory: %v", err)
 	}
 
@@ -40,10 +41,10 @@ func NewImageCache(cacheDir string) *ImageCache {
 	}
 }
 
-// NewImageCacheWithOptions creates a new image cache manager with custom scaling options
+// NewImageCacheWithOptions creates a new image cache manager with custom scaling options.
 func NewImageCacheWithOptions(cacheDir string, maxWidth, maxHeight, quality int) *ImageCache {
 	// Create cache directory if it doesn't exist
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil { //nolint:gosec
 		log.Errorf("Failed to create cache directory: %v", err)
 	}
 
@@ -58,25 +59,25 @@ func NewImageCacheWithOptions(cacheDir string, maxWidth, maxHeight, quality int)
 	}
 }
 
-// getCacheKey generates a cache key from the image URL
+// getCacheKey generates a cache key from the image URL.
 func (ic *ImageCache) getCacheKey(imageURL string) string {
-	hash := md5.Sum([]byte(imageURL))
+	hash := sha256.Sum256([]byte(imageURL))
 	return fmt.Sprintf("%x", hash)
 }
 
-// getCacheFilePath returns the file path for a cached image
+// getCacheFilePath returns the file path for a cached image.
 func (ic *ImageCache) getCacheFilePath(imageURL string) string {
 	key := ic.getCacheKey(imageURL)
 	// Try to preserve the original file extension
 	ext := filepath.Ext(imageURL)
 	if ext == "" || len(ext) > 10 { // Fallback for URLs without extension or very long extensions
-		ext = ".jpg"
+		ext = ".jpg" //nolint:goconst
 	}
 	return filepath.Join(ic.cacheDir, key+ext)
 }
 
-// GetCachedImagePath returns the local path for an image, downloading it if necessary
-func (ic *ImageCache) GetCachedImagePath(imageURL string) (string, error) {
+// GetCachedImagePath returns the local path for an image, downloading it if necessary.
+func (ic *ImageCache) GetCachedImagePath(ctx context.Context, imageURL string) (string, error) {
 	if imageURL == "" {
 		return "", nil
 	}
@@ -91,23 +92,27 @@ func (ic *ImageCache) GetCachedImagePath(imageURL string) (string, error) {
 
 	// Download and cache the image
 	log.Debugf("Downloading image from: %s", imageURL)
-	return ic.downloadAndCache(imageURL, cacheFilePath)
+	return ic.downloadAndCache(ctx, imageURL, cacheFilePath)
 }
 
-// downloadAndCache downloads an image, scales it, and saves it to the cache
-func (ic *ImageCache) downloadAndCache(imageURL, cacheFilePath string) (string, error) {
+// downloadAndCache downloads an image, scales it, and saves it to the cache.
+func (ic *ImageCache) downloadAndCache(ctx context.Context, imageURL, cacheFilePath string) (string, error) {
 	// Create a temporary file first - keep the original extension but add a prefix
 	dir := filepath.Dir(cacheFilePath)
 	base := filepath.Base(cacheFilePath)
 	tempFilePath := filepath.Join(dir, "tmp_"+base)
-	defer os.Remove(tempFilePath) // Clean up temp file if something goes wrong
+	defer os.Remove(tempFilePath) //nolint:errcheck
 
 	// Download the image
-	resp, err := ic.client.Get(imageURL)
+	req, err := http.NewRequestWithContext(ctx, "GET", imageURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+	resp, err := ic.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to download image: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to download image: HTTP %d", resp.StatusCode)
@@ -120,7 +125,7 @@ func (ic *ImageCache) downloadAndCache(imageURL, cacheFilePath string) (string, 
 	}
 
 	// Decode the image
-	img, format, err := image.Decode(resp.Body)
+	img, _, err := image.Decode(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode image: %w", err)
 	}
@@ -133,7 +138,7 @@ func (ic *ImageCache) downloadAndCache(imageURL, cacheFilePath string) (string, 
 	// Check if resizing is needed
 	needsResize := originalWidth > ic.maxWidth || originalHeight > ic.maxHeight
 
-	var processedImg image.Image = img
+	processedImg := img
 	if needsResize {
 		// Calculate new dimensions while maintaining aspect ratio
 		newWidth, newHeight := ic.calculateScaledDimensions(originalWidth, originalHeight)
@@ -150,10 +155,10 @@ func (ic *ImageCache) downloadAndCache(imageURL, cacheFilePath string) (string, 
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer tempFile.Close()
+	defer tempFile.Close() //nolint:errcheck
 
 	// Save the processed image
-	err = ic.saveImage(processedImg, tempFile, format, cacheFilePath)
+	err = ic.saveImage(processedImg, tempFile, cacheFilePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to save processed image: %w", err)
 	}
@@ -175,7 +180,7 @@ func (ic *ImageCache) downloadAndCache(imageURL, cacheFilePath string) (string, 
 	return cacheFilePath, nil
 }
 
-// GetCachedImageURL returns a local URL for an image, downloading it if necessary
+// GetCachedImageURL returns a local URL for an image, downloading it if necessary.
 func (ic *ImageCache) GetCachedImageURL(imageURL string) string {
 	if imageURL == "" {
 		return ""
@@ -186,14 +191,14 @@ func (ic *ImageCache) GetCachedImageURL(imageURL string) string {
 	return fmt.Sprintf("/api/images/%s", key)
 }
 
-// ServeImage serves a cached image or downloads it if not cached
-func (ic *ImageCache) ServeImage(imageURL string, w http.ResponseWriter, r *http.Request) error {
+// ServeImage serves a cached image or downloads it if not cached.
+func (ic *ImageCache) ServeImage(ctx context.Context, imageURL string, w http.ResponseWriter, r *http.Request) error {
 	if imageURL == "" {
 		http.NotFound(w, r)
 		return nil
 	}
 
-	cacheFilePath, err := ic.GetCachedImagePath(imageURL)
+	cacheFilePath, err := ic.GetCachedImagePath(ctx, imageURL)
 	if err != nil {
 		log.Errorf("Failed to get cached image: %v", err)
 		http.Error(w, "Failed to get image", http.StatusInternalServerError)
@@ -207,7 +212,7 @@ func (ic *ImageCache) ServeImage(imageURL string, w http.ResponseWriter, r *http
 		http.Error(w, "Failed to open image", http.StatusInternalServerError)
 		return err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	// Get file info to set appropriate headers
 	fileInfo, err := file.Stat()
@@ -251,7 +256,7 @@ func (ic *ImageCache) ServeImage(imageURL string, w http.ResponseWriter, r *http
 	return nil
 }
 
-// CleanupOldImages removes cached images older than the specified duration
+// CleanupOldImages removes cached images older than the specified duration.
 func (ic *ImageCache) CleanupOldImages(maxAge time.Duration) error {
 	cutoff := time.Now().Add(-maxAge)
 
@@ -269,7 +274,7 @@ func (ic *ImageCache) CleanupOldImages(maxAge time.Duration) error {
 	})
 }
 
-// calculateScaledDimensions calculates new dimensions while maintaining aspect ratio
+// calculateScaledDimensions calculates new dimensions while maintaining aspect ratio.
 func (ic *ImageCache) calculateScaledDimensions(originalWidth, originalHeight int) (int, int) {
 	// If both dimensions are within limits, don't scale
 	if originalWidth <= ic.maxWidth && originalHeight <= ic.maxHeight {
@@ -293,8 +298,8 @@ func (ic *ImageCache) calculateScaledDimensions(originalWidth, originalHeight in
 	return newWidth, newHeight
 }
 
-// saveImage saves the processed image to the file with appropriate format and quality
-func (ic *ImageCache) saveImage(img image.Image, file *os.File, originalFormat, filePath string) error {
+// saveImage saves the processed image to the file with appropriate format and quality.
+func (ic *ImageCache) saveImage(img image.Image, file *os.File, filePath string) error {
 	// Determine output format based on file extension and original format
 	ext := strings.ToLower(filepath.Ext(filePath))
 

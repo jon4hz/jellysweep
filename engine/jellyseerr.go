@@ -8,7 +8,7 @@ import (
 )
 
 // filterRequestAgeThreshold filters out media items that have been requested within the configured threshold.
-func (e *Engine) filterRequestAgeThreshold(ctx context.Context) error {
+func (e *Engine) filterRequestAgeThreshold(ctx context.Context) {
 	filteredItems := make(map[string][]MediaItem, 0)
 	// Initialize user notifications map if not already done
 	if e.data.userNotifications == nil {
@@ -48,5 +48,4 @@ func (e *Engine) filterRequestAgeThreshold(ctx context.Context) error {
 		}
 	}
 	e.data.mediaItems = filteredItems
-	return nil
 }

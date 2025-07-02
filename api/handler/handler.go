@@ -13,7 +13,7 @@ import (
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 )
 
-// CacheManager interface for managing user-specific caches
+// CacheManager interface for managing user-specific caches.
 type CacheManager interface {
 	Get(userID string) (map[string][]models.MediaItem, bool)
 	Set(userID string, data map[string][]models.MediaItem)
@@ -144,7 +144,7 @@ func (h *Handler) Logout(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/login")
 }
 
-// API endpoint for requesting to keep media
+// API endpoint for requesting to keep media.
 func (h *Handler) RequestKeepMedia(c *gin.Context) {
 	mediaID := c.Param("id")
 	user := c.MustGet("user").(*models.User)
@@ -168,7 +168,7 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 	})
 }
 
-// RefreshData forces a refresh of the cached data for the current user
+// RefreshData forces a refresh of the cached data for the current user.
 func (h *Handler) RefreshData(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 	userID := user.Sub
@@ -191,7 +191,7 @@ func (h *Handler) RefreshData(c *gin.Context) {
 	})
 }
 
-// ImageCache serves cached images or downloads them if not cached
+// ImageCache serves cached images or downloads them if not cached.
 func (h *Handler) ImageCache(c *gin.Context) {
 	imageURL := c.Query("url")
 	if imageURL == "" {
@@ -200,7 +200,7 @@ func (h *Handler) ImageCache(c *gin.Context) {
 	}
 
 	// Serve the cached image
-	err := h.imageCache.ServeImage(imageURL, c.Writer, c.Request)
+	err := h.imageCache.ServeImage(c.Request.Context(), imageURL, c.Writer, c.Request)
 	if err != nil {
 		// Error is already handled in ServeImage
 		return

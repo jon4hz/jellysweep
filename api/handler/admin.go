@@ -20,7 +20,7 @@ func NewAdmin(eng *engine.Engine) *AdminHandler {
 	}
 }
 
-// AdminPanel shows the admin panel with keep requests
+// AdminPanel shows the admin panel with keep requests.
 func (h *AdminHandler) AdminPanel(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
@@ -49,7 +49,7 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 	}
 }
 
-// AcceptKeepRequest accepts a keep request
+// AcceptKeepRequest accepts a keep request.
 func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 	mediaID := c.Param("id")
 
@@ -68,7 +68,7 @@ func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 	})
 }
 
-// DeclineKeepRequest declines a keep request
+// DeclineKeepRequest declines a keep request.
 func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 	mediaID := c.Param("id")
 
@@ -87,7 +87,7 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 	})
 }
 
-// MarkMediaAsKeep adds the jellysweep-keep tag to a media item
+// MarkMediaAsKeep adds the jellysweep-keep tag to a media item.
 func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
 	mediaID := c.Param("id")
 
@@ -106,7 +106,7 @@ func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
 	})
 }
 
-// MarkMediaForDeletion adds the must-delete tag to a media item
+// MarkMediaForDeletion adds the must-delete tag to a media item.
 func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
 	mediaID := c.Param("id")
 

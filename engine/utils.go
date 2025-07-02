@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-// parseDeletionDateFromTag extracts the deletion date from a jellysweep tag
+// parseDeletionDateFromTag extracts the deletion date from a jellysweep tag.
 func (e *Engine) parseDeletionDateFromTag(tagName string) (time.Time, error) {
 	tagLabel := strings.TrimPrefix(tagName, jellysweepTagPrefix)
 	dateStr := strings.TrimSuffix(tagLabel, "-")
@@ -16,7 +16,7 @@ func (e *Engine) parseDeletionDateFromTag(tagName string) (time.Time, error) {
 }
 
 // triggerTagIDs returns tag IDs that should trigger deletion based on their date labels.
-func (e *Engine) triggerTagIDs(tags map[int32]string) ([]int32, error) {
+func (e *Engine) triggerTagIDs(tags map[int32]string) []int32 {
 	triggerTagIDs := make([]int32, 0)
 	for id, tag := range tags {
 		if strings.HasPrefix(tag, jellysweepTagPrefix) {
@@ -38,7 +38,7 @@ func (e *Engine) triggerTagIDs(tags map[int32]string) ([]int32, error) {
 			}
 		}
 	}
-	return triggerTagIDs, nil
+	return triggerTagIDs
 }
 
 func (e *Engine) filterMediaTags() {

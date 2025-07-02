@@ -18,6 +18,9 @@ func sonarrAuthCtx(ctx context.Context, cfg *config.SonarrConfig) context.Contex
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if cfg == nil {
+		return ctx
+	}
 	return context.WithValue(
 		ctx,
 		sonarr.ContextAPIKeys,
@@ -27,37 +30,48 @@ func sonarrAuthCtx(ctx context.Context, cfg *config.SonarrConfig) context.Contex
 	)
 }
 
-func newSonarrClient(cfg *config.SonarrConfig) (*sonarr.APIClient, error) {
+func newSonarrClient(cfg *config.SonarrConfig) *sonarr.APIClient {
 	scfg := sonarr.NewConfiguration()
 
-	if strings.HasPrefix(cfg.URL, "http://") {
+	// Don't modify the original config URL, work with a copy
+	url := cfg.URL
+
+	if strings.HasPrefix(url, "http://") {
 		scfg.Scheme = "http"
-		cfg.URL = strings.TrimPrefix(cfg.URL, "http://")
-	} else if strings.HasPrefix(cfg.URL, "https://") {
+		url = strings.TrimPrefix(url, "http://")
+	} else if strings.HasPrefix(url, "https://") {
 		scfg.Scheme = "https"
-		cfg.URL = strings.TrimPrefix(cfg.URL, "https://")
+		url = strings.TrimPrefix(url, "https://")
 	}
 
-	scfg.Host = cfg.URL
+	scfg.Host = url
 
-	return sonarr.NewAPIClient(scfg), nil
+	return sonarr.NewAPIClient(scfg)
 }
 
 // getSonarrItems retrieves all series from Sonarr.
 func (e *Engine) getSonarrItems(ctx context.Context) ([]sonarr.SeriesResource, error) {
-	series, _, err := e.sonarr.SeriesAPI.ListSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr)).IncludeSeasonImages(false).Execute()
+	if e.sonarr == nil {
+		return nil, fmt.Errorf("sonarr client not available")
+	}
+	series, resp, err := e.sonarr.SeriesAPI.ListSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr)).IncludeSeasonImages(false).Execute()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close() //nolint: errcheck
 	return series, nil
 }
 
 // getSonarrTags retrieves all tags from Sonarr and returns them as a map with tag IDs as keys and tag names as values.
 func (e *Engine) getSonarrTags(ctx context.Context) (map[int32]string, error) {
-	tags, _, err := e.sonarr.TagAPI.ListTag(sonarrAuthCtx(ctx, e.cfg.Sonarr)).Execute()
+	if e.sonarr == nil {
+		return nil, fmt.Errorf("sonarr client not available")
+	}
+	tags, resp, err := e.sonarr.TagAPI.ListTag(sonarrAuthCtx(ctx, e.cfg.Sonarr)).Execute()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close() //nolint: errcheck
 	tagMap := make(map[int32]string)
 	for _, tag := range tags {
 		tagMap[tag.GetId()] = tag.GetLabel()
@@ -102,12 +116,13 @@ func (e *Engine) markSonarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 			}
 			series.Tags = append(series.Tags, tagID)
 			// Update the series in Sonarr
-			_, _, err = e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", series.GetId())).
+			_, resp, err := e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", series.GetId())).
 				SeriesResource(series).
 				Execute()
 			if err != nil {
 				return fmt.Errorf("failed to update Sonarr series %s with tag %s: %w", item.Title, deleteTagLabel, err)
 			}
+			defer resp.Body.Close() //nolint: errcheck
 			log.Infof("Marked Sonarr series %s for deletion with tag %s", item.Title, deleteTagLabel)
 		}
 	}
@@ -132,21 +147,23 @@ func (e *Engine) ensureSonarrTagExists(ctx context.Context, deleteTagLabel strin
 	tag := sonarr.TagResource{
 		Label: *sonarr.NewNullableString(&deleteTagLabel),
 	}
-	newTag, _, err := e.sonarr.TagAPI.CreateTag(sonarrAuthCtx(ctx, e.cfg.Sonarr)).TagResource(tag).Execute()
+	newTag, resp, err := e.sonarr.TagAPI.CreateTag(sonarrAuthCtx(ctx, e.cfg.Sonarr)).TagResource(tag).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create Sonarr tag %s: %w", deleteTagLabel, err)
 	}
+	defer resp.Body.Close() //nolint: errcheck
 	log.Infof("Created Sonarr tag: %s", deleteTagLabel)
 	e.data.sonarrTags[newTag.GetId()] = newTag.GetLabel()
 	return nil
 }
 
 func (e *Engine) cleanupSonarrTags(ctx context.Context) error {
-	tags, _, err := e.sonarr.TagDetailsAPI.ListTagDetail(sonarrAuthCtx(ctx, e.cfg.Sonarr)).
+	tags, resp, err := e.sonarr.TagDetailsAPI.ListTagDetail(sonarrAuthCtx(ctx, e.cfg.Sonarr)).
 		Execute()
 	if err != nil {
 		return fmt.Errorf("failed to list Sonarr tags: %w", err)
 	}
+	defer resp.Body.Close() //nolint: errcheck
 	for _, tag := range tags {
 		if len(tag.SeriesIds) == 0 && (strings.HasPrefix(tag.GetLabel(), jellysweepTagPrefix) || strings.HasPrefix(tag.GetLabel(), jellysweepKeepRequestPrefix)) {
 			// If the tag is a jellysweep delete tag and has no series associated with it, delete it
@@ -154,10 +171,11 @@ func (e *Engine) cleanupSonarrTags(ctx context.Context) error {
 				log.Infof("Dry run: Would delete Sonarr tag %s", tag.GetLabel())
 				continue
 			}
-			_, err := e.sonarr.TagAPI.DeleteTag(sonarrAuthCtx(ctx, e.cfg.Sonarr), tag.GetId()).Execute()
+			resp, err := e.sonarr.TagAPI.DeleteTag(sonarrAuthCtx(ctx, e.cfg.Sonarr), tag.GetId()).Execute()
 			if err != nil {
 				return fmt.Errorf("failed to delete Sonarr tag %s: %w", tag.GetLabel(), err)
 			}
+			defer resp.Body.Close() //nolint: errcheck
 			log.Infof("Deleted Sonarr tag: %s", tag.GetLabel())
 		}
 	}
@@ -165,12 +183,9 @@ func (e *Engine) cleanupSonarrTags(ctx context.Context) error {
 }
 
 func (e *Engine) deleteSonarrMedia(ctx context.Context) ([]MediaItem, error) {
-	var deletedItems []MediaItem
+	deletedItems := make([]MediaItem, 0)
 
-	triggerTagIDs, err := e.triggerTagIDs(e.data.sonarrTags)
-	if err != nil {
-		return deletedItems, err
-	}
+	triggerTagIDs := e.triggerTagIDs(e.data.sonarrTags)
 	if len(triggerTagIDs) == 0 {
 		log.Info("No Sonarr tags found for deletion")
 		return deletedItems, nil
@@ -195,12 +210,13 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) ([]MediaItem, error) {
 			continue
 		}
 		// Delete the series from Sonarr
-		_, err := e.sonarr.SeriesAPI.DeleteSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), series.GetId()).
+		resp, err := e.sonarr.SeriesAPI.DeleteSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), series.GetId()).
 			DeleteFiles(true).
 			Execute()
 		if err != nil {
 			return deletedItems, fmt.Errorf("failed to delete Sonarr series %s: %w", series.GetTitle(), err)
 		}
+		defer resp.Body.Close() //nolint: errcheck
 		log.Infof("Deleted Sonarr series %s", series.GetTitle())
 
 		// Add to deleted items list
@@ -214,7 +230,7 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) ([]MediaItem, error) {
 	return deletedItems, nil
 }
 
-// removeExpiredSonarrKeepTags removes jellysweep-keep-request and jellysweep-keep tags from Sonarr series that have expired
+// removeExpiredSonarrKeepTags removes jellysweep-keep-request and jellysweep-keep tags from Sonarr series that have expired.
 func (e *Engine) removeExpiredSonarrKeepTags(ctx context.Context) error {
 	if e.data.sonarrItems == nil || e.data.sonarrTags == nil {
 		log.Debug("No Sonarr data available for removing expired keep tags")
@@ -270,23 +286,24 @@ func (e *Engine) removeExpiredSonarrKeepTags(ctx context.Context) error {
 
 		// Update the series with the new tags
 		series.Tags = keepTagIDs
-		_, _, err := e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", series.GetId())).
+		_, resp, err := e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", series.GetId())).
 			SeriesResource(series).
 			Execute()
 		if err != nil {
 			return fmt.Errorf("failed to update Sonarr series %s: %w", series.GetTitle(), err)
 		}
+		defer resp.Body.Close() //nolint: errcheck
 		log.Infof("Removed expired keep tags from Sonarr series %s", series.GetTitle())
 	}
 
 	return nil
 }
 
-// removeRecentlyPlayedSonarrDeleteTags removes jellysweep-delete tags from Sonarr series that have been played recently
-func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error {
+// removeRecentlyPlayedSonarrDeleteTags removes jellysweep-delete tags from Sonarr series that have been played recently.
+func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) {
 	if e.data.sonarrItems == nil || e.data.sonarrTags == nil {
 		log.Debug("No Sonarr data available for removing recently played delete tags")
-		return nil
+		return
 	}
 
 	for _, series := range e.data.sonarrItems {
@@ -376,13 +393,11 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 			}
 		}
 	}
-
-	return nil
 }
 
-// getSonarrMediaItemsMarkedForDeletion returns all Sonarr series that are marked for deletion
+// getSonarrMediaItemsMarkedForDeletion returns all Sonarr series that are marked for deletion.
 func (e *Engine) getSonarrMediaItemsMarkedForDeletion(ctx context.Context) ([]models.MediaItem, error) {
-	var result []models.MediaItem
+	result := make([]models.MediaItem, 0)
 
 	if e.sonarr == nil {
 		return result, nil
@@ -464,17 +479,18 @@ func (e *Engine) getSonarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 	return result, nil
 }
 
-// addSonarrKeepRequestTag adds a keep request tag to a Sonarr series
+// addSonarrKeepRequestTag adds a keep request tag to a Sonarr series.
 func (e *Engine) addSonarrKeepRequestTag(ctx context.Context, seriesID int32) error {
 	if e.sonarr == nil {
 		return fmt.Errorf("sonarr client not available")
 	}
 
 	// Get the series
-	series, _, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), int32(seriesID)).Execute()
+	series, resp, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), seriesID).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to get sonarr series: %w", err)
 	}
+	defer resp.Body.Close() //nolint: errcheck
 
 	// Get current tags
 	sonarrTags, err := e.getSonarrTags(ctx)
@@ -523,9 +539,9 @@ func (e *Engine) addSonarrKeepRequestTag(ctx context.Context, seriesID int32) er
 	return nil
 }
 
-// getSonarrKeepRequests returns all Sonarr series that have keep request tags
+// getSonarrKeepRequests returns all Sonarr series that have keep request tags.
 func (e *Engine) getSonarrKeepRequests(ctx context.Context) ([]models.KeepRequest, error) {
-	var result []models.KeepRequest
+	result := make([]models.KeepRequest, 0)
 
 	if e.sonarr == nil {
 		return result, nil
@@ -608,7 +624,7 @@ func (e *Engine) getSonarrKeepRequests(ctx context.Context) ([]models.KeepReques
 	return result, nil
 }
 
-// Helper methods for accepting/declining Sonarr keep requests
+// Helper methods for accepting/declining Sonarr keep requests.
 func (e *Engine) acceptSonarrKeepRequest(ctx context.Context, seriesID int32) error {
 	if err := e.removeSonarrKeepRequestAndDeleteTags(ctx, seriesID); err != nil {
 		return err
@@ -739,7 +755,7 @@ func (e *Engine) addSonarrKeepTag(ctx context.Context, seriesID int32) error {
 	return nil
 }
 
-// resetSonarrTags removes all jellysweep tags from all Sonarr series
+// resetSonarrTags removes all jellysweep tags from all Sonarr series.
 func (e *Engine) resetSonarrTags(ctx context.Context) error {
 	if e.sonarr == nil {
 		return nil
@@ -803,7 +819,7 @@ func (e *Engine) resetSonarrTags(ctx context.Context) error {
 	return nil
 }
 
-// cleanupAllSonarrTags removes all unused jellysweep tags from Sonarr
+// cleanupAllSonarrTags removes all unused jellysweep tags from Sonarr.
 func (e *Engine) cleanupAllSonarrTags(ctx context.Context) error {
 	if e.sonarr == nil {
 		return nil
@@ -843,7 +859,7 @@ func (e *Engine) cleanupAllSonarrTags(ctx context.Context) error {
 	return nil
 }
 
-// getSeriesFileSize extracts the file size from a Sonarr series statistics
+// getSeriesFileSize extracts the file size from a Sonarr series statistics.
 func getSeriesFileSize(series sonarr.SeriesResource) int64 {
 	if series.HasStatistics() {
 		stats := series.GetStatistics()
@@ -854,7 +870,7 @@ func getSeriesFileSize(series sonarr.SeriesResource) int64 {
 	return 0
 }
 
-// resetSingleSonarrTagsForKeep removes ALL tags (including jellysweep-delete) from a single Sonarr series
+// resetSingleSonarrTagsForKeep removes ALL tags (including jellysweep-delete) from a single Sonarr series.
 func (e *Engine) resetSingleSonarrTagsForKeep(ctx context.Context, seriesID int32) error {
 	if e.sonarr == nil {
 		return fmt.Errorf("sonarr client not available")
@@ -906,17 +922,18 @@ func (e *Engine) resetSingleSonarrTagsForKeep(ctx context.Context, seriesID int3
 	return nil
 }
 
-// resetSingleSonarrTagsForMustDelete removes all jellysweep tags EXCEPT jellysweep-delete from a single Sonarr series
+// resetSingleSonarrTagsForMustDelete removes all jellysweep tags EXCEPT jellysweep-delete from a single Sonarr series.
 func (e *Engine) resetSingleSonarrTagsForMustDelete(ctx context.Context, seriesID int32) error {
 	if e.sonarr == nil {
 		return fmt.Errorf("sonarr client not available")
 	}
 
 	// Get the series
-	series, _, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), seriesID).Execute()
+	series, resp, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), seriesID).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to get sonarr series: %w", err)
 	}
+	defer resp.Body.Close() //nolint: errcheck
 
 	// Get all tags to map tag IDs to names
 	tags, err := e.getSonarrTags(ctx)

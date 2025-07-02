@@ -110,7 +110,7 @@ func logToFile() {
 		log.Info("no log file specified, logging to console only")
 		return
 	}
-	file, err := os.OpenFile(rootCmdFlags.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile(rootCmdFlags.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644) //nolint:gosec
 	if err != nil {
 		log.Errorf("failed to open log file: %v", err)
 		return

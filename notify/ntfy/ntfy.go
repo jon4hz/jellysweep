@@ -2,6 +2,7 @@ package ntfy
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-// Client represents a ntfy notification client
+// Client represents a ntfy notification client.
 type Client struct {
 	serverURL  string
 	topic      string
@@ -22,7 +23,7 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// Config holds the configuration for ntfy notifications
+// Config holds the configuration for ntfy notifications.
 type Config struct {
 	Enabled   bool   `yaml:"enabled"`
 	ServerURL string `yaml:"server_url"`
@@ -32,7 +33,7 @@ type Config struct {
 	Token     string `yaml:"token"`
 }
 
-// Message represents a ntfy message
+// Message represents a ntfy message.
 type Message struct {
 	Topic    string            `json:"topic"`
 	Title    string            `json:"title"`
@@ -43,7 +44,7 @@ type Message struct {
 	Extras   map[string]string `json:"extras,omitempty"`
 }
 
-// Action represents a ntfy action button
+// Action represents a ntfy action button.
 type Action struct {
 	Action string `json:"action"`
 	Label  string `json:"label"`
@@ -51,7 +52,7 @@ type Action struct {
 	Method string `json:"method,omitempty"`
 }
 
-// NewClient creates a new ntfy client
+// NewClient creates a new ntfy client.
 func NewClient(config *Config) *Client {
 	// Validate server URL
 	if config.ServerURL != "" {
@@ -72,8 +73,8 @@ func NewClient(config *Config) *Client {
 	}
 }
 
-// SendMessage sends a message to ntfy
-func (c *Client) SendMessage(msg Message) error {
+// SendMessage sends a message to ntfy.
+func (c *Client) SendMessage(ctx context.Context, msg Message) error {
 	if c.topic != "" {
 		msg.Topic = c.topic
 	}
@@ -83,7 +84,7 @@ func (c *Client) SendMessage(msg Message) error {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.serverURL, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", c.serverURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -102,7 +103,7 @@ func (c *Client) SendMessage(msg Message) error {
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode >= 400 {
 		// Try to read response body for better error information
@@ -121,12 +122,12 @@ func (c *Client) SendMessage(msg Message) error {
 	return nil
 }
 
-// SendKeepRequest sends a notification about a new keep request
-func (c *Client) SendKeepRequest(mediaTitle, mediaType, username string) error {
+// SendKeepRequest sends a notification about a new keep request.
+func (c *Client) SendKeepRequest(ctx context.Context, mediaTitle, mediaType, username string) error {
 	// Choose appropriate emoji based on media type
-	emoji := "📺"
+	emoji := "📺" //nolint:goconst
 	if mediaType == "Movie" {
-		emoji = "🎬"
+		emoji = "🎬" //nolint:goconst
 	}
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("🛡️ **User:** %s\n", username))
@@ -141,29 +142,29 @@ func (c *Client) SendKeepRequest(mediaTitle, mediaType, username string) error {
 		Tags:     []string{"warning", "jellysweep", "keep-request"},
 	}
 
-	return c.SendMessage(msg)
+	return c.SendMessage(ctx, msg)
 }
 
-// MediaItem represents a media item for notifications
+// MediaItem represents a media item for notifications.
 type MediaItem struct {
 	Title string
 	Type  string // "movie" or "tv"
 	Year  int32
 }
 
-// SendDeletionSummary sends a summary of media marked for deletion
-func (c *Client) SendDeletionSummary(totalItems int, libraries map[string][]MediaItem) error {
+// SendDeletionSummary sends a summary of media marked for deletion.
+func (c *Client) SendDeletionSummary(ctx context.Context, totalItems int, libraries map[string][]MediaItem) error {
 	if totalItems == 0 {
 		log.Debug("No media marked for deletion, skipping ntfy notification")
 		return nil
 	}
 
-	var libraryDetails []string
-	var mediaDetails []string
+	libraryDetails := make([]string, 0)
+	mediaDetails := make([]string, 0)
 
 	for library, items := range libraries {
 		emoji := "📚"
-		if library == "Movies" {
+		if library == "Movies" { //nolint:staticcheck
 			emoji = "🎬"
 		} else if library == "TV Shows" {
 			emoji = "📺"
@@ -200,22 +201,22 @@ func (c *Client) SendDeletionSummary(totalItems int, libraries map[string][]Medi
 		Tags:     []string{"information", "jellysweep", "cleanup"},
 	}
 
-	return c.SendMessage(msg)
+	return c.SendMessage(ctx, msg)
 }
 
-// SendDeletionCompletedSummary sends a summary of media that was actually deleted
-func (c *Client) SendDeletionCompletedSummary(totalItems int, libraries map[string][]MediaItem) error {
+// SendDeletionCompletedSummary sends a summary of media that was actually deleted.
+func (c *Client) SendDeletionCompletedSummary(ctx context.Context, totalItems int, libraries map[string][]MediaItem) error {
 	if totalItems == 0 {
 		log.Debug("No media was deleted, skipping ntfy notification")
 		return nil
 	}
 
-	var libraryDetails []string
-	var mediaDetails []string
+	libraryDetails := make([]string, 0)
+	mediaDetails := make([]string, 0)
 
 	for library, items := range libraries {
 		emoji := "📚"
-		if library == "Movies" {
+		if library == "Movies" { //nolint:staticcheck
 			emoji = "🎬"
 		} else if library == "TV Shows" {
 			emoji = "📺"
@@ -252,5 +253,5 @@ func (c *Client) SendDeletionCompletedSummary(totalItems int, libraries map[stri
 		Tags:     []string{"success", "jellysweep", "cleanup-completed"},
 	}
 
-	return c.SendMessage(msg)
+	return c.SendMessage(ctx, msg)
 }

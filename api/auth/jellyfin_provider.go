@@ -96,7 +96,7 @@ func (p *JellyfinProvider) RequireAdmin() gin.HandlerFunc {
 	}
 }
 
-// GetAuthConfig returns the Jellyfin configuration wrapped in AuthConfig
+// GetAuthConfig returns the Jellyfin configuration wrapped in AuthConfig.
 func (p *JellyfinProvider) GetAuthConfig() *config.AuthConfig {
 	return &config.AuthConfig{
 		Jellyfin: p.cfg,

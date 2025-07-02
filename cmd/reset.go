@@ -26,7 +26,7 @@ func reset(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		log.Fatalf("failed to create engine: %v", err)
 	}
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	log.Info("Starting reset of all jellysweep tags...")
 
