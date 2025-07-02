@@ -20,6 +20,8 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 - 🔔 **Notifications** - Email users and ntfy alerts for admins
 - ⚡ **Stateless Design** - No database required, clean runs every time
 - 🌐 **Web Interface** - Modern UI for monitoring and management
+- 📊 **Statistics Dashboard** - Visual charts showing cleanup progress and storage freed
+- ⚖️ **Admin Review Interface** - Keep or Sweep panel for admin oversight and manual control
 
 
 ## 📋 Table of Contents
@@ -28,6 +30,11 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [✨ Key Features](#-key-features)
   - [📋 Table of Contents](#-table-of-contents)
   - [🚀 How It Works](#-how-it-works)
+  - [📸 Screenshots](#-screenshots)
+    - [Dashboard Overview](#dashboard-overview)
+    - [Statistics Dashboard](#statistics-dashboard)
+    - [Admin Panel - Keep Requests](#admin-panel---keep-requests)
+    - [Admin Panel - Keep or Sweep](#admin-panel---keep-or-sweep)
   - [🔧 Installation](#-installation)
     - [Prerequisites](#prerequisites)
     - [Quick Start](#quick-start)
@@ -66,6 +73,26 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
    - Admins can approve/decline requests
    - Automatic cleanup of expired requests
    - Force deletion override for admins
+
+---
+
+## 📸 Screenshots
+
+### Dashboard Overview
+![Dashboard Overview](assets/screenshots/dashboard_overview.png)
+*Main dashboard showing media items scheduled for deletion with filtering and search capabilities*
+
+### Statistics Dashboard
+![Dashboard Statistics](assets/screenshots/dashboard_stats.png)
+*Visual analytics showing daily and cumulative storage cleanup over time*
+
+### Admin Panel - Keep Requests
+![Admin Queue](assets/screenshots/admin_queue.png)
+*Admin interface for reviewing and approving user keep requests*
+
+### Admin Panel - Keep or Sweep
+![Admin Keep or Sweep](assets/screenshots/admin_keep_or_sweep.png)
+*Admin review interface for making final keep/delete decisions on media items*
 
 ---
 
