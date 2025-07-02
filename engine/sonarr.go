@@ -844,3 +844,111 @@ func getSeriesFileSize(series sonarr.SeriesResource) int64 {
 	}
 	return 0
 }
+
+// resetSingleSonarrTagsForKeep removes ALL tags (including jellysweep-delete) from a single Sonarr series
+func (e *Engine) resetSingleSonarrTagsForKeep(ctx context.Context, seriesID int32) error {
+	if e.sonarr == nil {
+		return fmt.Errorf("sonarr client not available")
+	}
+
+	// Get the series
+	series, _, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), seriesID).Execute()
+	if err != nil {
+		return fmt.Errorf("failed to get sonarr series: %w", err)
+	}
+
+	// Get all tags to map tag IDs to names
+	tags, err := e.getSonarrTags(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get sonarr tags: %w", err)
+	}
+
+	// Check if series has any jellysweep tags and filter them all out (including delete tags)
+	var hasJellysweepTags bool
+	var newTags []int32
+
+	for _, tagID := range series.GetTags() {
+		tagName := tags[tagID]
+		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
+			tagName == jellysweepDeleteForSureTag
+
+		if isJellysweepTag {
+			hasJellysweepTags = true
+			log.Debugf("Removing jellysweep tag '%s' from Sonarr series: %s", tagName, series.GetTitle())
+		} else {
+			newTags = append(newTags, tagID)
+		}
+	}
+
+	// Update series if it had jellysweep tags
+	if hasJellysweepTags {
+		series.Tags = newTags
+		_, _, err = e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", seriesID)).
+			SeriesResource(*series).
+			Execute()
+		if err != nil {
+			return fmt.Errorf("failed to update sonarr series: %w", err)
+		}
+		log.Infof("Removed all jellysweep tags from Sonarr series for keep action: %s", series.GetTitle())
+	}
+
+	return nil
+}
+
+// resetSingleSonarrTagsForMustDelete removes all jellysweep tags EXCEPT jellysweep-delete from a single Sonarr series
+func (e *Engine) resetSingleSonarrTagsForMustDelete(ctx context.Context, seriesID int32) error {
+	if e.sonarr == nil {
+		return fmt.Errorf("sonarr client not available")
+	}
+
+	// Get the series
+	series, _, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), seriesID).Execute()
+	if err != nil {
+		return fmt.Errorf("failed to get sonarr series: %w", err)
+	}
+
+	// Get all tags to map tag IDs to names
+	tags, err := e.getSonarrTags(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get sonarr tags: %w", err)
+	}
+
+	// Check if series has any jellysweep tags and filter them out (except jellysweep-delete tags)
+	var hasJellysweepTags bool
+	var newTags []int32
+
+	for _, tagID := range series.GetTags() {
+		tagName := tags[tagID]
+		isJellysweepDeleteTag := strings.HasPrefix(tagName, jellysweepTagPrefix) // jellysweep-delete-*
+		isOtherJellysweepTag := strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
+			tagName == jellysweepDeleteForSureTag
+
+		if isOtherJellysweepTag {
+			hasJellysweepTags = true
+			log.Debugf("Removing jellysweep tag '%s' from Sonarr series: %s", tagName, series.GetTitle())
+		} else if isJellysweepDeleteTag {
+			// Keep jellysweep-delete tags
+			newTags = append(newTags, tagID)
+		} else {
+			// Keep non-jellysweep tags
+			newTags = append(newTags, tagID)
+		}
+	}
+
+	// Update series if it had jellysweep tags
+	if hasJellysweepTags {
+		series.Tags = newTags
+		_, _, err = e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", seriesID)).
+			SeriesResource(*series).
+			Execute()
+		if err != nil {
+			return fmt.Errorf("failed to update sonarr series: %w", err)
+		}
+		log.Infof("Removed jellysweep tags (except delete tags) from Sonarr series for must-delete action: %s", series.GetTitle())
+	}
+
+	return nil
+}

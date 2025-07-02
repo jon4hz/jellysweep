@@ -152,7 +152,7 @@ func Navbar(user *models.User, pendingRequestsCount int) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if pendingRequestsCount > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"absolute -top-1.5 -right-1.5 bg-red-500 rounded-full w-2.5 h-2.5 animate-pulse\"></span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"absolute -top-1.5 -right-2.5 bg-red-500 rounded-full w-2.5 h-2.5 animate-pulse\"></span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -93,7 +93,7 @@ func (s *Server) setupRoutes() {
 
 	// Auth routes
 	s.ginEngine.POST("/auth/jellyfin/login", s.authProvider.Login)
-	s.ginEngine.GET("//auth/oidc/callback", s.authProvider.Callback)
+	s.ginEngine.GET("/auth/oidc/callback", s.authProvider.Callback)
 	s.ginEngine.GET("/auth/oidc/login", s.authProvider.Login)
 
 	protected := s.ginEngine.Group("/")
@@ -125,6 +125,8 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI := adminGroup.Group("/api")
 	adminAPI.POST("/keep-requests/:id/accept", h.AcceptKeepRequest)
 	adminAPI.POST("/keep-requests/:id/decline", h.DeclineKeepRequest)
+	adminAPI.POST("/media/:id/keep", h.MarkMediaAsKeep)
+	adminAPI.POST("/media/:id/delete", h.MarkMediaForDeletion)
 }
 
 func (s *Server) Run() error {

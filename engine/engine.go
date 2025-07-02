@@ -26,6 +26,14 @@ const (
 	jellysweepKeepRequestPrefix = "jellysweep-keep-request-"
 	jellysweepKeepPrefix        = "jellysweep-must-keep-"
 	jellysweepDeleteForSureTag  = "jellysweep-must-delete-for-sure"
+	jellysweepKeepTag           = "jellysweep-keep"
+	jellysweepMustDeleteTag     = "must-delete"
+)
+
+// Exported constants for API handlers
+const (
+	TagKeep       = jellysweepKeepTag
+	TagMustDelete = jellysweepMustDeleteTag
 )
 
 // Engine is the main engine for JellySweep, managing interactions with sonarr, radarr, and other services.
@@ -431,8 +439,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 	var mediaType string
 	var err error
 
-	if strings.HasPrefix(mediaID, "sonarr-") {
-		seriesIDStr := strings.TrimPrefix(mediaID, "sonarr-")
+	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
 		seriesID, parseErr := strconv.ParseInt(seriesIDStr, 10, 32)
 		if parseErr != nil {
 			return fmt.Errorf("invalid sonarr series ID: %w", parseErr)
@@ -447,8 +454,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 		}
 		mediaType = "TV Show"
 		err = e.addSonarrKeepRequestTag(ctx, int32(seriesID))
-	} else if strings.HasPrefix(mediaID, "radarr-") {
-		movieIDStr := strings.TrimPrefix(mediaID, "radarr-")
+	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
 		movieID, parseErr := strconv.ParseInt(movieIDStr, 10, 32)
 		if parseErr != nil {
 			return fmt.Errorf("invalid radarr movie ID: %w", parseErr)
@@ -504,15 +510,13 @@ func (e *Engine) GetKeepRequests(ctx context.Context) ([]models.KeepRequest, err
 // AcceptKeepRequest removes the keep request tag and delete tag from the media item
 func (e *Engine) AcceptKeepRequest(ctx context.Context, mediaID string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if strings.HasPrefix(mediaID, "sonarr-") {
-		seriesIDStr := strings.TrimPrefix(mediaID, "sonarr-")
+	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
 		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
 		if err != nil {
 			return fmt.Errorf("invalid sonarr series ID: %w", err)
 		}
 		return e.acceptSonarrKeepRequest(ctx, int32(seriesID))
-	} else if strings.HasPrefix(mediaID, "radarr-") {
-		movieIDStr := strings.TrimPrefix(mediaID, "radarr-")
+	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
 		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
 		if err != nil {
 			return fmt.Errorf("invalid radarr movie ID: %w", err)
@@ -526,15 +530,13 @@ func (e *Engine) AcceptKeepRequest(ctx context.Context, mediaID string) error {
 // DeclineKeepRequest removes the keep request tag and adds a delete-for-sure tag
 func (e *Engine) DeclineKeepRequest(ctx context.Context, mediaID string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if strings.HasPrefix(mediaID, "sonarr-") {
-		seriesIDStr := strings.TrimPrefix(mediaID, "sonarr-")
+	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
 		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
 		if err != nil {
 			return fmt.Errorf("invalid sonarr series ID: %w", err)
 		}
 		return e.declineSonarrKeepRequest(ctx, int32(seriesID))
-	} else if strings.HasPrefix(mediaID, "radarr-") {
-		movieIDStr := strings.TrimPrefix(mediaID, "radarr-")
+	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
 		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
 		if err != nil {
 			return fmt.Errorf("invalid radarr movie ID: %w", err)
@@ -597,4 +599,86 @@ func getCachedImageURL(imageURL string) string {
 	// Encode the original URL and return a cache endpoint URL
 	encoded := url.QueryEscape(imageURL)
 	return fmt.Sprintf("/api/images/cache?url=%s", encoded)
+}
+
+// AddTagToMedia adds a specific tag to a media item (supports jellysweep-keep and must-delete)
+func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName string) error {
+	// Parse media ID to determine if it's a Sonarr or Radarr item
+	if strings.HasPrefix(mediaID, "sonarr-") {
+		seriesIDStr := strings.TrimPrefix(mediaID, "sonarr-")
+		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid sonarr series ID: %w", err)
+		}
+
+		// Use dedicated tag-resetting functions based on the action
+		switch tagName {
+		case jellysweepKeepTag:
+			// For "keep": remove all tags (including delete) before adding must-keep
+			if err := e.resetSingleSonarrTagsForKeep(ctx, int32(seriesID)); err != nil {
+				return fmt.Errorf("failed to reset sonarr tags for keep: %w", err)
+			}
+			// This will add a jellysweep-must-keep tag with expiry date
+			return e.addSonarrKeepTag(ctx, int32(seriesID))
+		case jellysweepMustDeleteTag:
+			// For "must-delete": remove all tags except jellysweep-delete before adding must-delete-for-sure
+			if err := e.resetSingleSonarrTagsForMustDelete(ctx, int32(seriesID)); err != nil {
+				return fmt.Errorf("failed to reset sonarr tags for must-delete: %w", err)
+			}
+			// This will add a jellysweep-must-delete-for-sure tag
+			return e.addSonarrDeleteForSureTag(ctx, int32(seriesID))
+		default:
+			return fmt.Errorf("unsupported tag name: %s", tagName)
+		}
+	} else if strings.HasPrefix(mediaID, "radarr-") {
+		movieIDStr := strings.TrimPrefix(mediaID, "radarr-")
+		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid radarr movie ID: %w", err)
+		}
+
+		// Use dedicated tag-resetting functions based on the action
+		switch tagName {
+		case jellysweepKeepTag:
+			// For "keep": remove all tags (including delete) before adding must-keep
+			if err := e.resetSingleRadarrTagsForKeep(ctx, int32(movieID)); err != nil {
+				return fmt.Errorf("failed to reset radarr tags for keep: %w", err)
+			}
+			// This will add a jellysweep-must-keep tag with expiry date
+			return e.addRadarrKeepTag(ctx, int32(movieID))
+		case jellysweepMustDeleteTag:
+			// For "must-delete": remove all tags except jellysweep-delete before adding must-delete-for-sure
+			if err := e.resetSingleRadarrTagsForMustDelete(ctx, int32(movieID)); err != nil {
+				return fmt.Errorf("failed to reset radarr tags for must-delete: %w", err)
+			}
+			// This will add a jellysweep-must-delete-for-sure tag
+			return e.addRadarrDeleteForSureTag(ctx, int32(movieID))
+		default:
+			return fmt.Errorf("unsupported tag name: %s", tagName)
+		}
+	}
+
+	return fmt.Errorf("unsupported media ID format: %s", mediaID)
+}
+
+// RemoveConflictingTags removes jellysweep-keep-request and jellysweep-must-keep tags from a media item
+func (e *Engine) RemoveConflictingTags(ctx context.Context, mediaID string) error {
+	// Parse media ID to determine if it's a Sonarr or Radarr item
+	if strings.HasPrefix(mediaID, "sonarr-") {
+		seriesIDStr := strings.TrimPrefix(mediaID, "sonarr-")
+		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid sonarr series ID: %w", err)
+		}
+		return e.removeSonarrKeepRequestAndDeleteTags(ctx, int32(seriesID))
+	} else if strings.HasPrefix(mediaID, "radarr-") {
+		movieIDStr := strings.TrimPrefix(mediaID, "radarr-")
+		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid radarr movie ID: %w", err)
+		}
+		return e.removeRadarrKeepRequestAndDeleteTags(ctx, int32(movieID))
+	}
+
+	return fmt.Errorf("unsupported media ID format: %s", mediaID)
 }

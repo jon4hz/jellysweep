@@ -848,3 +848,111 @@ func (e *Engine) cleanupAllRadarrTags(ctx context.Context) error {
 	log.Infof("Deleted %d Radarr tags", tagsDeleted)
 	return nil
 }
+
+// resetSingleRadarrTagsForKeep removes ALL tags (including jellysweep-delete) from a single Radarr movie
+func (e *Engine) resetSingleRadarrTagsForKeep(ctx context.Context, movieID int32) error {
+	if e.radarr == nil {
+		return fmt.Errorf("radarr client not available")
+	}
+
+	// Get the movie
+	movie, _, err := e.radarr.MovieAPI.GetMovieById(radarrAuthCtx(ctx, e.cfg.Radarr), movieID).Execute()
+	if err != nil {
+		return fmt.Errorf("failed to get radarr movie: %w", err)
+	}
+
+	// Get all tags to map tag IDs to names
+	tags, err := e.getRadarrTags(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+
+	// Check if movie has any jellysweep tags and filter them all out (including delete tags)
+	var hasJellysweepTags bool
+	var newTags []int32
+
+	for _, tagID := range movie.GetTags() {
+		tagName := tags[tagID]
+		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
+			tagName == jellysweepDeleteForSureTag
+
+		if isJellysweepTag {
+			hasJellysweepTags = true
+			log.Debugf("Removing jellysweep tag '%s' from Radarr movie: %s", tagName, movie.GetTitle())
+		} else {
+			newTags = append(newTags, tagID)
+		}
+	}
+
+	// Update movie if it had jellysweep tags
+	if hasJellysweepTags {
+		movie.Tags = newTags
+		_, _, err = e.radarr.MovieAPI.UpdateMovie(radarrAuthCtx(ctx, e.cfg.Radarr), fmt.Sprintf("%d", movieID)).
+			MovieResource(*movie).
+			Execute()
+		if err != nil {
+			return fmt.Errorf("failed to update radarr movie: %w", err)
+		}
+		log.Infof("Removed all jellysweep tags from Radarr movie for keep action: %s", movie.GetTitle())
+	}
+
+	return nil
+}
+
+// resetSingleRadarrTagsForMustDelete removes all jellysweep tags EXCEPT jellysweep-delete from a single Radarr movie
+func (e *Engine) resetSingleRadarrTagsForMustDelete(ctx context.Context, movieID int32) error {
+	if e.radarr == nil {
+		return fmt.Errorf("radarr client not available")
+	}
+
+	// Get the movie
+	movie, _, err := e.radarr.MovieAPI.GetMovieById(radarrAuthCtx(ctx, e.cfg.Radarr), movieID).Execute()
+	if err != nil {
+		return fmt.Errorf("failed to get radarr movie: %w", err)
+	}
+
+	// Get all tags to map tag IDs to names
+	tags, err := e.getRadarrTags(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+
+	// Check if movie has any jellysweep tags and filter them out (except jellysweep-delete tags)
+	var hasJellysweepTags bool
+	var newTags []int32
+
+	for _, tagID := range movie.GetTags() {
+		tagName := tags[tagID]
+		isJellysweepDeleteTag := strings.HasPrefix(tagName, jellysweepTagPrefix) // jellysweep-delete-*
+		isOtherJellysweepTag := strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
+			tagName == jellysweepDeleteForSureTag
+
+		if isOtherJellysweepTag {
+			hasJellysweepTags = true
+			log.Debugf("Removing jellysweep tag '%s' from Radarr movie: %s", tagName, movie.GetTitle())
+		} else if isJellysweepDeleteTag {
+			// Keep jellysweep-delete tags
+			newTags = append(newTags, tagID)
+		} else {
+			// Keep non-jellysweep tags
+			newTags = append(newTags, tagID)
+		}
+	}
+
+	// Update movie if it had jellysweep tags
+	if hasJellysweepTags {
+		movie.Tags = newTags
+		_, _, err = e.radarr.MovieAPI.UpdateMovie(radarrAuthCtx(ctx, e.cfg.Radarr), fmt.Sprintf("%d", movieID)).
+			MovieResource(*movie).
+			Execute()
+		if err != nil {
+			return fmt.Errorf("failed to update radarr movie: %w", err)
+		}
+		log.Infof("Removed jellysweep tags (except delete tags) from Radarr movie for must-delete action: %s", movie.GetTitle())
+	}
+
+	return nil
+}

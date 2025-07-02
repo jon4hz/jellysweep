@@ -86,3 +86,41 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 		"message": "Keep request declined successfully",
 	})
 }
+
+// MarkMediaAsKeep adds the jellysweep-keep tag to a media item
+func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
+	mediaID := c.Param("id")
+
+	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.TagKeep)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Media marked as keep successfully",
+	})
+}
+
+// MarkMediaForDeletion adds the must-delete tag to a media item
+func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
+	mediaID := c.Param("id")
+
+	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.TagMustDelete)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Media marked for deletion successfully",
+	})
+}
