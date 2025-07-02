@@ -73,8 +73,9 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine) (*Server, er
 func (s *Server) setupSession() {
 	store := cookie.NewStore([]byte(s.cfg.SessionKey))
 	store.Options(sessions.Options{
-		Path:     "/",
-		MaxAge:   3600,
+		Path:   "/",
+		MaxAge: 3600, // TODO: make this configurable
+		// TODO: make this secure in production
 		HttpOnly: true,
 		Secure:   false, // Set to true in production
 		SameSite: http.SameSiteLaxMode,

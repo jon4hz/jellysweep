@@ -5,7 +5,7 @@ tmp_dir = "bin"
 
 [build]
   bin = "./bin/main"
-  cmd = "npx tailwindcss -i input.css -o static/dist/style.css && go tool templ generate && go build -o ./bin/main ."
+  cmd = "npm run build && go tool templ generate && go build -o ./bin/main ."
   delay = 1000
   exclude_dir = ["static", "node_modules", "_devel", "data"]
   exclude_regex = [".*_templ.go"]
