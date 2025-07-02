@@ -286,7 +286,8 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 		var deleteTagIDs []int32
 		for _, tagID := range series.GetTags() {
 			if tagName, exists := e.data.sonarrTags[tagID]; exists {
-				if strings.HasPrefix(tagName, jellysweepTagPrefix) {
+				if strings.HasPrefix(tagName, jellysweepTagPrefix) ||
+					strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
 					deleteTagIDs = append(deleteTagIDs, tagID)
 				}
 			}

@@ -232,7 +232,8 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) error
 		var deleteTagIDs []int32
 		for _, tagID := range movie.GetTags() {
 			if tagName, exists := e.data.radarrTags[tagID]; exists {
-				if strings.HasPrefix(tagName, jellysweepTagPrefix) {
+				if strings.HasPrefix(tagName, jellysweepTagPrefix) ||
+					strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
 					deleteTagIDs = append(deleteTagIDs, tagID)
 				}
 			}

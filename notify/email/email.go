@@ -154,6 +154,8 @@ func (n *NotificationService) generateEmailBody(notification UserNotification) (
 	return buf.String(), nil
 }
 
+// TODO: fix email
+
 // sendEmail sends an email using go-simple-mail library
 func (n *NotificationService) sendEmail(to, subject, body string) error {
 	// Create SMTP server configuration
