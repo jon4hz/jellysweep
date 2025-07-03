@@ -37,6 +37,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [🔧 Installation](#-installation)
     - [Prerequisites](#prerequisites)
     - [Quick Start](#quick-start)
+    - [Docker Compose](#docker-compose)
   - [🔐 Authentication](#-authentication)
     - [OIDC/SSO Authentication](#oidcsso-authentication)
     - [Jellyfin Authentication](#jellyfin-authentication)
@@ -124,11 +125,51 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 3. **Run**
    ```bash
    # Start the service
-   ./jellysweep
+   ./jellysweep serve
    
    # Reset all tags (cleanup command)
    ./jellysweep reset
    ```
+
+### Docker Compose
+
+For a quick deployment using Docker/Podman, create a `compose.yml` file:
+
+```yaml
+services:
+  jellysweep:
+    image: ghcr.io/jon4hz/jellysweep:latest
+    container_name: jellysweep
+    ports:
+      - "3002:3002"
+    volumes:
+      # - ./config.yml:/app/config.yml:ro use config or env vars
+      - ./data:/app/data
+    environment:
+      # Override config values via environment variables if needed
+      - JELLYSWEEP_DRY_RUN=false
+      - JELLYSWEEP_LISTEN=0.0.0.0:3002
+    restart: unless-stopped
+    networks:
+      jellyfin-network:
+
+networks:
+  jellyfin-network:
+    external: true  # Assumes you have a shared network with your Jellyfin stack
+```
+
+Then run:
+```bash
+
+# Start the service
+docker compose up -d
+
+# View logs
+docker compose logs -f jellysweep
+
+# Reset all tags (cleanup command)
+docker compose exec jellysweep ./jellysweep reset
+```
 
 ---
 
