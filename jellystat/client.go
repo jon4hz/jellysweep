@@ -32,7 +32,7 @@ func New(cfg *config.JellystatConfig) *Client {
 		baseURL: cfg.URL,
 		apiKey:  cfg.APIKey,
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 120 * time.Second,
 		},
 	}
 }
@@ -211,13 +211,6 @@ func (c *Client) GetLastPlayed(ctx context.Context, itemID string) (*LastPlayedI
 	}
 
 	return info, nil
-}
-
-// GetItemsLastPlayedBefore returns items that were last played before the specified time
-// This would typically require a different API endpoint that lists all items,
-// but for now we'll return an error indicating this functionality needs implementation.
-func (c *Client) GetItemsLastPlayedBefore(ctx context.Context, before time.Time) ([]LastPlayedInfo, error) {
-	return nil, fmt.Errorf("GetItemsLastPlayedBefore requires iteration over all items - not implemented yet")
 }
 
 // GetLibraryMetadata retrieves metadata for all libraries.

@@ -28,8 +28,8 @@ import (
 // - TestEngine_LibraryNameCaseSensitivity: Tests case sensitivity with manually created configs
 // - TestEngine_ViperConfigIntegration: Tests the actual viper loading process and demonstrates the bug
 //
-// The TODO comment in config.go acknowledges this issue:
-// "since viper handles the map keys case insensitively, we must track the case sensitive name"
+// THE FIX: The GetLibraryConfig method now implements case-insensitive fallback lookup
+// to handle mismatches between viper's normalized keys and Jellystat's case-sensitive names.
 
 // TestEngine_MultipleRunsConsistency tests that multiple runs of the engine
 // behave consistently and don't interfere with each other
@@ -753,12 +753,11 @@ func TestEngine_LibraryNameCaseSensitivity(t *testing.T) {
 		assert.Len(t, engine.data.mediaItems["Movies"], 2, "No filtering with nil config")
 	})
 
-	t.Run("demonstrate LibraryName field usage", func(t *testing.T) {
-		// Test the LibraryName field in CleanupConfig that should store the case-sensitive name
+	t.Run("demonstrate case-insensitive lookup", func(t *testing.T) {
+		// Test case-insensitive lookup functionality
 		libraries := make(map[string]*config.CleanupConfig)
 		libraries["movies"] = &config.CleanupConfig{ // viper normalized key
 			Enabled:             true,
-			LibraryName:         "Movies", // Actual case-sensitive name
 			RequestAgeThreshold: 30,
 			LastStreamThreshold: 90,
 			CleanupDelay:        7,
@@ -780,15 +779,15 @@ func TestEngine_LibraryNameCaseSensitivity(t *testing.T) {
 		engine, err := New(cfg)
 		require.NoError(t, err)
 
-		// Verify the LibraryName field is set correctly
+		// Verify the exact match lookup works
 		config := engine.cfg.GetLibraryConfig("movies")
 		assert.NotNil(t, config)
-		assert.Equal(t, "Movies", config.LibraryName, "LibraryName should store the case-sensitive name")
+		assert.True(t, config.Enabled)
 
 		// With the fix, the case-insensitive lookup now works!
 		configFromCaseSensitive := engine.cfg.GetLibraryConfig("Movies")
 		assert.NotNil(t, configFromCaseSensitive, "Case-insensitive lookup now works with the fix!")
-		assert.Equal(t, "Movies", configFromCaseSensitive.LibraryName, "Original case is preserved in LibraryName field")
+		assert.True(t, configFromCaseSensitive.Enabled, "Configuration should be accessible via case-insensitive lookup")
 	})
 }
 
@@ -862,7 +861,7 @@ jellystat:
 		// Verify how viper handled the library names
 		t.Log("Library configurations found:")
 		for key, libConfig := range cfg.JellySweep.Libraries {
-			t.Logf("  Key: '%s', LibraryName: '%s', Enabled: %v", key, libConfig.LibraryName, libConfig.Enabled)
+			t.Logf("  Key: '%s', Enabled: %v", key, libConfig.Enabled)
 		}
 
 		// Test with different case variations of library names that might come from Jellystat
@@ -1007,9 +1006,8 @@ jellystat:
 		// and whether they're being normalized or preserved as-is
 	})
 
-	t.Run("workaround using LibraryName field", func(t *testing.T) {
-		// Test a potential workaround using the LibraryName field
-		// to store the original case-sensitive name
+	t.Run("workaround using case-insensitive lookup", func(t *testing.T) {
+		// Test case-insensitive lookup functionality that replaced the LibraryName field approach
 
 		configContent := `
 jellysweep:
@@ -1022,11 +1020,9 @@ jellysweep:
   libraries:
     movies:  # normalized by viper
       enabled: true
-      library_name: "Movies"  # preserve original case
       exclude_tags: ["favorite"]
     tv_shows:  # normalized by viper
       enabled: true
-      library_name: "TV Shows"  # preserve original case
       exclude_tags: ["ongoing"]
 
 jellyseerr:
@@ -1057,19 +1053,21 @@ jellystat:
 		cfg, err := config.Load(tmpfile.Name())
 		require.NoError(t, err)
 
-		// Verify the LibraryName field is loaded correctly
+		// Verify the direct lookup works
 		moviesConfig := cfg.GetLibraryConfig("movies")
 		assert.NotNil(t, moviesConfig)
-		assert.Equal(t, "Movies", moviesConfig.LibraryName)
+		assert.True(t, moviesConfig.Enabled)
 
 		tvConfig := cfg.GetLibraryConfig("tv_shows")
 		assert.NotNil(t, tvConfig)
-		assert.Equal(t, "TV Shows", tvConfig.LibraryName)
+		assert.True(t, tvConfig.Enabled)
 
-		// With the fix, both the direct lookup and reverse lookup work
+		// With the fix, both the direct lookup and case-insensitive lookup work
 		assert.NotNil(t, cfg.GetLibraryConfig("Movies"), "Case-insensitive lookup now works!")
-		assert.NotNil(t, cfg.GetLibraryConfig("TV Shows"), "Case-insensitive lookup now works!")
+		assert.NotNil(t, cfg.GetLibraryConfig("TV_Shows"), "Case-insensitive lookup now works for underscore variant!")
+		assert.NotNil(t, cfg.GetLibraryConfig("MOVIES"), "Case-insensitive lookup now works for uppercase!")
+		assert.NotNil(t, cfg.GetLibraryConfig("TV_SHOWS"), "Case-insensitive lookup now works for uppercase underscore!")
 
-		t.Log("The fix now enables both LibraryName field usage AND case-insensitive lookup")
+		t.Log("The fix now enables case-insensitive lookup without needing a separate LibraryName field")
 	})
 }

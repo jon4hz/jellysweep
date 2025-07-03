@@ -333,7 +333,9 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) {
 
 		// Search through all jellystat items to find matching series
 		for _, jellystatItem := range e.data.jellystatItems {
-			if jellystatItem.Type == jellystat.ItemTypeSeries && jellystatItem.Name == series.GetTitle() && jellystatItem.ProductionYear == series.GetYear() {
+			if jellystatItem.Type == jellystat.ItemTypeSeries &&
+				jellystatItem.Name == series.GetTitle() &&
+				jellystatItem.ProductionYear == series.GetYear() {
 				matchingJellystatID = jellystatItem.ID
 				// Get library name from the library ID map
 				if libName := e.getLibraryNameByID(jellystatItem.ParentID); libName != "" {
@@ -358,8 +360,8 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) {
 		// If the series has been played recently, remove the delete tags
 		if lastPlayed != nil && lastPlayed.LastPlayed != nil {
 			// Get the library config to get the threshold
-			libraryConfig, exists := e.cfg.JellySweep.Libraries[libraryName]
-			if !exists {
+			libraryConfig := e.cfg.GetLibraryConfig(libraryName)
+			if libraryConfig == nil {
 				log.Warnf("Library config not found for library %s, skipping", libraryName)
 				continue
 			}

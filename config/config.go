@@ -118,13 +118,9 @@ type NtfyConfig struct {
 	Token string `yaml:"token" mapstructure:"token"`
 }
 
-// TODO: since viper handles the map keys case insensitively, we must track the case sensitive name in the cleanup config.
-
 type CleanupConfig struct {
 	// Enabled indicates whether the cleanup job is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
-	// LibraryName is the case sensitive name of the library this configuration applies to.
-	LibraryName string `yaml:"library_name" mapstructure:"library_name"`
 	// RequestAgeThreshold is the minimum age in days for a request to be eligible for cleanup.
 	RequestAgeThreshold int `yaml:"request_age_threshold" mapstructure:"request_age_threshold"`
 	// LastStreamThreshold is the minimum time in days since the last stream for content to be eligible for cleanup.
@@ -352,17 +348,6 @@ func (c *Config) GetLibraryConfig(libraryName string) *CleanupConfig {
 		return config
 	}
 
-	// If no exact match, try case-insensitive lookup using LibraryName field
-	// This handles the case where viper has normalized the map keys to lowercase
-	// but we need to match against the original case-sensitive library names
-	for _, config := range c.JellySweep.Libraries {
-		if config.LibraryName != "" && config.LibraryName == libraryName {
-			return config
-		}
-	}
-
-	// If still no match, try case-insensitive comparison on map keys
-	// This is a fallback for configurations that don't use the LibraryName field
 	libraryNameLower := strings.ToLower(libraryName)
 	for key, config := range c.JellySweep.Libraries {
 		if strings.ToLower(key) == libraryNameLower {

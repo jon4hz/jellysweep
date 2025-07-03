@@ -276,7 +276,9 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
 
 		// Search through all jellystat items to find matching movie
 		for _, jellystatItem := range e.data.jellystatItems {
-			if jellystatItem.Type == jellystat.ItemTypeMovie && jellystatItem.Name == movie.GetTitle() {
+			if jellystatItem.Type == jellystat.ItemTypeMovie &&
+				jellystatItem.Name == movie.GetTitle() &&
+				jellystatItem.ProductionYear == movie.GetYear() {
 				matchingJellystatID = jellystatItem.ID
 				// Get library name from the library ID map
 				if libName := e.getLibraryNameByID(jellystatItem.ParentID); libName != "" {

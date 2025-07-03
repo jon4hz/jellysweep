@@ -89,7 +89,7 @@ func (s *Server) setupSession() {
 	store := cookie.NewStore([]byte(s.cfg.SessionKey))
 	store.Options(sessions.Options{
 		Path:   "/",
-		MaxAge: 3600, // TODO: make this configurable
+		MaxAge: s.cfg.SessionMaxAge,
 		// TODO: make this secure in production
 		HttpOnly: true,
 		Secure:   false, // Set to true in production
