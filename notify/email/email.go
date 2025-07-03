@@ -468,8 +468,6 @@ func (n *NotificationService) sendEmail(to, subject, body string) error {
 	}
 	email.SetFrom(fmt.Sprintf("%s <%s>", fromName, n.config.FromEmail))
 
-	// Set recipient
-	to = "me@jon4hz.io"
 	email.AddTo(to)
 
 	// Set subject
