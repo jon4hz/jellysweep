@@ -12,8 +12,8 @@ import (
 
 // sendEmailNotifications sends email notifications to users about their media being marked for deletion.
 func (e *Engine) sendEmailNotifications() {
-	if e.email == nil {
-		log.Debug("Email service not configured, skipping notifications")
+	if e.email == nil || !e.cfg.Email.Enabled {
+		log.Debug("Email service not configured or disabled, skipping notifications")
 		return
 	}
 
