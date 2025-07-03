@@ -10,18 +10,6 @@ variables:
   license: "GPL-3.0-or-later"
   homepage: "https://github.com/jon4hz/jellysweep"
   ghcr_io_registry_owner: "jon4hz"
-  aur_package: |-
-    # bin
-    install -Dm755 "./{{ .ProjectName }}" "${pkgdir}/usr/bin/{{ .ProjectName }}"
-    # license
-    install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/{{ .ProjectName }}/LICENSE"
-    # completions
-    mkdir -p "${pkgdir}/usr/share/bash-completion/completions/"
-    mkdir -p "${pkgdir}/usr/share/zsh/site-functions/"
-    mkdir -p "${pkgdir}/usr/share/fish/vendor_completions.d/"
-    install -Dm644 "./completions/{{ .ProjectName }}.bash" "${pkgdir}/usr/share/bash-completion/completions/{{ .ProjectName }}"
-    install -Dm644 "./completions/{{ .ProjectName }}.zsh" "${pkgdir}/usr/share/zsh/site-functions/_{{ .ProjectName }}"
-    install -Dm644 "./completions/{{ .ProjectName }}.fish" "${pkgdir}/usr/share/fish/vendor_completions.d/{{ .ProjectName }}.fish"
 
 before:
   hooks:
@@ -135,17 +123,6 @@ nfpms:
         dst: /usr/share/fish/vendor_completions.d/{{ .ProjectName }}.fish
       - src: ./completions/{{ .ProjectName }}.zsh
         dst: /usr/share/zsh/site-functions/_{{ .ProjectName }}
-
-aurs:
-  - name: "{{ .ProjectName }}-bin"
-    homepage: "{{ .Var.homepage }}"
-    description: "{{ .Var.description }}"
-    maintainers:
-      - "{{ .Var.maintainer }}"
-    license: "{{ .Var.license }}"
-    private_key: "{{ .Env.AUR_KEY }}"
-    git_url: "ssh://aur@aur.archlinux.org/{{ .ProjectName }}-bin.git"
-    package: "{{ .Var.aur_package }}"
 
 source:
   enabled: true
