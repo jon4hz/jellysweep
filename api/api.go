@@ -108,6 +108,7 @@ func (s *Server) setupRoutes() error {
 		return fmt.Errorf("failed to create static FS sub: %w", err)
 	}
 	s.ginEngine.StaticFS("/static", http.FS(staticSub))
+
 	// Setup routes depending on authentication status
 	if s.cfg.IsAuthenticationEnabled() {
 		s.ginEngine.GET("/login", h.Login)
