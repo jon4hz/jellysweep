@@ -25,20 +25,24 @@ func (e *Engine) filterRequestAgeThreshold(ctx context.Context) {
 
 			if requestInfo.RequestTime != nil {
 				// check if the request time is longer ago than the configured threshold in days
-				if time.Since(*requestInfo.RequestTime) > time.Duration(e.cfg.JellySweep.Libraries[lib].RequestAgeThreshold)*24*time.Hour {
-					// Update the item with user information
-					item.RequestedBy = requestInfo.UserEmail
-					item.RequestDate = *requestInfo.RequestTime
+				libraryConfig := e.cfg.GetLibraryConfig(lib)
+				if libraryConfig != nil {
+					requestAgeThreshold := time.Duration(libraryConfig.RequestAgeThreshold) * 24 * time.Hour
+					if time.Since(*requestInfo.RequestTime) > requestAgeThreshold {
+						// Update the item with user information
+						item.RequestedBy = requestInfo.UserEmail
+						item.RequestDate = *requestInfo.RequestTime
 
-					filteredItems[lib] = append(filteredItems[lib], item)
+						filteredItems[lib] = append(filteredItems[lib], item)
 
-					// Track for email notifications
-					if requestInfo.UserEmail != "" {
-						e.data.userNotifications[requestInfo.UserEmail] = append(e.data.userNotifications[requestInfo.UserEmail], item)
-						log.Debugf("Marking item %s for deletion, requested by %s on %s", item.Title, requestInfo.UserEmail, requestInfo.RequestTime.Format(time.RFC3339))
+						// Track for email notifications
+						if requestInfo.UserEmail != "" {
+							e.data.userNotifications[requestInfo.UserEmail] = append(e.data.userNotifications[requestInfo.UserEmail], item)
+							log.Debugf("Marking item %s for deletion, requested by %s on %s", item.Title, requestInfo.UserEmail, requestInfo.RequestTime.Format(time.RFC3339))
+						}
+					} else {
+						log.Debugf("Excluding item %s due to recent request: %s by %s", item.Title, requestInfo.RequestTime.Format(time.RFC3339), requestInfo.UserEmail)
 					}
-				} else {
-					log.Debugf("Excluding item %s due to recent request: %s by %s", item.Title, requestInfo.RequestTime.Format(time.RFC3339), requestInfo.UserEmail)
 				}
 			} else {
 				// No request time, mark for deletion but no user to notify

@@ -49,7 +49,8 @@ func (e *Engine) filterMediaTags() {
 			hasExcludedTag := false
 			for _, tagName := range item.Tags {
 				// Check if the tag is in the exclude list
-				if slices.Contains(e.cfg.JellySweep.Libraries[lib].ExcludeTags, tagName) {
+				libraryConfig := e.cfg.GetLibraryConfig(lib)
+				if libraryConfig != nil && slices.Contains(libraryConfig.ExcludeTags, tagName) {
 					hasExcludedTag = true
 					log.Debugf("Excluding item %s due to tag: %s", item.Title, tagName)
 					break

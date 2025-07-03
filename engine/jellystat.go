@@ -87,7 +87,8 @@ func (e *Engine) filterLastStreamThreshold(ctx context.Context) error {
 				continue
 			}
 			// Check if the last streamed time is older than the configured threshold
-			if time.Since(lastStreamed) > time.Duration(e.cfg.JellySweep.Libraries[lib].LastStreamThreshold)*24*time.Hour {
+			libraryConfig := e.cfg.GetLibraryConfig(lib)
+			if libraryConfig != nil && time.Since(lastStreamed) > time.Duration(libraryConfig.LastStreamThreshold)*24*time.Hour {
 				filteredItems[lib] = append(filteredItems[lib], item)
 				continue
 			}

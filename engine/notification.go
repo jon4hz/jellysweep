@@ -45,8 +45,9 @@ func (e *Engine) sendEmailNotifications() {
 			for lib, libItems := range e.data.mediaItems {
 				for _, libItem := range libItems {
 					if libItem.RequestedBy == userEmail {
-						if e.cfg.JellySweep.Libraries[lib] != nil {
-							cleanupDate = cleanupDate.Add(time.Duration(e.cfg.JellySweep.Libraries[lib].CleanupDelay) * 24 * time.Hour)
+						libraryConfig := e.cfg.GetLibraryConfig(lib)
+						if libraryConfig != nil {
+							cleanupDate = cleanupDate.Add(time.Duration(libraryConfig.CleanupDelay) * 24 * time.Hour)
 						}
 						break
 					}

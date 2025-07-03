@@ -21,7 +21,6 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 - ⚡ **Stateless Design** - No database required, clean runs every time
 - 🌐 **Web Interface** - Modern UI for monitoring and management
 - 📊 **Statistics Dashboard** - Visual charts showing cleanup progress and storage freed
-- ⚖️ **Admin Review Interface** - Keep or Sweep panel for admin oversight and manual control
 
 
 ## 📋 Table of Contents
@@ -42,6 +41,8 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
     - [OIDC/SSO Authentication](#oidcsso-authentication)
     - [Jellyfin Authentication](#jellyfin-authentication)
   - [⚙️ Configuration](#️-configuration)
+    - [Environment Variables](#environment-variables)
+    - [Configuration File](#configuration-file)
   - [🏷️ Tag System](#️-tag-system)
     - [Automatic Tags](#automatic-tags)
     - [Custom Tags](#custom-tags)
@@ -160,6 +161,7 @@ jellysweep:
 - **Admin Detection**: Jellyfin administrators automatically get admin access in JellySweep
 - **No Additional Setup**: Works out of the box with your Jellyfin instance
 - **Form-based Login**: Traditional username/password login form
+- **Admin Access**: All Jellyfin admins will have access to the admin panel
 
 **Configuration:**
 ```yaml
@@ -174,22 +176,85 @@ jellysweep:
 
 ## ⚙️ Configuration
 
+JellySweep supports configuration through YAML files and environment variables. Environment variables use the `JELLYSWEEP_` prefix and follow the configuration structure with underscores (e.g., `JELLYSWEEP_JELLYSWEEP_DRY_RUN`).
+
+### Environment Variables
+
+All configuration options can be set via environment variables with the `JELLYSWEEP_` prefix:
+
+| Environment Variable | Default Value | Description |
+|---------------------|---------------|-------------|
+| **JellySweep Server** | | |
+| `JELLYSWEEP_JELLYSWEEP_LISTEN` | `0.0.0.0:3002` | Address and port for the web interface |
+| `JELLYSWEEP_JELLYSWEEP_CLEANUP_INTERVAL` | `12` | Hours between automatic cleanup runs |
+| `JELLYSWEEP_JELLYSWEEP_DRY_RUN` | `false` | Run in dry-run mode (no actual deletions) |
+| `JELLYSWEEP_JELLYSWEEP_SESSION_KEY` | *(required)* | Random string for session encryption (`openssl rand -base64 32`) |
+| `JELLYSWEEP_JELLYSWEEP_SESSION_MAX_AGE` | `172800` | Session maximum age in seconds (48 hours) |
+| `JELLYSWEEP_JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the JellySweep server |
+| **OIDC Authentication** | | |
+| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_ENABLED` | `false` | Enable OIDC/SSO authentication |
+| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_ISSUER` | *(required if OIDC enabled)* | OIDC issuer URL |
+| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_CLIENT_ID` | *(required if OIDC enabled)* | OIDC client ID |
+| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_CLIENT_SECRET` | *(required if OIDC enabled)* | OIDC client secret |
+| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_REDIRECT_URL` | *(required if OIDC enabled)* | OIDC redirect URL |
+| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_ADMIN_GROUP` | *(required if OIDC enabled)* | Group with admin privileges |
+| **Jellyfin Authentication** | | |
+| `JELLYSWEEP_JELLYSWEEP_AUTH_JELLYFIN_ENABLED` | `true` | Enable Jellyfin authentication |
+| `JELLYSWEEP_JELLYSWEEP_AUTH_JELLYFIN_URL` | *(required if Jellyfin auth enabled)* | Jellyfin server URL |
+| **Email Notifications** | | |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_ENABLED` | `false` | Enable email notifications |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_SMTP_HOST` | *(required if email enabled)* | SMTP server host |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_SMTP_PORT` | `587` | SMTP server port |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_USERNAME` | *(required if email enabled)* | SMTP username |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_PASSWORD` | *(required if email enabled)* | SMTP password |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_FROM_EMAIL` | *(required if email enabled)* | From email address |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_FROM_NAME` | `JellySweep` | From name for emails |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_USE_TLS` | `true` | Use TLS for SMTP connection |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_USE_SSL` | `false` | Use SSL for SMTP connection |
+| `JELLYSWEEP_JELLYSWEEP_EMAIL_INSECURE_SKIP_VERIFY` | `false` | Skip TLS certificate verification |
+| **Ntfy Notifications** | | |
+| `JELLYSWEEP_JELLYSWEEP_NTFY_ENABLED` | `false` | Enable ntfy notifications |
+| `JELLYSWEEP_JELLYSWEEP_NTFY_SERVER_URL` | `https://ntfy.sh` | Ntfy server URL |
+| `JELLYSWEEP_JELLYSWEEP_NTFY_TOPIC` | *(required if ntfy enabled)* | Ntfy topic to publish to |
+| `JELLYSWEEP_JELLYSWEEP_NTFY_USERNAME` | *(optional)* | Ntfy username for authentication |
+| `JELLYSWEEP_JELLYSWEEP_NTFY_PASSWORD` | *(optional)* | Ntfy password for authentication |
+| `JELLYSWEEP_JELLYSWEEP_NTFY_TOKEN` | *(optional)* | Ntfy token for authentication |
+| **Default Library Settings** | | |
+| `JELLYSWEEP_JELLYSWEEP_LIBRARIES_DEFAULT_ENABLED` | `true` | Enable cleanup for default library |
+| `JELLYSWEEP_JELLYSWEEP_LIBRARIES_DEFAULT_REQUEST_AGE_THRESHOLD` | `120` | Min age in days for requests to be eligible |
+| `JELLYSWEEP_JELLYSWEEP_LIBRARIES_DEFAULT_LAST_STREAM_THRESHOLD` | `90` | Min days since last stream for cleanup |
+| `JELLYSWEEP_JELLYSWEEP_LIBRARIES_DEFAULT_CLEANUP_DELAY` | `30` | Days before deletion after marking |
+| **External Services** | | |
+| `JELLYSWEEP_JELLYSEERR_URL` | *(required)* | Jellyseerr server URL |
+| `JELLYSWEEP_JELLYSEERR_API_KEY` | *(required)* | Jellyseerr API key |
+| `JELLYSWEEP_SONARR_URL` | *(optional)* | Sonarr server URL |
+| `JELLYSWEEP_SONARR_API_KEY` | *(optional)* | Sonarr API key |
+| `JELLYSWEEP_RADARR_URL` | *(optional)* | Radarr server URL |
+| `JELLYSWEEP_RADARR_API_KEY` | *(optional)* | Radarr API key |
+| `JELLYSWEEP_JELLYSTAT_URL` | *(optional)* | Jellystat server URL |
+| `JELLYSWEEP_JELLYSTAT_API_KEY` | *(optional)* | Jellystat API key |
+
+> **Note**: Either Sonarr or Radarr (or both) must be configured. If no authentication methods are enabled, the web interface will be accessible without authentication (recommended for development only).
+
+### Configuration File
+
 JellySweep uses a YAML configuration file with the following structure:
 
 ```yaml
 jellysweep:
   dry_run: false                   # Set to true for testing
-  log_level: "info"                # debug, info, warn, error
   listen: "0.0.0.0:3002"           # Web interface address and port
   cleanup_interval: 12             # Hours between cleanup runs
   session_key: "your-session-key"  # Random string for session encryption
-  server_url: "https://jellysweep.mydomain.com"
+  session_max_age: 172800          # Session max age in seconds (48 hours)
+  server_url: "http://localhost:3002"
 
-  # Authentication (optional - choose one or both)
+  # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
+  # Warning: No authentication is only recommended for development environments
   auth:
     # OpenID Connect (OIDC) Authentication
     oidc:
-      enabled: true
+      enabled: false
       issuer: "https://login.mydomain.com/application/o/jellysweep/"
       client_id: "your-client-id"
       client_secret: "your-client-secret"
@@ -197,18 +262,27 @@ jellysweep:
       admin_group: "jellyfin-admins"     # OIDC group for admin access
     
     # Jellyfin Authentication
-    # Use existing Jellyfin user accounts for authentication
     jellyfin:
-      enabled: false                     # Set to true to enable
+      enabled: true                      # Default authentication method
       url: "http://localhost:8096"       # Your Jellyfin server URL
   
   # Library-specific settings
   libraries:
+    default:
+      enabled: true
+      request_age_threshold: 120    # Days since Jellyseerr request
+      last_stream_threshold: 90     # Days since last viewed
+      cleanup_delay: 30             # Grace period before deletion
+      exclude_tags:
+        - "jellysweep-exclude"
+        - "jellysweep-ignore"
+        - "do-not-delete"
+    
     "Movies":
       enabled: true
-      request_age_threshold: 30     # Days since Jellyseerr request
-      last_stream_threshold: 60     # Days since last viewed
-      cleanup_delay: 7              # Grace period before deletion
+      request_age_threshold: 120
+      last_stream_threshold: 90
+      cleanup_delay: 30
       exclude_tags:
         - "jellysweep-exclude"
         - "keep"
@@ -216,9 +290,9 @@ jellysweep:
     
     "TV Shows":
       enabled: true
-      request_age_threshold: 45
+      request_age_threshold: 120
       last_stream_threshold: 90
-      cleanup_delay: 14
+      cleanup_delay: 30
       exclude_tags:
         - "jellysweep-exclude"
         - "ongoing"
@@ -226,7 +300,7 @@ jellysweep:
     
   # Email notifications for users about upcoming deletions
   email:
-    enabled: true
+    enabled: false
     smtp_host: "mail.example.com"
     smtp_port: 587
     username: "your-smtp-username"
@@ -235,10 +309,11 @@ jellysweep:
     from_name: "JellySweep"
     use_tls: true              # Use STARTTLS
     use_ssl: false             # Use implicit SSL/TLS
+    insecure_skip_verify: false
 
   # Ntfy notifications for admins about keep requests and deletions
   ntfy:
-    enabled: true
+    enabled: false
     server_url: "https://ntfy.sh"  # Or your own ntfy server
     topic: "jellysweep"
     # Authentication options (choose one):
@@ -246,7 +321,7 @@ jellysweep:
     password: ""
     token: ""                  # Token auth (takes precedence)
 
-# Service integrations (all optional)
+# External service integrations
 jellyseerr:
   url: "http://localhost:5055"
   api_key: "your-jellyseerr-api-key"
@@ -288,14 +363,17 @@ Configure custom tags in your Sonarr/Radarr to:
 # Start the main service
 ./jellysweep
 
+# Start with specific configuration file
+./jellysweep --config /path/to/config.yml
+
 # Reset all JellySweep tags (cleanup)
 ./jellysweep reset
 
-# Validate configuration
-./jellysweep --dry-run
-
-# Enable debug logging
+# Run with custom log level
 ./jellysweep --log-level debug
+
+# Combine configuration file and log level
+./jellysweep --config config.yml --log-level warn
 ```
 
 ---
@@ -308,8 +386,22 @@ Contributions of all kinds are welcome!
 ```bash
 git clone https://github.com/yourusername/jellysweep.git
 cd jellysweep
+nvm install
+npm install --include=dev
 go mod download
 go run . --dry-run
+
+# build npm dependencies
+npm run build
+
+# build templ pages
+go tool templ generate
+
+# lint
+golangci-lint run
+
+# run tests
+go test -v ./...
 ```
 
 ---

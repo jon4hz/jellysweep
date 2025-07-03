@@ -2,7 +2,7 @@ package cache
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/md5" //nolint:gosec
 	"fmt"
 	"image"
 	"net/http"
@@ -61,7 +61,7 @@ func NewImageCacheWithOptions(cacheDir string, maxWidth, maxHeight, quality int)
 
 // getCacheKey generates a cache key from the image URL.
 func (ic *ImageCache) getCacheKey(imageURL string) string {
-	hash := sha256.Sum256([]byte(imageURL))
+	hash := md5.Sum([]byte(imageURL)) //nolint:gosec
 	return fmt.Sprintf("%x", hash)
 }
 

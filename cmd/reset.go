@@ -15,12 +15,10 @@ var resetCmd = &cobra.Command{
 }
 
 func reset(cmd *cobra.Command, _ []string) {
-	cfg, err := config.Load("config.yml")
+	cfg, err := config.Load(rootCmdPersistentFlags.ConfigFile)
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
-
-	setLogLevel(cfg.JellySweep.LogLevel)
 
 	engine, err := engine.New(cfg)
 	if err != nil {

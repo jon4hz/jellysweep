@@ -96,9 +96,13 @@ func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 				}
 			}
 
-			cleanupDelay := e.cfg.JellySweep.Libraries[lib].CleanupDelay
-			if cleanupDelay <= 0 {
-				cleanupDelay = 1
+			libraryConfig := e.cfg.GetLibraryConfig(lib)
+			cleanupDelay := 1 // default
+			if libraryConfig != nil {
+				cleanupDelay = libraryConfig.CleanupDelay
+				if cleanupDelay <= 0 {
+					cleanupDelay = 1
+				}
 			}
 			deleteTagLabel := fmt.Sprintf("%s%s", jellysweepTagPrefix, time.Now().Add(time.Duration(cleanupDelay)*24*time.Hour).Format("2006-01-02"))
 
@@ -297,8 +301,8 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
 		// If the movie has been played recently, remove the delete tags
 		if lastPlayed != nil && lastPlayed.LastPlayed != nil {
 			// Get the library config to get the threshold
-			libraryConfig, exists := e.cfg.JellySweep.Libraries[libraryName]
-			if !exists {
+			libraryConfig := e.cfg.GetLibraryConfig(libraryName)
+			if libraryConfig == nil {
 				log.Warnf("Library config not found for library %s, skipping", libraryName)
 				continue
 			}

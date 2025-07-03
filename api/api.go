@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/jon4hz/jellysweep/api/handler"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/engine"
+	"github.com/jon4hz/jellysweep/static"
 )
 
 type Server struct {
@@ -26,14 +28,23 @@ type Server struct {
 	imageCache   *cache.ImageCache
 }
 
-func New(ctx context.Context, cfg *config.Config, e *engine.Engine) (*Server, error) {
+func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) (*Server, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is required")
 	}
 
-	authProvider, err := auth.NewProvider(ctx, cfg.JellySweep.Auth)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create auth provider: %w", err)
+	var authProvider auth.AuthProvider
+	var err error
+
+	// Only initialize auth provider if authentication is enabled
+	if cfg.IsAuthenticationEnabled() {
+		authProvider, err = auth.NewProvider(ctx, cfg.JellySweep.Auth)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create auth provider: %w", err)
+		}
+	} else {
+		// Create a no-op auth provider if auth is disabled
+		authProvider = auth.NewNoOpProvider()
 	}
 
 	// Create cache manager with 5 minute TTL
@@ -60,6 +71,10 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine) (*Server, er
 		}
 	}()
 
+	if !debug {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	return &Server{
 		cfg:          cfg.JellySweep,
 		ginEngine:    gin.Default(),
@@ -83,18 +98,25 @@ func (s *Server) setupSession() {
 	s.ginEngine.Use(sessions.Sessions("jellysweep_session", store))
 }
 
-func (s *Server) setupRoutes() {
+func (s *Server) setupRoutes() error {
 	s.setupSession()
 
 	h := handler.New(s.engine, s.cacheManager, s.imageCache, s.authProvider.GetAuthConfig())
 
-	s.ginEngine.Static("/static", "./static") // TODO: make this an embedded file system
-	s.ginEngine.GET("/login", h.Login)
+	staticSub, err := fs.Sub(static.StaticFS, "static")
+	if err != nil {
+		return fmt.Errorf("failed to create static FS sub: %w", err)
+	}
+	s.ginEngine.StaticFS("/static", http.FS(staticSub))
+	// Setup routes depending on authentication status
+	if s.cfg.IsAuthenticationEnabled() {
+		s.ginEngine.GET("/login", h.Login)
 
-	// Auth routes
-	s.ginEngine.POST("/auth/jellyfin/login", s.authProvider.Login)
-	s.ginEngine.GET("/auth/oidc/callback", s.authProvider.Callback)
-	s.ginEngine.GET("/auth/oidc/login", s.authProvider.Login)
+		// Auth routes
+		s.ginEngine.POST("/auth/jellyfin/login", s.authProvider.Login)
+		s.ginEngine.GET("/auth/oidc/callback", s.authProvider.Callback)
+		s.ginEngine.GET("/auth/oidc/login", s.authProvider.Login)
+	}
 
 	protected := s.ginEngine.Group("/")
 	protected.Use(s.authProvider.RequireAuth())
@@ -109,6 +131,8 @@ func (s *Server) setupRoutes() {
 
 	// Image cache route
 	api.GET("/images/cache", h.ImageCache)
+
+	return nil
 }
 
 func (s *Server) setupAdminRoutes() {
@@ -130,7 +154,9 @@ func (s *Server) setupAdminRoutes() {
 }
 
 func (s *Server) Run() error {
-	s.setupRoutes()
+	if err := s.setupRoutes(); err != nil {
+		return fmt.Errorf("failed to setup routes: %w", err)
+	}
 	s.setupAdminRoutes()
 
 	return s.ginEngine.Run(s.cfg.Listen)
