@@ -1,0 +1,226 @@
+---
+version: 2
+
+variables:
+  main: "."
+  binary_name: "jellysweep"
+  description: "Smart cleanup tool for Jellyfin media servers that automatically removes old, unwatched content"
+  github_url: "https://github.com/jon4hz/jellysweep"
+  maintainer: "jonah <me@jon4hz.io>"
+  license: "GPL-3.0-or-later"
+  homepage: "https://github.com/jon4hz/jellysweep"
+  ghcr_io_registry_owner: "jon4hz"
+  aur_package: |-
+    # bin
+    install -Dm755 "./{{ .ProjectName }}" "${pkgdir}/usr/bin/{{ .ProjectName }}"
+    # license
+    install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/{{ .ProjectName }}/LICENSE"
+    # completions
+    mkdir -p "${pkgdir}/usr/share/bash-completion/completions/"
+    mkdir -p "${pkgdir}/usr/share/zsh/site-functions/"
+    mkdir -p "${pkgdir}/usr/share/fish/vendor_completions.d/"
+    install -Dm644 "./completions/{{ .ProjectName }}.bash" "${pkgdir}/usr/share/bash-completion/completions/{{ .ProjectName }}"
+    install -Dm644 "./completions/{{ .ProjectName }}.zsh" "${pkgdir}/usr/share/zsh/site-functions/_{{ .ProjectName }}"
+    install -Dm644 "./completions/{{ .ProjectName }}.fish" "${pkgdir}/usr/share/fish/vendor_completions.d/{{ .ProjectName }}.fish"
+
+before:
+  hooks:
+    - go mod tidy
+    - rm -rf completions
+    - mkdir completions
+    - sh -c 'go run {{ with .Var.main }}{{ . }}{{ else }}.{{ end }} completion "bash" >./completions/{{ .ProjectName }}.bash'
+    - sh -c 'go run {{ with .Var.main }}{{ . }}{{ else }}.{{ end }} completion "zsh" >./completions/{{ .ProjectName }}.zsh'
+    - sh -c 'go run {{ with .Var.main }}{{ . }}{{ else }}.{{ end }} completion "fish" >./completions/{{ .ProjectName }}.fish'
+
+builds:
+  - id: default
+    env:
+      - CGO_ENABLED=0
+    main: "{{ .Var.main }}"
+    binary: "{{ .Var.binary_name }}"
+    ldflags:
+      - -s
+      - -w
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.Version={{ .Version }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.Commit={{ .Commit }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.Date={{ .Date }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.BuiltBy=goreleaser
+    flags:
+      - -trimpath
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+  - id: windows
+    env:
+      - CGO_ENABLED=0
+    main: "{{ .Var.main }}"
+    binary: "{{ .Var.binary_name }}"
+    ldflags:
+      - -s
+      - -w
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.Version={{ .Version }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.Commit={{ .Commit }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.Date={{ .Date }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.BuiltBy=goreleaser
+    flags:
+      - -trimpath
+    goos:
+      - windows
+    goarch:
+      - amd64
+  - id: macOS
+    env:
+      - CGO_ENABLED=1
+    main: "{{ .Var.main }}"
+    binary: "{{ .Var.binary_name }}"
+    ldflags:
+      - -s
+      - -w
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.Version={{ .Version }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.Commit={{ .Commit }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.Date={{ .Date }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/version.BuiltBy=goreleaser
+    flags:
+      - -trimpath
+    goos:
+      - darwin
+    ignore:
+      - goos: darwin
+        goarch: "386"
+
+archives:
+  - id: default
+    name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}-{{ .Mips }}{{ end }}"
+    wrap_in_directory: true
+    ids:
+      - default
+      - macOS
+    files:
+      - LICENSE*
+      - README*
+      - CHANGELOG*
+      - completions/
+  - id: windows
+    name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}-{{ .Mips }}{{ end }}"
+    wrap_in_directory: true
+    ids:
+      - windows
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE*
+      - README*
+      - CHANGELOG*
+
+checksum:
+  name_template: "checksums.txt"
+
+nfpms:
+  - file_name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}-{{ .Mips }}{{ end }}"
+    vendor: jon4hz
+    homepage: "{{ .Var.homepage }}"
+    maintainer: "{{ .Var.maintainer }}"
+    description: "{{ .Var.description }}"
+    license: "{{ .Var.license }}"
+    formats:
+      - deb
+      - rpm
+    contents:
+      - src: ./completions/{{ .ProjectName }}.bash
+        dst: /etc/bash_completion.d/{{ .ProjectName }}
+      - src: ./completions/{{ .ProjectName }}.fish
+        dst: /usr/share/fish/vendor_completions.d/{{ .ProjectName }}.fish
+      - src: ./completions/{{ .ProjectName }}.zsh
+        dst: /usr/share/zsh/site-functions/_{{ .ProjectName }}
+
+aurs:
+  - name: "{{ .ProjectName }}-bin"
+    homepage: "{{ .Var.homepage }}"
+    description: "{{ .Var.description }}"
+    maintainers:
+      - "{{ .Var.maintainer }}"
+    license: "{{ .Var.license }}"
+    private_key: "{{ .Env.AUR_KEY }}"
+    git_url: "ssh://aur@aur.archlinux.org/{{ .ProjectName }}-bin.git"
+    package: "{{ .Var.aur_package }}"
+
+source:
+  enabled: true
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-devel"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^test:"
+      - "^chore"
+      - "merge conflict"
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+      - go mod tidy
+  groups:
+    - title: Dependency updates
+      regexp: "^.*\\(deps\\)*:+.*$"
+      order: 300
+    - title: "New Features"
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 100
+    - title: "Bug fixes"
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 200
+    - title: "Documentation updates"
+      regexp: "^.*docs[(\\w)]*:+.*$"
+      order: 400
+    - title: Other work
+      order: 9999
+
+dockers:
+  - image_templates:
+      - "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}-amd64"
+    goarch: amd64
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .Var.description }}
+      - --label=org.opencontainers.image.source={{ .GitURL }}
+      - --label=org.opencontainers.image.version=v{{ .Version }}
+      - --label=org.opencontainers.image.created={{ .Date }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=GPL-3.0-or-later
+    dockerfile: Dockerfile
+    use: buildx
+  - image_templates:
+      - "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}-arm64"
+    goarch: arm64
+    build_flag_templates:
+      - --platform=linux/arm64
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .Var.description }}
+      - --label=org.opencontainers.image.source={{ .GitURL }}
+      - --label=org.opencontainers.image.version=v{{ .Version }}
+      - --label=org.opencontainers.image.created={{ .Date }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=GPL-3.0-or-later
+    dockerfile: Dockerfile
+    use: buildx
+
+docker_manifests:
+  - name_template: "{{ if not .IsNightly }}ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:latest{{ end }}"
+    image_templates:
+      - "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}-amd64"
+      - "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}-arm64"
+  - name_template: "{{ if not .IsNightly }}ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}{{ end }}"
+    image_templates:
+      - "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}-amd64"
+      - "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}-arm64"
+  - name_template: "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}"
+    image_templates:
+      - "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}-amd64"
+      - "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}-arm64"

@@ -389,7 +389,7 @@ cd jellysweep
 nvm install
 npm install --include=dev
 go mod download
-go run . --dry-run
+go run . serve --log-level debug
 
 # build npm dependencies
 npm run build

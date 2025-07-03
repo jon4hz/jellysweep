@@ -1,22 +1,18 @@
 package cmd
 
 import (
-	"context"
 	"io"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/charmbracelet/log"
-	"github.com/jon4hz/jellysweep/api"
-	"github.com/jon4hz/jellysweep/config"
-	"github.com/jon4hz/jellysweep/engine"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	rootCmd.AddCommand(resetCmd)
+	rootCmd.AddCommand(
+		serveCmd,
+		resetCmd,
+	)
 }
 
 var rootCmdPersistentFlags struct {
@@ -28,16 +24,16 @@ var rootCmdPersistentFlags struct {
 func init() {
 	rootCmd.PersistentFlags().StringVar(&rootCmdPersistentFlags.LogFile, "log-file", "", "File to write logs to")
 	rootCmd.PersistentFlags().StringVarP(&rootCmdPersistentFlags.ConfigFile, "config", "c", "", "Path to config file (default: search for config.yml in current dir, ~/.jellysweep, /etc/jellysweep)")
-	rootCmd.PersistentFlags().StringVar(&rootCmdPersistentFlags.LogLevel, "log-level", "", "Log level (debug, info, warn, error) - overrides config file setting")
+	rootCmd.PersistentFlags().StringVar(&rootCmdPersistentFlags.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
 }
 
 var rootCmd = &cobra.Command{
 	Use:   "jellysweep",
 	Short: "JellySweep is a tool to manage media libraries with automatic deletion and user requests",
 	Long:  `JellySweep helps you manage your media libraries by automatically deleting items that are no longer wanted, while allowing users to request to keep certain items.`,
-	Example: `jellysweep --config config.yml
-  jellysweep -c /path/to/config.yml --log-level debug
-  jellysweep --log-level info  # searches for config in default locations`,
+	Example: `jellysweep serve --config config.yml
+  jellysweep serve -c /path/to/config.yml --log-level debug
+  jellysweep serve --log-level info  # searches for config in default locations`,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
 	},
@@ -45,54 +41,11 @@ var rootCmd = &cobra.Command{
 		setLogLevel(rootCmdPersistentFlags.LogLevel)
 		logToFile()
 	},
-	Run: root,
+	RunE: root,
 }
 
-func root(cmd *cobra.Command, _ []string) {
-	cfg, err := config.Load(rootCmdPersistentFlags.ConfigFile)
-	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
-	}
-
-	ctx, cancel := context.WithCancel(cmd.Context())
-	defer cancel()
-
-	engine, err := engine.New(cfg)
-	if err != nil {
-		log.Fatalf("failed to create engine: %v", err)
-	}
-
-	server, err := api.New(ctx, cfg, engine, log.GetLevel() == log.DebugLevel)
-	if err != nil {
-		log.Fatalf("failed to create API server: %v", err)
-	}
-
-	// Start the engine in a goroutine
-	go func() {
-		if err := engine.Run(ctx); err != nil {
-			log.Error("engine error", "error", err)
-		}
-	}()
-
-	// Start the API server in a goroutine
-	go func() {
-		log.Info("starting API server", "listen", cfg.JellySweep.Listen)
-		if err := server.Run(); err != nil {
-			log.Error("API server error", "error", err)
-		}
-	}()
-
-	// Wait for interrupt signal to gracefully shutdown
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-
-	log.Info("jellysweep started successfully")
-	<-c
-	log.Info("shutting down gracefully...")
-
-	// Give time for graceful shutdown
-	cancel()
-	time.Sleep(2 * time.Second)
+func root(cmd *cobra.Command, _ []string) error {
+	return cmd.Help()
 }
 
 func setLogLevel(level string) {

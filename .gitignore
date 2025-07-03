@@ -8,3 +8,5 @@ config.yml
 jellysweep
 /data/cache/
 jellysweep.log
+/dist/
+completions/
