@@ -64,9 +64,6 @@ func (e *Engine) sendEmailNotifications() {
 			JellySweepURL: e.cfg.JellySweep.ServerURL,
 		}
 
-		// TODO: remove
-		notification.UserEmail = "me@jon4hz.io"
-
 		if err := e.email.SendCleanupNotification(notification); err != nil {
 			log.Errorf("Failed to send email notification to %s: %v", userEmail, err)
 		} else {
