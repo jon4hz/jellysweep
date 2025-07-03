@@ -154,6 +154,8 @@ func (s *Server) setupAdminRoutes() {
 }
 
 func (s *Server) Run() error {
+	s.ginEngine.Use(gin.Recovery())
+
 	if err := s.setupRoutes(); err != nil {
 		return fmt.Errorf("failed to setup routes: %w", err)
 	}

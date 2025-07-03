@@ -118,9 +118,13 @@ type NtfyConfig struct {
 	Token string `yaml:"token" mapstructure:"token"`
 }
 
+// TODO: since viper handles the map keys case insensitively, we must track the case sensitive name in the cleanup config.
+
 type CleanupConfig struct {
 	// Enabled indicates whether the cleanup job is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+	// LibraryName is the case sensitive name of the library this configuration applies to.
+	LibraryName string `yaml:"library_name" mapstructure:"library_name"`
 	// RequestAgeThreshold is the minimum age in days for a request to be eligible for cleanup.
 	RequestAgeThreshold int `yaml:"request_age_threshold" mapstructure:"request_age_threshold"`
 	// LastStreamThreshold is the minimum time in days since the last stream for content to be eligible for cleanup.
@@ -208,7 +212,7 @@ func Load(path string) (*Config, error) {
 	// Print info about config file usage
 	if configFileFound {
 		log.Debug("Using config file", "file", v.ConfigFileUsed())
-		log.Info("Environment variables with JELLYSWEEP_ prefix will override config file values")
+		log.Debug("Environment variables with JELLYSWEEP_ prefix will override config file values")
 	}
 
 	// Validate required configs
@@ -244,16 +248,18 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jellysweep.ntfy.enabled", false)
 	v.SetDefault("jellysweep.ntfy.server_url", "https://ntfy.sh")
 
-	// Default library cleanup config
-	v.SetDefault("jellysweep.libraries.default.enabled", true)
-	v.SetDefault("jellysweep.libraries.default.request_age_threshold", 120)
-	v.SetDefault("jellysweep.libraries.default.last_stream_threshold", 90)
-	v.SetDefault("jellysweep.libraries.default.cleanup_delay", 30)
-	v.SetDefault("jellysweep.libraries.default.exclude_tags", []string{
-		"jellysweep-exclude",
-		"jellysweep-ignore",
-		"do-not-delete",
-	})
+	/*
+		 	// Default library cleanup config
+			v.SetDefault("jellysweep.libraries.default.enabled", true)
+			v.SetDefault("jellysweep.libraries.default.request_age_threshold", 120)
+			v.SetDefault("jellysweep.libraries.default.last_stream_threshold", 90)
+			v.SetDefault("jellysweep.libraries.default.cleanup_delay", 30)
+			v.SetDefault("jellysweep.libraries.default.exclude_tags", []string{
+				"jellysweep-exclude",
+				"jellysweep-ignore",
+				"do-not-delete",
+			})
+	*/
 }
 
 // validateConfig validates the configuration.
@@ -334,20 +340,34 @@ func validateConfig(c *Config) error {
 }
 
 // GetLibraryConfig returns the cleanup configuration for a specific library.
-// If no specific configuration is found, it returns the default configuration.
+// This function handles the case-sensitivity issue where viper normalizes map keys
+// to lowercase, but library names from Jellystat are case-sensitive.
 func (c *Config) GetLibraryConfig(libraryName string) *CleanupConfig {
 	if c.JellySweep == nil || c.JellySweep.Libraries == nil {
 		return nil
 	}
 
-	// First try to get library-specific config
+	// First try exact match (for backward compatibility)
 	if config, exists := c.JellySweep.Libraries[libraryName]; exists {
 		return config
 	}
 
-	// Fall back to default config
-	if defaultConfig, exists := c.JellySweep.Libraries["default"]; exists {
-		return defaultConfig
+	// If no exact match, try case-insensitive lookup using LibraryName field
+	// This handles the case where viper has normalized the map keys to lowercase
+	// but we need to match against the original case-sensitive library names
+	for _, config := range c.JellySweep.Libraries {
+		if config.LibraryName != "" && config.LibraryName == libraryName {
+			return config
+		}
+	}
+
+	// If still no match, try case-insensitive comparison on map keys
+	// This is a fallback for configurations that don't use the LibraryName field
+	libraryNameLower := strings.ToLower(libraryName)
+	for key, config := range c.JellySweep.Libraries {
+		if strings.ToLower(key) == libraryNameLower {
+			return config
+		}
 	}
 
 	return nil

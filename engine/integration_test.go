@@ -2,6 +2,8 @@ package engine
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -9,6 +11,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// IMPORTANT: This file contains integration tests that demonstrate a critical bug
+// in the current implementation related to library name case sensitivity.
+//
+// THE BUG: Viper (the configuration library) normalizes map keys to lowercase when
+// loading YAML configuration, but library names from Jellystat are case-sensitive.
+// This creates a mismatch where GetLibraryConfig(libraryName) fails to find
+// configurations because it does exact string matching on the map keys.
+//
+// IMPACT: Libraries with non-lowercase names (e.g., "Movies", "TV Shows") will
+// not have their exclude tags or other configuration applied, leading to incorrect
+// filtering behavior.
+//
+// Tests in this file:
+// - TestEngine_LibraryNameCaseSensitivity: Tests case sensitivity with manually created configs
+// - TestEngine_ViperConfigIntegration: Tests the actual viper loading process and demonstrates the bug
+//
+// The TODO comment in config.go acknowledges this issue:
+// "since viper handles the map keys case insensitively, we must track the case sensitive name"
 
 // TestEngine_MultipleRunsConsistency tests that multiple runs of the engine
 // behave consistently and don't interfere with each other
@@ -479,5 +500,576 @@ func TestEngine_ErrorRecovery(t *testing.T) {
 		assert.NotPanics(t, func() {
 			engine.filterMediaTags()
 		})
+	})
+}
+
+// TestEngine_LibraryNameCaseSensitivity tests how the engine handles library name case sensitivity
+// This is critical because viper loads config with case-insensitive map keys, but library names
+// from Jellystat are case-sensitive, which can cause configuration mismatches
+func TestEngine_LibraryNameCaseSensitivity(t *testing.T) {
+	// Helper function to create engine with specific library configuration
+	createEngineWithLibraryConfig := func(libraryNames []string) *Engine {
+		libraries := make(map[string]*config.CleanupConfig)
+		for _, name := range libraryNames {
+			libraries[name] = &config.CleanupConfig{
+				Enabled:             true,
+				RequestAgeThreshold: 30,
+				LastStreamThreshold: 90,
+				CleanupDelay:        7,
+				ExcludeTags:         []string{"favorite", "ongoing"},
+			}
+		}
+
+		cfg := &config.Config{
+			JellySweep: &config.JellysweepConfig{
+				CleanupInterval: 24,
+				Libraries:       libraries,
+				DryRun:          true,
+			},
+			Jellystat: &config.JellystatConfig{
+				URL:    "http://jellystat:3000",
+				APIKey: "test-key",
+			},
+		}
+
+		engine, err := New(cfg)
+		require.NoError(t, err)
+		return engine
+	}
+
+	t.Run("exact case match", func(t *testing.T) {
+		// Test when library names match exactly
+		engine := createEngineWithLibraryConfig([]string{"Movies", "TV Shows"})
+
+		engine.data.mediaItems = map[string][]MediaItem{
+			"Movies": {
+				{Title: "Movie 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+			"TV Shows": {
+				{Title: "Show 1", MediaType: MediaTypeTV, Tags: []string{}},
+				{Title: "Show 2", MediaType: MediaTypeTV, Tags: []string{"ongoing"}},
+			},
+		}
+
+		engine.filterMediaTags()
+
+		// Should filter correctly when case matches exactly
+		assert.Len(t, engine.data.mediaItems["Movies"], 1, "Movie with 'favorite' tag should be excluded")
+		assert.Len(t, engine.data.mediaItems["TV Shows"], 1, "Show with 'ongoing' tag should be excluded")
+		assert.Equal(t, "Movie 1", engine.data.mediaItems["Movies"][0].Title)
+		assert.Equal(t, "Show 1", engine.data.mediaItems["TV Shows"][0].Title)
+	})
+
+	t.Run("case mismatch - config lowercase, data uppercase", func(t *testing.T) {
+		// Test when config has lowercase but data has different case
+		engine := createEngineWithLibraryConfig([]string{"movies", "tv shows"})
+
+		engine.data.mediaItems = map[string][]MediaItem{
+			"Movies": { // Data has title case
+				{Title: "Movie 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+			"TV Shows": { // Data has title case
+				{Title: "Show 1", MediaType: MediaTypeTV, Tags: []string{}},
+				{Title: "Show 2", MediaType: MediaTypeTV, Tags: []string{"ongoing"}},
+			},
+		}
+
+		engine.filterMediaTags()
+
+		// With the fix, filtering should now work correctly even with case mismatches
+		assert.Len(t, engine.data.mediaItems["Movies"], 1, "Movie with 'favorite' tag should be excluded (case-insensitive lookup)")
+		assert.Len(t, engine.data.mediaItems["TV Shows"], 1, "Show with 'ongoing' tag should be excluded (case-insensitive lookup)")
+		assert.Equal(t, "Movie 1", engine.data.mediaItems["Movies"][0].Title)
+		assert.Equal(t, "Show 1", engine.data.mediaItems["TV Shows"][0].Title)
+	})
+
+	t.Run("case mismatch - config uppercase, data lowercase", func(t *testing.T) {
+		// Test when config has uppercase but data has different case
+		engine := createEngineWithLibraryConfig([]string{"MOVIES", "TV SHOWS"})
+
+		engine.data.mediaItems = map[string][]MediaItem{
+			"movies": { // Data has lowercase
+				{Title: "Movie 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+			"tv shows": { // Data has lowercase
+				{Title: "Show 1", MediaType: MediaTypeTV, Tags: []string{}},
+				{Title: "Show 2", MediaType: MediaTypeTV, Tags: []string{"ongoing"}},
+			},
+		}
+
+		engine.filterMediaTags()
+
+		// With the fix, filtering should now work correctly even with case mismatches
+		assert.Len(t, engine.data.mediaItems["movies"], 1, "Movie with 'favorite' tag should be excluded (case-insensitive lookup)")
+		assert.Len(t, engine.data.mediaItems["tv shows"], 1, "Show with 'ongoing' tag should be excluded (case-insensitive lookup)")
+		assert.Equal(t, "Movie 1", engine.data.mediaItems["movies"][0].Title)
+		assert.Equal(t, "Show 1", engine.data.mediaItems["tv shows"][0].Title)
+	})
+
+	t.Run("mixed case scenarios", func(t *testing.T) {
+		// Test various mixed case scenarios
+		engine := createEngineWithLibraryConfig([]string{"Movies", "tv-shows", "DOCUMENTARIES"})
+
+		engine.data.mediaItems = map[string][]MediaItem{
+			"movies": { // lowercase vs "Movies" in config
+				{Title: "Movie 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+			"TV-Shows": { // different case vs "tv-shows" in config
+				{Title: "Show 1", MediaType: MediaTypeTV, Tags: []string{}},
+				{Title: "Show 2", MediaType: MediaTypeTV, Tags: []string{"ongoing"}},
+			},
+			"documentaries": { // lowercase vs "DOCUMENTARIES" in config
+				{Title: "Doc 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Doc 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+		}
+
+		engine.filterMediaTags()
+
+		// With the fix, filtering should now work correctly even with case mismatches
+		assert.Len(t, engine.data.mediaItems["movies"], 1, "Movie with 'favorite' tag should be excluded (case-insensitive lookup)")
+		assert.Len(t, engine.data.mediaItems["TV-Shows"], 1, "Show with 'ongoing' tag should be excluded (case-insensitive lookup)")
+		assert.Len(t, engine.data.mediaItems["documentaries"], 1, "Doc with 'favorite' tag should be excluded (case-insensitive lookup)")
+		assert.Equal(t, "Movie 1", engine.data.mediaItems["movies"][0].Title)
+		assert.Equal(t, "Show 1", engine.data.mediaItems["TV-Shows"][0].Title)
+		assert.Equal(t, "Doc 1", engine.data.mediaItems["documentaries"][0].Title)
+	})
+
+	t.Run("viper case insensitive simulation", func(t *testing.T) {
+		// Simulate how viper might load configuration with different case
+		// This represents what would happen if viper normalizes keys to lowercase
+		engine := createEngineWithLibraryConfig([]string{"movies", "tv shows"}) // viper normalized to lowercase
+
+		// But the actual library names from Jellystat come in different cases
+		engine.data.mediaItems = map[string][]MediaItem{
+			"Movies": { // From Jellystat - title case
+				{Title: "Movie 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+			"TV Shows": { // From Jellystat - title case
+				{Title: "Show 1", MediaType: MediaTypeTV, Tags: []string{}},
+				{Title: "Show 2", MediaType: MediaTypeTV, Tags: []string{"ongoing"}},
+			},
+		}
+
+		engine.filterMediaTags()
+
+		// With the fix, filtering should now work correctly even though viper normalized the keys
+		assert.Len(t, engine.data.mediaItems["Movies"], 1, "Movies should be filtered using case-insensitive lookup")
+		assert.Len(t, engine.data.mediaItems["TV Shows"], 1, "TV Shows should be filtered using case-insensitive lookup")
+		assert.Equal(t, "Movie 1", engine.data.mediaItems["Movies"][0].Title)
+		assert.Equal(t, "Show 1", engine.data.mediaItems["TV Shows"][0].Title)
+	})
+
+	t.Run("library not in configuration", func(t *testing.T) {
+		// Test with library names that don't exist in config at all
+		engine := createEngineWithLibraryConfig([]string{"Movies"}) // Only Movies configured
+
+		engine.data.mediaItems = map[string][]MediaItem{
+			"Movies": {
+				{Title: "Movie 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+			"Unconfigured Library": { // Not in config
+				{Title: "Unknown 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Unknown 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+		}
+
+		engine.filterMediaTags()
+
+		// Movies should be filtered (favorite tag excluded)
+		assert.Len(t, engine.data.mediaItems["Movies"], 1, "Movies should be filtered based on config")
+		assert.Equal(t, "Movie 1", engine.data.mediaItems["Movies"][0].Title)
+
+		// Unconfigured library should pass through without filtering
+		assert.Len(t, engine.data.mediaItems["Unconfigured Library"], 2, "Unconfigured libraries should not be filtered")
+	})
+
+	t.Run("empty library configuration", func(t *testing.T) {
+		// Test with empty library configuration
+		cfg := &config.Config{
+			JellySweep: &config.JellysweepConfig{
+				CleanupInterval: 24,
+				Libraries:       make(map[string]*config.CleanupConfig), // Empty
+				DryRun:          true,
+			},
+			Jellystat: &config.JellystatConfig{
+				URL:    "http://jellystat:3000",
+				APIKey: "test-key",
+			},
+		}
+
+		engine, err := New(cfg)
+		require.NoError(t, err)
+
+		engine.data.mediaItems = map[string][]MediaItem{
+			"Movies": {
+				{Title: "Movie 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+		}
+
+		engine.filterMediaTags()
+
+		// With no configuration, no filtering should occur
+		assert.Len(t, engine.data.mediaItems["Movies"], 2, "No filtering with empty config")
+	})
+
+	t.Run("nil library configuration", func(t *testing.T) {
+		// Test with nil library configuration
+		cfg := &config.Config{
+			JellySweep: &config.JellysweepConfig{
+				CleanupInterval: 24,
+				Libraries:       nil, // Nil
+				DryRun:          true,
+			},
+			Jellystat: &config.JellystatConfig{
+				URL:    "http://jellystat:3000",
+				APIKey: "test-key",
+			},
+		}
+
+		engine, err := New(cfg)
+		require.NoError(t, err)
+
+		engine.data.mediaItems = map[string][]MediaItem{
+			"Movies": {
+				{Title: "Movie 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+		}
+
+		// Should not panic with nil configuration
+		assert.NotPanics(t, func() {
+			engine.filterMediaTags()
+		})
+
+		// With nil configuration, no filtering should occur
+		assert.Len(t, engine.data.mediaItems["Movies"], 2, "No filtering with nil config")
+	})
+
+	t.Run("demonstrate LibraryName field usage", func(t *testing.T) {
+		// Test the LibraryName field in CleanupConfig that should store the case-sensitive name
+		libraries := make(map[string]*config.CleanupConfig)
+		libraries["movies"] = &config.CleanupConfig{ // viper normalized key
+			Enabled:             true,
+			LibraryName:         "Movies", // Actual case-sensitive name
+			RequestAgeThreshold: 30,
+			LastStreamThreshold: 90,
+			CleanupDelay:        7,
+			ExcludeTags:         []string{"favorite"},
+		}
+
+		cfg := &config.Config{
+			JellySweep: &config.JellysweepConfig{
+				CleanupInterval: 24,
+				Libraries:       libraries,
+				DryRun:          true,
+			},
+			Jellystat: &config.JellystatConfig{
+				URL:    "http://jellystat:3000",
+				APIKey: "test-key",
+			},
+		}
+
+		engine, err := New(cfg)
+		require.NoError(t, err)
+
+		// Verify the LibraryName field is set correctly
+		config := engine.cfg.GetLibraryConfig("movies")
+		assert.NotNil(t, config)
+		assert.Equal(t, "Movies", config.LibraryName, "LibraryName should store the case-sensitive name")
+
+		// With the fix, the case-insensitive lookup now works!
+		configFromCaseSensitive := engine.cfg.GetLibraryConfig("Movies")
+		assert.NotNil(t, configFromCaseSensitive, "Case-insensitive lookup now works with the fix!")
+		assert.Equal(t, "Movies", configFromCaseSensitive.LibraryName, "Original case is preserved in LibraryName field")
+	})
+}
+
+// TestEngine_ViperConfigIntegration tests how the engine works with viper's case-insensitive config loading
+// This test simulates the actual config loading process to demonstrate the case sensitivity issue
+func TestEngine_ViperConfigIntegration(t *testing.T) {
+	t.Run("simulate viper case insensitive loading", func(t *testing.T) {
+		// Create a temporary config file with mixed case library names
+		configContent := `
+jellysweep:
+  cleanup_interval: 24
+  dry_run: true
+  auth:
+    jellyfin:
+      enabled: true
+      url: "http://jellyfin:8096"
+  libraries:
+    Movies:  # Title case in config file
+      enabled: true
+      request_age_threshold: 30
+      last_stream_threshold: 90
+      cleanup_delay: 7
+      exclude_tags: ["favorite"]
+    "TV Shows":  # Title case with spaces
+      enabled: true
+      request_age_threshold: 45
+      last_stream_threshold: 120
+      cleanup_delay: 14
+      exclude_tags: ["ongoing"]
+    DOCUMENTARIES:  # All caps
+      enabled: true
+      request_age_threshold: 60
+      last_stream_threshold: 150
+      cleanup_delay: 21
+      exclude_tags: ["educational"]
+
+jellyseerr:
+  url: "http://jellyseerr:5055"
+  api_key: "test-key"
+
+sonarr:
+  url: "http://sonarr:8989"
+  api_key: "test-key"
+
+radarr:
+  url: "http://radarr:7878"
+  api_key: "test-key"
+
+jellystat:
+  url: "http://jellystat:3000"
+  api_key: "test-key"
+`
+
+		// Create a temporary file
+		tmpfile, err := os.CreateTemp("", "jellysweep-test-config-*.yml")
+		require.NoError(t, err)
+		defer os.Remove(tmpfile.Name())
+
+		_, err = tmpfile.WriteString(configContent)
+		require.NoError(t, err)
+		tmpfile.Close()
+
+		// Load config using the actual Load function (which uses viper)
+		cfg, err := config.Load(tmpfile.Name())
+		require.NoError(t, err)
+
+		// Create engine with the loaded config
+		engine, err := New(cfg)
+		require.NoError(t, err)
+
+		// Verify how viper handled the library names
+		t.Log("Library configurations found:")
+		for key, libConfig := range cfg.JellySweep.Libraries {
+			t.Logf("  Key: '%s', LibraryName: '%s', Enabled: %v", key, libConfig.LibraryName, libConfig.Enabled)
+		}
+
+		// Test with different case variations of library names that might come from Jellystat
+		testCases := []struct {
+			actualLibraryName string
+			expectedFound     bool
+			description       string
+		}{
+			// With the fix, case-insensitive lookup should work for all these cases
+			{"Movies", true, "Should find with case-insensitive lookup (FIXED)"},
+			{"movies", true, "Finds because viper normalized to lowercase"},
+			{"MOVIES", true, "Should find with case-insensitive lookup (FIXED)"},
+			{"TV Shows", true, "Should find with case-insensitive lookup (FIXED)"},
+			{"tv shows", true, "Finds because viper normalized to lowercase"},
+			{"TV SHOWS", true, "Should find with case-insensitive lookup (FIXED)"},
+			{"DOCUMENTARIES", true, "Should find with case-insensitive lookup (FIXED)"},
+			{"documentaries", true, "Finds because viper normalized to lowercase"},
+			{"Documentaries", true, "Should find with case-insensitive lookup (FIXED)"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(fmt.Sprintf("lookup_%s", tc.actualLibraryName), func(t *testing.T) {
+				config := engine.cfg.GetLibraryConfig(tc.actualLibraryName)
+				if tc.expectedFound {
+					assert.NotNil(t, config, "Should find config for %s (%s)", tc.actualLibraryName, tc.description)
+				} else {
+					assert.Nil(t, config, "Should NOT find config for %s (%s)", tc.actualLibraryName, tc.description)
+				}
+			})
+		}
+
+		// Simulate media items coming from Jellystat with different cases
+		engine.data.mediaItems = map[string][]MediaItem{
+			"Movies": { // Exact match - should work
+				{Title: "Movie 1", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 2", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+			"movies": { // Lowercase - should not work (no config found)
+				{Title: "Movie 3", MediaType: MediaTypeMovie, Tags: []string{}},
+				{Title: "Movie 4", MediaType: MediaTypeMovie, Tags: []string{"favorite"}},
+			},
+			"TV Shows": { // Exact match - should work
+				{Title: "Show 1", MediaType: MediaTypeTV, Tags: []string{}},
+				{Title: "Show 2", MediaType: MediaTypeTV, Tags: []string{"ongoing"}},
+			},
+			"tv shows": { // Lowercase - should not work
+				{Title: "Show 3", MediaType: MediaTypeTV, Tags: []string{}},
+				{Title: "Show 4", MediaType: MediaTypeTV, Tags: []string{"ongoing"}},
+			},
+		}
+
+		engine.filterMediaTags()
+
+		// Verify filtering results
+		t.Log("Filtering results:")
+		for lib, items := range engine.data.mediaItems {
+			t.Logf("  Library '%s': %d items remaining", lib, len(items))
+			for _, item := range items {
+				t.Logf("    - %s (tags: %v)", item.Title, item.Tags)
+			}
+		}
+
+		// Expected results (demonstrating the FIX):
+		// All libraries should now be filtered correctly due to case-insensitive lookup
+		// - "Movies" should be filtered (config found via case-insensitive lookup) -> 1 item
+		// - "movies" should be filtered (config found directly) -> 1 item
+		// - "TV Shows" should be filtered (config found via case-insensitive lookup) -> 1 item
+		// - "tv shows" should be filtered (config found directly) -> 1 item
+
+		assert.Len(t, engine.data.mediaItems["Movies"], 1, "Movies should be filtered using case-insensitive lookup")
+		assert.Equal(t, "Movie 1", engine.data.mediaItems["Movies"][0].Title)
+
+		assert.Len(t, engine.data.mediaItems["movies"], 1, "movies (viper normalized) should be filtered")
+		assert.Equal(t, "Movie 3", engine.data.mediaItems["movies"][0].Title)
+
+		assert.Len(t, engine.data.mediaItems["TV Shows"], 1, "TV Shows should be filtered using case-insensitive lookup")
+		assert.Equal(t, "Show 1", engine.data.mediaItems["TV Shows"][0].Title)
+
+		assert.Len(t, engine.data.mediaItems["tv shows"], 1, "tv shows (viper normalized) should be filtered")
+		assert.Equal(t, "Show 3", engine.data.mediaItems["tv shows"][0].Title)
+	})
+
+	t.Run("viper key normalization behavior", func(t *testing.T) {
+		// Test to understand how viper actually handles map keys
+		// This might vary based on viper version and configuration
+
+		// Create config with various case patterns
+		configContent := `
+jellysweep:
+  cleanup_interval: 24
+  dry_run: true
+  auth:
+    jellyfin:
+      enabled: true
+      url: "http://jellyfin:8096"
+  libraries:
+    "Mixed Case Library":
+      enabled: true
+      exclude_tags: ["test"]
+    "UPPERCASE_LIBRARY":
+      enabled: true
+      exclude_tags: ["test"]
+    "lowercase_library":
+      enabled: true
+      exclude_tags: ["test"]
+
+jellyseerr:
+  url: "http://jellyseerr:5055"
+  api_key: "test-key"
+
+sonarr:
+  url: "http://sonarr:8989"
+  api_key: "test-key"
+
+radarr:
+  url: "http://radarr:7878"
+  api_key: "test-key"
+
+jellystat:
+  url: "http://jellystat:3000"
+  api_key: "test-key"
+`
+
+		tmpfile, err := os.CreateTemp("", "jellysweep-viper-test-*.yml")
+		require.NoError(t, err)
+		defer os.Remove(tmpfile.Name())
+
+		_, err = tmpfile.WriteString(configContent)
+		require.NoError(t, err)
+		tmpfile.Close()
+
+		cfg, err := config.Load(tmpfile.Name())
+		require.NoError(t, err)
+
+		// Log all the actual keys that viper loaded
+		t.Log("Actual library keys loaded by viper:")
+		for key := range cfg.JellySweep.Libraries {
+			t.Logf("  '%s'", key)
+		}
+
+		// This will show us exactly how viper is handling the keys
+		// and whether they're being normalized or preserved as-is
+	})
+
+	t.Run("workaround using LibraryName field", func(t *testing.T) {
+		// Test a potential workaround using the LibraryName field
+		// to store the original case-sensitive name
+
+		configContent := `
+jellysweep:
+  cleanup_interval: 24
+  dry_run: true
+  auth:
+    jellyfin:
+      enabled: true
+      url: "http://jellyfin:8096"
+  libraries:
+    movies:  # normalized by viper
+      enabled: true
+      library_name: "Movies"  # preserve original case
+      exclude_tags: ["favorite"]
+    tv_shows:  # normalized by viper
+      enabled: true
+      library_name: "TV Shows"  # preserve original case
+      exclude_tags: ["ongoing"]
+
+jellyseerr:
+  url: "http://jellyseerr:5055"
+  api_key: "test-key"
+
+sonarr:
+  url: "http://sonarr:8989"
+  api_key: "test-key"
+
+radarr:
+  url: "http://radarr:7878"
+  api_key: "test-key"
+
+jellystat:
+  url: "http://jellystat:3000"
+  api_key: "test-key"
+`
+
+		tmpfile, err := os.CreateTemp("", "jellysweep-workaround-*.yml")
+		require.NoError(t, err)
+		defer os.Remove(tmpfile.Name())
+
+		_, err = tmpfile.WriteString(configContent)
+		require.NoError(t, err)
+		tmpfile.Close()
+
+		cfg, err := config.Load(tmpfile.Name())
+		require.NoError(t, err)
+
+		// Verify the LibraryName field is loaded correctly
+		moviesConfig := cfg.GetLibraryConfig("movies")
+		assert.NotNil(t, moviesConfig)
+		assert.Equal(t, "Movies", moviesConfig.LibraryName)
+
+		tvConfig := cfg.GetLibraryConfig("tv_shows")
+		assert.NotNil(t, tvConfig)
+		assert.Equal(t, "TV Shows", tvConfig.LibraryName)
+
+		// With the fix, both the direct lookup and reverse lookup work
+		assert.NotNil(t, cfg.GetLibraryConfig("Movies"), "Case-insensitive lookup now works!")
+		assert.NotNil(t, cfg.GetLibraryConfig("TV Shows"), "Case-insensitive lookup now works!")
+
+		t.Log("The fix now enables both LibraryName field usage AND case-insensitive lookup")
 	})
 }

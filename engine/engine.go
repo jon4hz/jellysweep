@@ -238,12 +238,14 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 
 	e.filterMediaTags()
 
+	log.Info("Checking for streaming history")
 	if err := e.filterLastStreamThreshold(ctx); err != nil {
 		log.Errorf("failed to filter last stream threshold: %v", err)
 		return
 	}
 	// TODO: dont just consider request age. Consider that the file might have been downloaded at a later date
 	// add a third filter option for available since date
+	log.Info("Check for media requests")
 	e.filterRequestAgeThreshold(ctx)
 
 	for lib, items := range e.data.mediaItems {
@@ -297,7 +299,7 @@ type MediaItem struct {
 func (e *Engine) mergeMediaItems() {
 	mediaItems := make(map[string][]MediaItem, 0)
 	for _, item := range e.data.jellystatItems {
-		libraryName := e.data.libraryIDMap[item.ParentID]
+		libraryName := strings.ToLower(e.data.libraryIDMap[item.ParentID])
 
 		// Handle TV Series (Sonarr)
 		if item.Type == jellystat.ItemTypeSeries {

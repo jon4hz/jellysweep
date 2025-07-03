@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -38,9 +39,10 @@ func (e *Engine) getJellystatEnabledLibraryIDs(ctx context.Context) ([]string, e
 	}
 	var enabledLibraryIDs []string
 	for _, library := range libraries {
-		if slices.Contains(lo.Keys(e.cfg.JellySweep.Libraries), library.Name) {
+		libraryName := strings.ToLower(library.Name)
+		if slices.Contains(lo.Keys(e.cfg.JellySweep.Libraries), libraryName) {
 			enabledLibraryIDs = append(enabledLibraryIDs, library.ID)
-			e.data.libraryIDMap[library.ID] = library.Name
+			e.data.libraryIDMap[library.ID] = library.Name // maybe we need to change that to the lower case version? Not sure yet.
 		}
 	}
 	return enabledLibraryIDs, nil
