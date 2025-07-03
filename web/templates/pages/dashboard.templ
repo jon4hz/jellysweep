@@ -1,0 +1,895 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/web/templates"
+	"github.com/jon4hz/jellysweep/web/templates/components"
+	"sort"
+	"time"
+)
+
+// formatExactDate formats a time.Time as an exact date string for tooltips
+func formatExactDate(t time.Time) string {
+	return t.Format("January 2, 2006 at 15:04 MST")
+}
+
+// getUniqueLibraries extracts unique library names from media items
+func getUniqueLibraries(items []models.MediaItem) []string {
+	libraryMap := make(map[string]bool)
+	var libraries []string
+
+	for _, item := range items {
+		if item.Library != "" && !libraryMap[item.Library] {
+			libraryMap[item.Library] = true
+			libraries = append(libraries, item.Library)
+		}
+	}
+
+	return libraries
+}
+
+// DailyCleanupPoint represents storage cleaned up on a specific day
+type DailyCleanupPoint struct {
+	Date       time.Time
+	DailyBytes int64
+	ItemsCount int
+}
+
+// CumulativeCleanupPoint represents cumulative storage freed over time
+type CumulativeCleanupPoint struct {
+	Date            time.Time
+	CumulativeBytes int64
+	ItemsDeleted    int
+}
+
+// calculateDailyCleanupData processes media items to create data points for daily cleanup graph
+func calculateDailyCleanupData(items []models.MediaItem) []DailyCleanupPoint {
+	if len(items) == 0 {
+		return []DailyCleanupPoint{}
+	}
+
+	// Group items by date (day)
+	dailyMap := make(map[string][]models.MediaItem)
+	for _, item := range items {
+		dateKey := item.DeletionDate.Format("2006-01-02")
+		dailyMap[dateKey] = append(dailyMap[dateKey], item)
+	}
+
+	var points []DailyCleanupPoint
+	for dateKey, dayItems := range dailyMap {
+		date, _ := time.Parse("2006-01-02", dateKey)
+
+		var dailyBytes int64
+		for _, item := range dayItems {
+			dailyBytes += item.FileSize
+		}
+
+		points = append(points, DailyCleanupPoint{
+			Date:       date,
+			DailyBytes: dailyBytes,
+			ItemsCount: len(dayItems),
+		})
+	}
+
+	// Sort points by date
+	sort.Slice(points, func(i, j int) bool {
+		return points[i].Date.Before(points[j].Date)
+	})
+
+	return points
+}
+
+// calculateCumulativeCleanupData processes media items to create data points for cumulative cleanup graph
+func calculateCumulativeCleanupData(items []models.MediaItem) []CumulativeCleanupPoint {
+	if len(items) == 0 {
+		return []CumulativeCleanupPoint{}
+	}
+
+	// Sort items by deletion date
+	sortedItems := make([]models.MediaItem, len(items))
+	copy(sortedItems, items)
+	sort.Slice(sortedItems, func(i, j int) bool {
+		return sortedItems[i].DeletionDate.Before(sortedItems[j].DeletionDate)
+	})
+
+	var points []CumulativeCleanupPoint
+	var cumulativeBytes int64
+	var itemsDeleted int
+
+	// Start from the first deletion date
+	firstDeletionDate := sortedItems[0].DeletionDate
+	points = append(points, CumulativeCleanupPoint{
+		Date:            firstDeletionDate,
+		CumulativeBytes: 0,
+		ItemsDeleted:    0,
+	})
+
+	// Calculate cumulative storage freed at each deletion date
+	for _, item := range sortedItems {
+		cumulativeBytes += item.FileSize
+		itemsDeleted++
+
+		points = append(points, CumulativeCleanupPoint{
+			Date:            item.DeletionDate,
+			CumulativeBytes: cumulativeBytes,
+			ItemsDeleted:    itemsDeleted,
+		})
+	}
+
+	return points
+}
+
+// getTotalStorageToFree calculates the total storage that will be freed
+func getTotalStorageToFree(items []models.MediaItem) int64 {
+	var total int64
+	for _, item := range items {
+		total += item.FileSize
+	}
+	return total
+}
+
+// DailyChartData represents the structure for daily chart JSON data
+type DailyChartData struct {
+	Points       []DailyChartPoint `json:"points"`
+	TotalStorage int64             `json:"totalStorage"`
+}
+
+// DailyChartPoint represents a single data point for the daily chart
+type DailyChartPoint struct {
+	Date       string `json:"date"`
+	DailyBytes int64  `json:"dailyBytes"`
+	ItemsCount int    `json:"itemsCount"`
+}
+
+// CumulativeChartData represents the structure for cumulative chart JSON data
+type CumulativeChartData struct {
+	Points       []CumulativeChartPoint `json:"points"`
+	TotalStorage int64                  `json:"totalStorage"`
+}
+
+// CumulativeChartPoint represents a single data point for the cumulative chart
+type CumulativeChartPoint struct {
+	Date            string `json:"date"`
+	CumulativeBytes int64  `json:"cumulativeBytes"`
+	ItemsDeleted    int    `json:"itemsDeleted"`
+}
+
+// generateDailyChartData creates the data structure for the daily cleanup chart
+func generateDailyChartData(points []DailyCleanupPoint, totalStorage int64) DailyChartData {
+	chartPoints := make([]DailyChartPoint, len(points))
+	for i, point := range points {
+		chartPoints[i] = DailyChartPoint{
+			Date:       point.Date.Format("2006-01-02T15:04:05Z07:00"),
+			DailyBytes: point.DailyBytes,
+			ItemsCount: point.ItemsCount,
+		}
+	}
+
+	return DailyChartData{
+		Points:       chartPoints,
+		TotalStorage: totalStorage,
+	}
+}
+
+// generateCumulativeChartData creates the data structure for the cumulative cleanup chart
+func generateCumulativeChartData(points []CumulativeCleanupPoint, totalStorage int64) CumulativeChartData {
+	chartPoints := make([]CumulativeChartPoint, len(points))
+	for i, point := range points {
+		chartPoints[i] = CumulativeChartPoint{
+			Date:            point.Date.Format("2006-01-02T15:04:05Z07:00"),
+			CumulativeBytes: point.CumulativeBytes,
+			ItemsDeleted:    point.ItemsDeleted,
+		}
+	}
+
+	return CumulativeChartData{
+		Points:       chartPoints,
+		TotalStorage: totalStorage,
+	}
+}
+
+templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
+	@DashboardWithPendingRequests(user, mediaItems, 0)
+}
+
+templ DashboardWithPendingRequests(user *models.User, mediaItems []models.MediaItem, pendingRequestsCount int) {
+	if user != nil && user.IsAdmin {
+		@templates.LayoutWithPendingRequests("Dashboard", user, pendingRequestsCount) {
+			@DashboardContent(user, mediaItems)
+		}
+	} else {
+		@templates.Layout("Dashboard", user) {
+			@DashboardContent(user, mediaItems)
+		}
+	}
+}
+
+templ DashboardContent(user *models.User, mediaItems []models.MediaItem) {
+	<div class="space-y-6">
+		<!-- Header -->
+		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+			<div>
+				<h1 class="text-3xl font-bold text-gray-100">Media Dashboard</h1>
+				<p class="mt-1 text-sm text-gray-400">
+					Manage media scheduled for deletion from your libraries
+				</p>
+			</div>
+			<div class="mt-4 sm:mt-0">
+				if len(mediaItems) == 0 {
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-900 text-green-200">
+						No items scheduled for deletion
+					</span>
+				} else {
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
+						{ len(mediaItems) } items scheduled for deletion
+					</span>
+				}
+			</div>
+		</div>
+		@DashboardTabs(mediaItems)
+	</div>
+	<!-- Include shared utility scripts -->
+	@templates.ToastScript()
+	@templates.ButtonLoadingUtils()
+	@templates.ApiUtils()
+	@templates.DebounceUtil()
+	<!-- Include tab functionality -->
+	@components.TabsScript()
+	@dashboardScripts()
+}
+
+// DashboardTabs creates the tab interface for the dashboard
+templ DashboardTabs(mediaItems []models.MediaItem) {
+	@components.TabContainer("dashboard-tabs") {
+		@components.TabButton("deletion-queue", "Overview", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>`, true)
+		if len(mediaItems) > 0 {
+			@components.TabButton("cleanup-timeline", "Stats", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`, false)
+		}
+	}
+	@components.TabContentContainer() {
+		@components.TabContent("deletion-queue", true) {
+			@OverviewTab(mediaItems)
+		}
+		if len(mediaItems) > 0 {
+			@components.TabContent("cleanup-timeline", false) {
+				@StatsTab(mediaItems)
+			}
+		}
+	}
+}
+
+templ DailyCleanupGraph(dailyPoints []DailyCleanupPoint, totalStorage int64) {
+	<div class="card p-6 mb-6">
+		<div class="flex items-center justify-between mb-6">
+			<div>
+				<h2 class="text-xl font-semibold text-gray-100">Daily Storage Cleanup</h2>
+				<p class="text-sm text-gray-400 mt-1">Storage freed per day</p>
+			</div>
+			<div class="text-right">
+				<div class="text-lg font-semibold text-green-400">{ components.FormatFileSize(totalStorage) }</div>
+				<div class="text-sm text-gray-400">Total to be freed</div>
+			</div>
+		</div>
+		if len(dailyPoints) > 0 {
+			<div class="relative">
+				<!-- Chart.js Canvas -->
+				<canvas id="daily-cleanup-chart" class="w-full h-64"></canvas>
+				<!-- Hidden data for JavaScript -->
+				@templ.JSONScript("daily-cleanup-data", generateDailyChartData(dailyPoints, totalStorage))
+			</div>
+		} else {
+			<div class="text-center py-8 text-gray-400">
+				<svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+				</svg>
+				<p>No data available for daily cleanup graph</p>
+			</div>
+		}
+	</div>
+}
+
+templ CumulativeCleanupGraph(cumulativePoints []CumulativeCleanupPoint, totalStorage int64) {
+	<div class="card p-6">
+		<div class="flex items-center justify-between mb-6">
+			<div>
+				<h2 class="text-xl font-semibold text-gray-100">Cumulative Storage Timeline</h2>
+				<p class="text-sm text-gray-400 mt-1">Total storage freed over time</p>
+			</div>
+			<div class="text-right">
+				<div class="text-lg font-semibold text-blue-400">{ components.FormatFileSize(totalStorage) }</div>
+				<div class="text-sm text-gray-400">Total to be freed</div>
+			</div>
+		</div>
+		if len(cumulativePoints) > 1 {
+			<div class="relative">
+				<!-- Chart.js Canvas -->
+				<canvas id="cumulative-cleanup-chart" class="w-full h-64"></canvas>
+				<!-- Hidden data for JavaScript -->
+				@templ.JSONScript("cumulative-cleanup-data", generateCumulativeChartData(cumulativePoints, totalStorage))
+			</div>
+		} else {
+			<div class="text-center py-8 text-gray-400">
+				<svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+				</svg>
+				<p>Not enough data points for cumulative graph</p>
+			</div>
+		}
+	</div>
+}
+
+templ MediaCard(item models.MediaItem) {
+	<div
+		class="card overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all duration-200"
+		data-title={ item.Title }
+		data-deletion-timestamp={ fmt.Sprintf("%d", item.DeletionDate.Unix()) }
+		data-library={ item.Library }
+		data-size={ item.FileSize }
+	>
+		<div class="aspect-w-2 aspect-h-3 bg-gray-800">
+			if item.PosterURL != "" {
+				<img src={ item.PosterURL } alt={ item.Title } class="w-full h-64 object-cover"/>
+			} else {
+				<div class="w-full h-64 bg-gray-800 flex items-center justify-center">
+					<svg class="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
+					</svg>
+				</div>
+			}
+		</div>
+		<div class="p-4">
+			<div class="flex items-start justify-between">
+				<div class="flex-1 min-w-0">
+					<h3 class="text-lg font-semibold text-gray-100 truncate">{ item.Title }</h3>
+					<div class="flex items-center space-x-2 mt-1">
+						<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
+							{ item.Type }
+						</span>
+						if item.Year > 0 {
+							<span class="text-sm text-gray-400">{ fmt.Sprint(item.Year) }</span>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="mt-3 space-y-2">
+				<div class="flex items-center text-sm text-gray-400">
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+					</svg>
+					{ item.Library }
+				</div>
+				<div class="flex items-center text-sm text-gray-400">
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+					</svg>
+					{ components.FormatFileSize(item.FileSize) }
+				</div>
+				<div class="flex items-center text-sm text-red-400" title={ formatExactDate(item.DeletionDate) }>
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+					</svg>
+					Deletes { components.FormatRelativeTime(item.DeletionDate) }
+				</div>
+			</div>
+			<div class="mt-4">
+				if item.HasRequested && !item.MustDelete {
+					<button disabled class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+						</svg>
+						Request Submitted
+					</button>
+				} else if item.CanRequest {
+					<button id={ "request-" + item.ID } data-media-id={ item.ID } class="w-full flex items-center justify-center btn-primary">
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+						</svg>
+						Request to Keep
+					</button>
+				} else if item.MustDelete {
+					<button disabled class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
+						Request Unavailable
+					</button>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+templ EmptyState() {
+	<div class="text-center py-12">
+		<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+			<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+			</svg>
+		</div>
+		<h3 class="text-xl font-semibold text-gray-300 mb-2">No media scheduled for deletion</h3>
+		<p class="text-gray-500">
+			All your media is safe! Check back later or refresh to see if anything changes.
+		</p>
+	</div>
+}
+
+script dashboardScripts() {
+	// Initialize all functionality when DOM loads
+	document.addEventListener('DOMContentLoaded', function() {
+		initializeTabs('dashboard-tabs');
+		initializeFilters();
+		initializeMediaRequests();
+		initializeAutoRefresh();
+		initializeStorageCharts();
+		
+		// Add custom handler for chart reinitializtion when switching to stats tab
+		const statsTabButton = document.getElementById('cleanup-timeline');
+		if (statsTabButton) {
+			statsTabButton.addEventListener('click', function() {
+				setTimeout(() => {
+					initializeStorageCharts();
+				}, 100);
+			});
+		}
+	});
+
+	// Store chart instances to properly destroy them
+	let dailyChart = null;
+	let cumulativeChart = null;
+
+	function initializeStorageCharts() {
+		// Destroy existing charts before creating new ones
+		if (dailyChart) {
+			dailyChart.destroy();
+			dailyChart = null;
+		}
+		if (cumulativeChart) {
+			cumulativeChart.destroy();
+			cumulativeChart = null;
+		}
+		
+		initializeDailyChart();
+		initializeCumulativeChart();
+	}
+
+	function initializeDailyChart() {
+		const canvas = document.getElementById('daily-cleanup-chart');
+		const dataScript = document.getElementById('daily-cleanup-data');
+		
+		if (!canvas || !dataScript) return;
+		
+		try {
+			const data = JSON.parse(dataScript.textContent);
+			const points = data.points || [];
+			
+			if (points.length === 0) return;
+			
+			// Format data for Chart.js
+			const chartData = points.map(point => ({
+				x: new Date(point.date),
+				y: point.dailyBytes
+			}));
+			
+			// Initialize Chart.js as a bar chart
+			dailyChart = new Chart(canvas, {
+				type: 'bar',
+				data: {
+					datasets: [{
+						label: 'Daily Storage Freed',
+						data: chartData,
+						backgroundColor: 'rgba(34, 197, 94, 0.8)',
+						borderColor: 'rgb(34, 197, 94)',
+						borderWidth: 1
+					}]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					plugins: {
+						legend: {
+							display: false
+						},
+						tooltip: {
+							backgroundColor: 'rgba(17, 24, 39, 0.95)',
+							titleColor: 'rgb(229, 231, 235)',
+							bodyColor: 'rgb(156, 163, 175)',
+							borderColor: 'rgb(75, 85, 99)',
+							borderWidth: 1,
+							callbacks: {
+								title: function(context) {
+									const date = new Date(context[0].parsed.x);
+									return date.toLocaleDateString('en-US', { 
+										month: 'short', 
+										day: 'numeric',
+										year: 'numeric'
+									});
+								},
+								label: function(context) {
+									const bytes = context.parsed.y;
+									const pointIndex = context.dataIndex;
+									const point = points[pointIndex];
+									
+									return [
+										'Storage freed: ' + formatBytes(bytes),
+										'Items deleted: ' + point.itemsCount
+									];
+								}
+							}
+						}
+					},
+					scales: {
+						x: {
+							type: 'time',
+							time: {
+								unit: 'day',
+								displayFormats: {
+									day: 'MMM d',
+									week: 'MMM d',
+									month: 'MMM yyyy'
+								},
+								tooltipFormat: 'MMM d, yyyy'
+							},
+							grid: {
+								color: 'rgba(75, 85, 99, 0.3)'
+							},
+							ticks: {
+								color: 'rgb(156, 163, 175)',
+								maxTicksLimit: 30
+							}
+						},
+						y: {
+							beginAtZero: true,
+							grid: {
+								color: 'rgba(75, 85, 99, 0.3)'
+							},
+							ticks: {
+								color: 'rgb(156, 163, 175)',
+								callback: function(value) {
+									return formatBytes(value);
+								}
+							}
+						}
+					},
+					interaction: {
+						intersect: false,
+						mode: 'index'
+					}
+				}
+			});
+		} catch (error) {
+			console.error('Error initializing daily chart:', error);
+		}
+	}
+
+	function initializeCumulativeChart() {
+		const canvas = document.getElementById('cumulative-cleanup-chart');
+		const dataScript = document.getElementById('cumulative-cleanup-data');
+		
+		if (!canvas || !dataScript) return;
+		
+		try {
+			const data = JSON.parse(dataScript.textContent);
+			const points = data.points || [];
+			
+			if (points.length < 2) return;
+			
+			// Format data for Chart.js
+			const chartData = points.map(point => ({
+				x: new Date(point.date),
+				y: point.cumulativeBytes
+			}));
+			
+			// Initialize Chart.js
+			cumulativeChart = new Chart(canvas, {
+				type: 'line',
+				data: {
+					datasets: [{
+						label: 'Cumulative Storage Freed',
+						data: chartData,
+						borderColor: 'rgb(59, 130, 246)',
+						backgroundColor: 'rgba(59, 130, 246, 0.1)',
+						fill: true,
+						tension: 0.2,
+						pointBackgroundColor: 'rgb(59, 130, 246)',
+						pointBorderColor: 'rgb(59, 130, 246)',
+						pointRadius: 4,
+						pointHoverRadius: 6
+					}]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					plugins: {
+						legend: {
+							display: false
+						},
+						tooltip: {
+							backgroundColor: 'rgba(17, 24, 39, 0.95)',
+							titleColor: 'rgb(229, 231, 235)',
+							bodyColor: 'rgb(156, 163, 175)',
+							borderColor: 'rgb(75, 85, 99)',
+							borderWidth: 1,
+							callbacks: {
+								title: function(context) {
+									const date = new Date(context[0].parsed.x);
+									return date.toLocaleDateString('en-US', { 
+										month: 'short', 
+										day: 'numeric',
+										year: 'numeric'
+									});
+								},
+								label: function(context) {
+									const bytes = context.parsed.y;
+									const pointIndex = context.dataIndex;
+									const point = points[pointIndex];
+									
+									return [
+										'Total storage freed: ' + formatBytes(bytes),
+										'Total items deleted: ' + point.itemsDeleted
+									];
+								}
+							}
+						}
+					},
+					scales: {
+						x: {
+							type: 'time',
+							time: {
+								unit: 'day',
+								displayFormats: {
+									day: 'MMM d',
+									week: 'MMM d',
+									month: 'MMM yyyy'
+								},
+								tooltipFormat: 'MMM d, yyyy'
+							},
+							grid: {
+								color: 'rgba(75, 85, 99, 0.3)'
+							},
+							ticks: {
+								color: 'rgb(156, 163, 175)',
+								maxTicksLimit: 30
+							}
+						},
+						y: {
+							beginAtZero: true,
+							grid: {
+								color: 'rgba(75, 85, 99, 0.3)'
+							},
+							ticks: {
+								color: 'rgb(156, 163, 175)',
+								callback: function(value) {
+									return formatBytes(value);
+								}
+							}
+						}
+					},
+					interaction: {
+						intersect: false,
+						mode: 'index'
+					}
+				}
+			});
+		} catch (error) {
+			console.error('Error initializing cumulative chart:', error);
+		}
+	}
+	
+	function formatBytes(bytes) {
+		if (bytes === 0) return '0 Bytes';
+		
+		const k = 1024;
+		const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+	}
+
+	function initializeFilters() {
+		const searchInput = document.getElementById('search');
+		const libraryFilter = document.getElementById('library-filter');
+		const sortBy = document.getElementById('sort-by');
+		const refreshBtn = document.getElementById('refresh-btn');
+
+		if (searchInput) {
+			searchInput.addEventListener('input', window.debounce ? window.debounce(filterMedia, 300) : filterMedia);
+		}
+
+		if (libraryFilter) {
+			libraryFilter.addEventListener('change', filterMedia);
+		}
+
+		if (sortBy) {
+			sortBy.addEventListener('change', sortMedia);
+		}
+
+		if (refreshBtn) {
+			refreshBtn.addEventListener('click', refreshMedia);
+		}
+	}
+
+	function initializeMediaRequests() {
+		// Add click handlers for all request buttons
+		document.addEventListener('click', function(e) {
+			if (e.target.matches('button[data-media-id]')) {
+				const mediaId = e.target.getAttribute('data-media-id');
+				requestKeepMedia(mediaId, e.target);
+			}
+		});
+	}
+
+	function initializeAutoRefresh() {
+		// Auto-refresh every 5 minutes
+		setInterval(() => {
+			const refreshBtn = document.getElementById('refresh-btn');
+			if (refreshBtn && !refreshBtn.disabled) {
+				refreshMedia();
+			}
+		}, 300000); // 5 minutes
+	}
+
+	function filterMedia() {
+		const searchTerm = document.getElementById('search')?.value.toLowerCase() || '';
+		const libraryFilter = document.getElementById('library-filter')?.value || '';
+
+		const mediaCards = document.querySelectorAll('#media-grid > div');
+
+		mediaCards.forEach(card => {
+			const title = (card.getAttribute('data-title') || '').toLowerCase();
+			const library = card.getAttribute('data-library') || '';
+
+			const matchesSearch = title.includes(searchTerm);
+			const matchesLibrary = !libraryFilter || library === libraryFilter;
+
+			if (matchesSearch && matchesLibrary) {
+				card.style.display = 'block';
+			} else {
+				card.style.display = 'none';
+			}
+		});
+	}
+
+	function sortMedia() {
+		const sortBy = document.getElementById('sort-by')?.value || 'deletion-date-asc';
+		const mediaGrid = document.getElementById('media-grid');
+
+		if (!mediaGrid) return;
+
+		const cards = Array.from(mediaGrid.children);
+
+		cards.sort((a, b) => {
+			let aValue, bValue;
+
+			switch (sortBy) {
+				case 'title-asc':
+					aValue = a.getAttribute('data-title') || '';
+					bValue = b.getAttribute('data-title') || '';
+					return aValue.localeCompare(bValue);
+
+				case 'title-desc':
+					aValue = a.getAttribute('data-title') || '';
+					bValue = b.getAttribute('data-title') || '';
+					return bValue.localeCompare(aValue);
+
+				case 'deletion-date-asc':
+					aValue = parseInt(a.getAttribute('data-deletion-timestamp')) || 0;
+					bValue = parseInt(b.getAttribute('data-deletion-timestamp')) || 0;
+					return aValue - bValue; // Earlier dates first
+
+				case 'deletion-date-desc':
+					aValue = parseInt(a.getAttribute('data-deletion-timestamp')) || 0;
+					bValue = parseInt(b.getAttribute('data-deletion-timestamp')) || 0;
+					return bValue - aValue; // Later dates first
+
+				default:
+					return 0;
+			}
+		});
+
+		// Re-append sorted cards
+		cards.forEach(card => mediaGrid.appendChild(card));
+	}
+
+	function requestKeepMedia(mediaId, button) {
+		if (!mediaId || button.disabled) return;
+
+		const buttonId = button.id;
+		const originalContent = window.setButtonLoading(buttonId, 'Submitting...');
+		if (!originalContent) return;
+
+		window.makeApiRequest('/api/media/' + mediaId + '/request-keep')
+		.then(data => {
+			if (data.success) {
+				window.setButtonSuccess(buttonId, 'Request Submitted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+				
+				// Update button styling
+				button.classList.remove('btn-primary');
+				button.classList.add('btn-secondary', 'opacity-50', 'cursor-not-allowed');
+
+				window.showToast('Request submitted successfully', 'success');
+			} else {
+				throw new Error(data.message || 'Unknown error');
+			}
+		})
+		.catch(error => {
+			console.error('Error:', error);
+			window.showToast('Failed to submit request: ' + error.message, 'error');
+			window.restoreButton(buttonId, originalContent);
+		});
+	}
+
+	function refreshMedia() {
+		const buttonId = 'refresh-btn';
+		const originalContent = window.setButtonLoading(buttonId, 'Refreshing...');
+		if (!originalContent) return;
+
+		window.makeApiRequest('/api/refresh')
+		.then(data => {
+			if (data.success) {
+				window.showToast('Data refreshed successfully', 'success');
+				// Reload the page to show fresh data
+				setTimeout(() => {
+					window.location.reload();
+				}, 1000);
+			} else {
+				throw new Error(data.message || 'Failed to refresh data');
+			}
+		})
+		.catch(error => {
+			console.error('Error:', error);
+			window.showToast('Failed to refresh data: ' + error.message, 'error');
+			window.restoreButton(buttonId, originalContent);
+		});
+	}
+}
+
+templ OverviewTab(mediaItems []models.MediaItem) {
+	<!-- Filters and Search -->
+	<div class="card p-6 mb-6">
+		<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
+			<div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+				<div class="relative">
+					<input type="text" id="search" placeholder="Search media..." class="input-field pl-10 pr-4 py-2 w-full sm:w-64"/>
+					<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+						<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+						</svg>
+					</div>
+				</div>
+				<select id="library-filter" class="input-field">
+					<option value="">All Libraries</option>
+					for _, library := range getUniqueLibraries(mediaItems) {
+						<option value={ library }>{ library }</option>
+					}
+				</select>
+				<select id="sort-by" class="input-field">
+					<option value="deletion-date-asc">Deletion Date (Earliest First)</option>
+					<option value="deletion-date-desc">Deletion Date (Latest First)</option>
+					<option value="title-asc">Title (A-Z)</option>
+					<option value="title-desc">Title (Z-A)</option>
+				</select>
+			</div>
+			<div class="flex items-center space-x-2">
+				<button id="refresh-btn" class="flex items-center justify-center btn-secondary">
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+					</svg>
+					Refresh
+				</button>
+			</div>
+		</div>
+	</div>
+	<!-- Media Grid -->
+	if len(mediaItems) == 0 {
+		@EmptyState()
+	} else {
+		<div id="media-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			for _, item := range mediaItems {
+				@MediaCard(item)
+			}
+		</div>
+	}
+}
+
+templ StatsTab(mediaItems []models.MediaItem) {
+	@DailyCleanupGraph(calculateDailyCleanupData(mediaItems), getTotalStorageToFree(mediaItems))
+	@CumulativeCleanupGraph(calculateCumulativeCleanupData(mediaItems), getTotalStorageToFree(mediaItems))
+}

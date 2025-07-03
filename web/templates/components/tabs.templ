@@ -1,0 +1,187 @@
+package components
+
+templ TabContainer(id string) {
+	<div class="flex justify-start mb-6">
+		<div class="inline-flex bg-gray-800/90 backdrop-blur-sm rounded-xl p-1.5 border border-gray-700/20 shadow-lg">
+			<nav class="flex space-x-1 relative" id={ id + "-nav" }>
+				<!-- Animated sliding background -->
+				<div id={ id + "-slider" } class="absolute top-1.5 left-1.5 bg-linear-to-r from-indigo-600 to-indigo-500 rounded-lg transition-all duration-300 ease-in-out shadow-md" style="width: 0; height: calc(100% - 12px); z-index: 0;"></div>
+				{ children... }
+			</nav>
+		</div>
+	</div>
+}
+
+templ TabButton(id string, label string, icon string, active bool) {
+	<button
+		id={ id }
+		class={ "tab-button relative z-10 flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 shadow-sm",
+			templ.KV("tab-active text-white", active),
+			templ.KV("text-gray-400 hover:text-gray-200 hover:bg-gray-700/30", !active) }
+		data-tab={ id }
+	>
+		@templ.Raw(icon)
+		{ label }
+	</button>
+}
+
+templ TabContent(id string, active bool) {
+	<div
+		id={ id + "-content" }
+		class={ "tab-content",
+			templ.KV("tab-content-active", active),
+			templ.KV("hidden", !active) }
+	>
+		{ children... }
+	</div>
+}
+
+templ TabContentContainer() {
+	<div id="tab-content">
+		{ children... }
+	</div>
+}
+
+templ TabsScript() {
+	<script>
+		function initializeTabs(containerId) {
+			const tabButtons = document.querySelectorAll('#' + containerId + '-nav .tab-button');
+			const tabContents = document.querySelectorAll('#tab-content .tab-content');
+			const tabSlider = document.getElementById(containerId + '-slider');
+
+			// Initialize the slider position
+			updateSliderPosition();
+
+			tabButtons.forEach(button => {
+				button.addEventListener('click', function() {
+					const targetTab = this.getAttribute('data-tab');
+					
+					// Update button states
+					tabButtons.forEach(btn => {
+						btn.classList.remove('tab-active', 'text-white');
+						btn.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
+					});
+					
+					this.classList.add('tab-active', 'text-white');
+					this.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
+					
+					// Update slider position with a small delay to ensure DOM is updated
+					setTimeout(() => {
+						updateSliderPosition();
+					}, 10);
+					
+					// Update content visibility
+					tabContents.forEach(content => {
+						content.classList.add('hidden');
+						content.classList.remove('tab-content-active');
+					});
+					
+					const targetContent = document.getElementById(targetTab + '-content');
+					if (targetContent) {
+						targetContent.classList.remove('hidden');
+						targetContent.classList.add('tab-content-active');
+					}
+				});
+			});
+			
+			function updateSliderPosition() {
+				const activeTab = document.querySelector('#' + containerId + '-nav .tab-button.tab-active');
+				if (activeTab && tabSlider) {
+					// Force a reflow to ensure accurate measurements
+					activeTab.offsetHeight;
+					
+					// Calculate position relative to the nav container
+					const navContainer = activeTab.parentElement;
+					const containerRect = navContainer.getBoundingClientRect();
+					const activeRect = activeTab.getBoundingClientRect();
+					
+					// Calculate the left position relative to the nav container
+					const leftPosition = activeRect.left - containerRect.left;
+					
+					tabSlider.style.width = activeTab.offsetWidth + 'px';
+					tabSlider.style.height = (activeTab.offsetHeight) + 'px';
+					tabSlider.style.left = leftPosition + 'px';
+					tabSlider.style.top = '0px';
+				}
+			}
+			
+			// Update slider on window resize
+			window.addEventListener('resize', updateSliderPosition);
+		}
+	</script>
+}
+
+script initializeTabs(containerId string) {
+	window.initializeTabs = function(containerId) {
+		const tabButtons = document.querySelectorAll('#' + containerId + '-nav .tab-button');
+		const tabContents = document.querySelectorAll('#tab-content .tab-content');
+		const tabSlider = document.getElementById(containerId + '-slider');
+
+		// Initialize the slider position
+		updateSliderPosition();
+
+		tabButtons.forEach(button => {
+			button.addEventListener('click', function() {
+				const targetTab = this.getAttribute('data-tab');
+				
+				// Update button states
+				tabButtons.forEach(btn => {
+					btn.classList.remove('tab-active', 'text-white');
+					btn.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
+				});
+				
+				this.classList.add('tab-active', 'text-white');
+				this.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
+				
+				// Update slider position with a small delay to ensure DOM is updated
+				setTimeout(() => {
+					updateSliderPosition();
+				}, 10);
+				
+				// Update content visibility
+				tabContents.forEach(content => {
+					content.classList.add('hidden');
+					content.classList.remove('tab-content-active');
+				});
+				
+				const targetContent = document.getElementById(targetTab + '-content');
+				if (targetContent) {
+					targetContent.classList.remove('hidden');
+					targetContent.classList.add('tab-content-active');
+				}
+			});
+		});
+		
+		function updateSliderPosition() {
+			const activeTab = document.querySelector('#' + containerId + '-nav .tab-button.tab-active');
+			if (activeTab && tabSlider) {
+				// Force a reflow to ensure accurate measurements
+				activeTab.offsetHeight;
+				
+				// Calculate position relative to the nav container
+				const navContainer = activeTab.parentElement;
+				const containerRect = navContainer.getBoundingClientRect();
+				const activeRect = activeTab.getBoundingClientRect();
+				
+				// Calculate the left position relative to the nav container
+				const leftPosition = activeRect.left - containerRect.left;
+				
+				tabSlider.style.width = activeTab.offsetWidth + 'px';
+				tabSlider.style.height = (activeTab.offsetHeight) + 'px';
+				tabSlider.style.left = leftPosition + 'px';
+				tabSlider.style.top = '0px';
+			}
+		}
+		
+		// Update slider on window resize
+		window.addEventListener('resize', updateSliderPosition);
+	};
+}
+
+templ InitializeTabsScript(containerId string) {
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			{ templ.JSFuncCall("initializeTabs", containerId) };
+		});
+	</script>
+}

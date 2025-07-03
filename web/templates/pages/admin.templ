@@ -1,0 +1,481 @@
+package pages
+
+import (
+	"fmt"
+	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/web/templates"
+	"github.com/jon4hz/jellysweep/web/templates/components"
+)
+
+templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems []models.MediaItem) {
+	@templates.LayoutWithPendingRequests("Admin Panel", user, len(keepRequests)) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h1 class="text-3xl font-bold text-gray-100">Admin Panel</h1>
+					<p class="mt-1 text-sm text-gray-400">
+						Manage keep requests and media content
+					</p>
+				</div>
+				<div class="mt-4 sm:mt-0">
+					<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+						{ len(keepRequests) } pending requests
+					</span>
+				</div>
+			</div>
+			@AdminTabs(keepRequests, mediaItems)
+		</div>
+		<!-- Include shared utility scripts -->
+		@templates.ToastScript()
+		@templates.ButtonLoadingUtils()
+		@templates.ApiUtils()
+		<!-- Include tab functionality -->
+		@components.TabsScript()
+		<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				initializeTabs('admin-tabs');
+			});
+		</script>
+	}
+}
+
+templ AdminTabs(keepRequests []models.KeepRequest, mediaItems []models.MediaItem) {
+	@components.TabContainer("admin-tabs") {
+		@components.TabButton("approval-queue", "Approval Queue", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`, true)
+		@components.TabButton("keep-sweep", "Keep or Sweep", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path></svg>`, false)
+	}
+	@components.TabContentContainer() {
+		@components.TabContent("approval-queue", true) {
+			@ApprovalQueueTab(keepRequests)
+		}
+		@components.TabContent("keep-sweep", false) {
+			@KeepSweepTab(mediaItems)
+		}
+	}
+}
+
+templ ApprovalQueueTab(keepRequests []models.KeepRequest) {
+	if len(keepRequests) == 0 {
+		@AdminEmptyState()
+	} else {
+		<div class="space-y-4">
+			<h3 class="text-xl font-semibold text-gray-100">Keep Requests</h3>
+			<div class="space-y-4">
+				for _, request := range keepRequests {
+					@AdminKeepRequestCard(request)
+				}
+			</div>
+		</div>
+	}
+}
+
+templ KeepSweepTab(mediaItems []models.MediaItem) {
+	if len(mediaItems) == 0 {
+		@KeepSweepEmptyState()
+	} else {
+		<div class="space-y-4">
+			<h3 class="text-xl font-semibold text-gray-100">Media for Review</h3>
+			<div class="space-y-4">
+				for _, item := range mediaItems {
+					@KeepSweepCard(item)
+				}
+			</div>
+		</div>
+	}
+}
+
+templ AdminKeepRequestCard(request models.KeepRequest) {
+	<div class="card" id={ "request-" + request.MediaID }>
+		<div class="flex items-center justify-between p-6">
+			<div class="flex items-center space-x-4">
+				<!-- Poster/Icon -->
+				<div class="shrink-0">
+					if request.PosterURL != "" {
+						<img src={ request.PosterURL } alt={ request.Title } class="w-16 h-24 object-cover rounded"/>
+					} else {
+						<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
+							<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
+							</svg>
+						</div>
+					}
+				</div>
+				<!-- Details -->
+				<div class="flex-1 min-w-0">
+					<div class="flex items-center space-x-2">
+						<h4 class="text-lg font-medium text-gray-100 truncate">{ request.Title }</h4>
+						<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
+							{ request.Type }
+						</span>
+						if request.Year > 0 {
+							<span class="text-sm text-gray-400">{ fmt.Sprint(request.Year) }</span>
+						}
+					</div>
+					<div class="mt-1 flex items-center space-x-4 text-sm text-gray-400">
+						<div class="flex items-center">
+							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+							</svg>
+							{ request.Library }
+						</div>
+						if !request.DeletionDate.IsZero() {
+							<div class="flex items-center">
+								<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+								</svg>
+								Deletes { components.FormatRelativeTime(request.DeletionDate) }
+							</div>
+						}
+						<div class="flex items-center">
+							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4M5 7h14l-1 14H6L5 7z"></path>
+							</svg>
+							Expires { components.FormatRelativeTime(request.ExpiryDate) }
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- Actions -->
+			<div class="flex items-center space-x-2">
+				<button
+					id={ "accept-" + request.MediaID }
+					onclick={ acceptKeepRequest(request.MediaID) }
+					class="inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+					style="background-color: #16a34a; color: white;"
+					onmouseover="this.style.backgroundColor='#15803d'"
+					onmouseout="this.style.backgroundColor='#16a34a'"
+				>
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+					</svg>
+					Accept
+				</button>
+				<button
+					id={ "decline-" + request.MediaID }
+					onclick={ declineKeepRequest(request.MediaID) }
+					class="inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+					style="background-color: #dc2626; color: white;"
+					onmouseover="this.style.backgroundColor='#b91c1c'"
+					onmouseout="this.style.backgroundColor='#dc2626'"
+				>
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+					Decline
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
+templ AdminEmptyState() {
+	<div class="text-center py-12">
+		<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+			<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+			</svg>
+		</div>
+		<h3 class="text-xl font-semibold text-gray-300 mb-2">No pending keep requests</h3>
+		<p class="text-gray-500">
+			All keep requests have been processed. Check back later for new requests.
+		</p>
+	</div>
+}
+
+templ KeepSweepCard(item models.MediaItem) {
+	<div class="card" id={ "media-" + item.ID }>
+		<div class="flex items-center justify-between p-6">
+			<div class="flex items-center space-x-4">
+				<!-- Poster/Icon -->
+				<div class="shrink-0">
+					if item.PosterURL != "" {
+						<img src={ item.PosterURL } alt={ item.Title } class="w-16 h-24 object-cover rounded"/>
+					} else {
+						<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
+							<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
+							</svg>
+						</div>
+					}
+				</div>
+				<!-- Details -->
+				<div class="flex-1 min-w-0">
+					<div class="flex items-center space-x-2">
+						<h4 class="text-lg font-medium text-gray-100 truncate">{ item.Title }</h4>
+						<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
+							{ item.Type }
+						</span>
+						if item.Year > 0 {
+							<span class="text-sm text-gray-400">{ fmt.Sprint(item.Year) }</span>
+						}
+					</div>
+					<div class="mt-1 flex items-center space-x-4 text-sm text-gray-400">
+						<div class="flex items-center">
+							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+							</svg>
+							{ item.Library }
+						</div>
+						if !item.DeletionDate.IsZero() {
+							<div class="flex items-center">
+								<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+								</svg>
+								Deletes { components.FormatRelativeTime(item.DeletionDate) }
+							</div>
+						}
+						<div class="flex items-center">
+							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+							</svg>
+							{ components.FormatFileSize(item.FileSize) }
+						</div>
+					</div>
+					<div class="mt-2 flex items-center space-x-4">
+						<!-- Tag status badges -->
+						if item.HasRequested {
+							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
+								<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+								</svg>
+								Keep Requested
+							</span>
+						}
+						if item.MustDelete {
+							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
+								<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+								</svg>
+								Must Delete
+							</span>
+						}
+					</div>
+				</div>
+			</div>
+			<!-- Actions -->
+			<div class="flex items-center space-x-2">
+				<button
+					id={ "keep-" + item.ID }
+					onclick={ markAsKeep(item.ID) }
+					class="inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+					style="background-color: #16a34a; color: white;"
+					onmouseover="this.style.backgroundColor='#15803d'"
+					onmouseout="this.style.backgroundColor='#16a34a'"
+				>
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+					</svg>
+					Keep
+				</button>
+				<button
+					id={ "delete-" + item.ID }
+					onclick={ markAsDelete(item.ID) }
+					class="inline-flex items-center px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+					style="background-color: #dc2626; color: white;"
+					onmouseover="this.style.backgroundColor='#b91c1c'"
+					onmouseout="this.style.backgroundColor='#dc2626'"
+				>
+					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+					</svg>
+					Sweep
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
+templ KeepSweepEmptyState() {
+	<div class="text-center py-12">
+		<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+			<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+			</svg>
+		</div>
+		<h3 class="text-xl font-semibold text-gray-300 mb-2">No media available for review</h3>
+		<p class="text-gray-500">
+			All media has been reviewed or there are no items available for keep/delete decisions.
+		</p>
+	</div>
+}
+
+script acceptKeepRequest(mediaID string) {
+	const buttonId = 'accept-' + mediaID;
+	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+	if (!originalContent) return;
+	
+	window.makeApiRequest('/admin/api/keep-requests/' + mediaID + '/accept')
+	.then(data => {
+		if (data.success) {
+			window.setButtonSuccess(buttonId, 'Accepted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+			
+			// Hide the request card with a smooth animation
+			const requestCard = document.getElementById('request-' + mediaID);
+			if (requestCard) {
+				requestCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+				requestCard.style.opacity = '0';
+				requestCard.style.transform = 'translateX(20px)';
+				setTimeout(() => {
+					requestCard.remove();
+					updatePendingCount(-1);
+					checkForEmptyState();
+				}, 300);
+			}
+			
+			window.showToast('Keep request accepted successfully', 'success');
+		} else {
+			throw new Error(data.error || 'Unknown error');
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		window.showToast('Failed to accept request: ' + error.message, 'error');
+		window.restoreButton(buttonId, originalContent);
+	});
+}
+
+script declineKeepRequest(mediaID string) {
+	const buttonId = 'decline-' + mediaID;
+	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+	if (!originalContent) return;
+	
+	window.makeApiRequest('/admin/api/keep-requests/' + mediaID + '/decline')
+	.then(data => {
+		if (data.success) {
+			window.setButtonSuccess(buttonId, 'Declined', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>');
+			
+			// Hide the request card with a smooth animation
+			const requestCard = document.getElementById('request-' + mediaID);
+			if (requestCard) {
+				requestCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+				requestCard.style.opacity = '0';
+				requestCard.style.transform = 'translateX(-20px)';
+				setTimeout(() => {
+					requestCard.remove();
+					updatePendingCount(-1);
+					checkForEmptyState();
+				}, 300);
+			}
+			
+			window.showToast('Keep request declined successfully', 'success');
+		} else {
+			throw new Error(data.error || 'Unknown error');
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		window.showToast('Failed to decline request: ' + error.message, 'error');
+		window.restoreButton(buttonId, originalContent);
+	});
+}
+
+script updatePendingCount(delta int) {
+	const badge = document.querySelector('.bg-blue-900.text-blue-200');
+	if (badge) {
+		const currentText = badge.textContent.trim();
+		const currentCount = parseInt(currentText.match(/\d+/)[0]);
+		const newCount = Math.max(0, currentCount + delta);
+		badge.textContent = newCount + ' pending requests';
+	}
+}
+
+script checkForEmptyState() {
+	const requestCards = document.querySelectorAll('[id^="request-"]');
+	const requestsList = document.querySelector('.space-y-4 h3').parentElement;
+	const emptyState = document.querySelector('.text-center.py-12');
+	
+	if (requestCards.length === 0) {
+		// Hide the requests list and show empty state
+		if (requestsList) {
+			requestsList.style.display = 'none';
+		}
+		
+		// Create and show empty state if it doesn't exist
+		if (!emptyState) {
+			const emptyStateHTML = `
+				<div class="text-center py-12">
+					<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+						<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+						</svg>
+					</div>
+					<h3 class="text-xl font-semibold text-gray-300 mb-2">No pending keep requests</h3>
+					<p class="text-gray-500">
+						All keep requests have been processed. Check back later for new requests.
+					</p>
+				</div>
+			`;
+			const mainDiv = document.querySelector('.space-y-6');
+			if (mainDiv) {
+				mainDiv.insertAdjacentHTML('beforeend', emptyStateHTML);
+			}
+		}
+	}
+}
+
+script markAsKeep(mediaID string) {
+	const buttonId = 'keep-' + mediaID;
+	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+	if (!originalContent) return;
+	
+	window.makeApiRequest('/admin/api/media/' + mediaID + '/keep')
+	.then(data => {
+		if (data.success) {
+			window.setButtonSuccess(buttonId, 'Kept', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+			
+			// Hide the media card with a smooth animation
+			const mediaCard = document.getElementById('media-' + mediaID);
+			if (mediaCard) {
+				mediaCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+				mediaCard.style.opacity = '0';
+				mediaCard.style.transform = 'translateX(20px)';
+				setTimeout(() => {
+					mediaCard.remove();
+				}, 300);
+			}
+			
+			window.showToast('Media marked as keep successfully', 'success');
+		} else {
+			throw new Error(data.error || 'Unknown error');
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		window.showToast('Failed to mark as keep: ' + error.message, 'error');
+		window.restoreButton(buttonId, originalContent);
+	});
+}
+
+script markAsDelete(mediaID string) {
+	const buttonId = 'delete-' + mediaID;
+	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+	if (!originalContent) return;
+	
+	window.makeApiRequest('/admin/api/media/' + mediaID + '/delete')
+	.then(data => {
+		if (data.success) {
+			window.setButtonSuccess(buttonId, 'Deleted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+			
+			// Hide the media card with a smooth animation
+			const mediaCard = document.getElementById('media-' + mediaID);
+			if (mediaCard) {
+				mediaCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+				mediaCard.style.opacity = '0';
+				mediaCard.style.transform = 'translateX(-20px)';
+				setTimeout(() => {
+					mediaCard.remove();
+				}, 300);
+			}
+			
+			window.showToast('Media marked for deletion successfully', 'success');
+		} else {
+			throw new Error(data.error || 'Unknown error');
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		window.showToast('Failed to mark for deletion: ' + error.message, 'error');
+		window.restoreButton(buttonId, originalContent);
+	});
+}
