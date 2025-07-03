@@ -1,5 +1,9 @@
 # 🧹🪼 JellySweep
 
+[![CI](https://github.com/jon4hz/jellysweep/actions/workflows/ci.yml/badge.svg)](https://github.com/jon4hz/jellysweep/actions/workflows/ci.yml)
+[![release](https://github.com/jon4hz/jellysweep/actions/workflows/release.yml/badge.svg)](https://github.com/jon4hz/jellysweep/actions/workflows/release.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/jon4hz/jellysweep)](https://goreportcard.com/report/github.com/jon4hz/jellysweep)
+
 <img src="static/static/jellysweep.png" alt="JellySweep Logo" width="40%" height="20%">
 
 JellySweep is a smart cleanup tool for your Jellyfin media server.  
