@@ -52,7 +52,7 @@ func startServer(cmd *cobra.Command, _ []string) {
 
 	// Start the API server in a goroutine
 	go func() {
-		log.Info("starting API server", "listen", cfg.JellySweep.Listen)
+		log.Info("starting API server", "listen", cfg.Listen)
 		if err := server.Run(); err != nil {
 			log.Error("API server error", "error", err)
 		}

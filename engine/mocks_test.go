@@ -401,40 +401,38 @@ func CreateTestEngineWithMocks(t *testing.T) (*Engine, *TestServerManager) {
 	tsm := NewTestServerManager()
 
 	cfg := &config.Config{
-		JellySweep: &config.JellysweepConfig{
-			CleanupInterval: 24,
-			Libraries: map[string]*config.CleanupConfig{
-				"Movies": {
-					Enabled:             true,
-					RequestAgeThreshold: 30,
-					LastStreamThreshold: 90,
-					CleanupDelay:        7,
-					ExcludeTags:         []string{"favorite"},
-				},
-				"TV Shows": {
-					Enabled:             true,
-					RequestAgeThreshold: 45,
-					LastStreamThreshold: 120,
-					CleanupDelay:        14,
-					ExcludeTags:         []string{"ongoing"},
-				},
+		CleanupInterval: 24,
+		Libraries: map[string]*config.CleanupConfig{
+			"Movies": {
+				Enabled:             true,
+				RequestAgeThreshold: 30,
+				LastStreamThreshold: 90,
+				CleanupDelay:        7,
+				ExcludeTags:         []string{"favorite"},
 			},
-			DryRun: true,
-			Email: &config.EmailConfig{
-				Enabled:   true,
-				SMTPHost:  "localhost",
-				SMTPPort:  587,
-				Username:  "test@example.com",
-				Password:  "password",
-				FromEmail: "test@example.com",
-				FromName:  "JellySweep Test",
-				UseTLS:    true,
+			"TV Shows": {
+				Enabled:             true,
+				RequestAgeThreshold: 45,
+				LastStreamThreshold: 120,
+				CleanupDelay:        14,
+				ExcludeTags:         []string{"ongoing"},
 			},
-			Ntfy: &config.NtfyConfig{
-				Enabled:   true,
-				ServerURL: tsm.NtfyServer.URL,
-				Topic:     "jellysweep-test",
-			},
+		},
+		DryRun: true,
+		Email: &config.EmailConfig{
+			Enabled:   true,
+			SMTPHost:  "localhost",
+			SMTPPort:  587,
+			Username:  "test@example.com",
+			Password:  "password",
+			FromEmail: "test@example.com",
+			FromName:  "JellySweep Test",
+			UseTLS:    true,
+		},
+		Ntfy: &config.NtfyConfig{
+			Enabled:   true,
+			ServerURL: tsm.NtfyServer.URL,
+			Topic:     "jellysweep-test",
 		},
 		Jellystat: &config.JellystatConfig{
 			URL:    tsm.JellystatServer.URL,

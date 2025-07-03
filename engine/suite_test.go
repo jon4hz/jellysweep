@@ -43,15 +43,15 @@ func (suite *EngineTestSuite) TestEngineCreation() {
 // TestConfigurationValidation tests that the engine validates configuration properly
 func (suite *EngineTestSuite) TestConfigurationValidation() {
 	// Test that required configuration is present
-	suite.NotNil(suite.engine.cfg.JellySweep)
+	suite.NotNil(suite.engine.cfg)
 	suite.NotNil(suite.engine.cfg.Jellystat)
-	suite.True(suite.engine.cfg.JellySweep.DryRun) // Should be true in test environment
+	suite.True(suite.engine.cfg.DryRun) // Should be true in test environment
 
 	// Test library configuration
-	suite.Contains(suite.engine.cfg.JellySweep.Libraries, "Movies")
-	suite.Contains(suite.engine.cfg.JellySweep.Libraries, "TV Shows")
+	suite.Contains(suite.engine.cfg.Libraries, "Movies")
+	suite.Contains(suite.engine.cfg.Libraries, "TV Shows")
 
-	movieConfig := suite.engine.cfg.JellySweep.Libraries["Movies"]
+	movieConfig := suite.engine.cfg.Libraries["Movies"]
 	suite.True(movieConfig.Enabled)
 	suite.Greater(movieConfig.RequestAgeThreshold, 0)
 	suite.Greater(movieConfig.LastStreamThreshold, 0)
@@ -185,11 +185,11 @@ func (suite *EngineTestSuite) TestConcurrentSafety() {
 	suite.NotPanics(func() {
 		// Simulate concurrent access to configuration
 		go func() {
-			_ = suite.engine.cfg.JellySweep.CleanupInterval
+			_ = suite.engine.cfg.CleanupInterval
 		}()
 
 		go func() {
-			_ = suite.engine.cfg.JellySweep.Libraries["Movies"]
+			_ = suite.engine.cfg.Libraries["Movies"]
 		}()
 
 		// Small delay to let goroutines run

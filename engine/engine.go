@@ -91,20 +91,20 @@ func New(cfg *config.Config) (*Engine, error) {
 
 	// Initialize email notification service
 	var emailService *email.NotificationService
-	if cfg.JellySweep.Email != nil {
-		emailService = email.New(cfg.JellySweep.Email)
+	if cfg.Email != nil {
+		emailService = email.New(cfg.Email)
 	}
 
 	// Initialize ntfy client
 	var ntfyClient *ntfy.Client
-	if cfg.JellySweep.Ntfy != nil && cfg.JellySweep.Ntfy.Enabled {
+	if cfg.Ntfy != nil && cfg.Ntfy.Enabled {
 		ntfyConfig := &ntfy.Config{
-			Enabled:   cfg.JellySweep.Ntfy.Enabled,
-			ServerURL: cfg.JellySweep.Ntfy.ServerURL,
-			Topic:     cfg.JellySweep.Ntfy.Topic,
-			Username:  cfg.JellySweep.Ntfy.Username,
-			Password:  cfg.JellySweep.Ntfy.Password,
-			Token:     cfg.JellySweep.Ntfy.Token,
+			Enabled:   cfg.Ntfy.Enabled,
+			ServerURL: cfg.Ntfy.ServerURL,
+			Topic:     cfg.Ntfy.Topic,
+			Username:  cfg.Ntfy.Username,
+			Password:  cfg.Ntfy.Password,
+			Token:     cfg.Ntfy.Token,
 		}
 		ntfyClient = ntfy.NewClient(ntfyConfig)
 	}
@@ -147,7 +147,7 @@ func (e *Engine) cleanupLoop(ctx context.Context) {
 	e.cleanupMedia(ctx)
 
 	// Set up a ticker to perform cleanup at the specified interval
-	ticker := time.NewTicker(time.Duration(e.cfg.JellySweep.CleanupInterval) * time.Hour)
+	ticker := time.NewTicker(time.Duration(e.cfg.CleanupInterval) * time.Hour)
 	defer ticker.Stop()
 
 	for {
@@ -255,11 +255,11 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 	}
 	log.Info("Media items filtered successfully")
 
-	if err := e.markSonarrMediaItemsForDeletion(ctx, e.cfg.JellySweep.DryRun); err != nil {
+	if err := e.markSonarrMediaItemsForDeletion(ctx, e.cfg.DryRun); err != nil {
 		log.Errorf("failed to mark sonarr media items for deletion: %v", err)
 		return
 	}
-	if err := e.markRadarrMediaItemsForDeletion(ctx, e.cfg.JellySweep.DryRun); err != nil {
+	if err := e.markRadarrMediaItemsForDeletion(ctx, e.cfg.DryRun); err != nil {
 		log.Errorf("failed to mark radarr media items for deletion: %v", err)
 		return
 	}

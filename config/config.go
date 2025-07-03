@@ -10,20 +10,6 @@ import (
 
 // Config holds the configuration for the JellySweep server and its dependencies.
 type Config struct {
-	// JellySweep holds the configuration for the JellySweep server.
-	JellySweep *JellysweepConfig `yaml:"jellysweep" mapstructure:"jellysweep"`
-	// Jellyseerr holds the configuration for the Jellyseerr server.
-	Jellyseerr *JellyseerrConfig `yaml:"jellyseerr" mapstructure:"jellyseerr"`
-	// Sonarr holds the configuration for the Sonarr server.
-	Sonarr *SonarrConfig `yaml:"sonarr" mapstructure:"sonarr"`
-	// Radarr holds the configuration for the Radarr server.
-	Radarr *RadarrConfig `yaml:"radarr" mapstructure:"radarr"`
-	// Jellystat holds the configuration for the Jellystat server.
-	Jellystat *JellystatConfig `yaml:"jellystat" mapstructure:"jellystat"`
-}
-
-// JellysweepConfig holds the configuration for the JellySweep server.
-type JellysweepConfig struct {
 	// Listen is the address the JellySweep server will listen on.
 	Listen string `yaml:"listen" mapstructure:"listen"`
 	// CleanupInterval is the interval in hours for the cleanup job.
@@ -44,6 +30,15 @@ type JellysweepConfig struct {
 	Ntfy *NtfyConfig `yaml:"ntfy" mapstructure:"ntfy"`
 	// ServerURL is the base URL of the JellySweep server.
 	ServerURL string `yaml:"server_url" mapstructure:"server_url"`
+
+	// Jellyseerr holds the configuration for the Jellyseerr server.
+	Jellyseerr *JellyseerrConfig `yaml:"jellyseerr" mapstructure:"jellyseerr"`
+	// Sonarr holds the configuration for the Sonarr server.
+	Sonarr *SonarrConfig `yaml:"sonarr" mapstructure:"sonarr"`
+	// Radarr holds the configuration for the Radarr server.
+	Radarr *RadarrConfig `yaml:"radarr" mapstructure:"radarr"`
+	// Jellystat holds the configuration for the Jellystat server.
+	Jellystat *JellystatConfig `yaml:"jellystat" mapstructure:"jellystat"`
 }
 
 // AuthConfig holds the authentication configuration for the JellySweep server.
@@ -260,38 +255,38 @@ func setDefaults(v *viper.Viper) {
 
 // validateConfig validates the configuration.
 func validateConfig(c *Config) error {
-	if c.JellySweep == nil {
+	if c == nil {
 		return fmt.Errorf("missing jellysweep config")
 	}
 
 	// Validate auth configuration
-	if c.JellySweep.Auth == nil {
+	if c.Auth == nil {
 		return fmt.Errorf("missing auth config")
 	}
 
 	authEnabled := false
-	if c.JellySweep.Auth.OIDC != nil && c.JellySweep.Auth.OIDC.Enabled {
+	if c.Auth.OIDC != nil && c.Auth.OIDC.Enabled {
 		authEnabled = true
-		if c.JellySweep.Auth.OIDC.Issuer == "" {
+		if c.Auth.OIDC.Issuer == "" {
 			return fmt.Errorf("OIDC issuer is required when OIDC is enabled")
 		}
-		if c.JellySweep.Auth.OIDC.ClientID == "" {
+		if c.Auth.OIDC.ClientID == "" {
 			return fmt.Errorf("OIDC client ID is required when OIDC is enabled")
 		}
-		if c.JellySweep.Auth.OIDC.ClientSecret == "" {
+		if c.Auth.OIDC.ClientSecret == "" {
 			return fmt.Errorf("OIDC client secret is required when OIDC is enabled")
 		}
-		if c.JellySweep.Auth.OIDC.RedirectURL == "" {
+		if c.Auth.OIDC.RedirectURL == "" {
 			return fmt.Errorf("OIDC redirect URL is required when OIDC is enabled")
 		}
-		if c.JellySweep.Auth.OIDC.AdminGroup == "" {
+		if c.Auth.OIDC.AdminGroup == "" {
 			return fmt.Errorf("OIDC admin group is required when OIDC is enabled")
 		}
 	}
 
-	if c.JellySweep.Auth.Jellyfin != nil && c.JellySweep.Auth.Jellyfin.Enabled {
+	if c.Auth.Jellyfin != nil && c.Auth.Jellyfin.Enabled {
 		authEnabled = true
-		if c.JellySweep.Auth.Jellyfin.URL == "" {
+		if c.Auth.Jellyfin.URL == "" {
 			return fmt.Errorf("Jellyfin URL is required when Jellyfin auth is enabled") //nolint:staticcheck
 		}
 	}
@@ -339,17 +334,17 @@ func validateConfig(c *Config) error {
 // This function handles the case-sensitivity issue where viper normalizes map keys
 // to lowercase, but library names from Jellystat are case-sensitive.
 func (c *Config) GetLibraryConfig(libraryName string) *CleanupConfig {
-	if c.JellySweep == nil || c.JellySweep.Libraries == nil {
+	if c.Libraries == nil {
 		return nil
 	}
 
 	// First try exact match (for backward compatibility)
-	if config, exists := c.JellySweep.Libraries[libraryName]; exists {
+	if config, exists := c.Libraries[libraryName]; exists {
 		return config
 	}
 
 	libraryNameLower := strings.ToLower(libraryName)
-	for key, config := range c.JellySweep.Libraries {
+	for key, config := range c.Libraries {
 		if strings.ToLower(key) == libraryNameLower {
 			return config
 		}
@@ -360,14 +355,6 @@ func (c *Config) GetLibraryConfig(libraryName string) *CleanupConfig {
 
 // IsAuthenticationEnabled returns true if at least one authentication method is enabled.
 func (c *Config) IsAuthenticationEnabled() bool {
-	if c.JellySweep == nil {
-		return false
-	}
-	return c.JellySweep.IsAuthenticationEnabled()
-}
-
-// IsAuthenticationEnabled returns true if at least one authentication method is enabled.
-func (c *JellysweepConfig) IsAuthenticationEnabled() bool {
 	if c.Auth == nil {
 		return false
 	}

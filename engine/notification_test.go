@@ -107,21 +107,18 @@ func TestEngine_sendEmailNotifications_Structure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &config.Config{
-				JellySweep: &config.JellysweepConfig{
-					CleanupInterval: 24,
-					Libraries: map[string]*config.CleanupConfig{
-						"Movies": {
-							Enabled:             true,
-							RequestAgeThreshold: 30,
-							LastStreamThreshold: 90,
-							CleanupDelay:        7,
-						},
+			cfg := &config.Config{CleanupInterval: 24,
+				Libraries: map[string]*config.CleanupConfig{
+					"Movies": {
+						Enabled:             true,
+						RequestAgeThreshold: 30,
+						LastStreamThreshold: 90,
+						CleanupDelay:        7,
 					},
-					DryRun:    true,
-					Email:     tt.emailConfig,
-					ServerURL: "https://jellysweep.example.com",
 				},
+				DryRun:    true,
+				Email:     tt.emailConfig,
+				ServerURL: "https://jellysweep.example.com",
 				Jellystat: &config.JellystatConfig{
 					URL:    "http://jellystat:3000",
 					APIKey: "test-key",
@@ -229,19 +226,17 @@ func TestEngine_sendNtfyDeletionSummary_Structure(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config.Config{
-				JellySweep: &config.JellysweepConfig{
-					CleanupInterval: 24,
-					Libraries: map[string]*config.CleanupConfig{
-						"Movies": {
-							Enabled:             true,
-							RequestAgeThreshold: 30,
-							LastStreamThreshold: 90,
-							CleanupDelay:        7,
-						},
+				CleanupInterval: 24,
+				Libraries: map[string]*config.CleanupConfig{
+					"Movies": {
+						Enabled:             true,
+						RequestAgeThreshold: 30,
+						LastStreamThreshold: 90,
+						CleanupDelay:        7,
 					},
-					DryRun: true,
-					Ntfy:   tt.ntfyConfig,
 				},
+				DryRun: true,
+				Ntfy:   tt.ntfyConfig,
 				Jellystat: &config.JellystatConfig{
 					URL:    "http://jellystat:3000",
 					APIKey: "test-key",

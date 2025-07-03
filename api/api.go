@@ -20,7 +20,7 @@ import (
 )
 
 type Server struct {
-	cfg          *config.JellysweepConfig
+	cfg          *config.Config
 	ginEngine    *gin.Engine
 	engine       *engine.Engine
 	authProvider auth.AuthProvider
@@ -38,7 +38,7 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 
 	// Only initialize auth provider if authentication is enabled
 	if cfg.IsAuthenticationEnabled() {
-		authProvider, err = auth.NewProvider(ctx, cfg.JellySweep.Auth)
+		authProvider, err = auth.NewProvider(ctx, cfg.Auth)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create auth provider: %w", err)
 		}
@@ -76,7 +76,7 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 	}
 
 	return &Server{
-		cfg:          cfg.JellySweep,
+		cfg:          cfg,
 		ginEngine:    gin.Default(),
 		authProvider: authProvider,
 		engine:       e,

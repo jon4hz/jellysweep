@@ -451,19 +451,17 @@ func TestEngine_SonarrErrorHandling(t *testing.T) {
 func TestEngine_SonarrIntegrationReadiness(t *testing.T) {
 	// Test that the engine is properly set up for Sonarr integration
 	cfg := &config.Config{
-		JellySweep: &config.JellysweepConfig{
-			CleanupInterval: 24,
-			Libraries: map[string]*config.CleanupConfig{
-				"TV Shows": {
-					Enabled:             true,
-					RequestAgeThreshold: 45,
-					LastStreamThreshold: 120,
-					CleanupDelay:        14,
-					ExcludeTags:         []string{"ongoing", "favorite"},
-				},
+		CleanupInterval: 24,
+		Libraries: map[string]*config.CleanupConfig{
+			"TV Shows": {
+				Enabled:             true,
+				RequestAgeThreshold: 45,
+				LastStreamThreshold: 120,
+				CleanupDelay:        14,
+				ExcludeTags:         []string{"ongoing", "favorite"},
 			},
-			DryRun: false,
 		},
+		DryRun: false,
 		Sonarr: &config.SonarrConfig{
 			URL:    "http://sonarr:8989",
 			APIKey: "test-sonarr-key",
@@ -483,8 +481,8 @@ func TestEngine_SonarrIntegrationReadiness(t *testing.T) {
 	assert.Equal(t, "test-sonarr-key", engine.cfg.Sonarr.APIKey)
 
 	// Verify library configuration for TV shows
-	assert.Contains(t, engine.cfg.JellySweep.Libraries, "TV Shows")
-	tvConfig := engine.cfg.JellySweep.Libraries["TV Shows"]
+	assert.Contains(t, engine.cfg.Libraries, "TV Shows")
+	tvConfig := engine.cfg.Libraries["TV Shows"]
 	assert.True(t, tvConfig.Enabled)
 	assert.Equal(t, 45, tvConfig.RequestAgeThreshold)
 	assert.Equal(t, 120, tvConfig.LastStreamThreshold)
@@ -500,6 +498,6 @@ func createTestEngineNoDryRun(t *testing.T) *Engine {
 		tsm.Close()
 	})
 	// Override dry run setting for these tests
-	engine.cfg.JellySweep.DryRun = false
+	engine.cfg.DryRun = false
 	return engine
 }

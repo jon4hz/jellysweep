@@ -334,7 +334,7 @@ func TestEngine_LibrarySpecificThresholds(t *testing.T) {
 	engine := createTestEngineWithLibraries(t, libraries)
 
 	// Verify different thresholds are set correctly
-	assert.Equal(t, 30, engine.cfg.JellySweep.Libraries["Movies"].RequestAgeThreshold)
-	assert.Equal(t, 45, engine.cfg.JellySweep.Libraries["TV Shows"].RequestAgeThreshold)
-	assert.Equal(t, 60, engine.cfg.JellySweep.Libraries["Documentaries"].RequestAgeThreshold)
+	assert.Equal(t, 30, engine.cfg.Libraries["Movies"].RequestAgeThreshold)
+	assert.Equal(t, 45, engine.cfg.Libraries["TV Shows"].RequestAgeThreshold)
+	assert.Equal(t, 60, engine.cfg.Libraries["Documentaries"].RequestAgeThreshold)
 }

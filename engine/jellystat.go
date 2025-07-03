@@ -40,7 +40,7 @@ func (e *Engine) getJellystatEnabledLibraryIDs(ctx context.Context) ([]string, e
 	var enabledLibraryIDs []string
 	for _, library := range libraries {
 		libraryName := strings.ToLower(library.Name)
-		if slices.Contains(lo.Keys(e.cfg.JellySweep.Libraries), libraryName) {
+		if slices.Contains(lo.Keys(e.cfg.Libraries), libraryName) {
 			enabledLibraryIDs = append(enabledLibraryIDs, library.ID)
 			e.data.libraryIDMap[library.ID] = library.Name // maybe we need to change that to the lower case version? Not sure yet.
 		}

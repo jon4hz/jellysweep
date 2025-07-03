@@ -409,7 +409,7 @@ func TestEngine_RadarrRecentlyPlayedLogic(t *testing.T) {
 			engine := createTestEngine(t)
 
 			// Get the threshold for the library
-			threshold := engine.cfg.JellySweep.Libraries[tt.library].LastStreamThreshold
+			threshold := engine.cfg.Libraries[tt.library].LastStreamThreshold
 			thresholdDuration := time.Duration(threshold) * 24 * time.Hour
 
 			var shouldRemoveTag bool
@@ -460,19 +460,17 @@ func TestEngine_RadarrErrorHandling(t *testing.T) {
 func TestEngine_RadarrIntegrationReadiness(t *testing.T) {
 	// Test that the engine is properly set up for Radarr integration
 	cfg := &config.Config{
-		JellySweep: &config.JellysweepConfig{
-			CleanupInterval: 24,
-			Libraries: map[string]*config.CleanupConfig{
-				"Movies": {
-					Enabled:             true,
-					RequestAgeThreshold: 30,
-					LastStreamThreshold: 90,
-					CleanupDelay:        7,
-					ExcludeTags:         []string{"favorite", "collection"},
-				},
+		CleanupInterval: 24,
+		Libraries: map[string]*config.CleanupConfig{
+			"Movies": {
+				Enabled:             true,
+				RequestAgeThreshold: 30,
+				LastStreamThreshold: 90,
+				CleanupDelay:        7,
+				ExcludeTags:         []string{"favorite", "collection"},
 			},
-			DryRun: true,
 		},
+		DryRun: true,
 		Radarr: &config.RadarrConfig{
 			URL:    "http://radarr:7878",
 			APIKey: "test-radarr-key",
@@ -492,8 +490,8 @@ func TestEngine_RadarrIntegrationReadiness(t *testing.T) {
 	assert.Equal(t, "test-radarr-key", engine.cfg.Radarr.APIKey)
 
 	// Verify library configuration for Movies
-	assert.Contains(t, engine.cfg.JellySweep.Libraries, "Movies")
-	movieConfig := engine.cfg.JellySweep.Libraries["Movies"]
+	assert.Contains(t, engine.cfg.Libraries, "Movies")
+	movieConfig := engine.cfg.Libraries["Movies"]
 	assert.True(t, movieConfig.Enabled)
 	assert.Equal(t, 30, movieConfig.RequestAgeThreshold)
 	assert.Equal(t, 90, movieConfig.LastStreamThreshold)

@@ -144,15 +144,14 @@ JellySweep supports multiple authentication methods to secure your web interface
 
 **Configuration:**
 ```yaml
-jellysweep:
-  auth:
-    oidc:
-      enabled: true
-      issuer: "https://your-sso-provider.com/application/o/jellysweep/"
-      client_id: "your-client-id"
-      client_secret: "your-client-secret"
-      redirect_url: "http://localhost:3002/auth/oidc/callback"
-      admin_group: "jellyfin-admins"  # Users in this group get admin access
+auth:
+  oidc:
+    enabled: true
+    issuer: "https://your-sso-provider.com/application/o/jellysweep/"
+    client_id: "your-client-id"
+    client_secret: "your-client-secret"
+    redirect_url: "http://localhost:3002/auth/oidc/callback"
+    admin_group: "jellyfin-admins"  # Users in this group get admin access
 ```
 
 ### Jellyfin Authentication
@@ -165,18 +164,17 @@ jellysweep:
 
 **Configuration:**
 ```yaml
-jellysweep:
-  auth:
-    jellyfin:
-      enabled: true
-      url: "http://localhost:8096"  # Your Jellyfin server URL
+auth:
+  jellyfin:
+    enabled: true
+    url: "http://localhost:8096"  # Your Jellyfin server URL
 ```
 
 ---
 
 ## ⚙️ Configuration
 
-JellySweep supports configuration through YAML files and environment variables. Environment variables use the `JELLYSWEEP_` prefix and follow the configuration structure with underscores (e.g., `JELLYSWEEP_JELLYSWEEP_DRY_RUN`).
+JellySweep supports configuration through YAML files and environment variables. Environment variables use the `JELLYSWEEP_` prefix and follow the configuration structure with underscores (e.g., `JELLYSWEEP_DRY_RUN`).
 
 ### Environment Variables
 
@@ -185,45 +183,45 @@ All configuration options can be set via environment variables with the `JELLYSW
 | Environment Variable | Default Value | Description |
 |---------------------|---------------|-------------|
 | **JellySweep Server** | | |
-| `JELLYSWEEP_JELLYSWEEP_LISTEN` | `0.0.0.0:3002` | Address and port for the web interface |
-| `JELLYSWEEP_JELLYSWEEP_CLEANUP_INTERVAL` | `12` | Hours between automatic cleanup runs |
-| `JELLYSWEEP_JELLYSWEEP_DRY_RUN` | `false` | Run in dry-run mode (no actual deletions) |
-| `JELLYSWEEP_JELLYSWEEP_SESSION_KEY` | *(required)* | Random string for session encryption (`openssl rand -base64 32`) |
-| `JELLYSWEEP_JELLYSWEEP_SESSION_MAX_AGE` | `172800` | Session maximum age in seconds (48 hours) |
-| `JELLYSWEEP_JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the JellySweep server |
+| `JELLYSWEEP_LISTEN` | `0.0.0.0:3002` | Address and port for the web interface |
+| `JELLYSWEEP_CLEANUP_INTERVAL` | `12` | Hours between automatic cleanup runs |
+| `JELLYSWEEP_DRY_RUN` | `false` | Run in dry-run mode (no actual deletions) |
+| `JELLYSWEEP_SESSION_KEY` | *(required)* | Random string for session encryption (`openssl rand -base64 32`) |
+| `JELLYSWEEP_SESSION_MAX_AGE` | `172800` | Session maximum age in seconds (48 hours) |
+| `JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the JellySweep server |
 | **OIDC Authentication** | | |
-| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_ENABLED` | `false` | Enable OIDC/SSO authentication |
-| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_ISSUER` | *(required if OIDC enabled)* | OIDC issuer URL |
-| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_CLIENT_ID` | *(required if OIDC enabled)* | OIDC client ID |
-| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_CLIENT_SECRET` | *(required if OIDC enabled)* | OIDC client secret |
-| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_REDIRECT_URL` | *(required if OIDC enabled)* | OIDC redirect URL |
-| `JELLYSWEEP_JELLYSWEEP_AUTH_OIDC_ADMIN_GROUP` | *(required if OIDC enabled)* | Group with admin privileges |
+| `JELLYSWEEP_AUTH_OIDC_ENABLED` | `false` | Enable OIDC/SSO authentication |
+| `JELLYSWEEP_AUTH_OIDC_ISSUER` | *(required if OIDC enabled)* | OIDC issuer URL |
+| `JELLYSWEEP_AUTH_OIDC_CLIENT_ID` | *(required if OIDC enabled)* | OIDC client ID |
+| `JELLYSWEEP_AUTH_OIDC_CLIENT_SECRET` | *(required if OIDC enabled)* | OIDC client secret |
+| `JELLYSWEEP_AUTH_OIDC_REDIRECT_URL` | *(required if OIDC enabled)* | OIDC redirect URL |
+| `JELLYSWEEP_AUTH_OIDC_ADMIN_GROUP` | *(required if OIDC enabled)* | Group with admin privileges |
 | **Jellyfin Authentication** | | |
-| `JELLYSWEEP_JELLYSWEEP_AUTH_JELLYFIN_ENABLED` | `true` | Enable Jellyfin authentication |
-| `JELLYSWEEP_JELLYSWEEP_AUTH_JELLYFIN_URL` | *(required if Jellyfin auth enabled)* | Jellyfin server URL |
+| `JELLYSWEEP_AUTH_JELLYFIN_ENABLED` | `true` | Enable Jellyfin authentication |
+| `JELLYSWEEP_AUTH_JELLYFIN_URL` | *(required if Jellyfin auth enabled)* | Jellyfin server URL |
 | **Email Notifications** | | |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_ENABLED` | `false` | Enable email notifications |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_SMTP_HOST` | *(required if email enabled)* | SMTP server host |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_SMTP_PORT` | `587` | SMTP server port |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_USERNAME` | *(required if email enabled)* | SMTP username |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_PASSWORD` | *(required if email enabled)* | SMTP password |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_FROM_EMAIL` | *(required if email enabled)* | From email address |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_FROM_NAME` | `JellySweep` | From name for emails |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_USE_TLS` | `true` | Use TLS for SMTP connection |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_USE_SSL` | `false` | Use SSL for SMTP connection |
-| `JELLYSWEEP_JELLYSWEEP_EMAIL_INSECURE_SKIP_VERIFY` | `false` | Skip TLS certificate verification |
+| `JELLYSWEEP_EMAIL_ENABLED` | `false` | Enable email notifications |
+| `JELLYSWEEP_EMAIL_SMTP_HOST` | *(required if email enabled)* | SMTP server host |
+| `JELLYSWEEP_EMAIL_SMTP_PORT` | `587` | SMTP server port |
+| `JELLYSWEEP_EMAIL_USERNAME` | *(required if email enabled)* | SMTP username |
+| `JELLYSWEEP_EMAIL_PASSWORD` | *(required if email enabled)* | SMTP password |
+| `JELLYSWEEP_EMAIL_FROM_EMAIL` | *(required if email enabled)* | From email address |
+| `JELLYSWEEP_EMAIL_FROM_NAME` | `JellySweep` | From name for emails |
+| `JELLYSWEEP_EMAIL_USE_TLS` | `true` | Use TLS for SMTP connection |
+| `JELLYSWEEP_EMAIL_USE_SSL` | `false` | Use SSL for SMTP connection |
+| `JELLYSWEEP_EMAIL_INSECURE_SKIP_VERIFY` | `false` | Skip TLS certificate verification |
 | **Ntfy Notifications** | | |
-| `JELLYSWEEP_JELLYSWEEP_NTFY_ENABLED` | `false` | Enable ntfy notifications |
-| `JELLYSWEEP_JELLYSWEEP_NTFY_SERVER_URL` | `https://ntfy.sh` | Ntfy server URL |
-| `JELLYSWEEP_JELLYSWEEP_NTFY_TOPIC` | *(required if ntfy enabled)* | Ntfy topic to publish to |
-| `JELLYSWEEP_JELLYSWEEP_NTFY_USERNAME` | *(optional)* | Ntfy username for authentication |
-| `JELLYSWEEP_JELLYSWEEP_NTFY_PASSWORD` | *(optional)* | Ntfy password for authentication |
-| `JELLYSWEEP_JELLYSWEEP_NTFY_TOKEN` | *(optional)* | Ntfy token for authentication |
+| `JELLYSWEEP_NTFY_ENABLED` | `false` | Enable ntfy notifications |
+| `JELLYSWEEP_NTFY_SERVER_URL` | `https://ntfy.sh` | Ntfy server URL |
+| `JELLYSWEEP_NTFY_TOPIC` | *(required if ntfy enabled)* | Ntfy topic to publish to |
+| `JELLYSWEEP_NTFY_USERNAME` | *(optional)* | Ntfy username for authentication |
+| `JELLYSWEEP_NTFY_PASSWORD` | *(optional)* | Ntfy password for authentication |
+| `JELLYSWEEP_NTFY_TOKEN` | *(optional)* | Ntfy token for authentication |
 | **Default Library Settings** | | |
-| `JELLYSWEEP_JELLYSWEEP_LIBRARIES_DEFAULT_ENABLED` | `true` | Enable cleanup for default library |
-| `JELLYSWEEP_JELLYSWEEP_LIBRARIES_DEFAULT_REQUEST_AGE_THRESHOLD` | `120` | Min age in days for requests to be eligible |
-| `JELLYSWEEP_JELLYSWEEP_LIBRARIES_DEFAULT_LAST_STREAM_THRESHOLD` | `90` | Min days since last stream for cleanup |
-| `JELLYSWEEP_JELLYSWEEP_LIBRARIES_DEFAULT_CLEANUP_DELAY` | `30` | Days before deletion after marking |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_ENABLED` | `true` | Enable cleanup for default library |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_REQUEST_AGE_THRESHOLD` | `120` | Min age in days for requests to be eligible |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_LAST_STREAM_THRESHOLD` | `90` | Min days since last stream for cleanup |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_CLEANUP_DELAY` | `30` | Days before deletion after marking |
 | **External Services** | | |
 | `JELLYSWEEP_JELLYSEERR_URL` | *(required)* | Jellyseerr server URL |
 | `JELLYSWEEP_JELLYSEERR_API_KEY` | *(required)* | Jellyseerr API key |
@@ -241,85 +239,84 @@ All configuration options can be set via environment variables with the `JELLYSW
 JellySweep uses a YAML configuration file with the following structure:
 
 ```yaml
-jellysweep:
-  dry_run: false                   # Set to true for testing
-  listen: "0.0.0.0:3002"           # Web interface address and port
-  cleanup_interval: 12             # Hours between cleanup runs
-  session_key: "your-session-key"  # Random string for session encryption
-  session_max_age: 172800          # Session max age in seconds (48 hours)
-  server_url: "http://localhost:3002"
+dry_run: false                   # Set to true for testing
+listen: "0.0.0.0:3002"           # Web interface address and port
+cleanup_interval: 12             # Hours between cleanup runs
+session_key: "your-session-key"  # Random string for session encryption
+session_max_age: 172800          # Session max age in seconds (48 hours)
+server_url: "http://localhost:3002"
 
-  # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
-  # Warning: No authentication is only recommended for development environments
-  auth:
-    # OpenID Connect (OIDC) Authentication
-    oidc:
-      enabled: false
-      issuer: "https://login.mydomain.com/application/o/jellysweep/"
-      client_id: "your-client-id"
-      client_secret: "your-client-secret"
-      redirect_url: "http://localhost:3002/auth/oidc/callback"
-      admin_group: "jellyfin-admins"     # OIDC group for admin access
-    
-    # Jellyfin Authentication
-    jellyfin:
-      enabled: true                      # Default authentication method
-      url: "http://localhost:8096"       # Your Jellyfin server URL
+# Authentication (optional - if no auth is configured, web interface is accessible without authentication)
+# Warning: No authentication is only recommended for development environments
+auth:
+  # OpenID Connect (OIDC) Authentication
+  oidc:
+    enabled: false
+    issuer: "https://login.mydomain.com/application/o/jellysweep/"
+    client_id: "your-client-id"
+    client_secret: "your-client-secret"
+    redirect_url: "http://localhost:3002/auth/oidc/callback"
+    admin_group: "jellyfin-admins"     # OIDC group for admin access
   
-  # Library-specific settings
-  libraries:
-    default:
-      enabled: true
-      request_age_threshold: 120    # Days since Jellyseerr request
-      last_stream_threshold: 90     # Days since last viewed
-      cleanup_delay: 30             # Grace period before deletion
-      exclude_tags:
-        - "jellysweep-exclude"
-        - "jellysweep-ignore"
-        - "do-not-delete"
-    
-    "Movies":
-      enabled: true
-      request_age_threshold: 120
-      last_stream_threshold: 90
-      cleanup_delay: 30
-      exclude_tags:
-        - "jellysweep-exclude"
-        - "keep"
-        - "favorites"
-    
-    "TV Shows":
-      enabled: true
-      request_age_threshold: 120
-      last_stream_threshold: 90
-      cleanup_delay: 30
-      exclude_tags:
-        - "jellysweep-exclude"
-        - "ongoing"
-        - "keep"
-    
-  # Email notifications for users about upcoming deletions
-  email:
-    enabled: false
-    smtp_host: "mail.example.com"
-    smtp_port: 587
-    username: "your-smtp-username"
-    password: "your-smtp-password"
-    from_email: "jellysweep@example.com"
-    from_name: "JellySweep"
-    use_tls: true              # Use STARTTLS
-    use_ssl: false             # Use implicit SSL/TLS
-    insecure_skip_verify: false
+  # Jellyfin Authentication
+  jellyfin:
+    enabled: true                      # Default authentication method
+    url: "http://localhost:8096"       # Your Jellyfin server URL
 
-  # Ntfy notifications for admins about keep requests and deletions
-  ntfy:
-    enabled: false
-    server_url: "https://ntfy.sh"  # Or your own ntfy server
-    topic: "jellysweep"
-    # Authentication options (choose one):
-    username: ""               # Username/password auth
-    password: ""
-    token: ""                  # Token auth (takes precedence)
+# Library-specific settings
+libraries:
+  default:
+    enabled: true
+    request_age_threshold: 120    # Days since Jellyseerr request
+    last_stream_threshold: 90     # Days since last viewed
+    cleanup_delay: 30             # Grace period before deletion
+    exclude_tags:
+      - "jellysweep-exclude"
+      - "jellysweep-ignore"
+      - "do-not-delete"
+  
+  "Movies":
+    enabled: true
+    request_age_threshold: 120
+    last_stream_threshold: 90
+    cleanup_delay: 30
+    exclude_tags:
+      - "jellysweep-exclude"
+      - "keep"
+      - "favorites"
+  
+  "TV Shows":
+    enabled: true
+    request_age_threshold: 120
+    last_stream_threshold: 90
+    cleanup_delay: 30
+    exclude_tags:
+      - "jellysweep-exclude"
+      - "ongoing"
+      - "keep"
+  
+# Email notifications for users about upcoming deletions
+email:
+  enabled: false
+  smtp_host: "mail.example.com"
+  smtp_port: 587
+  username: "your-smtp-username"
+  password: "your-smtp-password"
+  from_email: "jellysweep@example.com"
+  from_name: "JellySweep"
+  use_tls: true              # Use STARTTLS
+  use_ssl: false             # Use implicit SSL/TLS
+  insecure_skip_verify: false
+
+# Ntfy notifications for admins about keep requests and deletions
+ntfy:
+  enabled: false
+  server_url: "https://ntfy.sh"  # Or your own ntfy server
+  topic: "jellysweep"
+  # Authentication options (choose one):
+  username: ""               # Username/password auth
+  password: ""
+  token: ""                  # Token auth (takes precedence)
 
 # External service integrations
 jellyseerr:

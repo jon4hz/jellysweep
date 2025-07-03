@@ -61,8 +61,8 @@ func (e *Engine) sendEmailNotifications() {
 			UserName:      userEmail, // Use email as name for now, could be enhanced
 			MediaItems:    emailMediaItems,
 			CleanupDate:   cleanupDate,
-			DryRun:        e.cfg.JellySweep.DryRun,
-			JellySweepURL: e.cfg.JellySweep.ServerURL,
+			DryRun:        e.cfg.DryRun,
+			JellySweepURL: e.cfg.ServerURL,
 		}
 
 		if err := e.email.SendCleanupNotification(notification); err != nil {

@@ -285,7 +285,7 @@ func createTestEngineWithLibraries(t *testing.T, libraries map[string]*config.Cl
 	})
 
 	// Override the library configurations
-	engine.cfg.JellySweep.Libraries = libraries
+	engine.cfg.Libraries = libraries
 
 	return engine
 }

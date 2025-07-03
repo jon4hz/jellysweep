@@ -332,8 +332,8 @@ func TestEngine_LibraryConfiguration(t *testing.T) {
 
 	t.Run("library configuration access", func(t *testing.T) {
 		// Test accessing different library configurations
-		movieConfig := engine.cfg.JellySweep.Libraries["Movies"]
-		tvConfig := engine.cfg.JellySweep.Libraries["TV Shows"]
+		movieConfig := engine.cfg.Libraries["Movies"]
+		tvConfig := engine.cfg.Libraries["TV Shows"]
 
 		assert.NotNil(t, movieConfig)
 		assert.NotNil(t, tvConfig)
@@ -348,8 +348,8 @@ func TestEngine_LibraryConfiguration(t *testing.T) {
 	})
 
 	t.Run("library exclude tags", func(t *testing.T) {
-		movieConfig := engine.cfg.JellySweep.Libraries["Movies"]
-		tvConfig := engine.cfg.JellySweep.Libraries["TV Shows"]
+		movieConfig := engine.cfg.Libraries["Movies"]
+		tvConfig := engine.cfg.Libraries["TV Shows"]
 
 		// Test exclude tags
 		assert.Contains(t, movieConfig.ExcludeTags, "favorite")
@@ -363,7 +363,7 @@ func TestEngine_DryRunMode(t *testing.T) {
 		engine := createTestEngine(t)
 
 		// Verify dry run is enabled
-		assert.True(t, engine.cfg.JellySweep.DryRun)
+		assert.True(t, engine.cfg.DryRun)
 
 		// In dry run mode, no actual deletions should occur
 		// This would be tested by mocking the actual delete operations
@@ -372,18 +372,16 @@ func TestEngine_DryRunMode(t *testing.T) {
 
 	t.Run("dry run disabled", func(t *testing.T) {
 		cfg := &config.Config{
-			JellySweep: &config.JellysweepConfig{
-				CleanupInterval: 24,
-				Libraries: map[string]*config.CleanupConfig{
-					"Movies": {
-						Enabled:             true,
-						RequestAgeThreshold: 30,
-						LastStreamThreshold: 90,
-						CleanupDelay:        7,
-					},
+			CleanupInterval: 24,
+			Libraries: map[string]*config.CleanupConfig{
+				"Movies": {
+					Enabled:             true,
+					RequestAgeThreshold: 30,
+					LastStreamThreshold: 90,
+					CleanupDelay:        7,
 				},
-				DryRun: false, // Dry run disabled
 			},
+			DryRun: false, // Dry run disabled
 			Jellystat: &config.JellystatConfig{
 				URL:    "http://jellystat:3000",
 				APIKey: "test-key",
@@ -394,7 +392,7 @@ func TestEngine_DryRunMode(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify dry run is disabled
-		assert.False(t, engine.cfg.JellySweep.DryRun)
+		assert.False(t, engine.cfg.DryRun)
 	})
 }
 

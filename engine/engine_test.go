@@ -19,19 +19,17 @@ func TestNew(t *testing.T) {
 		{
 			name: "valid config with all services",
 			config: &config.Config{
-				JellySweep: &config.JellysweepConfig{
-					CleanupInterval: 24,
-					Libraries: map[string]*config.CleanupConfig{
-						"Movies": {
-							Enabled:             true,
-							RequestAgeThreshold: 30,
-							LastStreamThreshold: 90,
-							CleanupDelay:        7,
-							ExcludeTags:         []string{"favorite"},
-						},
+				CleanupInterval: 24,
+				Libraries: map[string]*config.CleanupConfig{
+					"Movies": {
+						Enabled:             true,
+						RequestAgeThreshold: 30,
+						LastStreamThreshold: 90,
+						CleanupDelay:        7,
+						ExcludeTags:         []string{"favorite"},
 					},
-					DryRun: true,
 				},
+				DryRun: true,
 				Jellyseerr: &config.JellyseerrConfig{
 					URL:    "http://jellyseerr:5055",
 					APIKey: "test-api-key",
@@ -54,18 +52,16 @@ func TestNew(t *testing.T) {
 		{
 			name: "valid config without optional services",
 			config: &config.Config{
-				JellySweep: &config.JellysweepConfig{
-					CleanupInterval: 24,
-					Libraries: map[string]*config.CleanupConfig{
-						"Movies": {
-							Enabled:             true,
-							RequestAgeThreshold: 30,
-							LastStreamThreshold: 90,
-							CleanupDelay:        7,
-						},
+				CleanupInterval: 24,
+				Libraries: map[string]*config.CleanupConfig{
+					"Movies": {
+						Enabled:             true,
+						RequestAgeThreshold: 30,
+						LastStreamThreshold: 90,
+						CleanupDelay:        7,
 					},
-					DryRun: true,
 				},
+				DryRun: true,
 				Jellystat: &config.JellystatConfig{
 					URL:    "http://jellystat:3000",
 					APIKey: "test-jellystat-key",
@@ -76,27 +72,25 @@ func TestNew(t *testing.T) {
 		{
 			name: "config with email notifications",
 			config: &config.Config{
-				JellySweep: &config.JellysweepConfig{
-					CleanupInterval: 24,
-					Libraries: map[string]*config.CleanupConfig{
-						"Movies": {
-							Enabled:             true,
-							RequestAgeThreshold: 30,
-							LastStreamThreshold: 90,
-							CleanupDelay:        7,
-						},
+				CleanupInterval: 24,
+				Libraries: map[string]*config.CleanupConfig{
+					"Movies": {
+						Enabled:             true,
+						RequestAgeThreshold: 30,
+						LastStreamThreshold: 90,
+						CleanupDelay:        7,
 					},
-					DryRun: true,
-					Email: &config.EmailConfig{
-						Enabled:   true,
-						SMTPHost:  "smtp.example.com",
-						SMTPPort:  587,
-						Username:  "test@example.com",
-						Password:  "password",
-						FromEmail: "noreply@example.com",
-						FromName:  "JellySweep",
-						UseTLS:    true,
-					},
+				},
+				DryRun: true,
+				Email: &config.EmailConfig{
+					Enabled:   true,
+					SMTPHost:  "smtp.example.com",
+					SMTPPort:  587,
+					Username:  "test@example.com",
+					Password:  "password",
+					FromEmail: "noreply@example.com",
+					FromName:  "JellySweep",
+					UseTLS:    true,
 				},
 				Jellystat: &config.JellystatConfig{
 					URL:    "http://jellystat:3000",
@@ -108,22 +102,20 @@ func TestNew(t *testing.T) {
 		{
 			name: "config with ntfy notifications",
 			config: &config.Config{
-				JellySweep: &config.JellysweepConfig{
-					CleanupInterval: 24,
-					Libraries: map[string]*config.CleanupConfig{
-						"Movies": {
-							Enabled:             true,
-							RequestAgeThreshold: 30,
-							LastStreamThreshold: 90,
-							CleanupDelay:        7,
-						},
+				CleanupInterval: 24,
+				Libraries: map[string]*config.CleanupConfig{
+					"Movies": {
+						Enabled:             true,
+						RequestAgeThreshold: 30,
+						LastStreamThreshold: 90,
+						CleanupDelay:        7,
 					},
-					DryRun: true,
-					Ntfy: &config.NtfyConfig{
-						Enabled:   true,
-						ServerURL: "https://ntfy.sh",
-						Topic:     "jellysweep-test",
-					},
+				},
+				DryRun: true,
+				Ntfy: &config.NtfyConfig{
+					Enabled:   true,
+					ServerURL: "https://ntfy.sh",
+					Topic:     "jellysweep-test",
 				},
 				Jellystat: &config.JellystatConfig{
 					URL:    "http://jellystat:3000",
@@ -153,18 +145,16 @@ func TestNew(t *testing.T) {
 
 func TestEngine_Run(t *testing.T) {
 	cfg := &config.Config{
-		JellySweep: &config.JellysweepConfig{
-			CleanupInterval: 1, // 1 hour for testing
-			Libraries: map[string]*config.CleanupConfig{
-				"Movies": {
-					Enabled:             true,
-					RequestAgeThreshold: 30,
-					LastStreamThreshold: 90,
-					CleanupDelay:        7,
-				},
+		CleanupInterval: 1, // 1 hour for testing
+		Libraries: map[string]*config.CleanupConfig{
+			"Movies": {
+				Enabled:             true,
+				RequestAgeThreshold: 30,
+				LastStreamThreshold: 90,
+				CleanupDelay:        7,
 			},
-			DryRun: true,
 		},
+		DryRun: true,
 		Jellystat: &config.JellystatConfig{
 			URL:    "http://jellystat:3000",
 			APIKey: "test-key",
@@ -185,18 +175,16 @@ func TestEngine_Run(t *testing.T) {
 
 func TestEngine_Close(t *testing.T) {
 	cfg := &config.Config{
-		JellySweep: &config.JellysweepConfig{
-			CleanupInterval: 24,
-			Libraries: map[string]*config.CleanupConfig{
-				"Movies": {
-					Enabled:             true,
-					RequestAgeThreshold: 30,
-					LastStreamThreshold: 90,
-					CleanupDelay:        7,
-				},
+		CleanupInterval: 24,
+		Libraries: map[string]*config.CleanupConfig{
+			"Movies": {
+				Enabled:             true,
+				RequestAgeThreshold: 30,
+				LastStreamThreshold: 90,
+				CleanupDelay:        7,
 			},
-			DryRun: true,
 		},
+		DryRun: true,
 		Jellystat: &config.JellystatConfig{
 			URL:    "http://jellystat:3000",
 			APIKey: "test-key",

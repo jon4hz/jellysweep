@@ -213,10 +213,10 @@ func TestEngine_getJellystatEnabledLibraryIDs_MockScenario(t *testing.T) {
 	// assert.ElementsMatch(t, expectedLibraries, libraryIDs)
 
 	// For now, we just verify the configuration is set up correctly
-	assert.Contains(t, engine.cfg.JellySweep.Libraries, "Movies")
-	assert.Contains(t, engine.cfg.JellySweep.Libraries, "TV Shows")
-	assert.True(t, engine.cfg.JellySweep.Libraries["Movies"].Enabled)
-	assert.True(t, engine.cfg.JellySweep.Libraries["TV Shows"].Enabled)
+	assert.Contains(t, engine.cfg.Libraries, "Movies")
+	assert.Contains(t, engine.cfg.Libraries, "TV Shows")
+	assert.True(t, engine.cfg.Libraries["Movies"].Enabled)
+	assert.True(t, engine.cfg.Libraries["TV Shows"].Enabled)
 
 	_ = expectedLibraries // Prevent unused variable warning
 }

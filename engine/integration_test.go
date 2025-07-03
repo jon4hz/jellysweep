@@ -35,26 +35,24 @@ import (
 // behave consistently and don't interfere with each other
 func TestEngine_MultipleRunsConsistency(t *testing.T) {
 	cfg := &config.Config{
-		JellySweep: &config.JellysweepConfig{
-			CleanupInterval: 1, // 1 hour for testing
-			Libraries: map[string]*config.CleanupConfig{
-				"Movies": {
-					Enabled:             true,
-					RequestAgeThreshold: 30,
-					LastStreamThreshold: 90,
-					CleanupDelay:        7,
-					ExcludeTags:         []string{"favorite"},
-				},
-				"TV Shows": {
-					Enabled:             true,
-					RequestAgeThreshold: 45,
-					LastStreamThreshold: 120,
-					CleanupDelay:        14,
-					ExcludeTags:         []string{"ongoing"},
-				},
+		CleanupInterval: 1, // 1 hour for testing
+		Libraries: map[string]*config.CleanupConfig{
+			"Movies": {
+				Enabled:             true,
+				RequestAgeThreshold: 30,
+				LastStreamThreshold: 90,
+				CleanupDelay:        7,
+				ExcludeTags:         []string{"favorite"},
 			},
-			DryRun: true,
+			"TV Shows": {
+				Enabled:             true,
+				RequestAgeThreshold: 45,
+				LastStreamThreshold: 120,
+				CleanupDelay:        14,
+				ExcludeTags:         []string{"ongoing"},
+			},
 		},
+		DryRun: true,
 		Jellystat: &config.JellystatConfig{
 			URL:    "http://jellystat:3000",
 			APIKey: "test-key",
@@ -226,7 +224,7 @@ func TestEngine_ConcurrentAccess(t *testing.T) {
 		// Goroutine 3: Access configuration
 		go func() {
 			for i := 0; i < 10; i++ {
-				_ = engine.cfg.JellySweep.CleanupInterval
+				_ = engine.cfg.CleanupInterval
 				time.Sleep(time.Millisecond)
 			}
 			done <- true
@@ -359,15 +357,13 @@ func TestEngine_EdgeCases(t *testing.T) {
 func TestEngine_ConfigurationVariations(t *testing.T) {
 	t.Run("minimal configuration", func(t *testing.T) {
 		cfg := &config.Config{
-			JellySweep: &config.JellysweepConfig{
-				CleanupInterval: 24,
-				Libraries: map[string]*config.CleanupConfig{
-					"Movies": {
-						Enabled: true,
-					},
+			CleanupInterval: 24,
+			Libraries: map[string]*config.CleanupConfig{
+				"Movies": {
+					Enabled: true,
 				},
-				DryRun: true,
 			},
+			DryRun: true,
 			Jellystat: &config.JellystatConfig{
 				URL:    "http://jellystat:3000",
 				APIKey: "test-key",
@@ -381,23 +377,21 @@ func TestEngine_ConfigurationVariations(t *testing.T) {
 
 	t.Run("all services enabled", func(t *testing.T) {
 		cfg := &config.Config{
-			JellySweep: &config.JellysweepConfig{
-				CleanupInterval: 24,
-				Libraries: map[string]*config.CleanupConfig{
-					"Movies": {Enabled: true},
-				},
-				DryRun: true,
-				Email: &config.EmailConfig{
-					Enabled:   true,
-					SMTPHost:  "smtp.example.com",
-					SMTPPort:  587,
-					FromEmail: "test@example.com",
-				},
-				Ntfy: &config.NtfyConfig{
-					Enabled:   true,
-					ServerURL: "https://ntfy.sh",
-					Topic:     "test",
-				},
+			CleanupInterval: 24,
+			Libraries: map[string]*config.CleanupConfig{
+				"Movies": {Enabled: true},
+			},
+			DryRun: true,
+			Email: &config.EmailConfig{
+				Enabled:   true,
+				SMTPHost:  "smtp.example.com",
+				SMTPPort:  587,
+				FromEmail: "test@example.com",
+			},
+			Ntfy: &config.NtfyConfig{
+				Enabled:   true,
+				ServerURL: "https://ntfy.sh",
+				Topic:     "test",
 			},
 			Jellyseerr: &config.JellyseerrConfig{
 				URL:    "http://jellyseerr:5055",
@@ -425,8 +419,8 @@ func TestEngine_ConfigurationVariations(t *testing.T) {
 		assert.NotNil(t, engine.cfg.Jellyseerr)
 		assert.NotNil(t, engine.cfg.Sonarr)
 		assert.NotNil(t, engine.cfg.Radarr)
-		assert.NotNil(t, engine.cfg.JellySweep.Email)
-		assert.NotNil(t, engine.cfg.JellySweep.Ntfy)
+		assert.NotNil(t, engine.cfg.Email)
+		assert.NotNil(t, engine.cfg.Ntfy)
 	})
 }
 
@@ -521,11 +515,9 @@ func TestEngine_LibraryNameCaseSensitivity(t *testing.T) {
 		}
 
 		cfg := &config.Config{
-			JellySweep: &config.JellysweepConfig{
-				CleanupInterval: 24,
-				Libraries:       libraries,
-				DryRun:          true,
-			},
+			CleanupInterval: 24,
+			Libraries:       libraries,
+			DryRun:          true,
 			Jellystat: &config.JellystatConfig{
 				URL:    "http://jellystat:3000",
 				APIKey: "test-key",
@@ -693,11 +685,9 @@ func TestEngine_LibraryNameCaseSensitivity(t *testing.T) {
 	t.Run("empty library configuration", func(t *testing.T) {
 		// Test with empty library configuration
 		cfg := &config.Config{
-			JellySweep: &config.JellysweepConfig{
-				CleanupInterval: 24,
-				Libraries:       make(map[string]*config.CleanupConfig), // Empty
-				DryRun:          true,
-			},
+			CleanupInterval: 24,
+			Libraries:       make(map[string]*config.CleanupConfig), // Empty
+			DryRun:          true,
 			Jellystat: &config.JellystatConfig{
 				URL:    "http://jellystat:3000",
 				APIKey: "test-key",
@@ -723,11 +713,9 @@ func TestEngine_LibraryNameCaseSensitivity(t *testing.T) {
 	t.Run("nil library configuration", func(t *testing.T) {
 		// Test with nil library configuration
 		cfg := &config.Config{
-			JellySweep: &config.JellysweepConfig{
-				CleanupInterval: 24,
-				Libraries:       nil, // Nil
-				DryRun:          true,
-			},
+			CleanupInterval: 24,
+			Libraries:       nil, // Nil
+			DryRun:          true,
 			Jellystat: &config.JellystatConfig{
 				URL:    "http://jellystat:3000",
 				APIKey: "test-key",
@@ -765,11 +753,9 @@ func TestEngine_LibraryNameCaseSensitivity(t *testing.T) {
 		}
 
 		cfg := &config.Config{
-			JellySweep: &config.JellysweepConfig{
-				CleanupInterval: 24,
-				Libraries:       libraries,
-				DryRun:          true,
-			},
+			CleanupInterval: 24,
+			Libraries:       libraries,
+			DryRun:          true,
 			Jellystat: &config.JellystatConfig{
 				URL:    "http://jellystat:3000",
 				APIKey: "test-key",
@@ -797,32 +783,31 @@ func TestEngine_ViperConfigIntegration(t *testing.T) {
 	t.Run("simulate viper case insensitive loading", func(t *testing.T) {
 		// Create a temporary config file with mixed case library names
 		configContent := `
-jellysweep:
-  cleanup_interval: 24
-  dry_run: true
-  auth:
-    jellyfin:
-      enabled: true
-      url: "http://jellyfin:8096"
-  libraries:
-    Movies:  # Title case in config file
-      enabled: true
-      request_age_threshold: 30
-      last_stream_threshold: 90
-      cleanup_delay: 7
-      exclude_tags: ["favorite"]
-    "TV Shows":  # Title case with spaces
-      enabled: true
-      request_age_threshold: 45
-      last_stream_threshold: 120
-      cleanup_delay: 14
-      exclude_tags: ["ongoing"]
-    DOCUMENTARIES:  # All caps
-      enabled: true
-      request_age_threshold: 60
-      last_stream_threshold: 150
-      cleanup_delay: 21
-      exclude_tags: ["educational"]
+cleanup_interval: 24
+dry_run: true
+auth:
+  jellyfin:
+    enabled: true
+    url: "http://jellyfin:8096"
+libraries:
+  Movies:  # Title case in config file
+    enabled: true
+    request_age_threshold: 30
+    last_stream_threshold: 90
+    cleanup_delay: 7
+    exclude_tags: ["favorite"]
+  "TV Shows":  # Title case with spaces
+    enabled: true
+    request_age_threshold: 45
+    last_stream_threshold: 120
+    cleanup_delay: 14
+    exclude_tags: ["ongoing"]
+  DOCUMENTARIES:  # All caps
+    enabled: true
+    request_age_threshold: 60
+    last_stream_threshold: 150
+    cleanup_delay: 21
+    exclude_tags: ["educational"]
 
 jellyseerr:
   url: "http://jellyseerr:5055"
@@ -860,7 +845,7 @@ jellystat:
 
 		// Verify how viper handled the library names
 		t.Log("Library configurations found:")
-		for key, libConfig := range cfg.JellySweep.Libraries {
+		for key, libConfig := range cfg.Libraries {
 			t.Logf("  Key: '%s', Enabled: %v", key, libConfig.Enabled)
 		}
 
@@ -950,23 +935,22 @@ jellystat:
 
 		// Create config with various case patterns
 		configContent := `
-jellysweep:
-  cleanup_interval: 24
-  dry_run: true
-  auth:
-    jellyfin:
-      enabled: true
-      url: "http://jellyfin:8096"
-  libraries:
-    "Mixed Case Library":
-      enabled: true
-      exclude_tags: ["test"]
-    "UPPERCASE_LIBRARY":
-      enabled: true
-      exclude_tags: ["test"]
-    "lowercase_library":
-      enabled: true
-      exclude_tags: ["test"]
+cleanup_interval: 24
+dry_run: true
+auth:
+  jellyfin:
+    enabled: true
+    url: "http://jellyfin:8096"
+libraries:
+  "Mixed Case Library":
+    enabled: true
+    exclude_tags: ["test"]
+  "UPPERCASE_LIBRARY":
+    enabled: true
+    exclude_tags: ["test"]
+  "lowercase_library":
+    enabled: true
+    exclude_tags: ["test"]
 
 jellyseerr:
   url: "http://jellyseerr:5055"
@@ -998,7 +982,7 @@ jellystat:
 
 		// Log all the actual keys that viper loaded
 		t.Log("Actual library keys loaded by viper:")
-		for key := range cfg.JellySweep.Libraries {
+		for key := range cfg.Libraries {
 			t.Logf("  '%s'", key)
 		}
 
@@ -1010,20 +994,19 @@ jellystat:
 		// Test case-insensitive lookup functionality that replaced the LibraryName field approach
 
 		configContent := `
-jellysweep:
-  cleanup_interval: 24
-  dry_run: true
-  auth:
-    jellyfin:
-      enabled: true
-      url: "http://jellyfin:8096"
-  libraries:
-    movies:  # normalized by viper
-      enabled: true
-      exclude_tags: ["favorite"]
-    tv_shows:  # normalized by viper
-      enabled: true
-      exclude_tags: ["ongoing"]
+cleanup_interval: 24
+dry_run: true
+auth:
+  jellyfin:
+    enabled: true
+    url: "http://jellyfin:8096"
+libraries:
+  movies:  # normalized by viper
+    enabled: true
+    exclude_tags: ["favorite"]
+  tv_shows:  # normalized by viper
+    enabled: true
+    exclude_tags: ["ongoing"]
 
 jellyseerr:
   url: "http://jellyseerr:5055"
