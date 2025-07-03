@@ -90,7 +90,7 @@ templ AdminKeepRequestCard(request models.KeepRequest) {
 		<div class="flex items-center justify-between p-6">
 			<div class="flex items-center space-x-4">
 				<!-- Poster/Icon -->
-				<div class="flex-shrink-0">
+				<div class="shrink-0">
 					if request.PosterURL != "" {
 						<img src={ request.PosterURL } alt={ request.Title } class="w-16 h-24 object-cover rounded"/>
 					} else {
@@ -188,7 +188,7 @@ templ KeepSweepCard(item models.MediaItem) {
 		<div class="flex items-center justify-between p-6">
 			<div class="flex items-center space-x-4">
 				<!-- Poster/Icon -->
-				<div class="flex-shrink-0">
+				<div class="shrink-0">
 					if item.PosterURL != "" {
 						<img src={ item.PosterURL } alt={ item.Title } class="w-16 h-24 object-cover rounded"/>
 					} else {

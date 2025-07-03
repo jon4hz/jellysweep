@@ -5,7 +5,7 @@ templ TabContainer(id string) {
 		<div class="inline-flex bg-gray-800/90 backdrop-blur-sm rounded-xl p-1.5 border border-gray-700/20 shadow-lg">
 			<nav class="flex space-x-1 relative" id={ id + "-nav" }>
 				<!-- Animated sliding background -->
-				<div id={ id + "-slider" } class="absolute top-1.5 left-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-lg transition-all duration-300 ease-in-out shadow-md" style="width: 0; height: calc(100% - 12px); z-index: 0;"></div>
+				<div id={ id + "-slider" } class="absolute top-1.5 left-1.5 bg-linear-to-r from-indigo-600 to-indigo-500 rounded-lg transition-all duration-300 ease-in-out shadow-md" style="width: 0; height: calc(100% - 12px); z-index: 0;"></div>
 				{ children... }
 			</nav>
 		</div>

@@ -1,6 +1,6 @@
 # 🧹🪼 JellySweep
 
-<img src="static/jellysweep.png" alt="JellySweep Logo" width="40%" height="20%">
+<img src="static/static/jellysweep.png" alt="JellySweep Logo" width="40%" height="20%">
 
 JellySweep is a smart cleanup tool for your Jellyfin media server.  
 It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests.
