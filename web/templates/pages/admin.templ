@@ -269,6 +269,19 @@ templ KeepSweepCard(item models.MediaItem) {
 					Keep
 				</button>
 				<button
+					id={ "keep-forever-" + item.ID }
+					onclick={ markAsKeepForever(item.ID) }
+					class="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap"
+					style="background-color: #4f46e5; color: white;"
+					onmouseover="this.style.backgroundColor='#3730a3'"
+					onmouseout="this.style.backgroundColor='#4f46e5'"
+				>
+					<svg class="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+					</svg>
+					Keep Forever
+				</button>
+				<button
 					id={ "delete-" + item.ID }
 					onclick={ markAsDelete(item.ID) }
 					class="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap"
@@ -476,6 +489,39 @@ script markAsDelete(mediaID string) {
 	.catch(error => {
 		console.error('Error:', error);
 		window.showToast('Failed to mark for deletion: ' + error.message, 'error');
+		window.restoreButton(buttonId, originalContent);
+	});
+}
+
+script markAsKeepForever(mediaID string) {
+	const buttonId = 'keep-forever-' + mediaID;
+	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+	if (!originalContent) return;
+	
+	window.makeApiRequest('/admin/api/media/' + mediaID + '/keep-forever')
+	.then(data => {
+		if (data.success) {
+			window.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>');
+			
+			// Hide the media card with a smooth animation
+			const mediaCard = document.getElementById('media-' + mediaID);
+			if (mediaCard) {
+				mediaCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+				mediaCard.style.opacity = '0';
+				mediaCard.style.transform = 'translateY(-20px)';
+				setTimeout(() => {
+					mediaCard.remove();
+				}, 300);
+			}
+			
+			window.showToast('Media protected forever successfully', 'success');
+		} else {
+			throw new Error(data.error || 'Unknown error');
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		window.showToast('Failed to protect media: ' + error.message, 'error');
 		window.restoreButton(buttonId, originalContent);
 	});
 }

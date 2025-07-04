@@ -28,12 +28,14 @@ const (
 	jellysweepDeleteForSureTag  = "jellysweep-must-delete-for-sure"
 	jellysweepKeepTag           = "jellysweep-keep"
 	jellysweepMustDeleteTag     = "must-delete"
+	jellysweepIgnoreTag         = "jellysweep-ignore"
 )
 
 // Exported constants for API handlers.
 const (
 	TagKeep       = jellysweepKeepTag
 	TagMustDelete = jellysweepMustDeleteTag
+	TagIgnore     = jellysweepIgnoreTag
 )
 
 // Engine is the main engine for JellySweep, managing interactions with sonarr, radarr, and other services.
@@ -594,8 +596,7 @@ func getCachedImageURL(imageURL string) string {
 // AddTagToMedia adds a specific tag to a media item (supports jellysweep-keep and must-delete).
 func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if strings.HasPrefix(mediaID, "sonarr-") {
-		seriesIDStr := strings.TrimPrefix(mediaID, "sonarr-")
+	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
 		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
 		if err != nil {
 			return fmt.Errorf("invalid sonarr series ID: %w", err)
@@ -617,11 +618,13 @@ func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName stri
 			}
 			// This will add a jellysweep-must-delete-for-sure tag
 			return e.addSonarrDeleteForSureTag(ctx, int32(seriesID))
+		case jellysweepIgnoreTag:
+			// For "ignore": remove all jellysweep tags and add ignore tag in one operation
+			return e.resetAllSonarrTagsAndAddIgnore(ctx, int32(seriesID))
 		default:
 			return fmt.Errorf("unsupported tag name: %s", tagName)
 		}
-	} else if strings.HasPrefix(mediaID, "radarr-") {
-		movieIDStr := strings.TrimPrefix(mediaID, "radarr-")
+	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
 		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
 		if err != nil {
 			return fmt.Errorf("invalid radarr movie ID: %w", err)
@@ -643,6 +646,9 @@ func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName stri
 			}
 			// This will add a jellysweep-must-delete-for-sure tag
 			return e.addRadarrDeleteForSureTag(ctx, int32(movieID))
+		case jellysweepIgnoreTag:
+			// For "ignore": remove all jellysweep tags and add ignore tag in one operation
+			return e.resetAllRadarrTagsAndAddIgnore(ctx, int32(movieID))
 		default:
 			return fmt.Errorf("unsupported tag name: %s", tagName)
 		}

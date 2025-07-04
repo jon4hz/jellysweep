@@ -1001,3 +1001,71 @@ func (e *Engine) resetSingleRadarrTagsForMustDelete(ctx context.Context, movieID
 
 	return nil
 }
+
+// resetAllRadarrTagsAndAddIgnore removes ALL jellysweep tags from a single Radarr movie and adds the ignore tag.
+func (e *Engine) resetAllRadarrTagsAndAddIgnore(ctx context.Context, movieID int32) error {
+	if e.radarr == nil {
+		return fmt.Errorf("radarr client not available")
+	}
+
+	// Get the movie
+	movie, _, err := e.radarr.MovieAPI.GetMovieById(radarrAuthCtx(ctx, e.cfg.Radarr), movieID).Execute()
+	if err != nil {
+		return fmt.Errorf("failed to get radarr movie: %w", err)
+	}
+
+	// Ensure the ignore tag exists
+	if err := e.ensureRadarrTagExists(ctx, jellysweepIgnoreTag); err != nil {
+		return fmt.Errorf("failed to create ignore tag: %w", err)
+	}
+
+	// Get ignore tag ID
+	ignoreTagID, err := e.getRadarrTagIDByLabel(jellysweepIgnoreTag)
+	if err != nil {
+		return fmt.Errorf("failed to get ignore tag ID: %w", err)
+	}
+
+	// Get all tags to map tag IDs to names
+	tags, err := e.getRadarrTags(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+
+	// Remove all jellysweep tags and keep non-jellysweep tags
+	var newTags []int32
+
+	for _, tagID := range movie.GetTags() {
+		tagName := tags[tagID]
+		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
+			tagName == jellysweepDeleteForSureTag ||
+			tagName == jellysweepKeepTag ||
+			tagName == jellysweepMustDeleteTag ||
+			tagName == jellysweepIgnoreTag
+
+		if isJellysweepTag {
+			log.Debugf("Removing jellysweep tag '%s' from Radarr movie: %s", tagName, movie.GetTitle())
+		} else {
+			newTags = append(newTags, tagID)
+		}
+	}
+
+	// Add the ignore tag if it's not already there
+	if !slices.Contains(newTags, ignoreTagID) {
+		newTags = append(newTags, ignoreTagID)
+	}
+
+	// Update movie tags
+	movie.Tags = newTags
+	_, resp, err := e.radarr.MovieAPI.UpdateMovie(radarrAuthCtx(ctx, e.cfg.Radarr), fmt.Sprintf("%d", movieID)).
+		MovieResource(*movie).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to update radarr movie: %w", err)
+	}
+	defer resp.Body.Close() //nolint: errcheck
+
+	log.Infof("Removed all jellysweep tags and added ignore tag to Radarr movie: %s", movie.GetTitle())
+	return nil
+}

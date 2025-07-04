@@ -152,6 +152,7 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI.POST("/keep-requests/:id/decline", h.DeclineKeepRequest)
 	adminAPI.POST("/media/:id/keep", h.MarkMediaAsKeep)
 	adminAPI.POST("/media/:id/delete", h.MarkMediaForDeletion)
+	adminAPI.POST("/media/:id/keep-forever", h.MarkMediaAsKeepForever)
 }
 
 func (s *Server) Run() error {

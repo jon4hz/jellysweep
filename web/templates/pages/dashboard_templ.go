@@ -947,13 +947,12 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_cba0`,
-		Function: `function __templ_dashboardScripts_cba0(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_d970`,
+		Function: `function __templ_dashboardScripts_d970(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
 		initializeFilters();
 		initializeMediaRequests();
-		initializeAutoRefresh();
 		initializeStorageCharts();
 		
 		// Add custom handler for chart reinitializtion when switching to stats tab
@@ -1252,16 +1251,6 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 
-	function initializeAutoRefresh() {
-		// Auto-refresh every 5 minutes
-		setInterval(() => {
-			const refreshBtn = document.getElementById('refresh-btn');
-			if (refreshBtn && !refreshBtn.disabled) {
-				refreshMedia();
-			}
-		}, 300000); // 5 minutes
-	}
-
 	function filterMedia() {
 		const searchTerm = document.getElementById('search')?.value.toLowerCase() || '';
 		const libraryFilter = document.getElementById('library-filter')?.value || '';
@@ -1376,8 +1365,8 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_cba0`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_cba0`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_d970`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_d970`),
 	}
 }
 
@@ -1414,7 +1403,7 @@ func OverviewTab(mediaItems []models.MediaItem) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 860, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 849, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -1427,7 +1416,7 @@ func OverviewTab(mediaItems []models.MediaItem) templ.Component {
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 860, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 849, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {

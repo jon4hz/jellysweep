@@ -984,3 +984,70 @@ func (e *Engine) resetSingleSonarrTagsForMustDelete(ctx context.Context, seriesI
 
 	return nil
 }
+
+// resetAllSonarrTagsAndAddIgnore removes ALL jellysweep tags from a single Sonarr series and adds the ignore tag.
+func (e *Engine) resetAllSonarrTagsAndAddIgnore(ctx context.Context, seriesID int32) error {
+	if e.sonarr == nil {
+		return fmt.Errorf("sonarr client not available")
+	}
+
+	// Get the series
+	series, _, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), seriesID).Execute()
+	if err != nil {
+		return fmt.Errorf("failed to get sonarr series: %w", err)
+	}
+
+	// Ensure the ignore tag exists
+	if err := e.ensureSonarrTagExists(ctx, jellysweepIgnoreTag); err != nil {
+		return fmt.Errorf("failed to create ignore tag: %w", err)
+	}
+
+	// Get ignore tag ID
+	ignoreTagID, err := e.getSonarrTagIDByLabel(jellysweepIgnoreTag)
+	if err != nil {
+		return fmt.Errorf("failed to get ignore tag ID: %w", err)
+	}
+
+	// Get all tags to map tag IDs to names
+	tags, err := e.getSonarrTags(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get sonarr tags: %w", err)
+	}
+
+	// Remove all jellysweep tags and keep non-jellysweep tags
+	var newTags []int32
+
+	for _, tagID := range series.GetTags() {
+		tagName := tags[tagID]
+		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
+			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
+			tagName == jellysweepDeleteForSureTag ||
+			tagName == jellysweepKeepTag ||
+			tagName == jellysweepMustDeleteTag ||
+			tagName == jellysweepIgnoreTag
+
+		if isJellysweepTag {
+			log.Debugf("Removing jellysweep tag '%s' from Sonarr series: %s", tagName, series.GetTitle())
+		} else {
+			newTags = append(newTags, tagID)
+		}
+	}
+
+	// Add the ignore tag if it's not already there
+	if !slices.Contains(newTags, ignoreTagID) {
+		newTags = append(newTags, ignoreTagID)
+	}
+
+	// Update series tags
+	series.Tags = newTags
+	_, _, err = e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", seriesID)).
+		SeriesResource(*series).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to update sonarr series: %w", err)
+	}
+
+	log.Infof("Removed all jellysweep tags and added ignore tag to Sonarr series: %s", series.GetTitle())
+	return nil
+}

@@ -124,3 +124,22 @@ func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
 		"message": "Media marked for deletion successfully",
 	})
 }
+
+// MarkMediaAsKeepForever removes all jellysweep tags and adds the jellysweep-ignore tag to permanently protect media.
+func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
+	mediaID := c.Param("id")
+
+	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.TagIgnore)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Media protected forever successfully",
+	})
+}
