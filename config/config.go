@@ -53,6 +53,8 @@ type AuthConfig struct {
 type OIDCConfig struct {
 	// Enabled indicates whether OIDC authentication is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+	// Name is the display name for the OIDC provider.
+	Name string `yaml:"name" mapstructure:"name"`
 	// Issuer is the OIDC issuer URL.
 	Issuer string `yaml:"issuer" mapstructure:"issuer"`
 	// ClientID is the OIDC client ID.
@@ -225,6 +227,7 @@ func setDefaults(v *viper.Viper) {
 
 	// Auth defaults
 	v.SetDefault("jellysweep.auth.oidc.enabled", false)
+	v.SetDefault("jellysweep.auth.oidc.name", "OIDC")
 	v.SetDefault("jellysweep.auth.jellyfin.enabled", true)
 
 	// Email defaults
@@ -238,19 +241,6 @@ func setDefaults(v *viper.Viper) {
 	// Ntfy defaults
 	v.SetDefault("jellysweep.ntfy.enabled", false)
 	v.SetDefault("jellysweep.ntfy.server_url", "https://ntfy.sh")
-
-	/*
-		 	// Default library cleanup config
-			v.SetDefault("jellysweep.libraries.default.enabled", true)
-			v.SetDefault("jellysweep.libraries.default.request_age_threshold", 120)
-			v.SetDefault("jellysweep.libraries.default.last_stream_threshold", 90)
-			v.SetDefault("jellysweep.libraries.default.cleanup_delay", 30)
-			v.SetDefault("jellysweep.libraries.default.exclude_tags", []string{
-				"jellysweep-exclude",
-				"jellysweep-ignore",
-				"do-not-delete",
-			})
-	*/
 }
 
 // validateConfig validates the configuration.

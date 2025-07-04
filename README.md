@@ -192,6 +192,7 @@ JellySweep supports multiple authentication methods to secure your web interface
 auth:
   oidc:
     enabled: true
+    name: Authentik
     issuer: "https://your-sso-provider.com/application/o/jellysweep/"
     client_id: "your-client-id"
     client_secret: "your-client-secret"
@@ -236,6 +237,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the JellySweep server |
 | **OIDC Authentication** | | |
 | `JELLYSWEEP_AUTH_OIDC_ENABLED` | `false` | Enable OIDC/SSO authentication |
+| `JELLYSWEEP_AUTH_OIDC_NAME` | OIDC | Display name on the login page |
 | `JELLYSWEEP_AUTH_OIDC_ISSUER` | *(required if OIDC enabled)* | OIDC issuer URL |
 | `JELLYSWEEP_AUTH_OIDC_CLIENT_ID` | *(required if OIDC enabled)* | OIDC client ID |
 | `JELLYSWEEP_AUTH_OIDC_CLIENT_SECRET` | *(required if OIDC enabled)* | OIDC client secret |
@@ -297,6 +299,7 @@ auth:
   # OpenID Connect (OIDC) Authentication
   oidc:
     enabled: false
+    name: OIDC
     issuer: "https://login.mydomain.com/application/o/jellysweep/"
     client_id: "your-client-id"
     client_secret: "your-client-secret"
