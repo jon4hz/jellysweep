@@ -246,6 +246,11 @@ All configuration options can be set via environment variables with the `JELLYSW
 | **Jellyfin Authentication** | | |
 | `JELLYSWEEP_AUTH_JELLYFIN_ENABLED` | `true` | Enable Jellyfin authentication |
 | `JELLYSWEEP_AUTH_JELLYFIN_URL` | *(required if Jellyfin auth enabled)* | Jellyfin server URL |
+| **Profile Pictures** | | |
+| `JELLYSWEEP_GRAVATAR_ENABLED` | `false` | Enable Gravatar profile pictures |
+| `JELLYSWEEP_GRAVATAR_DEFAULT_IMAGE` | `robohash` | Default image if no Gravatar found |
+| `JELLYSWEEP_GRAVATAR_RATING` | `g` | Maximum rating for images (g, pg, r, x) |
+| `JELLYSWEEP_GRAVATAR_SIZE` | `80` | Image size in pixels (1-2048) |
 | **Email Notifications** | | |
 | `JELLYSWEEP_EMAIL_ENABLED` | `false` | Enable email notifications |
 | `JELLYSWEEP_EMAIL_SMTP_HOST` | *(required if email enabled)* | SMTP server host |
@@ -310,6 +315,16 @@ auth:
   jellyfin:
     enabled: true                      # Default authentication method
     url: "http://localhost:8096"       # Your Jellyfin server URL
+
+# Profile Pictures (optional)
+gravatar:
+  enabled: false                       # Enable Gravatar profile pictures
+  default_image: "mp"                  # Default image if no Gravatar found
+                                       # Options: "404", "mp", "identicon", "monsterid", 
+                                       #          "wavatar", "retro", "robohash", "blank"
+  rating: "g"                          # Maximum rating for images
+                                       # Options: "g", "pg", "r", "x"
+  size: 80                             # Image size in pixels (1-2048)
 
 # Library-specific settings
 libraries:

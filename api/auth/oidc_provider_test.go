@@ -38,7 +38,7 @@ func (s *OIDCProviderTestSuite) TestNewOIDCProvider_InvalidIssuer() {
 		AdminGroup:   "admin",
 	}
 
-	provider, err := NewOIDCProvider(s.T().Context(), cfg)
+	provider, err := NewOIDCProvider(s.T().Context(), cfg, nil)
 
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), provider)
@@ -57,7 +57,7 @@ func (s *OIDCProviderTestSuite) TestNewOIDCProvider_ValidConfig() {
 	}
 
 	// This will likely fail due to network issues in tests, but we can test the error handling
-	provider, err := NewOIDCProvider(s.T().Context(), cfg)
+	provider, err := NewOIDCProvider(s.T().Context(), cfg, nil)
 
 	// In a real test environment with proper OIDC setup, this should work
 	// For now, we just test that the function doesn't panic and handles errors

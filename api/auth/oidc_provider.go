@@ -9,19 +9,22 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/gravatar"
 	"golang.org/x/oauth2"
 )
 
 type OIDCProvider struct {
-	provider *oidc.Provider
-	verifier *oidc.IDTokenVerifier
-	config   *oauth2.Config
-	cfg      *config.OIDCConfig
+	provider    *oidc.Provider
+	verifier    *oidc.IDTokenVerifier
+	config      *oauth2.Config
+	cfg         *config.OIDCConfig
+	gravatarCfg *config.GravatarConfig
 }
 
-func NewOIDCProvider(ctx context.Context, cfg *config.OIDCConfig) (*OIDCProvider, error) {
+func NewOIDCProvider(ctx context.Context, cfg *config.OIDCConfig, gravatarCfg *config.GravatarConfig) (*OIDCProvider, error) {
 	p := OIDCProvider{
-		cfg: cfg,
+		cfg:         cfg,
+		gravatarCfg: gravatarCfg,
 	}
 	var err error
 	p.provider, err = oidc.NewProvider(ctx, cfg.Issuer)
@@ -57,6 +60,11 @@ func (p *OIDCProvider) RequireAuth() gin.HandlerFunc {
 			Name:     getSessionString(session, "user_name"),
 			Username: getSessionString(session, "user_username"),
 			IsAdmin:  getSessionBool(session, "user_is_admin"),
+		}
+
+		// Generate Gravatar URL if enabled and email is available
+		if p.gravatarCfg != nil && user.Email != "" {
+			user.GravatarURL = gravatar.GenerateURL(user.Email, p.gravatarCfg)
 		}
 
 		c.Set("user_id", userID)

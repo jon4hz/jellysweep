@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/gravatar"
 )
 
 // AuthProvider defines the interface for authentication providers.
@@ -34,19 +35,20 @@ type MultiProvider struct {
 	oidcProvider     *OIDCProvider
 	jellyfinProvider *JellyfinProvider
 	cfg              *config.AuthConfig
+	gravatarCfg      *config.GravatarConfig
 }
 
 // NewProvider creates a multi-provider that supports both OIDC and Jellyfin authentication.
-func NewProvider(ctx context.Context, cfg *config.AuthConfig) (AuthProvider, error) {
+func NewProvider(ctx context.Context, cfg *config.AuthConfig, gravatarCfg *config.GravatarConfig) (AuthProvider, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("auth config is required")
 	}
 
-	mp := &MultiProvider{cfg: cfg}
+	mp := &MultiProvider{cfg: cfg, gravatarCfg: gravatarCfg}
 
 	// Initialize OIDC provider if enabled
 	if cfg.OIDC != nil && cfg.OIDC.Enabled {
-		oidcProvider, err := NewOIDCProvider(ctx, cfg.OIDC)
+		oidcProvider, err := NewOIDCProvider(ctx, cfg.OIDC, gravatarCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create OIDC provider: %w", err)
 		}
@@ -55,7 +57,7 @@ func NewProvider(ctx context.Context, cfg *config.AuthConfig) (AuthProvider, err
 
 	// Initialize Jellyfin provider if enabled
 	if cfg.Jellyfin != nil && cfg.Jellyfin.Enabled {
-		mp.jellyfinProvider = NewJellyfinProvider(cfg.Jellyfin)
+		mp.jellyfinProvider = NewJellyfinProvider(cfg.Jellyfin, gravatarCfg)
 	}
 
 	// At least one provider must be enabled
@@ -113,6 +115,11 @@ func (mp *MultiProvider) RequireAuth() gin.HandlerFunc {
 			Name:     getSessionString(session, "user_name"),
 			Username: getSessionString(session, "user_username"),
 			IsAdmin:  getSessionBool(session, "user_is_admin"),
+		}
+
+		// Generate Gravatar URL if enabled and email is available
+		if mp.gravatarCfg != nil && user.Email != "" {
+			user.GravatarURL = gravatar.GenerateURL(user.Email, mp.gravatarCfg)
 		}
 
 		c.Set("user_id", userID)

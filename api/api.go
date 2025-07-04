@@ -38,7 +38,7 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 
 	// Only initialize auth provider if authentication is enabled
 	if cfg.IsAuthenticationEnabled() {
-		authProvider, err = auth.NewProvider(ctx, cfg.Auth)
+		authProvider, err = auth.NewProvider(ctx, cfg.Auth, cfg.Gravatar)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create auth provider: %w", err)
 		}

@@ -7,18 +7,21 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/gravatar"
 	"github.com/jon4hz/jellysweep/jellyfin"
 )
 
 type JellyfinProvider struct {
-	client *jellyfin.Client
-	cfg    *config.JellyfinConfig
+	client      *jellyfin.Client
+	cfg         *config.JellyfinConfig
+	gravatarCfg *config.GravatarConfig
 }
 
-func NewJellyfinProvider(cfg *config.JellyfinConfig) *JellyfinProvider {
+func NewJellyfinProvider(cfg *config.JellyfinConfig, gravatarCfg *config.GravatarConfig) *JellyfinProvider {
 	return &JellyfinProvider{
-		client: jellyfin.New(cfg),
-		cfg:    cfg,
+		client:      jellyfin.New(cfg),
+		cfg:         cfg,
+		gravatarCfg: gravatarCfg,
 	}
 }
 
@@ -76,6 +79,11 @@ func (p *JellyfinProvider) RequireAuth() gin.HandlerFunc {
 			Name:     getSessionString(session, "user_name"),
 			Username: getSessionString(session, "user_username"),
 			IsAdmin:  getSessionBool(session, "user_is_admin"),
+		}
+
+		// Generate Gravatar URL if enabled and email is available
+		if p.gravatarCfg != nil && user.Email != "" {
+			user.GravatarURL = gravatar.GenerateURL(user.Email, p.gravatarCfg)
 		}
 
 		c.Set("user_id", userID)

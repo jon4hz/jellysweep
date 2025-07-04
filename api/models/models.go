@@ -4,11 +4,12 @@ import "time"
 
 // User represents a user in the system, including their authentication details and admin status.
 type User struct {
-	Sub      string
-	Email    string
-	Name     string
-	Username string
-	IsAdmin  bool
+	Sub         string
+	Email       string
+	Name        string
+	Username    string
+	IsAdmin     bool
+	GravatarURL string // URL to the user's Gravatar image, empty if not available
 }
 
 // MediaItem represents a media item for display in the UI and for deletion tracking.

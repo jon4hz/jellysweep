@@ -34,7 +34,7 @@ func (s *JellyfinProviderTestSuite) SetupTest() {
 		Enabled: true,
 		URL:     "http://localhost:8096",
 	}
-	s.provider = NewJellyfinProvider(cfg)
+	s.provider = NewJellyfinProvider(cfg, nil)
 }
 
 func (s *JellyfinProviderTestSuite) TestNewJellyfinProvider() {
@@ -43,7 +43,7 @@ func (s *JellyfinProviderTestSuite) TestNewJellyfinProvider() {
 		URL:     "http://localhost:8096",
 	}
 
-	provider := NewJellyfinProvider(cfg)
+	provider := NewJellyfinProvider(cfg, nil)
 
 	assert.NotNil(s.T(), provider)
 	assert.Equal(s.T(), cfg, provider.cfg)
@@ -245,7 +245,7 @@ func (s *JellyfinProviderTestSuite) TestGetAuthConfig() {
 		Enabled: true,
 		URL:     "http://localhost:8096",
 	}
-	provider := NewJellyfinProvider(cfg)
+	provider := NewJellyfinProvider(cfg, nil)
 
 	authConfig := provider.GetAuthConfig()
 

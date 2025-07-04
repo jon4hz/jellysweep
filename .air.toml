@@ -6,7 +6,7 @@ tmp_dir = "bin"
 [build]
   bin = "./bin/main"
   cmd = "npm run build && go tool templ generate && go build -o ./bin/main && ./bin/main serve --log-level=debug"
-  delay = 1000
+  delay = 10
   exclude_dir = ["static/static", "node_modules", "_devel", "data"]
   exclude_regex = [".*_templ.go"]
   exclude_unchanged = false

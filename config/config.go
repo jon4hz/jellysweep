@@ -39,6 +39,8 @@ type Config struct {
 	Radarr *RadarrConfig `yaml:"radarr" mapstructure:"radarr"`
 	// Jellystat holds the configuration for the Jellystat server.
 	Jellystat *JellystatConfig `yaml:"jellystat" mapstructure:"jellystat"`
+	// Gravatar holds the configuration for Gravatar profile pictures.
+	Gravatar *GravatarConfig `yaml:"gravatar" mapstructure:"gravatar"`
 }
 
 // AuthConfig holds the authentication configuration for the JellySweep server.
@@ -160,6 +162,20 @@ type JellystatConfig struct {
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
 }
 
+// GravatarConfig holds the configuration for Gravatar profile pictures.
+type GravatarConfig struct {
+	// Enabled indicates whether Gravatar support is enabled.
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+	// DefaultImage is the default image to use when no Gravatar is found.
+	// Valid values: "404", "mp", "identicon", "monsterid", "wavatar", "retro", "robohash", "blank"
+	DefaultImage string `yaml:"default_image" mapstructure:"default_image"`
+	// Rating is the maximum rating for Gravatar images.
+	// Valid values: "g", "pg", "r", "x"
+	Rating string `yaml:"rating" mapstructure:"rating"`
+	// Size is the size of the Gravatar image in pixels (1-2048).
+	Size int `yaml:"size" mapstructure:"size"`
+}
+
 // Load reads the configuration from the specified path and returns a Config struct.
 // If path is empty, it will use default search paths for config files.
 // If no config file is found, it will generate a default one in the current directory.
@@ -228,6 +244,11 @@ func setDefaults(v *viper.Viper) {
 	// Auth defaults
 	v.SetDefault("jellysweep.auth.oidc.enabled", false)
 	v.SetDefault("jellysweep.auth.oidc.name", "OIDC")
+	v.SetDefault("jellysweep.auth.oidc.issuer", "")
+	v.SetDefault("jellysweep.auth.oidc.client_id", "")
+	v.SetDefault("jellysweep.auth.oidc.client_secret", "")
+	v.SetDefault("jellysweep.auth.oidc.redirect_url", "")
+	v.SetDefault("jellysweep.auth.oidc.admin_group", "")
 	v.SetDefault("jellysweep.auth.jellyfin.enabled", true)
 
 	// Email defaults
@@ -241,6 +262,12 @@ func setDefaults(v *viper.Viper) {
 	// Ntfy defaults
 	v.SetDefault("jellysweep.ntfy.enabled", false)
 	v.SetDefault("jellysweep.ntfy.server_url", "https://ntfy.sh")
+
+	// Gravatar defaults
+	v.SetDefault("jellysweep.gravatar.enabled", false)
+	v.SetDefault("jellysweep.gravatar.default_image", "robohash")
+	v.SetDefault("jellysweep.gravatar.rating", "g")
+	v.SetDefault("jellysweep.gravatar.size", 80)
 }
 
 // validateConfig validates the configuration.

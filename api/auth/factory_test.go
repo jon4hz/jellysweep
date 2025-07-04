@@ -32,7 +32,7 @@ func (s *FactoryTestSuite) SetupTest() {
 }
 
 func (s *FactoryTestSuite) TestNewProvider_NilConfig() {
-	provider, err := NewProvider(context.Background(), nil)
+	provider, err := NewProvider(context.Background(), nil, nil)
 	assert.Nil(s.T(), provider)
 	assert.Error(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "auth config is required")
@@ -48,7 +48,7 @@ func (s *FactoryTestSuite) TestNewProvider_NoProvidersEnabled() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg)
+	provider, err := NewProvider(context.Background(), cfg, nil)
 	assert.Nil(s.T(), provider)
 	assert.Error(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "no authentication provider is enabled")
@@ -62,7 +62,7 @@ func (s *FactoryTestSuite) TestNewProvider_OnlyJellyfinEnabled() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg)
+	provider, err := NewProvider(context.Background(), cfg, nil)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), provider)
 
@@ -83,7 +83,7 @@ func (s *FactoryTestSuite) TestNewProvider_InvalidOIDCConfig() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg)
+	provider, err := NewProvider(context.Background(), cfg, nil)
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), provider)
 	assert.Contains(s.T(), err.Error(), "failed to create OIDC provider")
@@ -97,7 +97,7 @@ func (s *FactoryTestSuite) TestMultiProvider_Login_JellyfinPost() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg)
+	provider, err := NewProvider(context.Background(), cfg, nil)
 	assert.NoError(s.T(), err)
 
 	// Setup test route
@@ -120,7 +120,8 @@ func (s *FactoryTestSuite) TestMultiProvider_Login_JellyfinPost() {
 
 func (s *FactoryTestSuite) TestMultiProvider_Login_NoProviders() {
 	mp := &MultiProvider{
-		cfg: &config.AuthConfig{},
+		cfg:         &config.AuthConfig{},
+		gravatarCfg: nil,
 	}
 
 	s.router.GET("/login", mp.Login)
@@ -135,7 +136,8 @@ func (s *FactoryTestSuite) TestMultiProvider_Login_NoProviders() {
 
 func (s *FactoryTestSuite) TestMultiProvider_Callback_NoOIDC() {
 	mp := &MultiProvider{
-		cfg: &config.AuthConfig{},
+		cfg:         &config.AuthConfig{},
+		gravatarCfg: nil,
 	}
 
 	s.router.GET("/callback", mp.Callback)
@@ -150,7 +152,8 @@ func (s *FactoryTestSuite) TestMultiProvider_Callback_NoOIDC() {
 
 func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_NoSession() {
 	mp := &MultiProvider{
-		cfg: &config.AuthConfig{},
+		cfg:         &config.AuthConfig{},
+		gravatarCfg: nil,
 	}
 
 	s.router.GET("/protected", mp.RequireAuth(), func(c *gin.Context) {
@@ -168,7 +171,8 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_NoSession() {
 
 func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithSession() {
 	mp := &MultiProvider{
-		cfg: &config.AuthConfig{},
+		cfg:         &config.AuthConfig{},
+		gravatarCfg: nil,
 	}
 
 	// Create a custom router for this test to properly handle sessions
@@ -216,7 +220,8 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithSession() {
 
 func (s *FactoryTestSuite) TestMultiProvider_RequireAdmin_NotAdmin() {
 	mp := &MultiProvider{
-		cfg: &config.AuthConfig{},
+		cfg:         &config.AuthConfig{},
+		gravatarCfg: nil,
 	}
 
 	req := httptest.NewRequest("GET", "/admin", nil)
@@ -239,7 +244,8 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAdmin_NotAdmin() {
 
 func (s *FactoryTestSuite) TestMultiProvider_RequireAdmin_IsAdmin() {
 	mp := &MultiProvider{
-		cfg: &config.AuthConfig{},
+		cfg:         &config.AuthConfig{},
+		gravatarCfg: nil,
 	}
 
 	req := httptest.NewRequest("GET", "/admin", nil)
@@ -268,7 +274,7 @@ func (s *FactoryTestSuite) TestMultiProvider_GetAuthConfig() {
 		},
 	}
 
-	mp := &MultiProvider{cfg: cfg}
+	mp := &MultiProvider{cfg: cfg, gravatarCfg: nil}
 	result := mp.GetAuthConfig()
 
 	assert.Equal(s.T(), cfg, result)
@@ -358,6 +364,125 @@ func (s *FactoryTestSuite) TestGetSessionBool() {
 	req := httptest.NewRequest("GET", "/test", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
+}
+
+func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithGravatar() {
+	gravatarCfg := &config.GravatarConfig{
+		Enabled:      true,
+		DefaultImage: "mp",
+		Rating:       "g",
+		Size:         80,
+	}
+
+	mp := &MultiProvider{
+		cfg:         &config.AuthConfig{},
+		gravatarCfg: gravatarCfg,
+	}
+
+	// Create a custom router for this test to properly handle sessions
+	router := gin.New()
+	store := cookie.NewStore([]byte("test-secret"))
+	router.Use(sessions.Sessions("mysession", store))
+
+	// First, create a route to set up the session with email
+	router.POST("/setup-session", func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Set("user_id", "test-user-id")
+		session.Set("user_email", "test@example.com")
+		session.Set("user_name", "Test User")
+		session.Set("user_username", "testuser")
+		session.Set("user_is_admin", false)
+		session.Save()
+		c.JSON(http.StatusOK, gin.H{"success": true})
+	})
+
+	// Then create the protected route
+	router.GET("/protected", mp.RequireAuth(), func(c *gin.Context) {
+		user := c.MustGet("user").(*models.User)
+		c.JSON(http.StatusOK, gin.H{
+			"user":        user.Username,
+			"gravatarURL": user.GravatarURL,
+		})
+	})
+
+	// First request to set up session
+	req1 := httptest.NewRequest("POST", "/setup-session", nil)
+	w1 := httptest.NewRecorder()
+	router.ServeHTTP(w1, req1)
+
+	// Extract cookies from the first response
+	cookies := w1.Result().Cookies()
+
+	// Second request to access protected route with session
+	req2 := httptest.NewRequest("GET", "/protected", nil)
+	for _, cookie := range cookies {
+		req2.AddCookie(cookie)
+	}
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+
+	assert.Equal(s.T(), http.StatusOK, w2.Code)
+	assert.Contains(s.T(), w2.Body.String(), "testuser")
+	// Check that Gravatar URL is generated (MD5 of test@example.com)
+	assert.Contains(s.T(), w2.Body.String(), "55502f40dc8b7c769880b10874abc9d0")
+}
+
+func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithoutEmail() {
+	gravatarCfg := &config.GravatarConfig{
+		Enabled: true,
+	}
+
+	mp := &MultiProvider{
+		cfg:         &config.AuthConfig{},
+		gravatarCfg: gravatarCfg,
+	}
+
+	// Create a custom router for this test to properly handle sessions
+	router := gin.New()
+	store := cookie.NewStore([]byte("test-secret"))
+	router.Use(sessions.Sessions("mysession", store))
+
+	// First, create a route to set up the session without email
+	router.POST("/setup-session", func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Set("user_id", "test-user-id")
+		session.Set("user_email", "") // No email
+		session.Set("user_name", "Test User")
+		session.Set("user_username", "testuser")
+		session.Set("user_is_admin", false)
+		session.Save()
+		c.JSON(http.StatusOK, gin.H{"success": true})
+	})
+
+	// Then create the protected route
+	router.GET("/protected", mp.RequireAuth(), func(c *gin.Context) {
+		user := c.MustGet("user").(*models.User)
+		c.JSON(http.StatusOK, gin.H{
+			"user":        user.Username,
+			"gravatarURL": user.GravatarURL,
+		})
+	})
+
+	// First request to set up session
+	req1 := httptest.NewRequest("POST", "/setup-session", nil)
+	w1 := httptest.NewRecorder()
+	router.ServeHTTP(w1, req1)
+
+	// Extract cookies from the first response
+	cookies := w1.Result().Cookies()
+
+	// Second request to access protected route with session
+	req2 := httptest.NewRequest("GET", "/protected", nil)
+	for _, cookie := range cookies {
+		req2.AddCookie(cookie)
+	}
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+
+	assert.Equal(s.T(), http.StatusOK, w2.Code)
+	assert.Contains(s.T(), w2.Body.String(), "testuser")
+	// Check that no Gravatar URL is generated when email is empty
+	assert.Contains(s.T(), w2.Body.String(), `"gravatarURL":""`)
 }
 
 func TestFactoryTestSuite(t *testing.T) {
