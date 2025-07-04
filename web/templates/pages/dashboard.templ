@@ -417,7 +417,6 @@ script dashboardScripts() {
 		initializeTabs('dashboard-tabs');
 		initializeFilters();
 		initializeMediaRequests();
-		initializeAutoRefresh();
 		initializeStorageCharts();
 		
 		// Add custom handler for chart reinitializtion when switching to stats tab
@@ -714,16 +713,6 @@ script dashboardScripts() {
 				requestKeepMedia(mediaId, e.target);
 			}
 		});
-	}
-
-	function initializeAutoRefresh() {
-		// Auto-refresh every 5 minutes
-		setInterval(() => {
-			const refreshBtn = document.getElementById('refresh-btn');
-			if (refreshBtn && !refreshBtn.disabled) {
-				refreshMedia();
-			}
-		}, 300000); // 5 minutes
 	}
 
 	function filterMedia() {
