@@ -48,11 +48,11 @@ type User struct {
 	EnableAutoLogin           bool   `json:"EnableAutoLogin"`
 	LastLoginDate             string `json:"LastLoginDate"`
 	LastActivityDate          string `json:"LastActivityDate"`
-	Configuration             struct {
+	Policy                    struct {
 		IsAdministrator bool `json:"IsAdministrator"`
 		IsHidden        bool `json:"IsHidden"`
 		IsDisabled      bool `json:"IsDisabled"`
-	} `json:"Configuration"`
+	} `json:"Policy"`
 }
 
 // AuthenticateByName authenticates a user by username and password.

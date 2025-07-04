@@ -44,7 +44,7 @@ func (p *JellyfinProvider) Login(c *gin.Context) {
 	session.Set("user_email", "") // Jellyfin doesn't provide email in auth response
 	session.Set("user_name", authResp.User.Name)
 	session.Set("user_username", authResp.User.Name)
-	session.Set("user_is_admin", authResp.User.Configuration.IsAdministrator)
+	session.Set("user_is_admin", authResp.User.Policy.IsAdministrator)
 
 	if err := session.Save(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
