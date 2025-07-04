@@ -1,7 +1,9 @@
 .PHONY: run build templ css js clean
 
 # Run the application with debug logging
-run: build
+run: build serve
+
+serve:
 	go run . serve --log-level=debug
 
 # Build all assets and templates
