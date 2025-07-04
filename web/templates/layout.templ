@@ -1,6 +1,7 @@
 package templates
 
 import "github.com/jon4hz/jellysweep/api/models"
+import "github.com/jon4hz/jellysweep/web/templates/components"
 
 templ Layout(title string, user *models.User) {
 	@LayoutWithPendingRequests(title, user, 0) {
@@ -15,8 +16,19 @@ templ LayoutWithPendingRequests(title string, user *models.User, pendingRequests
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title } - JellySweep</title>
-			<link rel="stylesheet" href="/static/dist/style.css"/>
+			<!-- PWA Meta Tags -->
+			<meta name="theme-color" content="#111827"/>
+			<meta name="description" content="JellySweep - Manage your Jellyfin media library"/>
+			<meta name="apple-mobile-web-app-capable" content="yes"/>
+			<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+			<meta name="apple-mobile-web-app-title" content="JellySweep"/>
+			<meta name="mobile-web-app-capable" content="yes"/>
+			<!-- Manifest and Icons -->
+			<link rel="manifest" href="/static/manifest.json"/>
 			<link rel="icon" type="image/png" href="/static/jellysweep.png"/>
+			<link rel="apple-touch-icon" href="/static/jellysweep.png"/>
+			<!-- Stylesheets and Scripts -->
+			<link rel="stylesheet" href="/static/dist/style.css"/>
 			<script src="/static/dist/chart.js"></script>
 		</head>
 		<body class="bg-gray-950 text-gray-100 min-h-screen">
@@ -24,6 +36,7 @@ templ LayoutWithPendingRequests(title string, user *models.User, pendingRequests
 			<main class="container mx-auto px-4 py-8">
 				{ children... }
 			</main>
+			@components.PWAScript()
 		</body>
 	</html>
 }
@@ -121,8 +134,8 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 	<!-- Mobile side menu -->
 	if user != nil {
 		<div id="mobile-menu" class="fixed inset-0 z-50 hidden">
-			<!-- Overlay -->
-			<div id="mobile-menu-overlay" class="fixed inset-0 bg-black bg-opacity-50"></div>
+			<!-- Backdrop with blur effect -->
+			<div id="mobile-menu-overlay" class="fixed inset-0 bg-gray-900/20 backdrop-blur-sm"></div>
 			<!-- Side menu -->
 			<div id="mobile-menu-panel" class="fixed right-0 top-0 h-full w-64 bg-gray-900 border-l border-gray-800 transform translate-x-full transition-transform duration-300 ease-in-out">
 				<div class="flex flex-col h-full">
@@ -188,6 +201,15 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 								</a>
 							}
 						</div>
+					</div>
+					<!-- Install App button -->
+					<div id="mobile-install-section" class="p-4 border-t border-gray-800 hidden">
+						<button id="mobile-install-button" class="flex items-center justify-center w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200">
+							<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+							</svg>
+							Install App
+						</button>
 					</div>
 					<!-- Logout button -->
 					<div class="p-4 border-t border-gray-800">

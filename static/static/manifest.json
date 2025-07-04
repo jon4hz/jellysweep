@@ -1,0 +1,31 @@
+{
+    "name": "JellySweep",
+    "short_name": "JellySweep",
+    "description": "Media management and cleanup tool for Jellyfin",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#030712",
+    "theme_color": "#111827",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "lang": "en",
+    "dir": "ltr",
+    "icons": [
+        {
+            "src": "/static/icons/icon-256x256.png",
+            "sizes": "256x256",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/static/icons/icon-256x256.png",
+            "sizes": "256x256",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "categories": [
+        "entertainment",
+        "utilities"
+    ]
+}

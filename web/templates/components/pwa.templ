@@ -1,0 +1,203 @@
+package components
+
+templ PWAScript() {
+	<script>
+		// PWA Installation and Service Worker Registration
+		class PWAInstaller {
+			constructor() {
+				this.deferredPrompt = null;
+				this.installButton = null;
+				this.init();
+			}
+
+			init() {
+				// Register service worker
+				this.registerServiceWorker();
+				
+				// Setup install prompt handling
+				this.setupInstallPrompt();
+				
+				// Create install button
+				this.createInstallButton();
+			}
+
+			async registerServiceWorker() {
+				if ('serviceWorker' in navigator) {
+					try {
+						const registration = await navigator.serviceWorker.register('/static/sw.js');
+						console.log('Service Worker registered successfully:', registration);
+						
+						// Listen for updates
+						registration.addEventListener('updatefound', () => {
+							const newWorker = registration.installing;
+							newWorker.addEventListener('statechange', () => {
+								if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+									// New content is available, notify user
+									this.showUpdateNotification();
+								}
+							});
+						});
+					} catch (error) {
+						console.error('Service Worker registration failed:', error);
+					}
+				}
+			}
+
+			setupInstallPrompt() {
+				// Detect Firefox
+				const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+				
+				// Listen for the beforeinstallprompt event (Chrome/Edge)
+				window.addEventListener('beforeinstallprompt', (e) => {
+					console.log('beforeinstallprompt event fired');
+					// Prevent the mini-infobar from appearing on mobile
+					e.preventDefault();
+					// Save the event so it can be triggered later
+					this.deferredPrompt = e;
+					// Show the install button
+					this.showInstallButton();
+				});
+
+				// Listen for the appinstalled event
+				window.addEventListener('appinstalled', () => {
+					console.log('PWA was installed');
+					this.hideInstallButton();
+					// Clear the deferredPrompt
+					this.deferredPrompt = null;
+				});
+
+				// For Firefox, show the install button in mobile menu since it doesn't support beforeinstallprompt
+				if (isFirefox) {
+					setTimeout(() => {
+						if (!this.deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
+							this.showInstallButton(); // Show the button in mobile menu
+						}
+					}, 2000);
+				}
+			}
+
+			createInstallButton() {
+				// Check if already installed
+				if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+					console.log('PWA is already installed');
+					return;
+				}
+
+				// Use the mobile menu button instead of creating a floating button
+				this.installSection = document.getElementById('mobile-install-section');
+				this.installButton = document.getElementById('mobile-install-button');
+				
+				if (this.installButton) {
+					this.installButton.addEventListener('click', () => {
+						this.installPWA();
+					});
+				}
+			}
+
+			showInstallButton() {
+				if (this.installSection) {
+					this.installSection.classList.remove('hidden');
+				}
+			}
+
+			hideInstallButton() {
+				if (this.installSection) {
+					this.installSection.classList.add('hidden');
+				}
+			}
+
+			async installPWA() {
+				if (!this.deferredPrompt) {
+					// For Firefox or when beforeinstallprompt is not available
+					const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+					if (isFirefox) {
+						this.showFirefoxInstallInstructions();
+					} else {
+						console.log('No deferred prompt available');
+					}
+					return;
+				}
+
+				// Show the install prompt
+				this.deferredPrompt.prompt();
+				
+				// Wait for the user to respond to the prompt
+				const { outcome } = await this.deferredPrompt.userChoice;
+				console.log(`User response to the install prompt: ${outcome}`);
+				
+				if (outcome === 'accepted') {
+					console.log('User accepted the install prompt');
+				} else {
+					console.log('User dismissed the install prompt');
+				}
+				
+				// Clear the deferredPrompt
+				this.deferredPrompt = null;
+				this.hideInstallButton();
+			}
+
+			showUpdateNotification() {
+				// Show a notification that an update is available
+				const notification = document.createElement('div');
+				notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+				notification.innerHTML = `
+					<div class="flex items-center space-x-2">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+						</svg>
+						<span>App updated! Refresh to apply.</span>
+						<button onclick="window.location.reload()" class="ml-2 underline">Refresh</button>
+					</div>
+				`;
+				
+				document.body.appendChild(notification);
+				
+				// Auto-remove after 10 seconds
+				setTimeout(() => {
+					if (notification.parentNode) {
+						notification.parentNode.removeChild(notification);
+					}
+				}, 10000);
+			}
+
+			showFirefoxInstallInstructions() {
+				// Create a notification with Firefox-specific install instructions
+				const notification = document.createElement('div');
+				notification.id = 'firefox-install-instructions';
+				notification.className = 'fixed bottom-4 right-4 max-w-sm bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50';
+				notification.innerHTML = `
+					<div class="space-y-2">
+						<div class="flex items-center justify-between">
+							<div class="flex items-center space-x-2">
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+								</svg>
+								<span class="font-medium">Install App</span>
+							</div>
+							<button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-white/80 hover:text-white">
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+								</svg>
+							</button>
+						</div>
+						<p class="text-sm">Firefox: Tap the menu (⋮) and look for "Install" or "Add to Home Screen"</p>
+					</div>
+				`;
+				
+				document.body.appendChild(notification);
+				
+				// Auto-remove after 15 seconds
+				setTimeout(() => {
+					if (notification.parentNode) {
+						notification.parentNode.removeChild(notification);
+					}
+				}, 15000);
+			}
+		}
+
+		// Initialize PWA installer when DOM is loaded
+		document.addEventListener('DOMContentLoaded', () => {
+			new PWAInstaller();
+		});
+	</script>
+}
