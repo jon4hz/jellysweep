@@ -423,8 +423,8 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithGravatar() {
 
 	assert.Equal(s.T(), http.StatusOK, w2.Code)
 	assert.Contains(s.T(), w2.Body.String(), "testuser")
-	// Check that Gravatar URL is generated (MD5 of test@example.com)
-	assert.Contains(s.T(), w2.Body.String(), "55502f40dc8b7c769880b10874abc9d0")
+	// Check that Gravatar URL is generated (SHA-256 of test@example.com)
+	assert.Contains(s.T(), w2.Body.String(), "973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b")
 }
 
 func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithoutEmail() {

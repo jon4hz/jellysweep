@@ -38,7 +38,7 @@ func TestGenerateURL(t *testing.T) {
 			config: &config.GravatarConfig{
 				Enabled: true,
 			},
-			expected: "https://www.gravatar.com/avatar/55502f40dc8b7c769880b10874abc9d0",
+			expected: "https://www.gravatar.com/avatar/973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b",
 		},
 		{
 			name:  "config with default image",
@@ -47,7 +47,7 @@ func TestGenerateURL(t *testing.T) {
 				Enabled:      true,
 				DefaultImage: "mp",
 			},
-			expected: "https://www.gravatar.com/avatar/55502f40dc8b7c769880b10874abc9d0?d=mp",
+			expected: "https://www.gravatar.com/avatar/973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b?d=mp",
 		},
 		{
 			name:  "config with all options",
@@ -58,7 +58,7 @@ func TestGenerateURL(t *testing.T) {
 				Rating:       "pg",
 				Size:         120,
 			},
-			expected: "https://www.gravatar.com/avatar/55502f40dc8b7c769880b10874abc9d0?d=identicon&r=pg&s=120",
+			expected: "https://www.gravatar.com/avatar/973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b?d=identicon&r=pg&s=120",
 		},
 		{
 			name:  "email with whitespace",
@@ -66,7 +66,7 @@ func TestGenerateURL(t *testing.T) {
 			config: &config.GravatarConfig{
 				Enabled: true,
 			},
-			expected: "https://www.gravatar.com/avatar/55502f40dc8b7c769880b10874abc9d0",
+			expected: "https://www.gravatar.com/avatar/973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b",
 		},
 	}
 

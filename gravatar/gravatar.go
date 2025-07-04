@@ -1,7 +1,7 @@
 package gravatar
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"net/url"
 	"strings"
@@ -15,12 +15,11 @@ func GenerateURL(email string, cfg *config.GravatarConfig) string {
 	if cfg == nil || !cfg.Enabled || email == "" {
 		return ""
 	}
-
 	// Normalize email (trim whitespace and convert to lowercase)
 	email = strings.TrimSpace(strings.ToLower(email))
 
-	// Generate MD5 hash of the email
-	hash := md5.Sum([]byte(email))
+	// Generate SHA-256 hash of the email
+	hash := sha256.Sum256([]byte(email))
 	hashStr := fmt.Sprintf("%x", hash)
 
 	// Build Gravatar URL with parameters
