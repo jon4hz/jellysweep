@@ -59,8 +59,17 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 					}
 				</div>
 				<div class="flex items-center space-x-4">
+					<!-- Mobile menu button -->
 					if user != nil {
-						<div class="flex items-center space-x-4">
+						<button id="mobile-menu-button" class="md:hidden text-gray-300 hover:text-white focus:outline-none focus:text-white">
+							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path id="menu-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+								<path id="close-icon" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+							</svg>
+						</button>
+					}
+					if user != nil {
+						<div class="hidden md:flex items-center space-x-4">
 							<span class="text-gray-300 text-sm">Welcome, { user.Name }</span>
 							<a href="/logout" class="text-gray-400 hover:text-white transition-colors duration-200">
 								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,4 +86,152 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 			</div>
 		</div>
 	</nav>
+	<!-- Mobile side menu -->
+	if user != nil {
+		<div id="mobile-menu" class="fixed inset-0 z-50 hidden">
+			<!-- Overlay -->
+			<div id="mobile-menu-overlay" class="fixed inset-0 bg-black bg-opacity-50"></div>
+			<!-- Side menu -->
+			<div id="mobile-menu-panel" class="fixed right-0 top-0 h-full w-64 bg-gray-900 border-l border-gray-800 transform translate-x-full transition-transform duration-300 ease-in-out">
+				<div class="flex flex-col h-full">
+					<!-- Header -->
+					<div class="flex items-center justify-between p-4 border-b border-gray-800">
+						<span class="text-lg font-semibold text-gray-100">Menu</span>
+						<button id="close-mobile-menu" class="text-gray-300 hover:text-white focus:outline-none">
+							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+							</svg>
+						</button>
+					</div>
+					<!-- User info -->
+					<div class="p-4 border-b border-gray-800">
+						<div class="flex items-center space-x-3">
+							<div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+								<svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+								</svg>
+							</div>
+							<div>
+								<p class="text-gray-100 font-medium">{ user.Name }</p>
+								<p class="text-gray-400 text-sm">
+									if user.IsAdmin {
+										Administrator
+									} else {
+										User
+									}
+								</p>
+							</div>
+						</div>
+					</div>
+					<!-- Navigation links -->
+					<div class="flex-1 py-4">
+						<div class="space-y-2 px-4">
+							<a href="/" class="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200">
+								<div class="flex items-center space-x-3">
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
+									</svg>
+									<span>Dashboard</span>
+								</div>
+							</a>
+							if user.IsAdmin {
+								<a href="/admin" class="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200">
+									<div class="flex items-center justify-between">
+										<div class="flex items-center space-x-3">
+											<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+											</svg>
+											<span>Admin Panel</span>
+										</div>
+										if pendingRequestsCount > 0 {
+											<span class="bg-red-500 text-white rounded-full px-2 py-1 text-xs font-medium">{ pendingRequestsCount }</span>
+										}
+									</div>
+								</a>
+							}
+						</div>
+					</div>
+					<!-- Logout button -->
+					<div class="p-4 border-t border-gray-800">
+						<a href="/logout" class="flex items-center justify-center w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200">
+							<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+							</svg>
+							Sign Out
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+	@MobileMenuScript()
+}
+
+templ MobileMenuScript() {
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			const mobileMenuButton = document.getElementById('mobile-menu-button');
+			const mobileMenu = document.getElementById('mobile-menu');
+			const mobileMenuPanel = document.getElementById('mobile-menu-panel');
+			const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+			const closeMobileMenu = document.getElementById('close-mobile-menu');
+			const menuIcon = document.getElementById('menu-icon');
+			const closeIcon = document.getElementById('close-icon');
+
+			if (!mobileMenuButton || !mobileMenu || !mobileMenuPanel) return;
+
+			function openMenu() {
+				mobileMenu.classList.remove('hidden');
+				setTimeout(() => {
+					mobileMenuPanel.classList.remove('translate-x-full');
+				}, 10);
+				menuIcon.classList.add('hidden');
+				closeIcon.classList.remove('hidden');
+				document.body.style.overflow = 'hidden';
+			}
+
+			function closeMenu() {
+				mobileMenuPanel.classList.add('translate-x-full');
+				setTimeout(() => {
+					mobileMenu.classList.add('hidden');
+				}, 300);
+				menuIcon.classList.remove('hidden');
+				closeIcon.classList.add('hidden');
+				document.body.style.overflow = '';
+			}
+
+			mobileMenuButton.addEventListener('click', function() {
+				if (mobileMenu.classList.contains('hidden')) {
+					openMenu();
+				} else {
+					closeMenu();
+				}
+			});
+
+			if (closeMobileMenu) {
+				closeMobileMenu.addEventListener('click', closeMenu);
+			}
+
+			if (mobileMenuOverlay) {
+				mobileMenuOverlay.addEventListener('click', closeMenu);
+			}
+
+			// Close menu when clicking on navigation links
+			const mobileMenuLinks = document.querySelectorAll('#mobile-menu a[href]');
+			mobileMenuLinks.forEach(link => {
+				link.addEventListener('click', function() {
+					setTimeout(closeMenu, 100);
+				});
+			});
+
+			// Close menu on escape key
+			document.addEventListener('keydown', function(event) {
+				if (event.key === 'Escape' && !mobileMenu.classList.contains('hidden')) {
+					closeMenu();
+				}
+			});
+		});
+	</script>
 }
