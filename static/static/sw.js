@@ -5,6 +5,9 @@ const STATIC_ASSETS = [
   "/static/dist/chart.js",
   "/static/jellysweep.png",
   "/static/manifest.json",
+  "/static/icons/icon-192x192.png",
+  "/static/icons/icon-256x256.png",
+  "/static/icons/icon-512x512.png",
 ];
 
 // TODO: also cache images
@@ -81,12 +84,13 @@ self.addEventListener("fetch", (event) => {
           // Clone the response as it can only be consumed once
           const responseToCache = response.clone();
 
-          // Cache static assets and pages
+          // Cache static assets, pages, and image cache API requests
           if (
             event.request.url.includes("/static/") ||
             event.request.url === self.location.origin + "/" ||
             event.request.url.includes("/admin") ||
-            event.request.url.includes("/login")
+            event.request.url.includes("/login") ||
+            event.request.url.includes("/api/images/cache")
           ) {
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
