@@ -1,4 +1,4 @@
-# 🧹🪼 JellySweep
+# JellySweep
 
 [![CI](https://github.com/jon4hz/jellysweep/actions/workflows/ci.yml/badge.svg)](https://github.com/jon4hz/jellysweep/actions/workflows/ci.yml)
 [![release](https://github.com/jon4hz/jellysweep/actions/workflows/release.yml/badge.svg)](https://github.com/jon4hz/jellysweep/actions/workflows/release.yml)
@@ -30,7 +30,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 ## 📋 Table of Contents
 
-- [🧹🪼 JellySweep](#-jellysweep)
+- [JellySweep](#jellysweep)
   - [✨ Key Features](#-key-features)
   - [📋 Table of Contents](#-table-of-contents)
   - [🚀 How It Works](#-how-it-works)
