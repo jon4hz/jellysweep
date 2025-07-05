@@ -139,11 +139,8 @@ func (s *Server) setupRoutes() error {
 		webpushHandler := handler.NewWebPushHandler(s.engine.GetWebPushClient())
 		api.GET("/webpush/vapid-key", webpushHandler.GetVAPIDKey)
 		api.GET("/webpush/status", webpushHandler.GetSubscriptionStatus)
-		api.GET("/webpush/subscriptions", webpushHandler.GetUserSubscriptions)
 		api.POST("/webpush/subscribe", webpushHandler.Subscribe)
-		api.POST("/webpush/unsubscribe", webpushHandler.Unsubscribe)
-		api.POST("/webpush/unsubscribe-endpoint", webpushHandler.UnsubscribeByEndpoint)
-		api.POST("/webpush/test", webpushHandler.TestNotification)
+		api.POST("/webpush/unsubscribe", webpushHandler.UnsubscribeByEndpoint)
 	}
 
 	return nil

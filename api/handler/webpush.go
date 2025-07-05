@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -119,53 +118,6 @@ func (h *WebPushHandler) Subscribe(c *gin.Context) {
 	})
 }
 
-// Unsubscribe handles push notification unsubscription requests.
-func (h *WebPushHandler) Unsubscribe(c *gin.Context) {
-	if h.webpush == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "webpush is not configured",
-		})
-		return
-	}
-
-	// Get user from session
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "user not authenticated",
-		})
-		return
-	}
-
-	// Get username from session
-	username := ""
-	if userMap, ok := user.(map[string]interface{}); ok {
-		if sessionUsername, exists := userMap["username"]; exists && sessionUsername != "" {
-			username = sessionUsername.(string)
-		}
-	}
-
-	if username == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "unable to identify user",
-		})
-		return
-	}
-
-	// Unsubscribe the user
-	if err := h.webpush.Unsubscribe(username); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to unsubscribe user",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "successfully unsubscribed from push notifications",
-	})
-}
-
 // UnsubscribeByEndpoint handles unsubscription by specific endpoint.
 func (h *WebPushHandler) UnsubscribeByEndpoint(c *gin.Context) {
 	if h.webpush == nil {
@@ -210,63 +162,6 @@ func (h *WebPushHandler) UnsubscribeByEndpoint(c *gin.Context) {
 	})
 }
 
-// TestNotification sends a test push notification to the current user.
-func (h *WebPushHandler) TestNotification(c *gin.Context) {
-	if h.webpush == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "webpush is not configured",
-		})
-		return
-	}
-
-	// Get user from session
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "user not authenticated",
-		})
-		return
-	}
-
-	// Get username from session
-	username := ""
-	if userMap, ok := user.(map[string]interface{}); ok {
-		if sessionUsername, exists := userMap["username"]; exists && sessionUsername != "" {
-			username = sessionUsername.(string)
-		}
-	}
-
-	if username == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "unable to identify user",
-		})
-		return
-	}
-
-	// Send test notification
-	if err := h.webpush.TestNotification(c.Request.Context(), username); err != nil {
-		// Check if all subscriptions are invalid
-		var invalidErr *webpush.ErrAllSubscriptionsInvalid
-		if errors.As(err, &invalidErr) {
-			c.JSON(http.StatusGone, gin.H{
-				"error":   "all push subscriptions are invalid or expired",
-				"message": "Please re-enable push notifications",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to send test notification",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "test notification sent",
-	})
-}
-
 // GetSubscriptionStatus checks if the current browser/endpoint has an active subscription.
 func (h *WebPushHandler) GetSubscriptionStatus(c *gin.Context) {
 	if h.webpush == nil {
@@ -276,21 +171,8 @@ func (h *WebPushHandler) GetSubscriptionStatus(c *gin.Context) {
 		return
 	}
 
-	// Parse the request body to get the endpoint for verification
-	var request struct {
-		Endpoint string `json:"endpoint"`
-	}
-
 	// For GET requests, endpoint might be in query params or we check all user subscriptions
 	endpoint := c.Query("endpoint")
-	if endpoint == "" {
-		// If no endpoint provided in GET, try to parse from body
-		if c.Request.ContentLength > 0 {
-			if err := c.ShouldBindJSON(&request); err == nil {
-				endpoint = request.Endpoint
-			}
-		}
-	}
 
 	// Get user from session
 	user := c.MustGet("user").(*models.User)
@@ -325,44 +207,5 @@ func (h *WebPushHandler) GetSubscriptionStatus(c *gin.Context) {
 		"subscribed": false,
 		"username":   user.Username,
 		"count":      subscriptionCount,
-	})
-}
-
-// GetUserSubscriptions returns all subscriptions for the current user.
-func (h *WebPushHandler) GetUserSubscriptions(c *gin.Context) {
-	if h.webpush == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "webpush is not configured",
-		})
-		return
-	}
-
-	// Get user from session
-	user := c.MustGet("user").(*models.User)
-
-	// Get all subscriptions for the user
-	subscriptions, exists := h.webpush.GetSubscriptions(user.Username)
-	if !exists {
-		c.JSON(http.StatusOK, gin.H{
-			"subscriptions": []interface{}{},
-			"count":         0,
-		})
-		return
-	}
-
-	// Convert to response format (hide sensitive keys)
-	responseSubscriptions := make([]gin.H, len(subscriptions))
-	for i, sub := range subscriptions {
-		responseSubscriptions[i] = gin.H{
-			"id":         sub.ID,
-			"endpoint":   sub.Endpoint,
-			"created_at": sub.CreatedAt,
-			"user_agent": sub.UserAgent,
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"subscriptions": responseSubscriptions,
-		"count":         len(subscriptions),
 	})
 }

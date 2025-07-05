@@ -69,7 +69,8 @@ templ NotificationsScript() {
 					}
 
 					// Check server status
-					const response = await fetch('/api/webpush/status');
+					const encodedEndpoint = encodeURIComponent(subscription.endpoint);
+					const response = await fetch(`/api/webpush/status?endpoint=${encodedEndpoint}`);
 					if (response.ok) {
 						const data = await response.json();
 						if (data.subscribed) {
@@ -272,7 +273,7 @@ templ NotificationsScript() {
 					// Notify server to remove the subscription (if endpoint is available)
 					if (subscription && subscription.endpoint) {
 						try {
-							await fetch('/api/webpush/unsubscribe-endpoint', {
+							await fetch('/api/webpush/unsubscribe', {
 								method: 'POST',
 								headers: { 'Content-Type': 'application/json' },
 								body: JSON.stringify({ endpoint: subscription.endpoint })
@@ -288,38 +289,6 @@ templ NotificationsScript() {
 				} catch (error) {
 					console.error('Error handling invalid subscription:', error);
 					this.showNotificationButton();
-				}
-			}
-
-			async testNotification() {
-				try {
-					console.log('Sending test notification...');
-					const response = await fetch('/api/webpush/test', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' }
-					});
-					
-					if (response.ok) {
-						this.showToast('Test notification sent successfully!', 'success');
-						return true;
-					} else if (response.status === 410) {
-						console.log('Subscription invalid during test (410), handling...');
-						// Get current subscription to handle cleanup
-						if (this.swRegistration) {
-							const subscription = await this.swRegistration.pushManager.getSubscription();
-							await this.handleInvalidSubscription(subscription);
-						}
-						this.showToast('Subscription expired. Please enable notifications again.', 'error');
-						return false;
-					} else {
-						const errorText = await response.text().catch(() => 'Unknown error');
-						this.showToast(`Test notification failed: ${errorText}`, 'error');
-						return false;
-					}
-				} catch (error) {
-					console.error('Error sending test notification:', error);
-					this.showToast('Failed to send test notification: ' + error.message, 'error');
-					return false;
 				}
 			}
 
