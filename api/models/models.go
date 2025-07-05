@@ -23,8 +23,10 @@ type MediaItem struct {
 	PosterURL    string
 	CanRequest   bool
 	HasRequested bool
-	MustDelete   bool  // Indicates if this item is marked for deletion for sure
-	FileSize     int64 // Size in bytes
+	MustDelete   bool   // Indicates if this item is marked for deletion for sure
+	FileSize     int64  // Size in bytes
+	CleanupMode  string // Cleanup mode for this item: "all", "keep_episodes", "keep_seasons"
+	KeepCount    int    // Number of episodes/seasons to keep (when cleanup mode is not "all")
 }
 
 // KeepRequest represents a user request to keep a media item.
