@@ -114,6 +114,9 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - Jellystat
   - Jellyseerr
 
+> [!TIP]  
+> For production deployment, see [PRODUCTION.md](PRODUCTION.md).
+
 ### Quick Start
 
 1. **Download & Build**
