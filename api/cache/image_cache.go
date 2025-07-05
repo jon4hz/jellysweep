@@ -205,6 +205,14 @@ func (ic *ImageCache) ServeImage(ctx context.Context, imageURL string, w http.Re
 		return err
 	}
 
+	// make sure the path is absolute. This should never be false because we hash the image URL from http request.
+	// But owasp and other scanners complain about possible relative paths.
+	if !filepath.IsAbs(imageURL) {
+		log.Errorf("Invalid image URL: %s", imageURL)
+		http.Error(w, "Invalid image URL", http.StatusBadRequest)
+		return fmt.Errorf("invalid image URL: %s", imageURL)
+	}
+
 	// Open the cached file
 	file, err := os.Open(cacheFilePath)
 	if err != nil {
