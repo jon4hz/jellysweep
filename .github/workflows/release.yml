@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version-file: "go.mod"
           cache: true
       - shell: bash
         run: |
@@ -85,7 +85,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version-file: "go.mod"
           cache: true
 
       # copy the cashes from prepare
