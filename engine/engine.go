@@ -32,6 +32,13 @@ const (
 	jellysweepIgnoreTag         = "jellysweep-ignore"
 )
 
+// Cleanup mode constants.
+const (
+	CleanupModeAll          = "all"
+	CleanupModeKeepEpisodes = "keep_episodes"
+	CleanupModeKeepSeasons  = "keep_seasons"
+)
+
 // Exported constants for API handlers.
 const (
 	TagKeep       = jellysweepKeepTag
@@ -246,6 +253,9 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 
 	e.mergeMediaItems()
 	log.Info("Media items merged successfully")
+
+	// Filter out series that already meet the keep criteria
+	e.filterSeriesAlreadyMeetingKeepCriteria()
 
 	// Populate requester information from Jellyseerr
 	log.Info("Populating requester information")
@@ -703,6 +713,5 @@ func (e *Engine) RemoveConflictingTags(ctx context.Context, mediaID string) erro
 		}
 		return e.removeRadarrKeepRequestAndDeleteTags(ctx, int32(movieID))
 	}
-
 	return fmt.Errorf("unsupported media ID format: %s", mediaID)
 }
