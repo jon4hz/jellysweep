@@ -464,7 +464,7 @@ func TestEngine_RadarrIntegrationReadiness(t *testing.T) {
 		Libraries: map[string]*config.CleanupConfig{
 			"Movies": {
 				Enabled:             true,
-				RequestAgeThreshold: 30,
+				ContentAgeThreshold: 30,
 				LastStreamThreshold: 90,
 				CleanupDelay:        7,
 				ExcludeTags:         []string{"favorite", "collection"},
@@ -493,7 +493,7 @@ func TestEngine_RadarrIntegrationReadiness(t *testing.T) {
 	assert.Contains(t, engine.cfg.Libraries, "Movies")
 	movieConfig := engine.cfg.Libraries["Movies"]
 	assert.True(t, movieConfig.Enabled)
-	assert.Equal(t, 30, movieConfig.RequestAgeThreshold)
+	assert.Equal(t, 30, movieConfig.ContentAgeThreshold)
 	assert.Equal(t, 90, movieConfig.LastStreamThreshold)
 	assert.Equal(t, 7, movieConfig.CleanupDelay)
 	assert.Contains(t, movieConfig.ExcludeTags, "favorite")

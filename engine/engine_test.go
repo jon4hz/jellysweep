@@ -23,7 +23,7 @@ func TestNew(t *testing.T) {
 				Libraries: map[string]*config.CleanupConfig{
 					"Movies": {
 						Enabled:             true,
-						RequestAgeThreshold: 30,
+						ContentAgeThreshold: 30,
 						LastStreamThreshold: 90,
 						CleanupDelay:        7,
 						ExcludeTags:         []string{"favorite"},
@@ -56,7 +56,7 @@ func TestNew(t *testing.T) {
 				Libraries: map[string]*config.CleanupConfig{
 					"Movies": {
 						Enabled:             true,
-						RequestAgeThreshold: 30,
+						ContentAgeThreshold: 30,
 						LastStreamThreshold: 90,
 						CleanupDelay:        7,
 					},
@@ -76,7 +76,7 @@ func TestNew(t *testing.T) {
 				Libraries: map[string]*config.CleanupConfig{
 					"Movies": {
 						Enabled:             true,
-						RequestAgeThreshold: 30,
+						ContentAgeThreshold: 30,
 						LastStreamThreshold: 90,
 						CleanupDelay:        7,
 					},
@@ -106,7 +106,7 @@ func TestNew(t *testing.T) {
 				Libraries: map[string]*config.CleanupConfig{
 					"Movies": {
 						Enabled:             true,
-						RequestAgeThreshold: 30,
+						ContentAgeThreshold: 30,
 						LastStreamThreshold: 90,
 						CleanupDelay:        7,
 					},
@@ -149,7 +149,7 @@ func TestEngine_Run(t *testing.T) {
 		Libraries: map[string]*config.CleanupConfig{
 			"Movies": {
 				Enabled:             true,
-				RequestAgeThreshold: 30,
+				ContentAgeThreshold: 30,
 				LastStreamThreshold: 90,
 				CleanupDelay:        7,
 			},
@@ -179,7 +179,7 @@ func TestEngine_Close(t *testing.T) {
 		Libraries: map[string]*config.CleanupConfig{
 			"Movies": {
 				Enabled:             true,
-				RequestAgeThreshold: 30,
+				ContentAgeThreshold: 30,
 				LastStreamThreshold: 90,
 				CleanupDelay:        7,
 			},

@@ -53,7 +53,7 @@ func (suite *EngineTestSuite) TestConfigurationValidation() {
 
 	movieConfig := suite.engine.cfg.Libraries["Movies"]
 	suite.True(movieConfig.Enabled)
-	suite.Greater(movieConfig.RequestAgeThreshold, 0)
+	suite.Greater(movieConfig.ContentAgeThreshold, 0)
 	suite.Greater(movieConfig.LastStreamThreshold, 0)
 	suite.GreaterOrEqual(movieConfig.CleanupDelay, 0)
 }

@@ -107,11 +107,12 @@ func TestEngine_sendEmailNotifications_Structure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &config.Config{CleanupInterval: 24,
+			cfg := &config.Config{
+				CleanupInterval: 24,
 				Libraries: map[string]*config.CleanupConfig{
 					"Movies": {
 						Enabled:             true,
-						RequestAgeThreshold: 30,
+						ContentAgeThreshold: 30,
 						LastStreamThreshold: 90,
 						CleanupDelay:        7,
 					},
@@ -230,7 +231,7 @@ func TestEngine_sendNtfyDeletionSummary_Structure(t *testing.T) {
 				Libraries: map[string]*config.CleanupConfig{
 					"Movies": {
 						Enabled:             true,
-						RequestAgeThreshold: 30,
+						ContentAgeThreshold: 30,
 						LastStreamThreshold: 90,
 						CleanupDelay:        7,
 					},

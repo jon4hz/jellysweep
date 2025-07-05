@@ -134,8 +134,8 @@ type WebPushConfig struct {
 type CleanupConfig struct {
 	// Enabled indicates whether the cleanup job is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
-	// RequestAgeThreshold is the minimum age in days for a request to be eligible for cleanup.
-	RequestAgeThreshold int `yaml:"request_age_threshold" mapstructure:"request_age_threshold"`
+	// ContentAgeThreshold is the minimum age in days for content (since it was first imported) to be eligible for cleanup.
+	ContentAgeThreshold int `yaml:"content_age_threshold" mapstructure:"content_age_threshold"`
 	// LastStreamThreshold is the minimum time in days since the last stream for content to be eligible for cleanup.
 	LastStreamThreshold int `yaml:"last_stream_threshold" mapstructure:"last_stream_threshold"`
 	// ExcludeTags is a list of tags to exclude from deletion.

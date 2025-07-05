@@ -455,7 +455,7 @@ func TestEngine_SonarrIntegrationReadiness(t *testing.T) {
 		Libraries: map[string]*config.CleanupConfig{
 			"TV Shows": {
 				Enabled:             true,
-				RequestAgeThreshold: 45,
+				ContentAgeThreshold: 45,
 				LastStreamThreshold: 120,
 				CleanupDelay:        14,
 				ExcludeTags:         []string{"ongoing", "favorite"},
@@ -484,7 +484,7 @@ func TestEngine_SonarrIntegrationReadiness(t *testing.T) {
 	assert.Contains(t, engine.cfg.Libraries, "TV Shows")
 	tvConfig := engine.cfg.Libraries["TV Shows"]
 	assert.True(t, tvConfig.Enabled)
-	assert.Equal(t, 45, tvConfig.RequestAgeThreshold)
+	assert.Equal(t, 45, tvConfig.ContentAgeThreshold)
 	assert.Equal(t, 120, tvConfig.LastStreamThreshold)
 	assert.Equal(t, 14, tvConfig.CleanupDelay)
 	assert.Contains(t, tvConfig.ExcludeTags, "ongoing")

@@ -341,8 +341,8 @@ func TestEngine_LibraryConfiguration(t *testing.T) {
 		// Verify different configurations
 		assert.True(t, movieConfig.Enabled)
 		assert.True(t, tvConfig.Enabled)
-		assert.Equal(t, 30, movieConfig.RequestAgeThreshold)
-		assert.Equal(t, 45, tvConfig.RequestAgeThreshold)
+		assert.Equal(t, 30, movieConfig.ContentAgeThreshold)
+		assert.Equal(t, 45, tvConfig.ContentAgeThreshold)
 		assert.Equal(t, 90, movieConfig.LastStreamThreshold)
 		assert.Equal(t, 120, tvConfig.LastStreamThreshold)
 	})
@@ -376,7 +376,7 @@ func TestEngine_DryRunMode(t *testing.T) {
 			Libraries: map[string]*config.CleanupConfig{
 				"Movies": {
 					Enabled:             true,
-					RequestAgeThreshold: 30,
+					ContentAgeThreshold: 30,
 					LastStreamThreshold: 90,
 					CleanupDelay:        7,
 				},

@@ -294,7 +294,7 @@ func TestEngine_filterMediaTags_CustomExcludeTags(t *testing.T) {
 	libraries := map[string]*config.CleanupConfig{
 		"Custom Library": {
 			Enabled:             true,
-			RequestAgeThreshold: 30,
+			ContentAgeThreshold: 30,
 			LastStreamThreshold: 90,
 			CleanupDelay:        7,
 			ExcludeTags:         []string{"custom-exclude", "another-exclude"},

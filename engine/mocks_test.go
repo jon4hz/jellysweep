@@ -405,14 +405,14 @@ func CreateTestEngineWithMocks(t *testing.T) (*Engine, *TestServerManager) {
 		Libraries: map[string]*config.CleanupConfig{
 			"Movies": {
 				Enabled:             true,
-				RequestAgeThreshold: 30,
+				ContentAgeThreshold: 30,
 				LastStreamThreshold: 90,
 				CleanupDelay:        7,
 				ExcludeTags:         []string{"favorite"},
 			},
 			"TV Shows": {
 				Enabled:             true,
-				RequestAgeThreshold: 45,
+				ContentAgeThreshold: 45,
 				LastStreamThreshold: 120,
 				CleanupDelay:        14,
 				ExcludeTags:         []string{"ongoing"},
@@ -584,14 +584,14 @@ func GetMockLibraryConfig() map[string]*config.CleanupConfig {
 	return map[string]*config.CleanupConfig{
 		"Movies": {
 			Enabled:             true,
-			RequestAgeThreshold: 30,
+			ContentAgeThreshold: 30,
 			LastStreamThreshold: 90,
 			CleanupDelay:        7,
 			ExcludeTags:         []string{"favorite"},
 		},
 		"TV Shows": {
 			Enabled:             true,
-			RequestAgeThreshold: 45,
+			ContentAgeThreshold: 45,
 			LastStreamThreshold: 120,
 			CleanupDelay:        14,
 			ExcludeTags:         []string{"ongoing"},

@@ -63,7 +63,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 1. **Data Collection**
    - Fetches media from Sonarr & Radarr
    - Retrieves viewing statistics from Jellystat
-   - Analyzes request history from Jellyseerr
+   - Analyzes content history from Sonarr & Radarr
    - Maps media across libraries and services
 
 2. **Media Filtering**
@@ -303,7 +303,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_WEBPUSH_PRIVATE_KEY` | *(required if webpush enabled)* | VAPID private key |
 | **Default Library Settings** | | |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_ENABLED` | `true` | Enable cleanup for default library |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_REQUEST_AGE_THRESHOLD` | `120` | Min age in days for requests to be eligible |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_CONTENT_AGE_THRESHOLD` | `120` | Min age in days for content to be eligible |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_LAST_STREAM_THRESHOLD` | `90` | Min days since last stream for cleanup |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_CLEANUP_DELAY` | `30` | Days before deletion after marking |
 | **External Services** | | |
@@ -362,7 +362,7 @@ gravatar:
 libraries:
   default:
     enabled: true
-    request_age_threshold: 120    # Days since Jellyseerr request
+    content_age_threshold: 120    # Days since content was added
     last_stream_threshold: 90     # Days since last viewed
     cleanup_delay: 30             # Grace period before deletion
     exclude_tags:
@@ -372,7 +372,7 @@ libraries:
   
   "Movies":
     enabled: true
-    request_age_threshold: 120
+    content_age_threshold: 120
     last_stream_threshold: 90
     cleanup_delay: 30
     exclude_tags:
@@ -382,7 +382,7 @@ libraries:
   
   "TV Shows":
     enabled: true
-    request_age_threshold: 120
+    content_age_threshold: 120
     last_stream_threshold: 90
     cleanup_delay: 30
     exclude_tags:

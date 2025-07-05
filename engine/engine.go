@@ -247,6 +247,9 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 	e.mergeMediaItems()
 	log.Info("Media items merged successfully")
 
+	// Populate requester information from Jellyseerr
+	log.Info("Populating requester information")
+
 	e.filterMediaTags()
 
 	log.Info("Checking for streaming history")
@@ -254,13 +257,24 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		log.Errorf("failed to filter last stream threshold: %v", err)
 		return
 	}
-	// TODO: dont just consider request age. Consider that the file might have been downloaded at a later date
-	// add a third filter option for available since date
-	log.Info("Check for media requests")
-	e.filterRequestAgeThreshold(ctx)
+
+	log.Info("Checking content age")
+	if err := e.filterContentAgeThreshold(ctx); err != nil {
+		log.Errorf("failed to filter content age threshold: %v", err)
+		return
+	}
+
+	// Populate requester information from Jellyseerr
+	e.populateRequesterInfo(ctx)
+
+	// Populate user notifications for email sending
+	if e.data.userNotifications == nil {
+		e.data.userNotifications = make(map[string][]MediaItem)
+	}
 
 	for lib, items := range e.data.mediaItems {
 		for _, item := range items {
+			e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
 			log.Info("Marking media item for deletion", "name", item.Title, "library", lib)
 		}
 	}

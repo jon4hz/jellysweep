@@ -39,14 +39,14 @@ func TestEngine_MultipleRunsConsistency(t *testing.T) {
 		Libraries: map[string]*config.CleanupConfig{
 			"Movies": {
 				Enabled:             true,
-				RequestAgeThreshold: 30,
+				ContentAgeThreshold: 30,
 				LastStreamThreshold: 90,
 				CleanupDelay:        7,
 				ExcludeTags:         []string{"favorite"},
 			},
 			"TV Shows": {
 				Enabled:             true,
-				RequestAgeThreshold: 45,
+				ContentAgeThreshold: 45,
 				LastStreamThreshold: 120,
 				CleanupDelay:        14,
 				ExcludeTags:         []string{"ongoing"},
@@ -507,7 +507,7 @@ func TestEngine_LibraryNameCaseSensitivity(t *testing.T) {
 		for _, name := range libraryNames {
 			libraries[name] = &config.CleanupConfig{
 				Enabled:             true,
-				RequestAgeThreshold: 30,
+				ContentAgeThreshold: 30,
 				LastStreamThreshold: 90,
 				CleanupDelay:        7,
 				ExcludeTags:         []string{"favorite", "ongoing"},
@@ -746,7 +746,7 @@ func TestEngine_LibraryNameCaseSensitivity(t *testing.T) {
 		libraries := make(map[string]*config.CleanupConfig)
 		libraries["movies"] = &config.CleanupConfig{ // viper normalized key
 			Enabled:             true,
-			RequestAgeThreshold: 30,
+			ContentAgeThreshold: 30,
 			LastStreamThreshold: 90,
 			CleanupDelay:        7,
 			ExcludeTags:         []string{"favorite"},
@@ -792,19 +792,19 @@ auth:
 libraries:
   Movies:  # Title case in config file
     enabled: true
-    request_age_threshold: 30
+    content_age_threshold: 30
     last_stream_threshold: 90
     cleanup_delay: 7
     exclude_tags: ["favorite"]
   "TV Shows":  # Title case with spaces
     enabled: true
-    request_age_threshold: 45
+    content_age_threshold: 45
     last_stream_threshold: 120
     cleanup_delay: 14
     exclude_tags: ["ongoing"]
   DOCUMENTARIES:  # All caps
     enabled: true
-    request_age_threshold: 60
+    content_age_threshold: 60
     last_stream_threshold: 150
     cleanup_delay: 21
     exclude_tags: ["educational"]
