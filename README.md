@@ -20,6 +20,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 - 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat of stats
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
+- 🧹 **Flexible Cleanup Modes** - Choose between complete deletion, keeping first episodes, or preserving early seasons
 - 👥 **User Requests** - Built-in keep request system for your users
 - 🔔 **Notifications** - Email users, ntfy alerts for admins, and web push notifications
 - 📱 **Progressive Web App (PWA)** - Install as an app on mobile and desktop
@@ -34,6 +35,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [✨ Key Features](#-key-features)
   - [📋 Table of Contents](#-table-of-contents)
   - [🚀 How It Works](#-how-it-works)
+  - [🧹 Cleanup Modes](#-cleanup-modes)
   - [📸 Screenshots](#-screenshots)
     - [Dashboard Overview](#dashboard-overview)
     - [Statistics Dashboard](#statistics-dashboard)
@@ -82,6 +84,21 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
    - Admins can approve/decline requests
    - Automatic cleanup of expired requests
    - Force deletion override for admins
+
+## 🧹 Cleanup Modes
+
+JellySweep supports three different cleanup modes for TV series, configurable globally through the `cleanup_mode` setting. The mode determines how much content is removed when a series is marked for deletion. Movies are always deleted entirely regardless of the cleanup mode.
+
+The `all` mode removes the entire series and all its files, providing maximum storage reclamation. This is the default setting.
+
+The `keep_episodes` mode preserves the first N episodes across all regular seasons while removing everything else. Episodes are counted by their broadcast order, starting from season 1 episode 1, and special episodes in season 0 are always preserved regardless of the count limit.
+
+The `keep_seasons` mode retains complete early seasons while removing later ones. It keeps the first N lowest-numbered regular seasons. Specials will not be deleted in this mode either.
+
+Both selective modes automatically unmonitor deleted episodes in Sonarr to prevent them from being redownloaded. If a series has less or equal amount of episode as the keep policy requests, the series wont be marked from deletion again.
+
+> [!TIP]
+> The selective modes in combination with [prefetcharr](https://github.com/p-hueber/prefetcharr) let you automatically scale your media collection on demand.
 
 ---
 
@@ -258,6 +275,8 @@ All configuration options can be set via environment variables with the `JELLYSW
 | **JellySweep Server** | | |
 | `JELLYSWEEP_LISTEN` | `0.0.0.0:3002` | Address and port for the web interface |
 | `JELLYSWEEP_CLEANUP_INTERVAL` | `12` | Hours between automatic cleanup runs |
+| `JELLYSWEEP_CLEANUP_MODE` | `all` | Cleanup mode: `all`, `keep_episodes`, or `keep_seasons` |
+| `JELLYSWEEP_KEEP_COUNT` | `5` | Number of episodes/seasons to keep (when using `keep_episodes` or `keep_seasons` mode) |
 | `JELLYSWEEP_DRY_RUN` | `false` | Run in dry-run mode (no actual deletions) |
 | `JELLYSWEEP_SESSION_KEY` | *(required)* | Random string for session encryption (`openssl rand -base64 32`) |
 | `JELLYSWEEP_SESSION_MAX_AGE` | `172800` | Session maximum age in seconds (48 hours) |
@@ -326,6 +345,8 @@ JellySweep uses a YAML configuration file with the following structure:
 dry_run: false                   # Set to true for testing
 listen: "0.0.0.0:3002"           # Web interface address and port
 cleanup_interval: 12             # Hours between cleanup runs
+cleanup_mode: "keep_seasons"     # Cleanup mode: "all", "keep_episodes", or "keep_seasons"
+keep_count: 1                    # Number of episodes/seasons to keep (when using keep_episodes or keep_seasons)
 session_key: "your-session-key"  # Random string for session encryption
 session_max_age: 172800          # Session max age in seconds (48 hours)
 server_url: "http://localhost:3002"
