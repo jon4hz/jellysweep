@@ -1,0 +1,18 @@
+---
+services:
+  jellysweep:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    container_name: jellysweep
+    volumes:
+      # cache for images
+      - ./data:/app/data
+      - ./config.yml:/app/config.yml
+    networks:
+      default:
+    environment:
+      TZ: Europe/Zurich
+
+networks:
+  default:
