@@ -10,3 +10,14 @@ jellysweep
 jellysweep.log
 /dist/
 completions/
+assets/
+.github/
+.air.toml
+.env.example
+compose.yml
+compose.dev.yml
+dev.Dockerfile
+release.Dockerfile
+LICENSE
+README.md
+PRODUCTION.md
