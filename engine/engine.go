@@ -32,6 +32,13 @@ const (
 	jellysweepIgnoreTag         = "jellysweep-ignore"
 )
 
+// Cleanup mode constants.
+const (
+	CleanupModeAll          = "all"
+	CleanupModeKeepEpisodes = "keep_episodes"
+	CleanupModeKeepSeasons  = "keep_seasons"
+)
+
 // Exported constants for API handlers.
 const (
 	TagKeep       = jellysweepKeepTag

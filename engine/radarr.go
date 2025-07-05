@@ -478,6 +478,8 @@ func (e *Engine) getRadarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 					HasRequested: hasRequested,
 					MustDelete:   mustDelete,
 					FileSize:     movie.GetSizeOnDisk(),
+					CleanupMode:  CleanupModeAll, // radarr doesn't have cleanup modes like Sonarr
+					KeepCount:    1,
 				}
 
 				result = append(result, mediaItem)

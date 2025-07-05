@@ -3,15 +3,80 @@ package pages
 import (
 	"fmt"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates"
 	"github.com/jon4hz/jellysweep/web/templates/components"
 	"sort"
+	"strings"
 	"time"
 )
 
 // formatExactDate formats a time.Time as an exact date string for tooltips
 func formatExactDate(t time.Time) string {
 	return t.Format("January 2, 2006 at 15:04 MST")
+}
+
+// getEpisodeTooltip generates a tooltip for episode cleanup mode
+func getEpisodeTooltip(keepCount int) string {
+	var b strings.Builder
+	b.WriteString("Unless requested otherwise, JellySweep will delete ")
+	if keepCount <= 0 {
+		b.WriteString("all episodes.")
+		return b.String()
+	}
+	if keepCount == 1 {
+		b.WriteString("everything except the first episode.")
+		return b.String()
+	}
+
+	// Use written numbers for small values
+	var countText string
+	switch keepCount {
+	case 2:
+		countText = "two"
+	case 3:
+		countText = "three"
+	case 4:
+		countText = "four"
+	case 5:
+		countText = "five"
+	default:
+		countText = fmt.Sprintf("%d", keepCount)
+	}
+
+	b.WriteString(fmt.Sprintf("everything except the first %s episodes.", countText))
+	return b.String()
+}
+
+// getSeasonTooltip generates a tooltip for season cleanup mode
+func getSeasonTooltip(keepCount int) string {
+	var b strings.Builder
+	b.WriteString("Unless requested otherwise, JellySweep will delete ")
+	if keepCount <= 0 {
+		b.WriteString("all seasons.")
+		return b.String()
+	}
+	if keepCount == 1 {
+		b.WriteString("everything except the first season.")
+		return b.String()
+	}
+
+	// Use written numbers for small values
+	var countText string
+	switch keepCount {
+	case 2:
+		countText = "two"
+	case 3:
+		countText = "three"
+	case 4:
+		countText = "four"
+	case 5:
+		countText = "five"
+	default:
+		countText = fmt.Sprintf("%d", keepCount)
+	}
+	b.WriteString(fmt.Sprintf("everything except the first %s seasons.", countText))
+	return b.String()
 }
 
 // getUniqueLibraries extracts unique library names from media items
@@ -346,6 +411,29 @@ templ MediaCard(item models.MediaItem) {
 						<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
 							{ item.Type }
 						</span>
+						if item.CleanupMode != "" && item.CleanupMode != engine.CleanupModeAll {
+							if item.CleanupMode == engine.CleanupModeKeepEpisodes {
+								<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-blue-100" title={ getEpisodeTooltip(item.KeepCount) }>
+									if item.KeepCount == 1 {
+										Keep { fmt.Sprint(item.KeepCount) } Episode
+									} else {
+										Keep { fmt.Sprint(item.KeepCount) } Episodes
+									}
+								</span>
+							} else if item.CleanupMode == engine.CleanupModeKeepSeasons {
+								<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-blue-100" title={ getSeasonTooltip(item.KeepCount) }>
+									if item.KeepCount == 1 {
+										Keep { fmt.Sprint(item.KeepCount) } Season
+									} else {
+										Keep { fmt.Sprint(item.KeepCount) } Seasons
+									}
+								</span>
+							} else {
+								<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-blue-100" title={ "Cleanup mode: " + item.CleanupMode }>
+									{ item.CleanupMode }
+								</span>
+							}
+						}
 						if item.Year > 0 {
 							<span class="text-sm text-gray-400">{ fmt.Sprint(item.Year) }</span>
 						}
@@ -385,7 +473,11 @@ templ MediaCard(item models.MediaItem) {
 						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
 						</svg>
-						Request to Keep
+						if item.CleanupMode != "" && item.CleanupMode != engine.CleanupModeAll {
+							Request to Keep All
+						} else {
+							Request to Keep
+						}
 					</button>
 				} else if item.MustDelete {
 					<button disabled class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">

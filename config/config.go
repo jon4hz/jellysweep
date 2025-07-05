@@ -18,6 +18,11 @@ type Config struct {
 	Libraries map[string]*CleanupConfig `yaml:"libraries" mapstructure:"libraries"`
 	// DryRun indicates whether the cleanup job should run in dry-run mode.
 	DryRun bool `yaml:"dry_run" mapstructure:"dry_run"`
+	// CleanupMode specifies how to clean up TV series. Options: "all", "keep_episodes", "keep_seasons"
+	// See engine.CleanupMode* constants for valid values.
+	CleanupMode string `yaml:"cleanup_mode" mapstructure:"cleanup_mode"`
+	// KeepCount specifies how many episodes or seasons to keep when using "keep_episodes" or "keep_seasons" mode
+	KeepCount int `yaml:"keep_count" mapstructure:"keep_count"`
 	// Auth holds the authentication configuration for the JellySweep server.
 	Auth *AuthConfig `yaml:"auth" mapstructure:"auth"`
 	// SessionKey is the key used to encrypt session data.
@@ -251,6 +256,8 @@ func setDefaults(v *viper.Viper) {
 	// JellySweep defaults
 	v.SetDefault("jellysweep.listen", "0.0.0.0:3002")
 	v.SetDefault("jellysweep.cleanup_interval", 12)
+	v.SetDefault("jellysweep.cleanup_mode", "all") // Default to cleaning up everything
+	v.SetDefault("jellysweep.keep_count", 1)       // Default to keeping 1 episode/season if mode is not "all"
 	v.SetDefault("jellysweep.dry_run", false)
 	v.SetDefault("jellysweep.server_url", "http://localhost:3002")
 	v.SetDefault("jellysweep.session_max_age", 172800) // 48 hour
@@ -403,4 +410,20 @@ func (c *Config) IsAuthenticationEnabled() bool {
 	}
 
 	return false
+}
+
+// GetCleanupMode returns the cleanup mode with proper defaults.
+func (c *Config) GetCleanupMode() string {
+	if c == nil || c.CleanupMode == "" {
+		return "all" // Default mode
+	}
+	return c.CleanupMode
+}
+
+// GetKeepCount returns the keep count with proper defaults.
+func (c *Config) GetKeepCount() int {
+	if c == nil || c.KeepCount <= 0 {
+		return 1 // Default to keeping 1 episode/season
+	}
+	return c.KeepCount
 }
