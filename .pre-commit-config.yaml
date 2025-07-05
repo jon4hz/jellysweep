@@ -1,0 +1,51 @@
+# See https://pre-commit.ci for more information
+# See https://pre-commit.ci for more information about these settings
+ci:
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "chore: pre-commit autoupdate"
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
+  autofix_prs: true
+
+repos:
+  # Built-in hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+        exclude: '(static/static/dist/style\.css|\.json)$'
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+
+  # Gitleaks - Secret detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # Go hooks
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-mod-tidy
+
+  # golangci-lint
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.2.1
+    hooks:
+      - id: golangci-lint
+
+  # Custom build hook
+  - repo: local
+    hooks:
+      - id: make-build
+        name: Make Build
+        entry: make build
+        language: system
+        files: '\.(go|templ|js|css)$'
+        pass_filenames: false

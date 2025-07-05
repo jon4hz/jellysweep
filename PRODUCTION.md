@@ -50,7 +50,7 @@ JellySweep supports two authentication methods in production:
 - Admin access based on Jellyfin administrator privileges
 
 
-> [!WARNING] 
+> [!WARNING]
 > You should configure at least one authentication method (OIDC or Jellyfin).
 
 
@@ -150,12 +150,12 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Port $server_port;
-        
+
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
 
-        
+
         # Timeouts
         proxy_connect_timeout 300s;
         proxy_send_timeout 300s;

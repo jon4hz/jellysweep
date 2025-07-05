@@ -28,4 +28,3 @@ tmp_dir = "bin"
 
 [misc]
   clean_on_exit = true
- 

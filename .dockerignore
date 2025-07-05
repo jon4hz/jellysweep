@@ -21,3 +21,5 @@ release.Dockerfile
 LICENSE
 README.md
 PRODUCTION.md
+.venv/
+.env

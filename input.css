@@ -15,7 +15,7 @@
   --color-gray-850: #1a202c;
   --color-gray-900: #111827;
   --color-gray-950: #0d1117;
-  
+
   --color-indigo-50: #eef2ff;
   --color-indigo-100: #e0e7ff;
   --color-indigo-200: #c7d2fe;
@@ -26,7 +26,7 @@
   --color-indigo-700: #4338ca;
   --color-indigo-800: #3730a3;
   --color-indigo-900: #312e81;
-  
+
   --color-purple-50: #faf5ff;
   --color-purple-100: #f3e8ff;
   --color-purple-200: #e9d5ff;
@@ -37,7 +37,7 @@
   --color-purple-700: #7c3aed;
   --color-purple-800: #6b21a8;
   --color-purple-900: #581c87;
-  
+
   --color-red-50: #fef2f2;
   --color-red-100: #fee2e2;
   --color-red-200: #fecaca;
@@ -48,7 +48,7 @@
   --color-red-700: #b91c1c;
   --color-red-800: #991b1b;
   --color-red-900: #7f1d1d;
-  
+
   --font-sans: 'Inter', system-ui, sans-serif;
 }
 
@@ -58,7 +58,7 @@
   html {
     font-family: 'Inter', system-ui, sans-serif;
   }
-  
+
   body {
     @apply bg-gray-950 text-gray-100;
   }
@@ -68,30 +68,30 @@
   .btn-primary {
     @apply bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center;
   }
-  
+
   .btn-secondary {
     @apply bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center;
   }
-  
+
   .btn-danger {
     @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center;
   }
-  
+
   .card {
     @apply bg-gray-900 border border-gray-800 rounded-lg shadow-lg;
   }
-  
+
   .input-field {
     @apply bg-gray-800 border border-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent;
   }
-  
+
   .tab-button {
     @apply whitespace-nowrap font-medium text-sm flex items-center transition-all duration-200 cursor-pointer;
   }
   .tab-content {
     @apply pt-6;
   }
-  
+
   .tab-content-active {
     @apply block;
   }

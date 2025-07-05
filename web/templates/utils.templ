@@ -62,7 +62,7 @@ templ ButtonLoadingUtils() {
 			window.setButtonLoading = function(buttonId, loadingText = 'Loading...') {
 				const button = document.getElementById(buttonId);
 				if (!button || button.disabled) return null;
-				
+
 				// Disable button and store original content
 				button.disabled = true;
 				const originalContent = button.innerHTML;
@@ -72,14 +72,14 @@ templ ButtonLoadingUtils() {
 					</svg>
 					${loadingText}
 				`;
-				
+
 				return originalContent;
 			};
 
 			window.setButtonSuccess = function(buttonId, successText, iconPath) {
 				const button = document.getElementById(buttonId);
 				if (!button) return;
-				
+
 				button.innerHTML = `
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						${iconPath}
@@ -91,7 +91,7 @@ templ ButtonLoadingUtils() {
 			window.restoreButton = function(buttonId, originalContent) {
 				const button = document.getElementById(buttonId);
 				if (!button) return;
-				
+
 				button.disabled = false;
 				button.innerHTML = originalContent;
 			};
@@ -109,11 +109,11 @@ templ ApiUtils() {
 						'Content-Type': 'application/json',
 					},
 				};
-				
+
 				if (body) {
 					options.body = JSON.stringify(body);
 				}
-				
+
 				return fetch(url, options)
 					.then(response => response.json());
 			};

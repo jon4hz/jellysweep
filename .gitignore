@@ -10,3 +10,5 @@ jellysweep
 jellysweep.log
 /dist/
 completions/
+.venv/
+.env

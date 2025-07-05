@@ -943,7 +943,7 @@ func AdminUtilityScripts() templ.Component {
 			templ_7745c5c3_Var43 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<script>\n\t\tfunction updatePendingCount(delta) {\n\t\t\tconst badge = document.querySelector('.bg-blue-900.text-blue-200');\n\t\t\tif (badge) {\n\t\t\t\tconst currentText = badge.textContent.trim();\n\t\t\t\tconst currentCount = parseInt(currentText.match(/\\d+/)[0]);\n\t\t\t\tconst newCount = Math.max(0, currentCount + delta);\n\t\t\t\tbadge.textContent = newCount + ' pending requests';\n\t\t\t}\n\t\t}\n\n\t\tfunction checkForEmptyState() {\n\t\t\tconst requestCards = document.querySelectorAll('[id^=\"request-\"]');\n\t\t\tconst requestsList = document.querySelector('.space-y-4 h3').parentElement;\n\t\t\tconst emptyState = document.querySelector('.text-center.py-12');\n\t\t\t\n\t\t\tif (requestCards.length === 0) {\n\t\t\t\t// Hide the requests list and show empty state\n\t\t\t\tif (requestsList) {\n\t\t\t\t\trequestsList.style.display = 'none';\n\t\t\t\t}\n\t\t\t\t\n\t\t\t\t// Create and show empty state if it doesn't exist\n\t\t\t\tif (!emptyState) {\n\t\t\t\t\tconst emptyStateHTML = `\n\t\t\t\t\t\t<div class=\"text-center py-12\">\n\t\t\t\t\t\t\t<div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\">\n\t\t\t\t\t\t\t\t<svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n\t\t\t\t\t\t\t\t\t<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path>\n\t\t\t\t\t\t\t\t</svg>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t<h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No pending keep requests</h3>\n\t\t\t\t\t\t\t<p class=\"text-gray-500\">\n\t\t\t\t\t\t\t\tAll keep requests have been processed. Check back later for new requests.\n\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t`;\n\t\t\t\t\tconst mainDiv = document.querySelector('.space-y-6');\n\t\t\t\t\tif (mainDiv) {\n\t\t\t\t\t\tmainDiv.insertAdjacentHTML('beforeend', emptyStateHTML);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<script>\n\t\tfunction updatePendingCount(delta) {\n\t\t\tconst badge = document.querySelector('.bg-blue-900.text-blue-200');\n\t\t\tif (badge) {\n\t\t\t\tconst currentText = badge.textContent.trim();\n\t\t\t\tconst currentCount = parseInt(currentText.match(/\\d+/)[0]);\n\t\t\t\tconst newCount = Math.max(0, currentCount + delta);\n\t\t\t\tbadge.textContent = newCount + ' pending requests';\n\t\t\t}\n\t\t}\n\n\t\tfunction checkForEmptyState() {\n\t\t\tconst requestCards = document.querySelectorAll('[id^=\"request-\"]');\n\t\t\tconst requestsList = document.querySelector('.space-y-4 h3').parentElement;\n\t\t\tconst emptyState = document.querySelector('.text-center.py-12');\n\n\t\t\tif (requestCards.length === 0) {\n\t\t\t\t// Hide the requests list and show empty state\n\t\t\t\tif (requestsList) {\n\t\t\t\t\trequestsList.style.display = 'none';\n\t\t\t\t}\n\n\t\t\t\t// Create and show empty state if it doesn't exist\n\t\t\t\tif (!emptyState) {\n\t\t\t\t\tconst emptyStateHTML = `\n\t\t\t\t\t\t<div class=\"text-center py-12\">\n\t\t\t\t\t\t\t<div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\">\n\t\t\t\t\t\t\t\t<svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n\t\t\t\t\t\t\t\t\t<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path>\n\t\t\t\t\t\t\t\t</svg>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t<h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No pending keep requests</h3>\n\t\t\t\t\t\t\t<p class=\"text-gray-500\">\n\t\t\t\t\t\t\t\tAll keep requests have been processed. Check back later for new requests.\n\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t`;\n\t\t\t\t\tconst mainDiv = document.querySelector('.space-y-6');\n\t\t\t\t\tif (mainDiv) {\n\t\t\t\t\t\tmainDiv.insertAdjacentHTML('beforeend', emptyStateHTML);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -953,16 +953,16 @@ func AdminUtilityScripts() templ.Component {
 
 func acceptKeepRequest(mediaID string) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_acceptKeepRequest_5535`,
-		Function: `function __templ_acceptKeepRequest_5535(mediaID){const buttonId = 'accept-' + mediaID;
+		Name: `__templ_acceptKeepRequest_34ab`,
+		Function: `function __templ_acceptKeepRequest_34ab(mediaID){const buttonId = 'accept-' + mediaID;
 	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
 	if (!originalContent) return;
-	
+
 	window.makeApiRequest('/admin/api/keep-requests/' + mediaID + '/accept')
 	.then(data => {
 		if (data.success) {
 			window.setButtonSuccess(buttonId, 'Accepted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-			
+
 			// Hide the request card with a smooth animation
 			const requestCard = document.getElementById('request-' + mediaID);
 			if (requestCard) {
@@ -975,7 +975,7 @@ func acceptKeepRequest(mediaID string) templ.ComponentScript {
 					checkForEmptyState();
 				}, 300);
 			}
-			
+
 			window.showToast('Keep request accepted successfully', 'success');
 		} else {
 			throw new Error(data.error || 'Unknown error');
@@ -987,23 +987,23 @@ func acceptKeepRequest(mediaID string) templ.ComponentScript {
 		window.restoreButton(buttonId, originalContent);
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_acceptKeepRequest_5535`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_acceptKeepRequest_5535`, mediaID),
+		Call:       templ.SafeScript(`__templ_acceptKeepRequest_34ab`, mediaID),
+		CallInline: templ.SafeScriptInline(`__templ_acceptKeepRequest_34ab`, mediaID),
 	}
 }
 
 func declineKeepRequest(mediaID string) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_declineKeepRequest_7255`,
-		Function: `function __templ_declineKeepRequest_7255(mediaID){const buttonId = 'decline-' + mediaID;
+		Name: `__templ_declineKeepRequest_37c1`,
+		Function: `function __templ_declineKeepRequest_37c1(mediaID){const buttonId = 'decline-' + mediaID;
 	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
 	if (!originalContent) return;
-	
+
 	window.makeApiRequest('/admin/api/keep-requests/' + mediaID + '/decline')
 	.then(data => {
 		if (data.success) {
 			window.setButtonSuccess(buttonId, 'Declined', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>');
-			
+
 			// Hide the request card with a smooth animation
 			const requestCard = document.getElementById('request-' + mediaID);
 			if (requestCard) {
@@ -1016,7 +1016,7 @@ func declineKeepRequest(mediaID string) templ.ComponentScript {
 					checkForEmptyState();
 				}, 300);
 			}
-			
+
 			window.showToast('Keep request declined successfully', 'success');
 		} else {
 			throw new Error(data.error || 'Unknown error');
@@ -1028,23 +1028,23 @@ func declineKeepRequest(mediaID string) templ.ComponentScript {
 		window.restoreButton(buttonId, originalContent);
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_declineKeepRequest_7255`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_declineKeepRequest_7255`, mediaID),
+		Call:       templ.SafeScript(`__templ_declineKeepRequest_37c1`, mediaID),
+		CallInline: templ.SafeScriptInline(`__templ_declineKeepRequest_37c1`, mediaID),
 	}
 }
 
 func markAsKeep(mediaID string) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_markAsKeep_23a4`,
-		Function: `function __templ_markAsKeep_23a4(mediaID){const buttonId = 'keep-' + mediaID;
+		Name: `__templ_markAsKeep_5a0c`,
+		Function: `function __templ_markAsKeep_5a0c(mediaID){const buttonId = 'keep-' + mediaID;
 	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
 	if (!originalContent) return;
-	
+
 	window.makeApiRequest('/admin/api/media/' + mediaID + '/keep')
 	.then(data => {
 		if (data.success) {
 			window.setButtonSuccess(buttonId, 'Kept', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-			
+
 			// Hide the media card with a smooth animation
 			const mediaCard = document.getElementById('media-' + mediaID);
 			if (mediaCard) {
@@ -1055,7 +1055,7 @@ func markAsKeep(mediaID string) templ.ComponentScript {
 					mediaCard.remove();
 				}, 300);
 			}
-			
+
 			window.showToast('Media marked as keep successfully', 'success');
 		} else {
 			throw new Error(data.error || 'Unknown error');
@@ -1067,23 +1067,23 @@ func markAsKeep(mediaID string) templ.ComponentScript {
 		window.restoreButton(buttonId, originalContent);
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_markAsKeep_23a4`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_markAsKeep_23a4`, mediaID),
+		Call:       templ.SafeScript(`__templ_markAsKeep_5a0c`, mediaID),
+		CallInline: templ.SafeScriptInline(`__templ_markAsKeep_5a0c`, mediaID),
 	}
 }
 
 func markAsDelete(mediaID string) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_markAsDelete_4e64`,
-		Function: `function __templ_markAsDelete_4e64(mediaID){const buttonId = 'delete-' + mediaID;
+		Name: `__templ_markAsDelete_89f6`,
+		Function: `function __templ_markAsDelete_89f6(mediaID){const buttonId = 'delete-' + mediaID;
 	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
 	if (!originalContent) return;
-	
+
 	window.makeApiRequest('/admin/api/media/' + mediaID + '/delete')
 	.then(data => {
 		if (data.success) {
 			window.setButtonSuccess(buttonId, 'Deleted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-			
+
 			// Hide the media card with a smooth animation
 			const mediaCard = document.getElementById('media-' + mediaID);
 			if (mediaCard) {
@@ -1094,7 +1094,7 @@ func markAsDelete(mediaID string) templ.ComponentScript {
 					mediaCard.remove();
 				}, 300);
 			}
-			
+
 			window.showToast('Media marked for deletion successfully', 'success');
 		} else {
 			throw new Error(data.error || 'Unknown error');
@@ -1106,23 +1106,23 @@ func markAsDelete(mediaID string) templ.ComponentScript {
 		window.restoreButton(buttonId, originalContent);
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_markAsDelete_4e64`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_markAsDelete_4e64`, mediaID),
+		Call:       templ.SafeScript(`__templ_markAsDelete_89f6`, mediaID),
+		CallInline: templ.SafeScriptInline(`__templ_markAsDelete_89f6`, mediaID),
 	}
 }
 
 func markAsKeepForever(mediaID string) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_markAsKeepForever_34be`,
-		Function: `function __templ_markAsKeepForever_34be(mediaID){const buttonId = 'keep-forever-' + mediaID;
+		Name: `__templ_markAsKeepForever_0eca`,
+		Function: `function __templ_markAsKeepForever_0eca(mediaID){const buttonId = 'keep-forever-' + mediaID;
 	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
 	if (!originalContent) return;
-	
+
 	window.makeApiRequest('/admin/api/media/' + mediaID + '/keep-forever')
 	.then(data => {
 		if (data.success) {
 			window.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>');
-			
+
 			// Hide the media card with a smooth animation
 			const mediaCard = document.getElementById('media-' + mediaID);
 			if (mediaCard) {
@@ -1133,7 +1133,7 @@ func markAsKeepForever(mediaID string) templ.ComponentScript {
 					mediaCard.remove();
 				}, 300);
 			}
-			
+
 			window.showToast('Media protected forever successfully', 'success');
 		} else {
 			throw new Error(data.error || 'Unknown error');
@@ -1145,8 +1145,8 @@ func markAsKeepForever(mediaID string) templ.ComponentScript {
 		window.restoreButton(buttonId, originalContent);
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_markAsKeepForever_34be`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_markAsKeepForever_34be`, mediaID),
+		Call:       templ.SafeScript(`__templ_markAsKeepForever_0eca`, mediaID),
+		CallInline: templ.SafeScriptInline(`__templ_markAsKeepForever_0eca`, mediaID),
 	}
 }
 

@@ -44,7 +44,7 @@ func NewTestServerManager() *TestServerManager {
 					"Type": "movies"
 				},
 				{
-					"Id": "lib2", 
+					"Id": "lib2",
 					"Name": "TV Shows",
 					"Type": "tvshows"
 				}
@@ -67,7 +67,7 @@ func NewTestServerManager() *TestServerManager {
 				{
 					"Id": "item2",
 					"Name": "Test Series",
-					"Type": "Series", 
+					"Type": "Series",
 					"UserId": "user2",
 					"LastSeen": "2024-06-01T00:00:00Z",
 					"PlayCount": 2,
@@ -113,7 +113,7 @@ func NewTestServerManager() *TestServerManager {
 						"status": 2,
 						"media": {
 							"id": 456,
-							"mediaType": "tv", 
+							"mediaType": "tv",
 							"tmdbId": 67890,
 							"tvdbId": 98765,
 							"imdbId": "tt7654321",
@@ -195,7 +195,7 @@ func NewTestServerManager() *TestServerManager {
 					},
 					{
 						"id": 456,
-						"title": "Test Series 2", 
+						"title": "Test Series 2",
 						"path": "/tv/Test Series 2",
 						"tvdbId": 789012,
 						"imdbId": "tt7654321",
@@ -325,7 +325,7 @@ func NewTestServerManager() *TestServerManager {
 					{
 						"id": 012,
 						"title": "Test Movie 2",
-						"path": "/movies/Test Movie 2", 
+						"path": "/movies/Test Movie 2",
 						"tmdbId": 67890,
 						"imdbId": "tt7654321",
 						"tags": [2, 3],

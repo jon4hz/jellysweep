@@ -14,7 +14,7 @@ templ NotificationsScript() {
 
 			async init() {
 				console.log('Initializing Notifications Manager...');
-				
+
 				// Check if push notifications are supported
 				if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
 					console.log('Push notifications not supported by browser');
@@ -23,21 +23,21 @@ templ NotificationsScript() {
 
 				// Create notification button regardless of SW registration status
 				this.createNotificationButton();
-				
+
 				// Check initial status
 				await this.checkPushStatus();
-				
+
 				// Start periodic validation
 				this.startPeriodicValidation();
-				
+
 				// Clean up on page unload
 				window.addEventListener('beforeunload', () => {
 					this.stopPeriodicValidation();
 				});
-				
+
 				// Pause/resume validation based on page visibility
 				this._setupVisibilityHandling();
-				
+
 				// Monitor permission changes
 				this.monitorPermissionChanges();
 			}
@@ -59,7 +59,7 @@ templ NotificationsScript() {
 				const notificationSection = document.getElementById('mobile-notifications-section');
 				const notificationButton = document.getElementById('mobile-notifications-button');
 				const desktopButton = document.getElementById('desktop-notifications-button');
-				
+
 				if (notificationButton) {
 					notificationButton.addEventListener('click', () => this.enableNotifications());
 				}
@@ -71,7 +71,7 @@ templ NotificationsScript() {
 			async checkPushStatus() {
 				try {
 					console.log('Checking push notification status...');
-					
+
 					const result = await this._performSubscriptionCheck();
 					this._handleSubscriptionCheckResult(result);
 				} catch (error) {
@@ -92,33 +92,33 @@ templ NotificationsScript() {
 			async _performSubscriptionCheck() {
 				// Check permission
 				if (Notification.permission !== 'granted') {
-					return { 
-						status: 'no_permission', 
-						reason: `Permission not granted: ${Notification.permission}` 
+					return {
+						status: 'no_permission',
+						reason: `Permission not granted: ${Notification.permission}`
 					};
 				}
 
 				// Check service worker registration
 				if (!this.swRegistration) {
-					return { 
-						status: 'no_sw', 
-						reason: 'No service worker registration available' 
+					return {
+						status: 'no_sw',
+						reason: 'No service worker registration available'
 					};
 				}
 
 				// Check browser subscription
 				const subscription = await this.swRegistration.pushManager.getSubscription();
 				if (!subscription) {
-					return { 
-						status: 'no_subscription', 
-						reason: 'No browser subscription found' 
+					return {
+						status: 'no_subscription',
+						reason: 'No browser subscription found'
 					};
 				}
 
 				// Check server status
 				const encodedEndpoint = encodeURIComponent(subscription.endpoint);
 				const response = await fetch(`/api/webpush/status?endpoint=${encodedEndpoint}`);
-				
+
 				if (response.ok) {
 					const data = await response.json();
 					return {
@@ -217,7 +217,7 @@ templ NotificationsScript() {
 							this.swRegistration = await navigator.serviceWorker.getRegistration();
 							console.log('Got existing SW for notifications:', this.swRegistration);
 						}
-						
+
 						if (!this.swRegistration) {
 							this.showToast('Service worker not available', 'error');
 							return;
@@ -281,7 +281,7 @@ templ NotificationsScript() {
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify(subscriptionData)
 					});
-					
+
 					if (response.ok) {
 						console.log('Successfully subscribed to push notifications');
 						this.hideNotificationButton();
@@ -324,13 +324,13 @@ templ NotificationsScript() {
 
 			setupFallbackMonitoring() {
 				let lastPermission = Notification.permission;
-				
+
 				const checkPermissionChange = () => {
 					const currentPermission = Notification.permission;
 					if (currentPermission !== lastPermission) {
 						console.log('Permission changed from', lastPermission, 'to', currentPermission);
 						lastPermission = currentPermission;
-						
+
 						if (currentPermission === 'granted') {
 							this.createPushSubscription().catch(console.error);
 						} else {
@@ -346,12 +346,12 @@ templ NotificationsScript() {
 			startPeriodicValidation() {
 				// Clear any existing interval
 				this.stopPeriodicValidation();
-				
+
 				// Only start if notifications are supported and we might have a subscription
 				if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
 					return;
 				}
-				
+
 				console.log('Starting periodic subscription validation...');
 				this.validationInterval = setInterval(async () => {
 					try {
@@ -394,16 +394,16 @@ templ NotificationsScript() {
 			async handleInvalidSubscription(subscription) {
 				try {
 					console.log('Handling invalid subscription...');
-					
+
 					// Stop periodic validation since subscription is invalid
 					this.stopPeriodicValidation();
-					
+
 					// Unsubscribe from the browser's push manager
 					if (subscription) {
 						await subscription.unsubscribe();
 						console.log('Unsubscribed from browser push manager');
 					}
-					
+
 					// Notify server to remove the subscription (if endpoint is available)
 					if (subscription && subscription.endpoint) {
 						try {
@@ -417,7 +417,7 @@ templ NotificationsScript() {
 							console.warn('Failed to notify server about invalid subscription:', serverError);
 						}
 					}
-					
+
 					// Show notification button for re-subscription
 					this.showNotificationButton();
 				} catch (error) {
@@ -429,7 +429,7 @@ templ NotificationsScript() {
 			showNotificationButton() {
 				const mobileSection = document.getElementById('mobile-notifications-section');
 				const desktopButton = document.getElementById('desktop-notifications-button');
-				
+
 				if (mobileSection) {
 					mobileSection.classList.remove('hidden');
 				}
@@ -442,7 +442,7 @@ templ NotificationsScript() {
 			hideNotificationButton() {
 				const mobileSection = document.getElementById('mobile-notifications-section');
 				const desktopButton = document.getElementById('desktop-notifications-button');
-				
+
 				if (mobileSection) {
 					mobileSection.classList.add('hidden');
 				}
@@ -455,13 +455,13 @@ templ NotificationsScript() {
 			showToast(message, type = 'info') {
 				const toast = document.createElement('div');
 				toast.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 text-white max-w-sm ${
-					type === 'success' ? 'bg-green-600' : 
+					type === 'success' ? 'bg-green-600' :
 					type === 'error' ? 'bg-red-600' : 'bg-blue-600'
 				}`;
 				toast.textContent = message;
-				
+
 				document.body.appendChild(toast);
-				
+
 				setTimeout(() => {
 					toast.remove();
 				}, 5000);

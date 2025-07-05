@@ -14,16 +14,16 @@ templ PWAScript() {
 
 			async init() {
 				console.log('Initializing PWA Manager...');
-				
+
 				// Step 1: Fetch user data
 				await this.fetchUserData();
-				
+
 				// Step 2: Register service worker
 				await this.registerServiceWorker();
-				
+
 				// Step 3: Setup PWA install functionality
 				this.setupPWAInstall();
-				
+
 				// Step 4: Setup push notifications
 				this.setupPushNotifications();
 			}
@@ -52,10 +52,10 @@ templ PWAScript() {
 					console.log('Registering service worker...');
 					this.swRegistration = await navigator.serviceWorker.register('/static/sw.js');
 					console.log('Service Worker registered successfully:', this.swRegistration);
-					
+
 					// Don't wait for ready with timeout - just continue
 					// The service worker will be available when needed
-					
+
 					// Handle updates
 					if (this.swRegistration.addEventListener) {
 						this.swRegistration.addEventListener('updatefound', () => {
@@ -69,7 +69,7 @@ templ PWAScript() {
 							}
 						});
 					}
-					
+
 					return this.swRegistration;
 				} catch (error) {
 					console.error('Service Worker registration failed:', error);
@@ -101,7 +101,7 @@ templ PWAScript() {
 
 			createInstallButton() {
 				// Check if already installed
-				if (window.matchMedia('(display-mode: standalone)').matches || 
+				if (window.matchMedia('(display-mode: standalone)').matches ||
 					window.navigator.standalone === true) {
 					console.log('App is already installed');
 					return;
@@ -110,10 +110,10 @@ templ PWAScript() {
 				// Use existing install button from template
 				const installSection = document.getElementById('mobile-install-section');
 				const installButton = document.getElementById('mobile-install-button');
-				
+
 				if (installButton) {
 					installButton.addEventListener('click', () => this.installApp());
-					
+
 					// Show button for Firefox users (since they don't get beforeinstallprompt)
 					if (navigator.userAgent.toLowerCase().includes('firefox')) {
 						setTimeout(() => {
@@ -145,7 +145,7 @@ templ PWAScript() {
 					const result = await this.deferredPrompt.userChoice;
 					console.log('Install result:', result);
 					this.deferredPrompt = null;
-					
+
 					if (result.outcome === 'accepted') {
 						this.hideInstallButton();
 					}
@@ -173,9 +173,9 @@ templ PWAScript() {
 						<button onclick="window.location.reload()" class="ml-2 underline">Refresh</button>
 					</div>
 				`;
-				
+
 				document.body.appendChild(notification);
-				
+
 				setTimeout(() => {
 					notification.remove();
 				}, 10000);
@@ -193,9 +193,9 @@ templ PWAScript() {
 						<p class="text-sm">Tap the menu (⋮) and look for "Install" or "Add to Home Screen"</p>
 					</div>
 				`;
-				
+
 				document.body.appendChild(instructions);
-				
+
 				setTimeout(() => {
 					instructions.remove();
 				}, 15000);

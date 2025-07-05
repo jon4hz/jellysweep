@@ -947,14 +947,14 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_d970`,
-		Function: `function __templ_dashboardScripts_d970(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_35db`,
+		Function: `function __templ_dashboardScripts_35db(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
 		initializeFilters();
 		initializeMediaRequests();
 		initializeStorageCharts();
-		
+
 		// Add custom handler for chart reinitializtion when switching to stats tab
 		const statsTabButton = document.getElementById('cleanup-timeline');
 		if (statsTabButton) {
@@ -980,7 +980,7 @@ func dashboardScripts() templ.ComponentScript {
 			cumulativeChart.destroy();
 			cumulativeChart = null;
 		}
-		
+
 		initializeDailyChart();
 		initializeCumulativeChart();
 	}
@@ -988,21 +988,21 @@ func dashboardScripts() templ.ComponentScript {
 	function initializeDailyChart() {
 		const canvas = document.getElementById('daily-cleanup-chart');
 		const dataScript = document.getElementById('daily-cleanup-data');
-		
+
 		if (!canvas || !dataScript) return;
-		
+
 		try {
 			const data = JSON.parse(dataScript.textContent);
 			const points = data.points || [];
-			
+
 			if (points.length === 0) return;
-			
+
 			// Format data for Chart.js
 			const chartData = points.map(point => ({
 				x: new Date(point.date),
 				y: point.dailyBytes
 			}));
-			
+
 			// Initialize Chart.js as a bar chart
 			dailyChart = new Chart(canvas, {
 				type: 'bar',
@@ -1031,8 +1031,8 @@ func dashboardScripts() templ.ComponentScript {
 							callbacks: {
 								title: function(context) {
 									const date = new Date(context[0].parsed.x);
-									return date.toLocaleDateString('en-US', { 
-										month: 'short', 
+									return date.toLocaleDateString('en-US', {
+										month: 'short',
 										day: 'numeric',
 										year: 'numeric'
 									});
@@ -1041,7 +1041,7 @@ func dashboardScripts() templ.ComponentScript {
 									const bytes = context.parsed.y;
 									const pointIndex = context.dataIndex;
 									const point = points[pointIndex];
-									
+
 									return [
 										'Storage freed: ' + formatBytes(bytes),
 										'Items deleted: ' + point.itemsCount
@@ -1097,21 +1097,21 @@ func dashboardScripts() templ.ComponentScript {
 	function initializeCumulativeChart() {
 		const canvas = document.getElementById('cumulative-cleanup-chart');
 		const dataScript = document.getElementById('cumulative-cleanup-data');
-		
+
 		if (!canvas || !dataScript) return;
-		
+
 		try {
 			const data = JSON.parse(dataScript.textContent);
 			const points = data.points || [];
-			
+
 			if (points.length < 2) return;
-			
+
 			// Format data for Chart.js
 			const chartData = points.map(point => ({
 				x: new Date(point.date),
 				y: point.cumulativeBytes
 			}));
-			
+
 			// Initialize Chart.js
 			cumulativeChart = new Chart(canvas, {
 				type: 'line',
@@ -1145,8 +1145,8 @@ func dashboardScripts() templ.ComponentScript {
 							callbacks: {
 								title: function(context) {
 									const date = new Date(context[0].parsed.x);
-									return date.toLocaleDateString('en-US', { 
-										month: 'short', 
+									return date.toLocaleDateString('en-US', {
+										month: 'short',
 										day: 'numeric',
 										year: 'numeric'
 									});
@@ -1155,7 +1155,7 @@ func dashboardScripts() templ.ComponentScript {
 									const bytes = context.parsed.y;
 									const pointIndex = context.dataIndex;
 									const point = points[pointIndex];
-									
+
 									return [
 										'Total storage freed: ' + formatBytes(bytes),
 										'Total items deleted: ' + point.itemsDeleted
@@ -1207,14 +1207,14 @@ func dashboardScripts() templ.ComponentScript {
 			console.error('Error initializing cumulative chart:', error);
 		}
 	}
-	
+
 	function formatBytes(bytes) {
 		if (bytes === 0) return '0 Bytes';
-		
+
 		const k = 1024;
 		const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		
+
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 	}
 
@@ -1324,7 +1324,7 @@ func dashboardScripts() templ.ComponentScript {
 		.then(data => {
 			if (data.success) {
 				window.setButtonSuccess(buttonId, 'Request Submitted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-				
+
 				// Update button styling
 				button.classList.remove('btn-primary');
 				button.classList.add('btn-secondary', 'opacity-50', 'cursor-not-allowed');
@@ -1365,8 +1365,8 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_d970`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_d970`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_35db`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_35db`),
 	}
 }
 

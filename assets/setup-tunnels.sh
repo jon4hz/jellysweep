@@ -33,24 +33,24 @@ create_tunnel() {
     local port="$2"
     local ip
     ip=$(get_container_ip "$container_name")
-    
+
     if [ -z "$ip" ]; then
         echo "Warning: Container '$container_name' not found or has no IP address"
         return 1
     fi
-    
+
     echo "Creating tunnel for $container_name ($ip:$port -> localhost:$port)"
     socat "TCP-LISTEN:$port,reuseaddr,fork" "TCP:$ip:$port" &
     local pid=$!
     PIDS+=("$pid")
-    
+
     # Verify the tunnel started successfully
     sleep 0.5
     if ! kill -0 "$pid" 2>/dev/null; then
         echo "Error: Failed to start tunnel for $container_name"
         return 1
     fi
-    
+
     return 0
 }
 

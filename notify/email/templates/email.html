@@ -6,13 +6,13 @@
     <title>JellySweep Media Cleanup Notification</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Inter', system-ui, sans-serif;
             background-color: #0d1117;
@@ -21,7 +21,7 @@
             padding: 20px;
             min-height: 100vh;
         }
-        
+
         .container {
             max-width: 600px;
             margin: 0 auto;
@@ -31,19 +31,19 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
             overflow: hidden;
         }
-        
+
         .header {
             background-color: #1f2937;
             border-bottom: 1px solid #374151;
             padding: 24px;
         }
-        
+
         .header-brand {
             display: flex;
             align-items: center;
             margin-bottom: 16px;
         }
-        
+
         .brand-icon {
             width: 32px;
             height: 32px;
@@ -54,29 +54,29 @@
             justify-content: center;
             margin-right: 12px;
         }
-        
+
         .brand-name {
             font-size: 20px;
             font-weight: 600;
             color: #f3f4f6;
         }
-        
+
         .header h2 {
             font-size: 24px;
             font-weight: 700;
             color: #f3f4f6;
             margin-bottom: 8px;
         }
-        
+
         .header p {
             color: #d1d5db;
             font-size: 16px;
         }
-        
+
         .content {
             padding: 24px;
         }
-        
+
         .dry-run-notice {
             background-color: #1e40af;
             border: 1px solid #3b82f6;
@@ -87,20 +87,20 @@
             display: flex;
             align-items: center;
         }
-        
+
         .dry-run-notice::before {
             content: "ℹ";
             font-weight: bold;
             margin-right: 8px;
             font-size: 18px;
         }
-        
+
         .description {
             color: #d1d5db;
             font-size: 16px;
             margin-bottom: 24px;
         }
-        
+
         .media-section {
             background-color: #1f2937;
             border: 1px solid #374151;
@@ -108,7 +108,7 @@
             padding: 20px;
             margin-bottom: 24px;
         }
-        
+
         .media-section h3 {
             font-size: 18px;
             font-weight: 600;
@@ -117,12 +117,12 @@
             display: flex;
             align-items: center;
         }
-        
+
         .media-section h3::before {
             content: "📁";
             margin-right: 8px;
         }
-        
+
         .media-item {
             background-color: #111827;
             border: 1px solid #374151;
@@ -130,18 +130,18 @@
             padding: 16px;
             margin-bottom: 12px;
         }
-        
+
         .media-item:last-child {
             margin-bottom: 0;
         }
-        
+
         .media-title {
             font-weight: 600;
             font-size: 16px;
             color: #f3f4f6;
             margin-bottom: 8px;
         }
-        
+
         .media-details {
             font-size: 14px;
             color: #9ca3af;
@@ -149,22 +149,22 @@
             flex-wrap: wrap;
             gap: 16px;
         }
-        
+
         .media-detail-item {
             display: flex;
             align-items: center;
         }
-        
+
         .media-detail-item::before {
             content: "•";
             margin-right: 8px;
             color: #6b7280;
         }
-        
+
         .media-detail-item:first-child::before {
             content: none;
         }
-        
+
         .warning-notice {
             background-color: #dc2626;
             border: 1px solid #ef4444;
@@ -175,7 +175,7 @@
             display: flex;
             align-items: flex-start;
         }
-        
+
         .warning-notice::before {
             content: "⚠";
             font-weight: bold;
@@ -183,40 +183,40 @@
             font-size: 18px;
             flex-shrink: 0;
         }
-        
+
         .warning-content {
             flex: 1;
         }
-        
+
         .warning-content strong {
             display: block;
             margin-bottom: 4px;
             font-weight: 600;
         }
-        
+
         .footer {
             background-color: #1f2937;
             border-top: 1px solid #374151;
             padding: 20px 24px;
             text-align: center;
         }
-        
+
         .footer p {
             color: #9ca3af;
             font-size: 14px;
             margin-bottom: 8px;
         }
-        
+
         .footer p:last-child {
             margin-bottom: 0;
         }
-        
+
         .footer-logo {
             color: #6b7280;
             font-size: 12px;
             margin-top: 16px;
         }
-        
+
         .jellysweep-link {
             display: inline-flex;
             align-items: center;
@@ -229,35 +229,35 @@
             font-size: 14px;
             transition: background-color 0.2s ease;
         }
-        
+
         .jellysweep-link:hover {
             background-color: #4338ca;
             text-decoration: none;
         }
-        
+
         .jellysweep-link-icon {
             width: 16px;
             height: 16px;
             margin-right: 6px;
             border-radius: 4px;
         }
-        
+
         .brand-icon-img {
             width: 24px;
             height: 24px;
             border-radius: 6px;
         }
-        
+
         /* Responsive design */
         @media (max-width: 640px) {
             body {
                 padding: 12px;
             }
-            
+
             .header, .content, .footer {
                 padding: 16px;
             }
-            
+
             .media-details {
                 flex-direction: column;
                 gap: 8px;
@@ -302,7 +302,7 @@
             <div class="warning-notice">
                 <div class="warning-content">
                     <strong>Action Required</strong>
-                    These items will be permanently deleted on {{.CleanupDate.Format "January 2, 2006"}}. 
+                    These items will be permanently deleted on {{.CleanupDate.Format "January 2, 2006"}}.
                     If you wish to keep any of these items, please submit a request using the link below:
                     <br><br>
                     {{if .JellySweepURL}}

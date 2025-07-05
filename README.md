@@ -6,11 +6,11 @@
 
 <img src="static/static/jellysweep.png" alt="JellySweep Logo" width="40%" height="20%">
 
-JellySweep is a smart cleanup tool for your Jellyfin media server.  
+JellySweep is a smart cleanup tool for your Jellyfin media server.
 It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests.
 
-> [!CAUTION]  
-> Always test with dry-run mode first!  
+> [!CAUTION]
+> Always test with dry-run mode first!
 > JellySweep is powerful - configure it correctly!
 
 
@@ -114,7 +114,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - Jellystat
   - Jellyseerr
 
-> [!TIP]  
+> [!TIP]
 > For production deployment, see [PRODUCTION.md](PRODUCTION.md).
 
 ### Quick Start
@@ -136,7 +136,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
    ```bash
    # Start the service
    ./jellysweep serve
-   
+
    # Reset all tags (cleanup command)
    ./jellysweep reset
    ```
@@ -342,7 +342,7 @@ auth:
     client_secret: "your-client-secret"
     redirect_url: "http://localhost:3002/auth/oidc/callback"
     admin_group: "jellyfin-admins"     # OIDC group for admin access
-  
+
   # Jellyfin Authentication
   jellyfin:
     enabled: true                      # Default authentication method
@@ -352,7 +352,7 @@ auth:
 gravatar:
   enabled: false                       # Enable Gravatar profile pictures
   default_image: "mp"                  # Default image if no Gravatar found
-                                       # Options: "404", "mp", "identicon", "monsterid", 
+                                       # Options: "404", "mp", "identicon", "monsterid",
                                        #          "wavatar", "retro", "robohash", "blank"
   rating: "g"                          # Maximum rating for images
                                        # Options: "g", "pg", "r", "x"
@@ -369,7 +369,7 @@ libraries:
       - "jellysweep-exclude"
       - "jellysweep-ignore"
       - "do-not-delete"
-  
+
   "Movies":
     enabled: true
     content_age_threshold: 120
@@ -379,7 +379,7 @@ libraries:
       - "jellysweep-exclude"
       - "keep"
       - "favorites"
-  
+
   "TV Shows":
     enabled: true
     content_age_threshold: 120
@@ -389,7 +389,7 @@ libraries:
       - "jellysweep-exclude"
       - "ongoing"
       - "keep"
-  
+
 # Email notifications for users about upcoming deletions
 email:
   enabled: false
@@ -492,6 +492,11 @@ cd jellysweep
 nvm install
 npm install --include=dev
 go mod download
+
+# Install pre-commit hooks (recommended)
+pip install pre-commit
+pre-commit install
+
 go run . serve --log-level debug
 
 # build npm dependencies
@@ -505,7 +510,22 @@ golangci-lint run
 
 # run tests
 go test -v ./...
+
+# run pre-commit checks manually (optional)
+pre-commit run --all-files
 ```
+
+**Pre-commit Hooks**
+
+This project uses pre-commit hooks to ensure code quality and consistency. The hooks automatically run before each commit and include:
+
+- **Code Formatting**: Removes trailing whitespace, fixes end-of-file issues
+- **Validation**: Checks YAML/JSON syntax, detects merge conflicts
+- **Security**: Scans for hardcoded secrets and credentials using Gitleaks
+- **Go Quality**: Runs `go fmt`, `go mod tidy`, and `golangci-lint`
+- **Build Verification**: Ensures the project builds successfully with `make build`
+
+The hooks are configured in `.pre-commit-config.yaml` and will automatically prevent commits that don't pass all checks.
 
 ---
 

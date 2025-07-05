@@ -11,7 +11,7 @@ var generateKeysCmd = &cobra.Command{
 	Use:   "generate-vapid-keys",
 	Short: "Generate VAPID keys for web push notifications",
 	Long: `Generate VAPID keys for web push notifications.
-	
+
 These keys are required for sending push notifications to PWA clients.
 Add the generated keys to your configuration file under the webpush section.`,
 	RunE: generateVAPIDKeys,

@@ -291,7 +291,7 @@ func TabsScript() templ.Component {
 			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<script>\n\t\tfunction initializeTabs(containerId) {\n\t\t\tconst tabButtons = document.querySelectorAll('#' + containerId + '-nav .tab-button');\n\t\t\tconst tabContents = document.querySelectorAll('#tab-content .tab-content');\n\t\t\tconst tabSlider = document.getElementById(containerId + '-slider');\n\n\t\t\t// Initialize the slider position\n\t\t\tupdateSliderPosition();\n\n\t\t\ttabButtons.forEach(button => {\n\t\t\t\tbutton.addEventListener('click', function() {\n\t\t\t\t\tconst targetTab = this.getAttribute('data-tab');\n\t\t\t\t\t\n\t\t\t\t\t// Update button states\n\t\t\t\t\ttabButtons.forEach(btn => {\n\t\t\t\t\t\tbtn.classList.remove('tab-active', 'text-white');\n\t\t\t\t\t\tbtn.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');\n\t\t\t\t\t});\n\t\t\t\t\t\n\t\t\t\t\tthis.classList.add('tab-active', 'text-white');\n\t\t\t\t\tthis.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');\n\t\t\t\t\t\n\t\t\t\t\t// Update slider position with a small delay to ensure DOM is updated\n\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\tupdateSliderPosition();\n\t\t\t\t\t}, 10);\n\t\t\t\t\t\n\t\t\t\t\t// Update content visibility\n\t\t\t\t\ttabContents.forEach(content => {\n\t\t\t\t\t\tcontent.classList.add('hidden');\n\t\t\t\t\t\tcontent.classList.remove('tab-content-active');\n\t\t\t\t\t});\n\t\t\t\t\t\n\t\t\t\t\tconst targetContent = document.getElementById(targetTab + '-content');\n\t\t\t\t\tif (targetContent) {\n\t\t\t\t\t\ttargetContent.classList.remove('hidden');\n\t\t\t\t\t\ttargetContent.classList.add('tab-content-active');\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t});\n\t\t\t\n\t\t\tfunction updateSliderPosition() {\n\t\t\t\tconst activeTab = document.querySelector('#' + containerId + '-nav .tab-button.tab-active');\n\t\t\t\tif (activeTab && tabSlider) {\n\t\t\t\t\t// Force a reflow to ensure accurate measurements\n\t\t\t\t\tactiveTab.offsetHeight;\n\t\t\t\t\t\n\t\t\t\t\t// Calculate position relative to the nav container\n\t\t\t\t\tconst navContainer = activeTab.parentElement;\n\t\t\t\t\tconst containerRect = navContainer.getBoundingClientRect();\n\t\t\t\t\tconst activeRect = activeTab.getBoundingClientRect();\n\t\t\t\t\t\n\t\t\t\t\t// Calculate the left position relative to the nav container\n\t\t\t\t\tconst leftPosition = activeRect.left - containerRect.left;\n\t\t\t\t\t\n\t\t\t\t\ttabSlider.style.width = activeTab.offsetWidth + 'px';\n\t\t\t\t\ttabSlider.style.height = (activeTab.offsetHeight) + 'px';\n\t\t\t\t\ttabSlider.style.left = leftPosition + 'px';\n\t\t\t\t\ttabSlider.style.top = '0px';\n\t\t\t\t}\n\t\t\t}\n\t\t\t\n\t\t\t// Update slider on window resize\n\t\t\twindow.addEventListener('resize', updateSliderPosition);\n\t\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<script>\n\t\tfunction initializeTabs(containerId) {\n\t\t\tconst tabButtons = document.querySelectorAll('#' + containerId + '-nav .tab-button');\n\t\t\tconst tabContents = document.querySelectorAll('#tab-content .tab-content');\n\t\t\tconst tabSlider = document.getElementById(containerId + '-slider');\n\n\t\t\t// Initialize the slider position\n\t\t\tupdateSliderPosition();\n\n\t\t\ttabButtons.forEach(button => {\n\t\t\t\tbutton.addEventListener('click', function() {\n\t\t\t\t\tconst targetTab = this.getAttribute('data-tab');\n\n\t\t\t\t\t// Update button states\n\t\t\t\t\ttabButtons.forEach(btn => {\n\t\t\t\t\t\tbtn.classList.remove('tab-active', 'text-white');\n\t\t\t\t\t\tbtn.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');\n\t\t\t\t\t});\n\n\t\t\t\t\tthis.classList.add('tab-active', 'text-white');\n\t\t\t\t\tthis.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');\n\n\t\t\t\t\t// Update slider position with a small delay to ensure DOM is updated\n\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\tupdateSliderPosition();\n\t\t\t\t\t}, 10);\n\n\t\t\t\t\t// Update content visibility\n\t\t\t\t\ttabContents.forEach(content => {\n\t\t\t\t\t\tcontent.classList.add('hidden');\n\t\t\t\t\t\tcontent.classList.remove('tab-content-active');\n\t\t\t\t\t});\n\n\t\t\t\t\tconst targetContent = document.getElementById(targetTab + '-content');\n\t\t\t\t\tif (targetContent) {\n\t\t\t\t\t\ttargetContent.classList.remove('hidden');\n\t\t\t\t\t\ttargetContent.classList.add('tab-content-active');\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t});\n\n\t\t\tfunction updateSliderPosition() {\n\t\t\t\tconst activeTab = document.querySelector('#' + containerId + '-nav .tab-button.tab-active');\n\t\t\t\tif (activeTab && tabSlider) {\n\t\t\t\t\t// Force a reflow to ensure accurate measurements\n\t\t\t\t\tactiveTab.offsetHeight;\n\n\t\t\t\t\t// Calculate position relative to the nav container\n\t\t\t\t\tconst navContainer = activeTab.parentElement;\n\t\t\t\t\tconst containerRect = navContainer.getBoundingClientRect();\n\t\t\t\t\tconst activeRect = activeTab.getBoundingClientRect();\n\n\t\t\t\t\t// Calculate the left position relative to the nav container\n\t\t\t\t\tconst leftPosition = activeRect.left - containerRect.left;\n\n\t\t\t\t\ttabSlider.style.width = activeTab.offsetWidth + 'px';\n\t\t\t\t\ttabSlider.style.height = (activeTab.offsetHeight) + 'px';\n\t\t\t\t\ttabSlider.style.left = leftPosition + 'px';\n\t\t\t\t\ttabSlider.style.top = '0px';\n\t\t\t\t}\n\t\t\t}\n\n\t\t\t// Update slider on window resize\n\t\t\twindow.addEventListener('resize', updateSliderPosition);\n\t\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -301,8 +301,8 @@ func TabsScript() templ.Component {
 
 func initializeTabs(containerId string) templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_initializeTabs_f1fc`,
-		Function: `function __templ_initializeTabs_f1fc(containerId){window.initializeTabs = function(containerId) {
+		Name: `__templ_initializeTabs_f3b6`,
+		Function: `function __templ_initializeTabs_f3b6(containerId){window.initializeTabs = function(containerId) {
 		const tabButtons = document.querySelectorAll('#' + containerId + '-nav .tab-button');
 		const tabContents = document.querySelectorAll('#tab-content .tab-content');
 		const tabSlider = document.getElementById(containerId + '-slider');
@@ -313,27 +313,27 @@ func initializeTabs(containerId string) templ.ComponentScript {
 		tabButtons.forEach(button => {
 			button.addEventListener('click', function() {
 				const targetTab = this.getAttribute('data-tab');
-				
+
 				// Update button states
 				tabButtons.forEach(btn => {
 					btn.classList.remove('tab-active', 'text-white');
 					btn.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
 				});
-				
+
 				this.classList.add('tab-active', 'text-white');
 				this.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');
-				
+
 				// Update slider position with a small delay to ensure DOM is updated
 				setTimeout(() => {
 					updateSliderPosition();
 				}, 10);
-				
+
 				// Update content visibility
 				tabContents.forEach(content => {
 					content.classList.add('hidden');
 					content.classList.remove('tab-content-active');
 				});
-				
+
 				const targetContent = document.getElementById(targetTab + '-content');
 				if (targetContent) {
 					targetContent.classList.remove('hidden');
@@ -341,34 +341,34 @@ func initializeTabs(containerId string) templ.ComponentScript {
 				}
 			});
 		});
-		
+
 		function updateSliderPosition() {
 			const activeTab = document.querySelector('#' + containerId + '-nav .tab-button.tab-active');
 			if (activeTab && tabSlider) {
 				// Force a reflow to ensure accurate measurements
 				activeTab.offsetHeight;
-				
+
 				// Calculate position relative to the nav container
 				const navContainer = activeTab.parentElement;
 				const containerRect = navContainer.getBoundingClientRect();
 				const activeRect = activeTab.getBoundingClientRect();
-				
+
 				// Calculate the left position relative to the nav container
 				const leftPosition = activeRect.left - containerRect.left;
-				
+
 				tabSlider.style.width = activeTab.offsetWidth + 'px';
 				tabSlider.style.height = (activeTab.offsetHeight) + 'px';
 				tabSlider.style.left = leftPosition + 'px';
 				tabSlider.style.top = '0px';
 			}
 		}
-		
+
 		// Update slider on window resize
 		window.addEventListener('resize', updateSliderPosition);
 	};
 }`,
-		Call:       templ.SafeScript(`__templ_initializeTabs_f1fc`, containerId),
-		CallInline: templ.SafeScriptInline(`__templ_initializeTabs_f1fc`, containerId),
+		Call:       templ.SafeScript(`__templ_initializeTabs_f3b6`, containerId),
+		CallInline: templ.SafeScriptInline(`__templ_initializeTabs_f3b6`, containerId),
 	}
 }
 
