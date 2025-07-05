@@ -8,13 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	rootCmd.AddCommand(
-		serveCmd,
-		resetCmd,
-	)
-}
-
 var rootCmdPersistentFlags struct {
 	LogFile    string
 	ConfigFile string

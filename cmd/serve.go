@@ -24,6 +24,10 @@ jellysweep serve -c /path/to/config.yml --log-level debug
 	Run: startServer,
 }
 
+func init() {
+	rootCmd.AddCommand(serveCmd)
+}
+
 func startServer(cmd *cobra.Command, _ []string) {
 	cfg, err := config.Load(rootCmdPersistentFlags.ConfigFile)
 	if err != nil {
