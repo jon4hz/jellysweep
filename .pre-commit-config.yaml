@@ -1,13 +1,6 @@
+# See https://pre-commit.com for more information
 # See https://pre-commit.ci for more information
-# See https://pre-commit.ci for more information about these settings
-ci:
-  autoupdate_branch: ""
-  autoupdate_commit_msg: "chore: pre-commit autoupdate"
-  autoupdate_schedule: weekly
-  skip: []
-  submodules: false
-  autofix_prs: true
-
+# Note: Using pre-commit.ci lite with GitHub Actions for custom tooling support
 repos:
   # Built-in hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
