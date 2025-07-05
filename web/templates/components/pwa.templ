@@ -2,149 +2,173 @@ package components
 
 templ PWAScript() {
 	<script>
-		// PWA Installation and Service Worker Registration
-		class PWAInstaller {
+		// Clean, robust PWA Manager
+		class PWAManager {
 			constructor() {
 				this.deferredPrompt = null;
-				this.installButton = null;
+				this.userData = null;
+				this.swRegistration = null;
+				this.notificationsManager = null;
 				this.init();
 			}
 
-			init() {
-				// Register service worker
-				this.registerServiceWorker();
+			async init() {
+				console.log('Initializing PWA Manager...');
 				
-				// Setup install prompt handling
-				this.setupInstallPrompt();
+				// Step 1: Fetch user data
+				await this.fetchUserData();
 				
-				// Create install button
-				this.createInstallButton();
+				// Step 2: Register service worker
+				await this.registerServiceWorker();
+				
+				// Step 3: Setup PWA install functionality
+				this.setupPWAInstall();
+				
+				// Step 4: Setup push notifications
+				this.setupPushNotifications();
+			}
+
+			async fetchUserData() {
+				try {
+					const response = await fetch('/api/me');
+					if (response.ok) {
+						this.userData = await response.json();
+						console.log('User data fetched:', this.userData);
+					} else {
+						console.error('Failed to fetch user data');
+					}
+				} catch (error) {
+					console.error('Error fetching user data:', error);
+				}
 			}
 
 			async registerServiceWorker() {
-				if ('serviceWorker' in navigator) {
-					try {
-						const registration = await navigator.serviceWorker.register('/static/sw.js');
-						console.log('Service Worker registered successfully:', registration);
-						
-						// Listen for updates
-						registration.addEventListener('updatefound', () => {
-							const newWorker = registration.installing;
-							newWorker.addEventListener('statechange', () => {
-								if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-									// New content is available, notify user
-									this.showUpdateNotification();
-								}
-							});
+				if (!('serviceWorker' in navigator)) {
+					console.log('Service Worker not supported');
+					return null;
+				}
+
+				try {
+					console.log('Registering service worker...');
+					this.swRegistration = await navigator.serviceWorker.register('/static/sw.js');
+					console.log('Service Worker registered successfully:', this.swRegistration);
+					
+					// Don't wait for ready with timeout - just continue
+					// The service worker will be available when needed
+					
+					// Handle updates
+					if (this.swRegistration.addEventListener) {
+						this.swRegistration.addEventListener('updatefound', () => {
+							const newWorker = this.swRegistration.installing;
+							if (newWorker) {
+								newWorker.addEventListener('statechange', () => {
+									if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+										this.showUpdateNotification();
+									}
+								});
+							}
 						});
-					} catch (error) {
-						console.error('Service Worker registration failed:', error);
+					}
+					
+					return this.swRegistration;
+				} catch (error) {
+					console.error('Service Worker registration failed:', error);
+					// Don't return null - try to get existing registration
+					try {
+						this.swRegistration = await navigator.serviceWorker.getRegistration();
+						console.log('Got existing service worker registration:', this.swRegistration);
+						return this.swRegistration;
+					} catch (fallbackError) {
+						console.error('Failed to get existing registration:', fallbackError);
+						return null;
 					}
 				}
 			}
 
-			setupInstallPrompt() {
-				// Detect Firefox
-				const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
-				
-				// Listen for the beforeinstallprompt event (Chrome/Edge)
+			setupPWAInstall() {
+				// Listen for install prompt
 				window.addEventListener('beforeinstallprompt', (e) => {
-					console.log('beforeinstallprompt event fired');
-					// Prevent the mini-infobar from appearing on mobile
 					e.preventDefault();
-					// Save the event so it can be triggered later
 					this.deferredPrompt = e;
-					// Show the install button
+					console.log('Install prompt available');
+					// Show install button immediately when prompt is available
 					this.showInstallButton();
 				});
 
-				// Listen for the appinstalled event
-				window.addEventListener('appinstalled', () => {
-					console.log('PWA was installed');
-					this.hideInstallButton();
-					// Clear the deferredPrompt
-					this.deferredPrompt = null;
-				});
-
-				// For Firefox, show the install button in mobile menu since it doesn't support beforeinstallprompt
-				if (isFirefox) {
-					setTimeout(() => {
-						if (!this.deferredPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
-							this.showInstallButton(); // Show the button in mobile menu
-						}
-					}, 2000);
-				}
+				// Create install button if needed
+				this.createInstallButton();
 			}
 
 			createInstallButton() {
 				// Check if already installed
-				if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-					console.log('PWA is already installed');
+				if (window.matchMedia('(display-mode: standalone)').matches || 
+					window.navigator.standalone === true) {
+					console.log('App is already installed');
 					return;
 				}
 
-				// Use the mobile menu button instead of creating a floating button
-				this.installSection = document.getElementById('mobile-install-section');
-				this.installButton = document.getElementById('mobile-install-button');
+				// Use existing install button from template
+				const installSection = document.getElementById('mobile-install-section');
+				const installButton = document.getElementById('mobile-install-button');
 				
-				if (this.installButton) {
-					this.installButton.addEventListener('click', () => {
-						this.installPWA();
-					});
+				if (installButton) {
+					installButton.addEventListener('click', () => this.installApp());
+					
+					// Show button for Firefox users (since they don't get beforeinstallprompt)
+					if (navigator.userAgent.toLowerCase().includes('firefox')) {
+						setTimeout(() => {
+							this.showInstallButton();
+						}, 1000);
+					}
 				}
 			}
 
 			showInstallButton() {
-				if (this.installSection) {
-					this.installSection.classList.remove('hidden');
+				const installSection = document.getElementById('mobile-install-section');
+				if (installSection) {
+					installSection.classList.remove('hidden');
+					console.log('Install button shown');
 				}
 			}
 
 			hideInstallButton() {
-				if (this.installSection) {
-					this.installSection.classList.add('hidden');
+				const installSection = document.getElementById('mobile-install-section');
+				if (installSection) {
+					installSection.classList.add('hidden');
+					console.log('Install button hidden');
 				}
 			}
 
-			async installPWA() {
-				if (!this.deferredPrompt) {
-					// For Firefox or when beforeinstallprompt is not available
-					const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
-					if (isFirefox) {
-						this.showFirefoxInstallInstructions();
-					} else {
-						console.log('No deferred prompt available');
+			async installApp() {
+				if (this.deferredPrompt) {
+					this.deferredPrompt.prompt();
+					const result = await this.deferredPrompt.userChoice;
+					console.log('Install result:', result);
+					this.deferredPrompt = null;
+					
+					if (result.outcome === 'accepted') {
+						this.hideInstallButton();
 					}
-					return;
-				}
-
-				// Show the install prompt
-				this.deferredPrompt.prompt();
-				
-				// Wait for the user to respond to the prompt
-				const { outcome } = await this.deferredPrompt.userChoice;
-				console.log(`User response to the install prompt: ${outcome}`);
-				
-				if (outcome === 'accepted') {
-					console.log('User accepted the install prompt');
 				} else {
-					console.log('User dismissed the install prompt');
+					// Show instructions for Firefox or other browsers
+					this.showManualInstallInstructions();
 				}
-				
-				// Clear the deferredPrompt
-				this.deferredPrompt = null;
-				this.hideInstallButton();
+			}
+
+			setupPushNotifications() {
+				// Initialize notifications manager if available
+				if (window.NotificationsManager) {
+					this.notificationsManager = new window.NotificationsManager(this.userData, this.swRegistration);
+				} else {
+					console.log('NotificationsManager not available');
+				}
 			}
 
 			showUpdateNotification() {
-				// Show a notification that an update is available
 				const notification = document.createElement('div');
 				notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
 				notification.innerHTML = `
 					<div class="flex items-center space-x-2">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-						</svg>
 						<span>App updated! Refresh to apply.</span>
 						<button onclick="window.location.reload()" class="ml-2 underline">Refresh</button>
 					</div>
@@ -152,52 +176,35 @@ templ PWAScript() {
 				
 				document.body.appendChild(notification);
 				
-				// Auto-remove after 10 seconds
 				setTimeout(() => {
-					if (notification.parentNode) {
-						notification.parentNode.removeChild(notification);
-					}
+					notification.remove();
 				}, 10000);
 			}
 
-			showFirefoxInstallInstructions() {
-				// Create a notification with Firefox-specific install instructions
-				const notification = document.createElement('div');
-				notification.id = 'firefox-install-instructions';
-				notification.className = 'fixed bottom-4 right-4 max-w-sm bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50';
-				notification.innerHTML = `
+			showManualInstallInstructions() {
+				const instructions = document.createElement('div');
+				instructions.className = 'fixed bottom-4 right-4 max-w-sm bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50';
+				instructions.innerHTML = `
 					<div class="space-y-2">
 						<div class="flex items-center justify-between">
-							<div class="flex items-center space-x-2">
-								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-								</svg>
-								<span class="font-medium">Install App</span>
-							</div>
-							<button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-white/80 hover:text-white">
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-								</svg>
-							</button>
+							<span class="font-medium">Install App</span>
+							<button onclick="this.parentElement.parentElement.remove()" class="text-white/80 hover:text-white">✕</button>
 						</div>
-						<p class="text-sm">Firefox: Tap the menu (⋮) and look for "Install" or "Add to Home Screen"</p>
+						<p class="text-sm">Tap the menu (⋮) and look for "Install" or "Add to Home Screen"</p>
 					</div>
 				`;
 				
-				document.body.appendChild(notification);
+				document.body.appendChild(instructions);
 				
-				// Auto-remove after 15 seconds
 				setTimeout(() => {
-					if (notification.parentNode) {
-						notification.parentNode.removeChild(notification);
-					}
+					instructions.remove();
 				}, 15000);
 			}
 		}
 
-		// Initialize PWA installer when DOM is loaded
+		// Initialize when DOM is ready
 		document.addEventListener('DOMContentLoaded', () => {
-			new PWAInstaller();
+			new PWAManager();
 		});
 	</script>
 }

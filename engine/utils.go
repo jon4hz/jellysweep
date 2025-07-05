@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -57,11 +58,10 @@ func (e *Engine) filterMediaTags() {
 				}
 				// Check for jellysweep-must-keep- tags
 				if strings.HasPrefix(tagName, jellysweepKeepPrefix) {
-					// Parse the date to check if the keep tag is still valid
-					dateStr := strings.TrimPrefix(tagName, jellysweepKeepPrefix)
-					keepDate, err := time.Parse("2006-01-02", dateStr)
+					// Parse the date and requester from the keep tag
+					keepDate, _, err := e.parseKeepTagWithRequester(tagName)
 					if err != nil {
-						log.Warnf("Failed to parse date from keep tag %s: %v", tagName, err)
+						log.Warnf("Failed to parse keep tag %s: %v", tagName, err)
 						continue
 					}
 					if time.Now().Before(keepDate) {
@@ -93,4 +93,96 @@ func (e *Engine) filterMediaTags() {
 		}
 	}
 	e.data.mediaItems = filteredItems
+}
+
+// parseKeepTagWithRequester extracts the date and requester from a jellysweep-must-keep tag.
+// Format: jellysweep-must-keep-YYYY-MM-DD-requester
+func (e *Engine) parseKeepTagWithRequester(tagName string) (date time.Time, requester string, err error) {
+	if !strings.HasPrefix(tagName, jellysweepKeepPrefix) {
+		return time.Time{}, "", fmt.Errorf("not a keep tag")
+	}
+
+	// Remove the prefix
+	tagContent := strings.TrimPrefix(tagName, jellysweepKeepPrefix)
+
+	// Split by dash to separate date and requester
+	parts := strings.Split(tagContent, "-")
+
+	// We need at least 3 parts for YYYY-MM-DD, and optionally a requester part
+	if len(parts) < 3 {
+		return time.Time{}, "", fmt.Errorf("invalid tag format")
+	}
+
+	// Parse date from first 3 parts
+	dateStr := strings.Join(parts[:3], "-")
+	date, err = time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return time.Time{}, "", fmt.Errorf("failed to parse date: %w", err)
+	}
+
+	// If there's a 4th part, it's the requester
+	if len(parts) > 3 {
+		requester = parts[3]
+	}
+
+	return date, requester, nil
+}
+
+// createKeepTagWithRequester creates a jellysweep-must-keep tag with requester information.
+// Format: jellysweep-must-keep-YYYY-MM-DD-requester
+func (e *Engine) createKeepTagWithRequester(date time.Time, requester string) string {
+	dateStr := date.Format("2006-01-02")
+	if requester != "" {
+		// Sanitize requester to avoid issues with special characters
+		sanitizedRequester := strings.ReplaceAll(requester, "-", "_")
+		sanitizedRequester = strings.ReplaceAll(sanitizedRequester, " ", "_")
+		return fmt.Sprintf("%s%s-%s", jellysweepKeepPrefix, dateStr, sanitizedRequester)
+	}
+	return fmt.Sprintf("%s%s", jellysweepKeepPrefix, dateStr)
+}
+
+// parseKeepRequestTagWithRequester extracts the date and requester from a jellysweep-keep-request tag.
+// Format: jellysweep-keep-request-YYYY-MM-DD-requester
+func (e *Engine) parseKeepRequestTagWithRequester(tagName string) (date time.Time, requester string, err error) {
+	if !strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
+		return time.Time{}, "", fmt.Errorf("not a keep request tag")
+	}
+
+	// Remove the prefix
+	tagContent := strings.TrimPrefix(tagName, jellysweepKeepRequestPrefix)
+
+	// Split by dash to separate date and requester
+	parts := strings.Split(tagContent, "-")
+
+	// We need at least 3 parts for YYYY-MM-DD, and optionally a requester part
+	if len(parts) < 3 {
+		return time.Time{}, "", fmt.Errorf("invalid tag format")
+	}
+
+	// Parse date from first 3 parts
+	dateStr := strings.Join(parts[:3], "-")
+	date, err = time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return time.Time{}, "", fmt.Errorf("failed to parse date: %w", err)
+	}
+
+	// If there's a 4th part, it's the requester
+	if len(parts) > 3 {
+		requester = parts[3]
+	}
+
+	return date, requester, nil
+}
+
+// createKeepRequestTagWithRequester creates a jellysweep-keep-request tag with requester information.
+// Format: jellysweep-keep-request-YYYY-MM-DD-requester
+func (e *Engine) createKeepRequestTagWithRequester(date time.Time, requester string) string {
+	dateStr := date.Format("2006-01-02")
+	if requester != "" {
+		// Sanitize requester to avoid issues with special characters
+		sanitizedRequester := strings.ReplaceAll(requester, "-", "_")
+		sanitizedRequester = strings.ReplaceAll(sanitizedRequester, " ", "_")
+		return fmt.Sprintf("%s%s-%s", jellysweepKeepRequestPrefix, dateStr, sanitizedRequester)
+	}
+	return fmt.Sprintf("%s%s", jellysweepKeepRequestPrefix, dateStr)
 }

@@ -356,14 +356,14 @@ func (e *Engine) removeExpiredRadarrKeepTags(ctx context.Context) error {
 	for tagID, tagName := range e.data.radarrTags {
 		// Check for both jellysweep-keep-request- and jellysweep-keep- tags
 		if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) || strings.HasPrefix(tagName, jellysweepKeepPrefix) {
-			// Parse the date from the tag name
-			var dateStr string
+			// Parse the date from the tag name using the appropriate parser
+			var expirationDate time.Time
+			var err error
 			if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
-				dateStr = strings.TrimPrefix(tagName, jellysweepKeepRequestPrefix)
+				expirationDate, _, err = e.parseKeepRequestTagWithRequester(tagName)
 			} else {
-				dateStr = strings.TrimPrefix(tagName, jellysweepKeepPrefix)
+				expirationDate, _, err = e.parseKeepTagWithRequester(tagName)
 			}
-			expirationDate, err := time.Parse("2006-01-02", dateStr)
 			if err != nil {
 				log.Warnf("Failed to parse date from Radarr keep tag %s: %v", tagName, err)
 				continue
@@ -456,8 +456,7 @@ func (e *Engine) getRadarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 						canRequest = false
 					} else if strings.HasPrefix(tagName, jellysweepKeepPrefix) {
 						// If it has an active keep tag, it shouldn't be requestable
-						dateStr := strings.TrimPrefix(tagName, jellysweepKeepPrefix)
-						keepDate, err := time.Parse("2006-01-02", dateStr)
+						keepDate, _, err := e.parseKeepTagWithRequester(tagName)
 						if err == nil && time.Now().Before(keepDate) {
 							canRequest = false // Don't allow requests for items with active keep tags
 						}
@@ -491,7 +490,7 @@ func (e *Engine) getRadarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 }
 
 // addRadarrKeepRequestTag adds a keep request tag to a Radarr movie.
-func (e *Engine) addRadarrKeepRequestTag(ctx context.Context, movieID int32) error {
+func (e *Engine) addRadarrKeepRequestTag(ctx context.Context, movieID int32, username string) error {
 	if e.radarr == nil {
 		return fmt.Errorf("radarr client not available")
 	}
@@ -520,9 +519,9 @@ func (e *Engine) addRadarrKeepRequestTag(ctx context.Context, movieID int32) err
 		}
 	}
 
-	// Create keep request tag with 90 days expiry
+	// Create keep request tag with 90 days expiry and username
 	expiryDate := time.Now().Add(90 * 24 * time.Hour)
-	keepRequestTag := fmt.Sprintf("%s%s", jellysweepKeepRequestPrefix, expiryDate.Format("2006-01-02"))
+	keepRequestTag := e.createKeepRequestTagWithRequester(expiryDate, username)
 
 	// Ensure the tag exists
 	if err := e.ensureRadarrTagExists(ctx, keepRequestTag); err != nil {
@@ -584,11 +583,10 @@ func (e *Engine) getRadarrKeepRequests(ctx context.Context) ([]models.KeepReques
 					log.Debugf("Skipping Radarr movie %s as it has a delete-for-sure tag", movie.GetTitle())
 					continue
 				}
-				// Parse expiry date from tag
-				expiryDateStr := strings.TrimPrefix(tagName, jellysweepKeepRequestPrefix)
-				expiryDate, err := time.Parse("2006-01-02", expiryDateStr)
+				// Parse expiry date and requester from tag
+				expiryDate, requester, err := e.parseKeepRequestTagWithRequester(tagName)
 				if err != nil {
-					log.Warnf("failed to parse expiry date from tag %s: %v", tagName, err)
+					log.Warnf("failed to parse keep request tag %s: %v", tagName, err)
 					continue
 				}
 
@@ -621,7 +619,7 @@ func (e *Engine) getRadarrKeepRequests(ctx context.Context) ([]models.KeepReques
 					Library:      "Movies",
 					DeletionDate: deletionDate,
 					PosterURL:    getCachedImageURL(imageURL),
-					RequestedBy:  "user",     // Would need to extract from tag or store separately
+					RequestedBy:  requester,
 					RequestDate:  time.Now(), // Would need to store separately
 					ExpiryDate:   expiryDate,
 				}
@@ -637,14 +635,50 @@ func (e *Engine) getRadarrKeepRequests(ctx context.Context) ([]models.KeepReques
 
 // Helper methods for accepting/declining Radarr keep requests.
 func (e *Engine) acceptRadarrKeepRequest(ctx context.Context, movieID int32) error {
+	// Get requester information before removing the tag
+	requester, movieTitle, err := e.getRadarrKeepRequestInfo(ctx, movieID)
+	if err != nil {
+		log.Warnf("Failed to get keep request info for movie %d: %v", movieID, err)
+	}
+
 	if err := e.removeRadarrKeepRequestAndDeleteTags(ctx, movieID); err != nil {
 		return err
 	}
-	return e.addRadarrKeepTag(ctx, movieID)
+
+	// Add keep tag with requester information
+	if err := e.addRadarrKeepTagWithRequester(ctx, movieID, requester); err != nil {
+		return err
+	}
+
+	// Send push notification if enabled and we have requester info
+	if e.webpush != nil && requester != "" {
+		if pushErr := e.webpush.SendKeepRequestNotification(ctx, requester, movieTitle, "Movie", true); pushErr != nil {
+			log.Errorf("Failed to send push notification for approved keep request: %v", pushErr)
+		}
+	}
+
+	return nil
 }
 
 func (e *Engine) declineRadarrKeepRequest(ctx context.Context, movieID int32) error {
-	return e.addRadarrDeleteForSureTag(ctx, movieID)
+	// Get requester information before removing the tag
+	requester, movieTitle, err := e.getRadarrKeepRequestInfo(ctx, movieID)
+	if err != nil {
+		log.Warnf("Failed to get keep request info for movie %d: %v", movieID, err)
+	}
+
+	if err := e.addRadarrDeleteForSureTag(ctx, movieID); err != nil {
+		return err
+	}
+
+	// Send push notification if enabled and we have requester info
+	if e.webpush != nil && requester != "" {
+		if pushErr := e.webpush.SendKeepRequestNotification(ctx, requester, movieTitle, "Movie", false); pushErr != nil {
+			log.Errorf("Failed to send push notification for declined keep request: %v", pushErr)
+		}
+	}
+
+	return nil
 }
 
 func (e *Engine) removeRadarrKeepRequestAndDeleteTags(ctx context.Context, movieID int32) error {
@@ -1067,5 +1101,96 @@ func (e *Engine) resetAllRadarrTagsAndAddIgnore(ctx context.Context, movieID int
 	defer resp.Body.Close() //nolint: errcheck
 
 	log.Infof("Removed all jellysweep tags and added ignore tag to Radarr movie: %s", movie.GetTitle())
+	return nil
+}
+
+// getRadarrKeepRequestInfo extracts requester information from a Radarr movie's keep request tag.
+func (e *Engine) getRadarrKeepRequestInfo(ctx context.Context, movieID int32) (requester, movieTitle string, err error) {
+	if e.radarr == nil {
+		return "", "", fmt.Errorf("radarr client not available")
+	}
+
+	// Get the movie
+	movie, resp, err := e.radarr.MovieAPI.GetMovieById(radarrAuthCtx(ctx, e.cfg.Radarr), movieID).Execute()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get radarr movie: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	movieTitle = movie.GetTitle()
+
+	// Get current tags
+	radarrTags, err := e.getRadarrTags(ctx)
+	if err != nil {
+		return "", movieTitle, fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+
+	// Look for keep request tag and extract requester
+	for _, tagID := range movie.GetTags() {
+		tagName := radarrTags[tagID]
+		if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
+			_, requester, parseErr := e.parseKeepRequestTagWithRequester(tagName)
+			if parseErr != nil {
+				log.Warnf("Failed to parse keep request tag %s: %v", tagName, parseErr)
+				continue
+			}
+			return requester, movieTitle, nil
+		}
+	}
+
+	return "", movieTitle, fmt.Errorf("no keep request tag found")
+}
+
+// addRadarrKeepTagWithRequester adds a keep tag with requester information to a Radarr movie.
+func (e *Engine) addRadarrKeepTagWithRequester(ctx context.Context, movieID int32, requester string) error {
+	if e.radarr == nil {
+		return fmt.Errorf("radarr client not available")
+	}
+
+	// Get the movie
+	movie, resp, err := e.radarr.MovieAPI.GetMovieById(radarrAuthCtx(ctx, e.cfg.Radarr), movieID).Execute()
+	if err != nil {
+		return fmt.Errorf("failed to get radarr movie: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	// Create keep tag with 1 year expiry and requester information
+	expiryDate := time.Now().Add(365 * 24 * time.Hour)
+	keepTag := e.createKeepTagWithRequester(expiryDate, requester)
+
+	// Ensure the tag exists
+	if err := e.ensureRadarrTagExists(ctx, keepTag); err != nil {
+		return fmt.Errorf("failed to create keep tag: %w", err)
+	}
+
+	// Get tag ID
+	tagID, err := e.getRadarrTagIDByLabel(keepTag)
+	if err != nil {
+		return fmt.Errorf("failed to get tag ID: %w", err)
+	}
+
+	// Remove any existing jellysweep-delete tags before adding keep tag
+	var newTags []int32
+	for _, existingTagID := range movie.GetTags() {
+		tagName, exists := e.data.radarrTags[existingTagID]
+		if !exists || !strings.HasPrefix(tagName, jellysweepTagPrefix) {
+			newTags = append(newTags, existingTagID)
+		}
+	}
+
+	// Add the keep tag
+	newTags = append(newTags, tagID)
+	movie.Tags = newTags
+
+	// Update the movie
+	_, resp, err = e.radarr.MovieAPI.UpdateMovie(radarrAuthCtx(ctx, e.cfg.Radarr), fmt.Sprintf("%d", movieID)).
+		MovieResource(*movie).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to update radarr movie: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	log.Infof("Added keep tag %s to Radarr movie %s", keepTag, movie.GetTitle())
 	return nil
 }

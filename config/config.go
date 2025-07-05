@@ -28,6 +28,8 @@ type Config struct {
 	Email *EmailConfig `yaml:"email" mapstructure:"email"`
 	// Ntfy holds the ntfy notification configuration.
 	Ntfy *NtfyConfig `yaml:"ntfy" mapstructure:"ntfy"`
+	// WebPush holds the webpush notification configuration.
+	WebPush *WebPushConfig `yaml:"webpush" mapstructure:"webpush"`
 	// ServerURL is the base URL of the JellySweep server.
 	ServerURL string `yaml:"server_url" mapstructure:"server_url"`
 
@@ -115,6 +117,18 @@ type NtfyConfig struct {
 	Password string `yaml:"password" mapstructure:"password"`
 	// Token is the ntfy token for authentication.
 	Token string `yaml:"token" mapstructure:"token"`
+}
+
+// WebPushConfig holds the webpush notification configuration.
+type WebPushConfig struct {
+	// Enabled indicates whether webpush notifications are enabled.
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+	// VAPIDEmail is the email associated with the VAPID keys.
+	VAPIDEmail string `yaml:"vapid_email" mapstructure:"vapid_email"`
+	// PublicKey is the VAPID public key.
+	PublicKey string `yaml:"public_key" mapstructure:"public_key"`
+	// PrivateKey is the VAPID private key.
+	PrivateKey string `yaml:"private_key" mapstructure:"private_key"`
 }
 
 type CleanupConfig struct {
@@ -268,6 +282,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jellysweep.gravatar.default_image", "robohash")
 	v.SetDefault("jellysweep.gravatar.rating", "g")
 	v.SetDefault("jellysweep.gravatar.size", 80)
+
+	// WebPush defaults
+	v.SetDefault("jellysweep.webpush.enabled", false)
+	v.SetDefault("jellysweep.webpush.ttl", 60)
 }
 
 // validateConfig validates the configuration.

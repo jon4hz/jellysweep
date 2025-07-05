@@ -206,3 +206,13 @@ func (h *Handler) ImageCache(c *gin.Context) {
 		return
 	}
 }
+
+// Me returns the current user's information.
+func (h *Handler) Me(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
+	c.JSON(http.StatusOK, gin.H{
+		"username": user.Username,
+		"isAdmin":  user.IsAdmin,
+	})
+}

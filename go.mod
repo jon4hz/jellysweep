@@ -3,6 +3,7 @@ module github.com/jon4hz/jellysweep
 go 1.24.4
 
 require (
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/a-h/templ v0.3.906
 	github.com/charmbracelet/log v0.4.2
 	github.com/coreos/go-oidc/v3 v3.14.1
@@ -50,6 +51,7 @@ require (
 	github.com/go-test/deep v1.1.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/gorilla/context v1.1.2 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/sessions v1.4.0 // indirect

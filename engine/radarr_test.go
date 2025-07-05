@@ -445,7 +445,7 @@ func TestEngine_RadarrErrorHandling(t *testing.T) {
 		assert.Error(t, err)
 
 		// Test keep request operations
-		err = engine.addRadarrKeepRequestTag(ctx, 123)
+		err = engine.addRadarrKeepRequestTag(ctx, 123, "pinocchio")
 		assert.Error(t, err)
 
 		// Test accept/decline operations

@@ -21,7 +21,8 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 - 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat of stats
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
 - 👥 **User Requests** - Built-in keep request system for your users
-- 🔔 **Notifications** - Email users and ntfy alerts for admins
+- 🔔 **Notifications** - Email users, ntfy alerts for admins, and web push notifications
+- 📱 **Progressive Web App (PWA)** - Install as an app on mobile and desktop
 - ⚡ **Stateless Design** - No database required, clean runs every time
 - 🌐 **Web Interface** - Modern UI for monitoring and management
 - 📊 **Statistics Dashboard** - Visual charts showing cleanup progress and storage freed
@@ -45,6 +46,8 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [🔐 Authentication](#-authentication)
     - [OIDC/SSO Authentication](#oidcsso-authentication)
     - [Jellyfin Authentication](#jellyfin-authentication)
+  - [🔔 Web Push Notifications](#-web-push-notifications)
+    - [Setup Requirements](#setup-requirements)
   - [⚙️ Configuration](#️-configuration)
     - [Environment Variables](#environment-variables)
     - [Configuration File](#configuration-file)
@@ -218,6 +221,27 @@ auth:
 
 ---
 
+## 🔔 Web Push Notifications
+
+### Setup Requirements
+
+**Generate VAPID Keys**:
+```bash
+# Generate VAPID keys using the built-in command
+./jellysweep generate-vapid-keys
+```
+
+**Configuration:**
+```yaml
+webpush:
+  enabled: true
+  vapid_email: "your-email@example.com"     # Contact email for push service
+  public_key: "BMgM07-9XLObs5DGk89rBaT..."  # VAPID public key
+  private_key: "dZ-lxXpoCNqyfdfojVt51t..."  # VAPID private key
+```
+
+---
+
 ## ⚙️ Configuration
 
 JellySweep supports configuration through YAML files and environment variables. Environment variables use the `JELLYSWEEP_` prefix and follow the configuration structure with underscores (e.g., `JELLYSWEEP_DRY_RUN`).
@@ -269,6 +293,11 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_NTFY_USERNAME` | *(optional)* | Ntfy username for authentication |
 | `JELLYSWEEP_NTFY_PASSWORD` | *(optional)* | Ntfy password for authentication |
 | `JELLYSWEEP_NTFY_TOKEN` | *(optional)* | Ntfy token for authentication |
+| **Web Push Notifications** | | |
+| `JELLYSWEEP_WEBPUSH_ENABLED` | `false` | Enable web push notifications |
+| `JELLYSWEEP_WEBPUSH_VAPID_EMAIL` | *(required if webpush enabled)* | Contact email for VAPID keys |
+| `JELLYSWEEP_WEBPUSH_PUBLIC_KEY` | *(required if webpush enabled)* | VAPID public key |
+| `JELLYSWEEP_WEBPUSH_PRIVATE_KEY` | *(required if webpush enabled)* | VAPID private key |
 | **Default Library Settings** | | |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_ENABLED` | `true` | Enable cleanup for default library |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_REQUEST_AGE_THRESHOLD` | `120` | Min age in days for requests to be eligible |
@@ -381,6 +410,13 @@ ntfy:
   password: ""
   token: ""                  # Token auth (takes precedence)
 
+# Web push notifications
+webpush:
+  enabled: false
+  vapid_email: "your-email@example.com"  # Contact email for VAPID keys
+  public_key: ""                         # VAPID public key (generate with: ./jellysweep generate-vapid-keys)
+  private_key: ""                        # VAPID private key
+
 # External service integrations
 jellyseerr:
   url: "http://localhost:5055"
@@ -426,8 +462,11 @@ Configure custom tags in your Sonarr/Radarr to:
 # Start with specific configuration file
 ./jellysweep --config /path/to/config.yml
 
-# Reset all JellySweep tags (cleanup)
+# Reset all JellySweep tags
 ./jellysweep reset
+
+# Generate VAPID keys for web push notifications
+./jellysweep generate-vapid-keys
 
 # Run with custom log level
 ./jellysweep --log-level debug

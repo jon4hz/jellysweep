@@ -245,14 +245,14 @@ func (e *Engine) removeExpiredSonarrKeepTags(ctx context.Context) error {
 	for tagID, tagName := range e.data.sonarrTags {
 		// Check for both jellysweep-keep-request- and jellysweep-keep- tags
 		if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) || strings.HasPrefix(tagName, jellysweepKeepPrefix) {
-			// Parse the date from the tag name
-			var dateStr string
+			// Parse the date from the tag name using the appropriate parser
+			var expirationDate time.Time
+			var err error
 			if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
-				dateStr = strings.TrimPrefix(tagName, jellysweepKeepRequestPrefix)
+				expirationDate, _, err = e.parseKeepRequestTagWithRequester(tagName)
 			} else {
-				dateStr = strings.TrimPrefix(tagName, jellysweepKeepPrefix)
+				expirationDate, _, err = e.parseKeepTagWithRequester(tagName)
 			}
-			expirationDate, err := time.Parse("2006-01-02", dateStr)
 			if err != nil {
 				log.Warnf("Failed to parse date from Sonarr keep tag %s: %v", tagName, err)
 				continue
@@ -451,8 +451,7 @@ func (e *Engine) getSonarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 						canRequest = false
 					} else if strings.HasPrefix(tagName, jellysweepKeepPrefix) {
 						// If it has an active keep tag, it shouldn't be requestable
-						dateStr := strings.TrimPrefix(tagName, jellysweepKeepPrefix)
-						keepDate, err := time.Parse("2006-01-02", dateStr)
+						keepDate, _, err := e.parseKeepTagWithRequester(tagName)
 						if err == nil && time.Now().Before(keepDate) {
 							canRequest = false // Don't allow requests for items with active keep tags
 						}
@@ -486,7 +485,7 @@ func (e *Engine) getSonarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 }
 
 // addSonarrKeepRequestTag adds a keep request tag to a Sonarr series.
-func (e *Engine) addSonarrKeepRequestTag(ctx context.Context, seriesID int32) error {
+func (e *Engine) addSonarrKeepRequestTag(ctx context.Context, seriesID int32, username string) error {
 	if e.sonarr == nil {
 		return fmt.Errorf("sonarr client not available")
 	}
@@ -515,9 +514,9 @@ func (e *Engine) addSonarrKeepRequestTag(ctx context.Context, seriesID int32) er
 		}
 	}
 
-	// Create keep request tag with 90 days expiry
+	// Create keep request tag with 90 days expiry and username
 	expiryDate := time.Now().Add(90 * 24 * time.Hour)
-	keepRequestTag := fmt.Sprintf("%s%s", jellysweepKeepRequestPrefix, expiryDate.Format("2006-01-02"))
+	keepRequestTag := e.createKeepRequestTagWithRequester(expiryDate, username)
 
 	// Ensure the tag exists
 	if err := e.ensureSonarrTagExists(ctx, keepRequestTag); err != nil {
@@ -579,11 +578,10 @@ func (e *Engine) getSonarrKeepRequests(ctx context.Context) ([]models.KeepReques
 					log.Debugf("Skipping Sonarr series %s as it has a delete-for-sure tag", series.GetTitle())
 					continue
 				}
-				// Parse expiry date from tag
-				expiryDateStr := strings.TrimPrefix(tagName, jellysweepKeepRequestPrefix)
-				expiryDate, err := time.Parse("2006-01-02", expiryDateStr)
+				// Parse expiry date and requester from tag
+				expiryDate, requester, err := e.parseKeepRequestTagWithRequester(tagName)
 				if err != nil {
-					log.Warnf("failed to parse expiry date from tag %s: %v", tagName, err)
+					log.Warnf("failed to parse keep request tag %s: %v", tagName, err)
 					continue
 				}
 
@@ -616,7 +614,7 @@ func (e *Engine) getSonarrKeepRequests(ctx context.Context) ([]models.KeepReques
 					Library:      "TV Shows",
 					DeletionDate: deletionDate,
 					PosterURL:    getCachedImageURL(imageURL),
-					RequestedBy:  "user",     // Would need to extract from tag or store separately
+					RequestedBy:  requester,
 					RequestDate:  time.Now(), // Would need to store separately
 					ExpiryDate:   expiryDate,
 				}
@@ -632,14 +630,50 @@ func (e *Engine) getSonarrKeepRequests(ctx context.Context) ([]models.KeepReques
 
 // Helper methods for accepting/declining Sonarr keep requests.
 func (e *Engine) acceptSonarrKeepRequest(ctx context.Context, seriesID int32) error {
+	// Get requester information before removing the tag
+	requester, seriesTitle, err := e.getSonarrKeepRequestInfo(ctx, seriesID)
+	if err != nil {
+		log.Warnf("Failed to get keep request info for series %d: %v", seriesID, err)
+	}
+
 	if err := e.removeSonarrKeepRequestAndDeleteTags(ctx, seriesID); err != nil {
 		return err
 	}
-	return e.addSonarrKeepTag(ctx, seriesID)
+
+	// Add keep tag with requester information
+	if err := e.addSonarrKeepTagWithRequester(ctx, seriesID, requester); err != nil {
+		return err
+	}
+
+	// Send push notification if enabled and we have requester info
+	if e.webpush != nil && requester != "" {
+		if pushErr := e.webpush.SendKeepRequestNotification(ctx, requester, seriesTitle, "TV Show", true); pushErr != nil {
+			log.Errorf("Failed to send push notification for approved keep request: %v", pushErr)
+		}
+	}
+
+	return nil
 }
 
 func (e *Engine) declineSonarrKeepRequest(ctx context.Context, seriesID int32) error {
-	return e.addSonarrDeleteForSureTag(ctx, seriesID)
+	// Get requester information before removing the tag
+	requester, seriesTitle, err := e.getSonarrKeepRequestInfo(ctx, seriesID)
+	if err != nil {
+		log.Warnf("Failed to get keep request info for series %d: %v", seriesID, err)
+	}
+
+	if err := e.addSonarrDeleteForSureTag(ctx, seriesID); err != nil {
+		return err
+	}
+
+	// Send push notification if enabled and we have requester info
+	if e.webpush != nil && requester != "" {
+		if pushErr := e.webpush.SendKeepRequestNotification(ctx, requester, seriesTitle, "TV Show", false); pushErr != nil {
+			log.Errorf("Failed to send push notification for declined keep request: %v", pushErr)
+		}
+	}
+
+	return nil
 }
 
 func (e *Engine) removeSonarrKeepRequestAndDeleteTags(ctx context.Context, seriesID int32) error {
@@ -1049,5 +1083,95 @@ func (e *Engine) resetAllSonarrTagsAndAddIgnore(ctx context.Context, seriesID in
 	}
 
 	log.Infof("Removed all jellysweep tags and added ignore tag to Sonarr series: %s", series.GetTitle())
+	return nil
+}
+
+// getSonarrKeepRequestInfo extracts requester information from a Sonarr series' keep request tag.
+func (e *Engine) getSonarrKeepRequestInfo(ctx context.Context, seriesID int32) (requester, seriesTitle string, err error) {
+	if e.sonarr == nil {
+		return "", "", fmt.Errorf("sonarr client not available")
+	}
+
+	// Get the series
+	series, resp, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), seriesID).Execute()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get sonarr series: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	seriesTitle = series.GetTitle()
+
+	// Get current tags
+	sonarrTags, err := e.getSonarrTags(ctx)
+	if err != nil {
+		return "", seriesTitle, fmt.Errorf("failed to get sonarr tags: %w", err)
+	}
+
+	// Look for keep request tag and extract requester
+	for _, tagID := range series.GetTags() {
+		tagName := sonarrTags[tagID]
+		if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
+			_, requester, parseErr := e.parseKeepRequestTagWithRequester(tagName)
+			if parseErr != nil {
+				log.Warnf("Failed to parse keep request tag %s: %v", tagName, parseErr)
+				continue
+			}
+			return requester, seriesTitle, nil
+		}
+	}
+
+	return "", seriesTitle, fmt.Errorf("no keep request tag found")
+}
+
+// addSonarrKeepTagWithRequester adds a keep tag with requester information to a Sonarr series.
+func (e *Engine) addSonarrKeepTagWithRequester(ctx context.Context, seriesID int32, requester string) error {
+	if e.sonarr == nil {
+		return fmt.Errorf("sonarr client not available")
+	}
+
+	// Get the series
+	series, resp, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), seriesID).Execute()
+	if err != nil {
+		return fmt.Errorf("failed to get sonarr series: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	// Create keep tag with 1 year expiry and requester information
+	expiryDate := time.Now().Add(365 * 24 * time.Hour)
+	keepTag := e.createKeepTagWithRequester(expiryDate, requester)
+
+	// Ensure the tag exists
+	if err := e.ensureSonarrTagExists(ctx, keepTag); err != nil {
+		return fmt.Errorf("failed to create keep tag: %w", err)
+	}
+
+	// Get tag ID
+	tagID, err := e.getSonarrTagIDByLabel(keepTag)
+	if err != nil {
+		return fmt.Errorf("failed to get tag ID: %w", err)
+	}
+
+	// Remove any existing jellysweep-delete tags before adding keep tag
+	var newTags []int32
+	for _, existingTagID := range series.GetTags() {
+		tagName, exists := e.data.sonarrTags[existingTagID]
+		if !exists || !strings.HasPrefix(tagName, jellysweepTagPrefix) {
+			newTags = append(newTags, existingTagID)
+		}
+	}
+
+	// Add the keep tag
+	newTags = append(newTags, tagID)
+	series.Tags = newTags
+
+	// Update the series
+	_, _, err = e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", seriesID)).
+		SeriesResource(*series).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to update sonarr series: %w", err)
+	}
+
+	log.Infof("Added keep tag %s to Sonarr series %s", keepTag, series.GetTitle())
 	return nil
 }

@@ -1,0 +1,371 @@
+package components
+
+templ NotificationsScript() {
+	<script>
+		// Push Notifications Manager
+		class NotificationsManager {
+			constructor(userData, swRegistration) {
+				this.userData = userData;
+				this.swRegistration = swRegistration;
+				this.init();
+			}
+
+			async init() {
+				console.log('Initializing Notifications Manager...');
+				
+				// Check if push notifications are supported
+				if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+					console.log('Push notifications not supported by browser');
+					return;
+				}
+
+				// Create notification button regardless of SW registration status
+				this.createNotificationButton();
+				
+				// Check initial status
+				await this.checkPushStatus();
+				
+				// Monitor permission changes
+				this.monitorPermissionChanges();
+			}
+
+			createNotificationButton() {
+				const notificationSection = document.getElementById('mobile-notifications-section');
+				const notificationButton = document.getElementById('mobile-notifications-button');
+				const desktopButton = document.getElementById('desktop-notifications-button');
+				
+				if (notificationButton) {
+					notificationButton.addEventListener('click', () => this.enableNotifications());
+				}
+				if (desktopButton) {
+					desktopButton.addEventListener('click', () => this.enableNotifications());
+				}
+			}
+
+			async checkPushStatus() {
+				try {
+					console.log('Checking push notification status...');
+					
+					// Check permission
+					if (Notification.permission !== 'granted') {
+						console.log('Permission not granted:', Notification.permission);
+						this.showNotificationButton();
+						return;
+					}
+
+					// If no service worker registration, show button
+					if (!this.swRegistration) {
+						console.log('No service worker registration available');
+						this.showNotificationButton();
+						return;
+					}
+
+					// Check browser subscription
+					const subscription = await this.swRegistration.pushManager.getSubscription();
+					if (!subscription) {
+						console.log('No browser subscription found');
+						this.showNotificationButton();
+						return;
+					}
+
+					// Check server status
+					const response = await fetch('/api/webpush/status');
+					if (response.ok) {
+						const data = await response.json();
+						if (data.subscribed) {
+							console.log('Server confirms subscription active');
+							this.hideNotificationButton();
+						} else {
+							console.log('Server missing subscription, re-subscribing...');
+							await this.sendSubscriptionToServer(subscription);
+						}
+					} else if (response.status === 410) {
+						console.log('Subscription invalid (410), removing and showing button...');
+						await this.handleInvalidSubscription(subscription);
+					} else {
+						console.log('Failed to check server status');
+						this.showNotificationButton();
+					}
+				} catch (error) {
+					console.error('Error checking push status:', error);
+					this.showNotificationButton();
+				}
+			}
+
+			async enableNotifications() {
+				try {
+					// Request permission
+					if (Notification.permission === 'denied') {
+						this.showToast('Notifications are blocked. Please enable them in browser settings.', 'error');
+						return;
+					}
+
+					const permission = await Notification.requestPermission();
+					if (permission !== 'granted') {
+						this.showToast('Notification permission denied', 'error');
+						return;
+					}
+
+					// Ensure we have a service worker registration
+					if (!this.swRegistration) {
+						console.log('No SW registration, trying to register or get existing one...');
+						try {
+							// Try to register a new one
+							this.swRegistration = await navigator.serviceWorker.register('/static/sw.js');
+							console.log('Registered new SW for notifications:', this.swRegistration);
+						} catch (regError) {
+							// Try to get existing one
+							this.swRegistration = await navigator.serviceWorker.getRegistration();
+							console.log('Got existing SW for notifications:', this.swRegistration);
+						}
+						
+						if (!this.swRegistration) {
+							this.showToast('Service worker not available', 'error');
+							return;
+						}
+					}
+
+					// Check if already subscribed
+					const existingSubscription = await this.swRegistration.pushManager.getSubscription();
+					if (existingSubscription) {
+						console.log('Already subscribed, sending to server...');
+						await this.sendSubscriptionToServer(existingSubscription);
+						return;
+					}
+
+					// Create new subscription
+					await this.createPushSubscription();
+				} catch (error) {
+					console.error('Error enabling notifications:', error);
+					this.showToast('Failed to enable notifications: ' + error.message, 'error');
+				}
+			}
+
+			async createPushSubscription() {
+				try {
+					// Get VAPID key
+					const response = await fetch('/api/webpush/vapid-key');
+					if (!response.ok) {
+						throw new Error('Failed to get VAPID key');
+					}
+					const data = await response.json();
+
+					// Subscribe to push notifications
+					const subscription = await this.swRegistration.pushManager.subscribe({
+						userVisibleOnly: true,
+						applicationServerKey: this.urlBase64ToUint8Array(data.publicKey)
+					});
+
+					// Send to server
+					await this.sendSubscriptionToServer(subscription);
+				} catch (error) {
+					console.error('Error creating push subscription:', error);
+					throw error;
+				}
+			}
+
+			async sendSubscriptionToServer(subscription) {
+				try {
+					const subscriptionData = {
+						subscription: {
+							endpoint: subscription.endpoint,
+							keys: {
+								p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')))),
+								auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth'))))
+							}
+						},
+						username: this.userData?.username
+					};
+
+					const response = await fetch('/api/webpush/subscribe', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(subscriptionData)
+					});
+					
+					if (response.ok) {
+						console.log('Successfully subscribed to push notifications');
+						this.hideNotificationButton();
+					} else if (response.status === 410) {
+						console.log('Subscription invalid (410), handling...');
+						await this.handleInvalidSubscription(subscription);
+						throw new Error('Subscription is no longer valid');
+					} else {
+						throw new Error(`Failed to register subscription on server (status: ${response.status})`);
+					}
+				} catch (error) {
+					console.error('Error sending subscription to server:', error);
+					this.showToast('Failed to register subscription on server', 'error');
+				}
+			}
+
+			monitorPermissionChanges() {
+				// Use modern Permission API if available
+				if (navigator.permissions) {
+					navigator.permissions.query({ name: 'notifications' })
+						.then(permission => {
+							permission.addEventListener('change', () => {
+								console.log('Permission changed to:', permission.state);
+								if (permission.state === 'granted') {
+									// Auto-subscribe when permission is granted
+									this.createPushSubscription().catch(console.error);
+								} else {
+									this.checkPushStatus();
+								}
+							});
+						})
+						.catch(() => {
+							console.log('Permission API not supported, using fallback');
+							this.setupFallbackMonitoring();
+						});
+				} else {
+					this.setupFallbackMonitoring();
+				}
+			}
+
+			setupFallbackMonitoring() {
+				let lastPermission = Notification.permission;
+				
+				const checkPermissionChange = () => {
+					const currentPermission = Notification.permission;
+					if (currentPermission !== lastPermission) {
+						console.log('Permission changed from', lastPermission, 'to', currentPermission);
+						lastPermission = currentPermission;
+						
+						if (currentPermission === 'granted') {
+							this.createPushSubscription().catch(console.error);
+						} else {
+							this.checkPushStatus();
+						}
+					}
+				};
+
+				// Check on focus and visibility change
+				window.addEventListener('focus', checkPermissionChange);
+				document.addEventListener('visibilitychange', () => {
+					if (!document.hidden) checkPermissionChange();
+				});
+			}
+
+			// Utility methods
+			urlBase64ToUint8Array(base64String) {
+				const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+				const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+				const rawData = window.atob(base64);
+				const outputArray = new Uint8Array(rawData.length);
+				for (let i = 0; i < rawData.length; ++i) {
+					outputArray[i] = rawData.charCodeAt(i);
+				}
+				return outputArray;
+			}
+
+			async handleInvalidSubscription(subscription) {
+				try {
+					console.log('Handling invalid subscription...');
+					
+					// Unsubscribe from the browser's push manager
+					if (subscription) {
+						await subscription.unsubscribe();
+						console.log('Unsubscribed from browser push manager');
+					}
+					
+					// Notify server to remove the subscription (if endpoint is available)
+					if (subscription && subscription.endpoint) {
+						try {
+							await fetch('/api/webpush/unsubscribe-endpoint', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({ endpoint: subscription.endpoint })
+							});
+							console.log('Notified server to remove invalid subscription');
+						} catch (serverError) {
+							console.warn('Failed to notify server about invalid subscription:', serverError);
+						}
+					}
+					
+					// Show notification button for re-subscription
+					this.showNotificationButton();
+				} catch (error) {
+					console.error('Error handling invalid subscription:', error);
+					this.showNotificationButton();
+				}
+			}
+
+			async testNotification() {
+				try {
+					console.log('Sending test notification...');
+					const response = await fetch('/api/webpush/test', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' }
+					});
+					
+					if (response.ok) {
+						this.showToast('Test notification sent successfully!', 'success');
+						return true;
+					} else if (response.status === 410) {
+						console.log('Subscription invalid during test (410), handling...');
+						// Get current subscription to handle cleanup
+						if (this.swRegistration) {
+							const subscription = await this.swRegistration.pushManager.getSubscription();
+							await this.handleInvalidSubscription(subscription);
+						}
+						this.showToast('Subscription expired. Please enable notifications again.', 'error');
+						return false;
+					} else {
+						const errorText = await response.text().catch(() => 'Unknown error');
+						this.showToast(`Test notification failed: ${errorText}`, 'error');
+						return false;
+					}
+				} catch (error) {
+					console.error('Error sending test notification:', error);
+					this.showToast('Failed to send test notification: ' + error.message, 'error');
+					return false;
+				}
+			}
+
+			showNotificationButton() {
+				const mobileSection = document.getElementById('mobile-notifications-section');
+				const desktopButton = document.getElementById('desktop-notifications-button');
+				
+				if (mobileSection) {
+					mobileSection.classList.remove('hidden');
+				}
+				if (desktopButton) {
+					desktopButton.classList.remove('hidden');
+					desktopButton.classList.add('flex');
+				}
+			}
+
+			hideNotificationButton() {
+				const mobileSection = document.getElementById('mobile-notifications-section');
+				const desktopButton = document.getElementById('desktop-notifications-button');
+				
+				if (mobileSection) {
+					mobileSection.classList.add('hidden');
+				}
+				if (desktopButton) {
+					desktopButton.classList.add('hidden');
+					desktopButton.classList.remove('flex');
+				}
+			}
+
+			showToast(message, type = 'info') {
+				const toast = document.createElement('div');
+				toast.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 text-white max-w-sm ${
+					type === 'success' ? 'bg-green-600' : 
+					type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+				}`;
+				toast.textContent = message;
+				
+				document.body.appendChild(toast);
+				
+				setTimeout(() => {
+					toast.remove();
+				}, 5000);
+			}
+		}
+
+		// Export for use by PWAManager
+		window.NotificationsManager = NotificationsManager;
+	</script>
+}

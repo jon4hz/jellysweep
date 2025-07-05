@@ -7,6 +7,8 @@ const STATIC_ASSETS = [
   "/static/manifest.json",
 ];
 
+// TODO: also cache images
+
 // Install event - cache static assets
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -110,34 +112,89 @@ self.addEventListener("sync", (event) => {
   }
 });
 
+// Handle push notifications
+self.addEventListener("push", (event) => {
+  console.log("Push notification received");
+
+  if (!event.data) {
+    console.log("Push event but no data");
+    return;
+  }
+
+  let notificationData;
+  try {
+    notificationData = event.data.json();
+  } catch (e) {
+    console.error("Failed to parse push data:", e);
+    return;
+  }
+
+  const options = {
+    body: notificationData.body || "New notification from JellySweep",
+    icon: notificationData.icon || "/static/jellysweep.png",
+    badge: notificationData.badge || "/static/jellysweep.png",
+    tag: "jellysweep-notification",
+    data: notificationData.data || {},
+    actions: notificationData.actions || [
+      {
+        action: "open",
+        title: "Open JellySweep",
+      },
+    ],
+    requireInteraction: true,
+    vibrate: [100, 50, 100],
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(
+      notificationData.title || "JellySweep",
+      options
+    )
+  );
+});
+
+// Handle notification clicks
+self.addEventListener("notificationclick", (event) => {
+  console.log("Notification clicked:", event);
+
+  event.notification.close();
+
+  const action = event.action;
+  const data = event.notification.data;
+
+  let url = "/";
+
+  // Handle different notification types
+  if (data && data.type === "keep_request_decision") {
+    url = "/"; // Could be more specific based on the type
+  }
+
+  if (action === "open" || !action) {
+    event.waitUntil(
+      clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((clients) => {
+          // Check if there's already a window/tab open with the target URL
+          for (const client of clients) {
+            if (
+              client.url === self.location.origin + url &&
+              "focus" in client
+            ) {
+              return client.focus();
+            }
+          }
+
+          // If no existing window, open a new one
+          if (clients.openWindow) {
+            return clients.openWindow(url);
+          }
+        })
+    );
+  }
+});
+
 function doBackgroundSync() {
   // Implement any background sync logic here
   console.log("Background sync triggered");
   return Promise.resolve();
 }
-
-// Handle push notifications (if needed in the future)
-self.addEventListener("push", (event) => {
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body,
-      icon: "/static/jellysweep.png",
-      badge: "/static/jellysweep.png",
-      vibrate: [100, 50, 100],
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: data.primaryKey,
-      },
-    };
-
-    event.waitUntil(self.registration.showNotification(data.title, options));
-  }
-});
-
-// Handle notification clicks
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-
-  event.waitUntil(clients.openWindow("/"));
-});

@@ -17,6 +17,7 @@ import (
 	"github.com/jon4hz/jellysweep/jellystat"
 	"github.com/jon4hz/jellysweep/notify/email"
 	"github.com/jon4hz/jellysweep/notify/ntfy"
+	"github.com/jon4hz/jellysweep/notify/webpush"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
@@ -48,6 +49,7 @@ type Engine struct {
 	radarr     *radarr.APIClient
 	email      *email.NotificationService
 	ntfy       *ntfy.Client
+	webpush    *webpush.Client
 
 	data *data
 }
@@ -111,6 +113,12 @@ func New(cfg *config.Config) (*Engine, error) {
 		ntfyClient = ntfy.NewClient(ntfyConfig)
 	}
 
+	// Initialize webpush client
+	var webpushClient *webpush.Client
+	if cfg.WebPush != nil && cfg.WebPush.Enabled {
+		webpushClient = webpush.NewClient(cfg.WebPush)
+	}
+
 	return &Engine{
 		cfg:        cfg,
 		jellystat:  jellystatClient,
@@ -119,6 +127,7 @@ func New(cfg *config.Config) (*Engine, error) {
 		radarr:     radarrClient,
 		email:      emailService,
 		ntfy:       ntfyClient,
+		webpush:    webpushClient,
 		data: &data{
 			userNotifications: make(map[string][]MediaItem),
 		},
@@ -441,7 +450,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 			defer resp.Body.Close() //nolint: errcheck
 		}
 		mediaType = "TV Show"
-		err = e.addSonarrKeepRequestTag(ctx, int32(seriesID))
+		err = e.addSonarrKeepRequestTag(ctx, int32(seriesID), username)
 	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
 		movieID, parseErr := strconv.ParseInt(movieIDStr, 10, 32)
 		if parseErr != nil {
@@ -457,7 +466,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 			defer resp.Body.Close() //nolint: errcheck
 		}
 		mediaType = "Movie"
-		err = e.addRadarrKeepRequestTag(ctx, int32(movieID))
+		err = e.addRadarrKeepRequestTag(ctx, int32(movieID), username)
 	} else {
 		return fmt.Errorf("unsupported media ID format: %s", mediaID)
 	}
@@ -581,6 +590,11 @@ func (e *Engine) ResetAllTags(ctx context.Context) error {
 
 	log.Info("All jellysweep tags have been successfully reset!")
 	return nil
+}
+
+// GetWebPushClient returns the webpush client.
+func (e *Engine) GetWebPushClient() *webpush.Client {
+	return e.webpush
 }
 
 // getCachedImageURL converts a direct image URL to a cached URL.

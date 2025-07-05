@@ -432,7 +432,7 @@ func TestEngine_SonarrErrorHandling(t *testing.T) {
 		assert.Contains(t, err.Error(), "sonarr client not available")
 
 		// Test keep request operations
-		err = engine.addSonarrKeepRequestTag(ctx, 123)
+		err = engine.addSonarrKeepRequestTag(ctx, 123, "pinocchio")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "sonarr client not available")
 

@@ -127,11 +127,24 @@ func (s *Server) setupRoutes() error {
 
 	// API routes
 	api := protected.Group("/api")
+	api.GET("/me", h.Me)
 	api.POST("/media/:id/request-keep", h.RequestKeepMedia)
 	api.POST("/refresh", h.RefreshData)
 
 	// Image cache route
 	api.GET("/images/cache", h.ImageCache)
+
+	// WebPush routes
+	if s.cfg.WebPush != nil && s.cfg.WebPush.Enabled {
+		webpushHandler := handler.NewWebPushHandler(s.engine.GetWebPushClient())
+		api.GET("/webpush/vapid-key", webpushHandler.GetVAPIDKey)
+		api.GET("/webpush/status", webpushHandler.GetSubscriptionStatus)
+		api.GET("/webpush/subscriptions", webpushHandler.GetUserSubscriptions)
+		api.POST("/webpush/subscribe", webpushHandler.Subscribe)
+		api.POST("/webpush/unsubscribe", webpushHandler.Unsubscribe)
+		api.POST("/webpush/unsubscribe-endpoint", webpushHandler.UnsubscribeByEndpoint)
+		api.POST("/webpush/test", webpushHandler.TestNotification)
+	}
 
 	return nil
 }

@@ -32,6 +32,8 @@ templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItem
 		@templates.ApiUtils()
 		<!-- Include tab functionality -->
 		@components.TabsScript()
+		<!-- Include admin utility functions -->
+		@AdminUtilityScripts()
 		<script>
 			document.addEventListener('DOMContentLoaded', function() {
 				initializeTabs('admin-tabs');
@@ -313,6 +315,54 @@ templ KeepSweepEmptyState() {
 	</div>
 }
 
+templ AdminUtilityScripts() {
+	<script>
+		function updatePendingCount(delta) {
+			const badge = document.querySelector('.bg-blue-900.text-blue-200');
+			if (badge) {
+				const currentText = badge.textContent.trim();
+				const currentCount = parseInt(currentText.match(/\d+/)[0]);
+				const newCount = Math.max(0, currentCount + delta);
+				badge.textContent = newCount + ' pending requests';
+			}
+		}
+
+		function checkForEmptyState() {
+			const requestCards = document.querySelectorAll('[id^="request-"]');
+			const requestsList = document.querySelector('.space-y-4 h3').parentElement;
+			const emptyState = document.querySelector('.text-center.py-12');
+			
+			if (requestCards.length === 0) {
+				// Hide the requests list and show empty state
+				if (requestsList) {
+					requestsList.style.display = 'none';
+				}
+				
+				// Create and show empty state if it doesn't exist
+				if (!emptyState) {
+					const emptyStateHTML = `
+						<div class="text-center py-12">
+							<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+								<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+								</svg>
+							</div>
+							<h3 class="text-xl font-semibold text-gray-300 mb-2">No pending keep requests</h3>
+							<p class="text-gray-500">
+								All keep requests have been processed. Check back later for new requests.
+							</p>
+						</div>
+					`;
+					const mainDiv = document.querySelector('.space-y-6');
+					if (mainDiv) {
+						mainDiv.insertAdjacentHTML('beforeend', emptyStateHTML);
+					}
+				}
+			}
+		}
+	</script>
+}
+
 script acceptKeepRequest(mediaID string) {
 	const buttonId = 'accept-' + mediaID;
 	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
@@ -381,50 +431,6 @@ script declineKeepRequest(mediaID string) {
 		window.showToast('Failed to decline request: ' + error.message, 'error');
 		window.restoreButton(buttonId, originalContent);
 	});
-}
-
-script updatePendingCount(delta int) {
-	const badge = document.querySelector('.bg-blue-900.text-blue-200');
-	if (badge) {
-		const currentText = badge.textContent.trim();
-		const currentCount = parseInt(currentText.match(/\d+/)[0]);
-		const newCount = Math.max(0, currentCount + delta);
-		badge.textContent = newCount + ' pending requests';
-	}
-}
-
-script checkForEmptyState() {
-	const requestCards = document.querySelectorAll('[id^="request-"]');
-	const requestsList = document.querySelector('.space-y-4 h3').parentElement;
-	const emptyState = document.querySelector('.text-center.py-12');
-	
-	if (requestCards.length === 0) {
-		// Hide the requests list and show empty state
-		if (requestsList) {
-			requestsList.style.display = 'none';
-		}
-		
-		// Create and show empty state if it doesn't exist
-		if (!emptyState) {
-			const emptyStateHTML = `
-				<div class="text-center py-12">
-					<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
-						<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-						</svg>
-					</div>
-					<h3 class="text-xl font-semibold text-gray-300 mb-2">No pending keep requests</h3>
-					<p class="text-gray-500">
-						All keep requests have been processed. Check back later for new requests.
-					</p>
-				</div>
-			`;
-			const mainDiv = document.querySelector('.space-y-6');
-			if (mainDiv) {
-				mainDiv.insertAdjacentHTML('beforeend', emptyStateHTML);
-			}
-		}
-	}
 }
 
 script markAsKeep(mediaID string) {
