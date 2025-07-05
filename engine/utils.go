@@ -103,8 +103,8 @@ func (e *Engine) filterMediaTags() {
 }
 
 // parseKeepTagWithRequester extracts the date and requester from a jellysweep-must-keep tag.
-// Format: jellysweep-must-keep-YYYY-MM-DD-requester
-func (e *Engine) parseKeepTagWithRequester(tagName string) (date time.Time, requester string, err error) {
+// Format: jellysweep-must-keep-YYYY-MM-DD-requester.
+func (e *Engine) parseKeepTagWithRequester(tagName string) (time.Time, string, error) { //nolint:unparam
 	if !strings.HasPrefix(tagName, jellysweepKeepPrefix) {
 		return time.Time{}, "", fmt.Errorf("not a keep tag")
 	}
@@ -122,11 +122,12 @@ func (e *Engine) parseKeepTagWithRequester(tagName string) (date time.Time, requ
 
 	// Parse date from first 3 parts
 	dateStr := strings.Join(parts[:3], "-")
-	date, err = time.Parse("2006-01-02", dateStr)
+	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
 		return time.Time{}, "", fmt.Errorf("failed to parse date: %w", err)
 	}
 
+	var requester string
 	// If there's a 4th part, it's the requester
 	if len(parts) > 3 {
 		requester = parts[3]
@@ -136,7 +137,7 @@ func (e *Engine) parseKeepTagWithRequester(tagName string) (date time.Time, requ
 }
 
 // createKeepTagWithRequester creates a jellysweep-must-keep tag with requester information.
-// Format: jellysweep-must-keep-YYYY-MM-DD-requester
+// Format: jellysweep-must-keep-YYYY-MM-DD-requester.
 func (e *Engine) createKeepTagWithRequester(date time.Time, requester string) string {
 	dateStr := date.Format("2006-01-02")
 	if requester != "" {
@@ -149,7 +150,7 @@ func (e *Engine) createKeepTagWithRequester(date time.Time, requester string) st
 }
 
 // parseKeepRequestTagWithRequester extracts the date and requester from a jellysweep-keep-request tag.
-// Format: jellysweep-keep-request-YYYY-MM-DD-requester
+// Format: jellysweep-keep-request-YYYY-MM-DD-requester.
 func (e *Engine) parseKeepRequestTagWithRequester(tagName string) (date time.Time, requester string, err error) {
 	if !strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
 		return time.Time{}, "", fmt.Errorf("not a keep request tag")
@@ -182,7 +183,7 @@ func (e *Engine) parseKeepRequestTagWithRequester(tagName string) (date time.Tim
 }
 
 // createKeepRequestTagWithRequester creates a jellysweep-keep-request tag with requester information.
-// Format: jellysweep-keep-request-YYYY-MM-DD-requester
+// Format: jellysweep-keep-request-YYYY-MM-DD-requester.
 func (e *Engine) createKeepRequestTagWithRequester(date time.Time, requester string) string {
 	dateStr := date.Format("2006-01-02")
 	if requester != "" {
