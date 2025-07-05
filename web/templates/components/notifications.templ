@@ -7,6 +7,8 @@ templ NotificationsScript() {
 			constructor(userData, swRegistration) {
 				this.userData = userData;
 				this.swRegistration = swRegistration;
+				this.validationInterval = null;
+				this.validationIntervalMs = 5 * 60 * 1000; // Check every 5 minutes
 				this.init();
 			}
 
@@ -25,8 +27,33 @@ templ NotificationsScript() {
 				// Check initial status
 				await this.checkPushStatus();
 				
+				// Start periodic validation
+				this.startPeriodicValidation();
+				
+				// Clean up on page unload
+				window.addEventListener('beforeunload', () => {
+					this.stopPeriodicValidation();
+				});
+				
+				// Pause/resume validation based on page visibility
+				this._setupVisibilityHandling();
+				
 				// Monitor permission changes
 				this.monitorPermissionChanges();
+			}
+
+			_setupVisibilityHandling() {
+				document.addEventListener('visibilitychange', () => {
+					if (document.hidden) {
+						this.stopPeriodicValidation();
+					} else {
+						// Check status immediately when page becomes visible
+						this.checkPushStatus().then(() => {
+							this.startPeriodicValidation();
+						});
+					}
+				});
+			}
 			}
 
 			createNotificationButton() {
@@ -46,50 +73,122 @@ templ NotificationsScript() {
 				try {
 					console.log('Checking push notification status...');
 					
-					// Check permission
-					if (Notification.permission !== 'granted') {
-						console.log('Permission not granted:', Notification.permission);
-						this.showNotificationButton();
-						return;
-					}
-
-					// If no service worker registration, show button
-					if (!this.swRegistration) {
-						console.log('No service worker registration available');
-						this.showNotificationButton();
-						return;
-					}
-
-					// Check browser subscription
-					const subscription = await this.swRegistration.pushManager.getSubscription();
-					if (!subscription) {
-						console.log('No browser subscription found');
-						this.showNotificationButton();
-						return;
-					}
-
-					// Check server status
-					const encodedEndpoint = encodeURIComponent(subscription.endpoint);
-					const response = await fetch(`/api/webpush/status?endpoint=${encodedEndpoint}`);
-					if (response.ok) {
-						const data = await response.json();
-						if (data.subscribed) {
-							console.log('Server confirms subscription active');
-							this.hideNotificationButton();
-						} else {
-							console.log('Server missing subscription, re-subscribing...');
-							await this.sendSubscriptionToServer(subscription);
-						}
-					} else if (response.status === 410) {
-						console.log('Subscription invalid (410), removing and showing button...');
-						await this.handleInvalidSubscription(subscription);
-					} else {
-						console.log('Failed to check server status');
-						this.showNotificationButton();
-					}
+					const result = await this._performSubscriptionCheck();
+					this._handleSubscriptionCheckResult(result);
 				} catch (error) {
 					console.error('Error checking push status:', error);
 					this.showNotificationButton();
+				}
+			}
+
+			async validateSubscription() {
+				try {
+					const result = await this._performSubscriptionCheck();
+					this._handleValidationResult(result);
+				} catch (error) {
+					console.error('Error validating subscription:', error);
+				}
+			}
+
+			async _performSubscriptionCheck() {
+				// Check permission
+				if (Notification.permission !== 'granted') {
+					return { 
+						status: 'no_permission', 
+						reason: `Permission not granted: ${Notification.permission}` 
+					};
+				}
+
+				// Check service worker registration
+				if (!this.swRegistration) {
+					return { 
+						status: 'no_sw', 
+						reason: 'No service worker registration available' 
+					};
+				}
+
+				// Check browser subscription
+				const subscription = await this.swRegistration.pushManager.getSubscription();
+				if (!subscription) {
+					return { 
+						status: 'no_subscription', 
+						reason: 'No browser subscription found' 
+					};
+				}
+
+				// Check server status
+				const encodedEndpoint = encodeURIComponent(subscription.endpoint);
+				const response = await fetch(`/api/webpush/status?endpoint=${encodedEndpoint}`);
+				
+				if (response.ok) {
+					const data = await response.json();
+					return {
+						status: data.subscribed ? 'active' : 'inactive',
+						subscription,
+						data
+					};
+				} else if (response.status === 410) {
+					return {
+						status: 'invalid',
+						subscription,
+						reason: 'Subscription invalid (410)'
+					};
+				} else {
+					return {
+						status: 'server_error',
+						subscription,
+						reason: `Server error: ${response.status}`
+					};
+				}
+			}
+
+			_handleSubscriptionCheckResult(result) {
+				switch (result.status) {
+					case 'active':
+						console.log('Server confirms subscription active');
+						this.hideNotificationButton();
+						break;
+					case 'inactive':
+						console.log('Server missing subscription, re-subscribing...');
+						this.sendSubscriptionToServer(result.subscription);
+						break;
+					case 'invalid':
+						console.log('Subscription invalid (410), removing and showing button...');
+						this.handleInvalidSubscription(result.subscription);
+						break;
+					default:
+						console.log(result.reason || 'Failed to check server status');
+						this.showNotificationButton();
+						break;
+				}
+			}
+
+			_handleValidationResult(result) {
+				switch (result.status) {
+					case 'no_permission':
+						console.log('Notification permission revoked, stopping validation');
+						this.stopPeriodicValidation();
+						this.showNotificationButton();
+						break;
+					case 'no_sw':
+					case 'no_subscription':
+						console.log(`${result.reason} during validation`);
+						this.showNotificationButton();
+						break;
+					case 'active':
+						console.log('Subscription validation successful');
+						break;
+					case 'inactive':
+						console.log('Server reports subscription inactive during validation, re-subscribing...');
+						this.sendSubscriptionToServer(result.subscription);
+						break;
+					case 'invalid':
+						console.log('Subscription invalid during validation (410), handling...');
+						this.handleInvalidSubscription(result.subscription);
+						break;
+					default:
+						console.warn('Failed to validate subscription with server:', result.reason);
+						break;
 				}
 			}
 
@@ -241,11 +340,44 @@ templ NotificationsScript() {
 					}
 				};
 
-				// Check on focus and visibility change
+				// Check on focus
 				window.addEventListener('focus', checkPermissionChange);
-				document.addEventListener('visibilitychange', () => {
-					if (!document.hidden) checkPermissionChange();
-				});
+			}
+
+			startPeriodicValidation() {
+				// Clear any existing interval
+				this.stopPeriodicValidation();
+				
+				// Only start if notifications are supported and we might have a subscription
+				if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+					return;
+				}
+				
+				console.log('Starting periodic subscription validation...');
+				this.validationInterval = setInterval(async () => {
+					try {
+						await this.validateSubscription();
+					} catch (error) {
+						console.error('Error during periodic validation:', error);
+					}
+				}, this.validationIntervalMs);
+			}
+
+			stopPeriodicValidation() {
+				if (this.validationInterval) {
+					console.log('Stopping periodic subscription validation');
+					clearInterval(this.validationInterval);
+					this.validationInterval = null;
+				}
+			}
+
+			async validateSubscription() {
+				try {
+					const result = await this._performSubscriptionCheck();
+					this._handleValidationResult(result);
+				} catch (error) {
+					console.error('Error validating subscription:', error);
+				}
 			}
 
 			// Utility methods
@@ -263,6 +395,9 @@ templ NotificationsScript() {
 			async handleInvalidSubscription(subscription) {
 				try {
 					console.log('Handling invalid subscription...');
+					
+					// Stop periodic validation since subscription is invalid
+					this.stopPeriodicValidation();
 					
 					// Unsubscribe from the browser's push manager
 					if (subscription) {
