@@ -171,7 +171,7 @@ dockers:
       - --label=org.opencontainers.image.created={{ .Date }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses=GPL-3.0-or-later
-    dockerfile: Dockerfile
+    dockerfile: release.Dockerfile
     use: buildx
   - image_templates:
       - "ghcr.io/{{ .Var.ghcr_io_registry_owner }}/{{ .ProjectName }}:v{{ .Version }}-arm64"
@@ -185,7 +185,7 @@ dockers:
       - --label=org.opencontainers.image.created={{ .Date }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses=GPL-3.0-or-later
-    dockerfile: Dockerfile
+    dockerfile: release.Dockerfile
     use: buildx
 
 docker_manifests:
