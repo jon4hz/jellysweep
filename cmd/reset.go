@@ -7,11 +7,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var resetCmdFlags struct {
+	IncludeIgnore bool
+	IncludeTags   []string
+}
+
 var resetCmd = &cobra.Command{
 	Use:   "reset",
 	Short: "Reset all tags in sonarr and radarr",
 	Long:  `This command resets all jellysweep tags in Sonarr and Radarr, removing any custom tags that were added by JellySweep.`,
 	Run:   reset,
+}
+
+func init() {
+	resetCmd.Flags().BoolVar(&resetCmdFlags.IncludeIgnore, "include-ignore", false, "Also reset jellysweep-ignore tags")
+	resetCmd.Flags().StringSliceVar(&resetCmdFlags.IncludeTags, "include-tags", nil, "Additional tags to include in the reset (e.g., my-custom-tag1,my-custom-tag2)")
+
+	rootCmd.AddCommand(resetCmd)
 }
 
 func reset(cmd *cobra.Command, _ []string) {
@@ -28,7 +40,13 @@ func reset(cmd *cobra.Command, _ []string) {
 
 	log.Info("Starting reset of all jellysweep tags...")
 
-	if err := engine.ResetAllTags(cmd.Context()); err != nil {
+	additionalTags := make([]string, 0, len(resetCmdFlags.IncludeTags))
+	additionalTags = append(additionalTags, resetCmdFlags.IncludeTags...)
+	if resetCmdFlags.IncludeIgnore {
+		additionalTags = append(additionalTags, "jellysweep-ignore")
+	}
+
+	if err := engine.ResetAllTags(cmd.Context(), additionalTags); err != nil {
 		log.Fatalf("failed to reset tags: %v", err)
 	}
 

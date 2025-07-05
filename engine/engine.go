@@ -560,7 +560,7 @@ func (e *Engine) DeclineKeepRequest(ctx context.Context, mediaID string) error {
 }
 
 // ResetAllTags removes all jellysweep tags from all media in Sonarr and Radarr.
-func (e *Engine) ResetAllTags(ctx context.Context) error {
+func (e *Engine) ResetAllTags(ctx context.Context, additionalTags []string) error {
 	log.Info("Resetting all jellysweep tags...")
 
 	if e.sonarr == nil && e.radarr == nil {
@@ -572,11 +572,11 @@ func (e *Engine) ResetAllTags(ctx context.Context) error {
 	if e.sonarr != nil {
 		g.Go(func() error {
 			log.Info("Removing jellysweep tags from Sonarr series...")
-			if err := e.resetSonarrTags(ctx); err != nil {
+			if err := e.resetSonarrTags(ctx, additionalTags); err != nil {
 				return fmt.Errorf("failed to reset Sonarr tags: %w", err)
 			}
 			log.Info("Cleaning up all Sonarr jellysweep tags...")
-			if err := e.cleanupAllSonarrTags(ctx); err != nil {
+			if err := e.cleanupAllSonarrTags(ctx, additionalTags); err != nil {
 				return fmt.Errorf("failed to cleanup Sonarr tags: %w", err)
 			}
 			return nil
@@ -587,11 +587,11 @@ func (e *Engine) ResetAllTags(ctx context.Context) error {
 	if e.radarr != nil {
 		g.Go(func() error {
 			log.Info("Removing jellysweep tags from Radarr movies...")
-			if err := e.resetRadarrTags(ctx); err != nil {
+			if err := e.resetRadarrTags(ctx, additionalTags); err != nil {
 				return fmt.Errorf("failed to reset Radarr tags: %w", err)
 			}
 			log.Info("Cleaning up all Radarr jellysweep tags...")
-			if err := e.cleanupAllRadarrTags(ctx); err != nil {
+			if err := e.cleanupAllRadarrTags(ctx, additionalTags); err != nil {
 				return fmt.Errorf("failed to cleanup Radarr tags: %w", err)
 			}
 			return nil

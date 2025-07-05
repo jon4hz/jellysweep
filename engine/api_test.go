@@ -71,7 +71,7 @@ func TestEngine_APIFunctions(t *testing.T) {
 
 	t.Run("ResetAllTags", func(t *testing.T) {
 		// Test resetting all tags with mock servers
-		err := engine.ResetAllTags(ctx)
+		err := engine.ResetAllTags(ctx, nil)
 		// Should work better with mock servers
 		if err != nil {
 			t.Logf("Error from ResetAllTags: %v", err)

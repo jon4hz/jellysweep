@@ -817,7 +817,7 @@ func (e *Engine) addRadarrKeepTag(ctx context.Context, movieID int32) error {
 }
 
 // resetRadarrTags removes all jellysweep tags from all Radarr movies.
-func (e *Engine) resetRadarrTags(ctx context.Context) error {
+func (e *Engine) resetRadarrTags(ctx context.Context, additionalTags []string) error {
 	if e.radarr == nil {
 		return nil
 	}
@@ -846,7 +846,8 @@ func (e *Engine) resetRadarrTags(ctx context.Context) error {
 			isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 				strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
 				strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
-				tagName == jellysweepDeleteForSureTag
+				tagName == jellysweepDeleteForSureTag ||
+				slices.Contains(additionalTags, tagName)
 
 			if isJellysweepTag {
 				hasJellysweepTags = true
@@ -883,7 +884,7 @@ func (e *Engine) resetRadarrTags(ctx context.Context) error {
 }
 
 // cleanupAllRadarrTags removes all unused jellysweep tags from Radarr.
-func (e *Engine) cleanupAllRadarrTags(ctx context.Context) error {
+func (e *Engine) cleanupAllRadarrTags(ctx context.Context, additionalTags []string) error {
 	if e.radarr == nil {
 		return nil
 	}
@@ -900,7 +901,8 @@ func (e *Engine) cleanupAllRadarrTags(ctx context.Context) error {
 		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
 			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
-			tagName == jellysweepDeleteForSureTag
+			tagName == jellysweepDeleteForSureTag ||
+			slices.Contains(additionalTags, tagName)
 
 		if isJellysweepTag {
 			if e.cfg.DryRun {

@@ -796,7 +796,7 @@ func (e *Engine) addSonarrKeepTag(ctx context.Context, seriesID int32) error {
 }
 
 // resetSonarrTags removes all jellysweep tags from all Sonarr series.
-func (e *Engine) resetSonarrTags(ctx context.Context) error {
+func (e *Engine) resetSonarrTags(ctx context.Context, additionalTags []string) error {
 	if e.sonarr == nil {
 		return nil
 	}
@@ -824,7 +824,8 @@ func (e *Engine) resetSonarrTags(ctx context.Context) error {
 			isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 				strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
 				strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
-				tagName == jellysweepDeleteForSureTag
+				tagName == jellysweepDeleteForSureTag ||
+				slices.Contains(additionalTags, tagName)
 
 			if isJellysweepTag {
 				hasJellysweepTags = true
@@ -860,7 +861,7 @@ func (e *Engine) resetSonarrTags(ctx context.Context) error {
 }
 
 // cleanupAllSonarrTags removes all unused jellysweep tags from Sonarr.
-func (e *Engine) cleanupAllSonarrTags(ctx context.Context) error {
+func (e *Engine) cleanupAllSonarrTags(ctx context.Context, additionalTags []string) error {
 	if e.sonarr == nil {
 		return nil
 	}
@@ -876,7 +877,8 @@ func (e *Engine) cleanupAllSonarrTags(ctx context.Context) error {
 		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
 			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
-			tagName == jellysweepDeleteForSureTag
+			tagName == jellysweepDeleteForSureTag ||
+			slices.Contains(additionalTags, tagName)
 
 		if isJellysweepTag {
 			if e.cfg.DryRun {
