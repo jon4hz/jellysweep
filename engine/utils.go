@@ -51,10 +51,17 @@ func (e *Engine) filterMediaTags() {
 			for _, tagName := range item.Tags {
 				// Check if the tag is in the exclude list
 				libraryConfig := e.cfg.GetLibraryConfig(lib)
-				if libraryConfig != nil && slices.Contains(libraryConfig.ExcludeTags, tagName) {
-					hasExcludedTag = true
-					log.Debugf("Excluding item %s due to tag: %s", item.Title, tagName)
-					break
+				if libraryConfig != nil {
+					if slices.Contains(libraryConfig.ExcludeTags, jellysweepIgnoreTag) {
+						log.Debugf("Ignoring item %s due to jellysweep-ignore tag", item.Title)
+						hasExcludedTag = true
+						break
+					}
+					if slices.Contains(libraryConfig.ExcludeTags, tagName) {
+						hasExcludedTag = true
+						log.Debugf("Excluding item %s due to tag: %s", item.Title, tagName)
+						break
+					}
 				}
 				// Check for jellysweep-must-keep- tags
 				if strings.HasPrefix(tagName, jellysweepKeepPrefix) {

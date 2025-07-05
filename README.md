@@ -449,6 +449,7 @@ JellySweep uses the tagging feature from sonarr and radarr to track media state:
 - `jellysweep-keep-request-YYYY-MM-DD` - User requested to keep (expires)
 - `jellysweep-must-keep-YYYY-MM-DD` - Admin approved keep (expires)
 - `jellysweep-must-delete-for-sure` - Admin forced deletion
+- `jellysweep-ignore` - Media will never be marked for deletion
 
 ### Custom Tags
 Configure custom tags in your Sonarr/Radarr to:
