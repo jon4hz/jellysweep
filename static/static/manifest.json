@@ -1,6 +1,6 @@
 {
-    "name": "JellySweep",
-    "short_name": "JellySweep",
+    "name": "Jellysweep",
+    "short_name": "Jellysweep",
     "description": "Media management and cleanup tool for Jellyfin",
     "start_url": "/",
     "display": "standalone",

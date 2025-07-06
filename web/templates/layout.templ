@@ -15,13 +15,13 @@ templ LayoutWithPendingRequests(title string, user *models.User, pendingRequests
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>{ title } - JellySweep</title>
+			<title>{ title } - Jellysweep</title>
 			<!-- PWA Meta Tags -->
 			<meta name="theme-color" content="#111827"/>
-			<meta name="description" content="JellySweep - Manage your Jellyfin media library"/>
+			<meta name="description" content="Jellysweep - Manage your Jellyfin media library"/>
 			<meta name="apple-mobile-web-app-capable" content="yes"/>
 			<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-			<meta name="apple-mobile-web-app-title" content="JellySweep"/>
+			<meta name="apple-mobile-web-app-title" content="Jellysweep"/>
 			<meta name="mobile-web-app-capable" content="yes"/>
 			<!-- Manifest and Icons -->
 			<link rel="manifest" href="/static/manifest.json"/>
@@ -48,8 +48,8 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 			<div class="flex justify-between items-center h-16">
 				<div class="flex items-center space-x-4">
 					<a href="/" class="flex items-center space-x-2">
-						<img src="/static/jellysweep.png" alt="JellySweep" class="w-8 h-8 rounded-lg"/>
-						<span class="text-xl font-semibold text-gray-100">JellySweep</span>
+						<img src="/static/jellysweep.png" alt="Jellysweep" class="w-8 h-8 rounded-lg"/>
+						<span class="text-xl font-semibold text-gray-100">Jellysweep</span>
 					</a>
 					if user != nil && !user.IsAdmin {
 						<div class="hidden md:flex space-x-6">

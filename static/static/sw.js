@@ -134,7 +134,7 @@ self.addEventListener("push", (event) => {
   }
 
   const options = {
-    body: notificationData.body || "New notification from JellySweep",
+    body: notificationData.body || "New notification from Jellysweep",
     icon: notificationData.icon || "/static/jellysweep.png",
     badge: notificationData.badge || "/static/jellysweep.png",
     tag: "jellysweep-notification",
@@ -142,7 +142,7 @@ self.addEventListener("push", (event) => {
     actions: notificationData.actions || [
       {
         action: "open",
-        title: "Open JellySweep",
+        title: "Open Jellysweep",
       },
     ],
     requireInteraction: true,
@@ -151,7 +151,7 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     self.registration.showNotification(
-      notificationData.title || "JellySweep",
+      notificationData.title || "Jellysweep",
       options
     )
   );

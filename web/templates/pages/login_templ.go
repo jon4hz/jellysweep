@@ -46,7 +46,7 @@ func Login(authConfig *config.AuthConfig) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"min-h-screen flex items-start justify-center pt-16 pb-4 px-4 sm:px-6 lg:px-8\"><div class=\"max-w-md w-full space-y-6\"><div class=\"text-center\"><div class=\"mx-auto w-32 h-32 mb-4 flex items-center justify-center\"><img src=\"/static/jellysweep.png\" alt=\"JellySweep\" class=\"w-32 h-32\"></div><h2 class=\"text-3xl font-bold text-gray-100\">Welcome to JellySweep</h2><p class=\"mt-2 text-sm text-gray-400\">Sign in to manage your media library</p></div><div class=\"card p-8\"><div class=\"space-y-6\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"min-h-screen flex items-start justify-center pt-16 pb-4 px-4 sm:px-6 lg:px-8\"><div class=\"max-w-md w-full space-y-6\"><div class=\"text-center\"><div class=\"mx-auto w-32 h-32 mb-4 flex items-center justify-center\"><img src=\"/static/jellysweep.png\" alt=\"Jellysweep\" class=\"w-32 h-32\"></div><h2 class=\"text-3xl font-bold text-gray-100\">Welcome to Jellysweep</h2><p class=\"mt-2 text-sm text-gray-400\">Sign in to manage your media library</p></div><div class=\"card p-8\"><div class=\"space-y-6\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
