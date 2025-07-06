@@ -92,7 +92,7 @@ func LayoutWithPendingRequests(title string, user *models.User, pendingRequestsC
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - JellySweep</title><!-- PWA Meta Tags --><meta name=\"theme-color\" content=\"#111827\"><meta name=\"description\" content=\"JellySweep - Manage your Jellyfin media library\"><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\"><meta name=\"apple-mobile-web-app-title\" content=\"JellySweep\"><meta name=\"mobile-web-app-capable\" content=\"yes\"><!-- Manifest and Icons --><link rel=\"manifest\" href=\"/static/manifest.json\"><link rel=\"icon\" type=\"image/png\" href=\"/static/jellysweep.png\"><link rel=\"apple-touch-icon\" href=\"/static/jellysweep.png\"><!-- Stylesheets and Scripts --><link rel=\"stylesheet\" href=\"/static/dist/style.css\"><script src=\"/static/dist/chart.js\"></script></head><body class=\"bg-gray-950 text-gray-100 min-h-screen\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - Jellysweep</title><!-- PWA Meta Tags --><meta name=\"theme-color\" content=\"#111827\"><meta name=\"description\" content=\"Jellysweep - Manage your Jellyfin media library\"><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\"><meta name=\"apple-mobile-web-app-title\" content=\"Jellysweep\"><meta name=\"mobile-web-app-capable\" content=\"yes\"><!-- Manifest and Icons --><link rel=\"manifest\" href=\"/static/manifest.json\"><link rel=\"icon\" type=\"image/png\" href=\"/static/jellysweep.png\"><link rel=\"apple-touch-icon\" href=\"/static/jellysweep.png\"><!-- Stylesheets and Scripts --><link rel=\"stylesheet\" href=\"/static/dist/style.css\"><script src=\"/static/dist/chart.js\"></script></head><body class=\"bg-gray-950 text-gray-100 min-h-screen\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -149,7 +149,7 @@ func Navbar(user *models.User, pendingRequestsCount int) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<nav class=\"bg-gray-900 border-b border-gray-800\"><div class=\"container mx-auto px-4\"><div class=\"flex justify-between items-center h-16\"><div class=\"flex items-center space-x-4\"><a href=\"/\" class=\"flex items-center space-x-2\"><img src=\"/static/jellysweep.png\" alt=\"JellySweep\" class=\"w-8 h-8 rounded-lg\"> <span class=\"text-xl font-semibold text-gray-100\">JellySweep</span></a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<nav class=\"bg-gray-900 border-b border-gray-800\"><div class=\"container mx-auto px-4\"><div class=\"flex justify-between items-center h-16\"><div class=\"flex items-center space-x-4\"><a href=\"/\" class=\"flex items-center space-x-2\"><img src=\"/static/jellysweep.png\" alt=\"Jellysweep\" class=\"w-8 h-8 rounded-lg\"> <span class=\"text-xl font-semibold text-gray-100\">Jellysweep</span></a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

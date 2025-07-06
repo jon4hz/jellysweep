@@ -27,7 +27,7 @@ func formatExactDate(t time.Time) string {
 // getEpisodeTooltip generates a tooltip for episode cleanup mode
 func getEpisodeTooltip(keepCount int) string {
 	var b strings.Builder
-	b.WriteString("Unless requested otherwise, JellySweep will delete ")
+	b.WriteString("Unless requested otherwise, Jellysweep will delete ")
 	if keepCount <= 0 {
 		b.WriteString("all episodes.")
 		return b.String()
@@ -59,7 +59,7 @@ func getEpisodeTooltip(keepCount int) string {
 // getSeasonTooltip generates a tooltip for season cleanup mode
 func getSeasonTooltip(keepCount int) string {
 	var b strings.Builder
-	b.WriteString("Unless requested otherwise, JellySweep will delete ")
+	b.WriteString("Unless requested otherwise, Jellysweep will delete ")
 	if keepCount <= 0 {
 		b.WriteString("all seasons.")
 		return b.String()

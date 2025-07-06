@@ -1,6 +1,6 @@
- # JellySweep Production Setup
+ # Jellysweep Production Setup
 
-This directory contains the production Docker Compose configuration for JellySweep.
+This directory contains the production Docker Compose configuration for Jellysweep.
 
 ## Quick Start
 
@@ -37,7 +37,7 @@ This directory contains the production Docker Compose configuration for JellySwe
 - **Jellystat**: Analytics and statistics
 
 ### Authentication
-JellySweep supports two authentication methods in production:
+Jellysweep supports two authentication methods in production:
 
 **OIDC Authentication:**
 - An OIDC provider (like Authentik, Keycloak, etc.)
@@ -65,7 +65,7 @@ Customize these values in the environment variables section.
 
 ## Reverse Proxy
 
-JellySweep doesn't handle SSL/TLS termination itself. You'll need to set up a reverse proxy to handle HTTPS and route traffic to the application.
+Jellysweep doesn't handle SSL/TLS termination itself. You'll need to set up a reverse proxy to handle HTTPS and route traffic to the application.
 
 ### Traefik Example
 
@@ -106,7 +106,7 @@ http:
 ### Nginx Example
 
 ```nginx
-# Define upstream for JellySweep
+# Define upstream for Jellysweep
 upstream jellysweep_backend {
     server jellysweep:3002;  # Docker service name
     # server 127.0.0.1:3002;  # Alternative for local deployment
@@ -176,4 +176,4 @@ server {
 
 - **Update OIDC Redirect URL**: Make sure your OIDC provider's redirect URL matches your domain (e.g., `https://jellysweep.yourdomain.com/auth/oidc/callback`)
 - **Update Server URL**: Set `JELLYSWEEP_SERVER_URL` to your public domain in the environment variables
-- **Network Configuration**: Ensure JellySweep can communicate with your Jellyfin services through the configured networks
+- **Network Configuration**: Ensure Jellysweep can communicate with your Jellyfin services through the configured networks
