@@ -128,8 +128,8 @@ func (s *Server) setupRoutes() error {
 	// API routes
 	api := protected.Group("/api")
 	api.GET("/me", h.Me)
+	api.GET("/media", h.GetMediaItems)
 	api.POST("/media/:id/request-keep", h.RequestKeepMedia)
-	api.POST("/refresh", h.RefreshData)
 
 	// Image cache route
 	api.GET("/images/cache", h.ImageCache)
@@ -151,6 +151,8 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
 	h := handler.NewAdmin(s.engine)
+	// Wire up the cache manager for admin operations
+	h.SetCacheManager(s.cacheManager)
 
 	// Admin panel page
 	adminGroup.GET("", h.AdminPanel)
@@ -163,6 +165,10 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI.POST("/media/:id/keep", h.MarkMediaAsKeep)
 	adminAPI.POST("/media/:id/delete", h.MarkMediaForDeletion)
 	adminAPI.POST("/media/:id/keep-forever", h.MarkMediaAsKeepForever)
+
+	// New consistent API endpoints with caching support
+	adminAPI.GET("/keep-requests", h.GetKeepRequests)
+	adminAPI.GET("/media", h.GetAdminMediaItems)
 }
 
 func (s *Server) Run() error {

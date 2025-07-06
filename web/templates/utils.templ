@@ -138,3 +138,130 @@ templ DebounceUtil() {
 		}
 	</script>
 }
+
+templ SmoothNavigationUtils() {
+	<script>
+		if (!window.smoothNavigate) {
+			window.smoothNavigate = function(url, options = {}) {
+				const {
+					fadeOut = true,
+					showLoader = true,
+					delay = 150
+				} = options;
+
+				if (fadeOut) {
+					const main = document.querySelector('main');
+					if (main) {
+						main.style.transition = 'opacity 150ms ease-out';
+						main.style.opacity = '0';
+					}
+				}
+
+				if (showLoader) {
+					const loader = document.createElement('div');
+					loader.id = 'page-loader';
+					loader.className = 'fixed inset-0 bg-gray-950/50 backdrop-blur-sm z-50 flex items-center justify-center';
+					loader.innerHTML = `
+						<div class="flex items-center space-x-3 bg-gray-900 px-6 py-4 rounded-lg border border-gray-700">
+							<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+							<span class="text-gray-300">Loading...</span>
+						</div>
+					`;
+					document.body.appendChild(loader);
+				}
+
+				setTimeout(() => {
+					window.location.href = url;
+				}, delay);
+			};
+
+			// Enhanced API request with better error handling and loading states
+			window.makeApiRequestEnhanced = function(url, options = {}) {
+				const {
+					method = 'POST',
+					body = null,
+					showProgress = true,
+					optimistic = false,
+					onProgress = null
+				} = options;
+
+				const requestOptions = {
+					method: method,
+					headers: {
+						'Content-Type': 'application/json',
+					},
+				};
+
+				if (body) {
+					requestOptions.body = JSON.stringify(body);
+				}
+
+				// Show progress indicator
+				if (showProgress && onProgress) {
+					onProgress('started');
+				}
+
+				return fetch(url, requestOptions)
+					.then(response => {
+						if (showProgress && onProgress) {
+							onProgress('processing');
+						}
+
+						if (!response.ok) {
+							throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+						}
+
+						return response.json();
+					})
+					.then(data => {
+						if (showProgress && onProgress) {
+							onProgress('completed');
+						}
+						return data;
+					})
+					.catch(error => {
+						if (showProgress && onProgress) {
+							onProgress('error', error);
+						}
+						throw error;
+					});
+			};
+
+			// Virtual scrolling for large lists
+			window.initVirtualScroll = function(containerId, itemHeight = 100) {
+				const container = document.getElementById(containerId);
+				if (!container) return;
+
+				const items = Array.from(container.children);
+				const totalItems = items.length;
+				const containerHeight = container.clientHeight;
+				const visibleItems = Math.ceil(containerHeight / itemHeight) + 2; // Buffer
+
+				let scrollTop = 0;
+				let startIndex = 0;
+
+				function updateVisibleItems() {
+					startIndex = Math.floor(scrollTop / itemHeight);
+					const endIndex = Math.min(startIndex + visibleItems, totalItems);
+
+					// Hide all items
+					items.forEach((item, index) => {
+						if (index >= startIndex && index < endIndex) {
+							item.style.display = 'block';
+							item.style.transform = `translateY(${index * itemHeight}px)`;
+						} else {
+							item.style.display = 'none';
+						}
+					});
+				}
+
+				container.addEventListener('scroll', () => {
+					scrollTop = container.scrollTop;
+					requestAnimationFrame(updateVisibleItems);
+				});
+
+				updateVisibleItems();
+			};
+		}
+	</script>
+}

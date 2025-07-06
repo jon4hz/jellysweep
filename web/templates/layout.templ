@@ -47,7 +47,7 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 		<div class="container mx-auto px-4">
 			<div class="flex justify-between items-center h-16">
 				<div class="flex items-center space-x-4">
-					<a href="/" class="flex items-center space-x-2">
+					<a href="/" onclick="window.smoothNavigate && window.smoothNavigate('/'); return false;" class="flex items-center space-x-2">
 						<img src="/static/jellysweep.png" alt="Jellysweep" class="w-8 h-8 rounded-lg"/>
 						<span class="text-xl font-semibold text-gray-100">Jellysweep</span>
 					</a>
@@ -60,10 +60,10 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 					}
 					if user != nil && user.IsAdmin {
 						<div class="hidden md:flex space-x-6">
-							<a href="/" class="text-gray-300 hover:text-white transition-colors duration-200">
+							<a href="/" onclick="window.smoothNavigate && window.smoothNavigate('/'); return false;" class="text-gray-300 hover:text-white transition-colors duration-200">
 								Dashboard
 							</a>
-							<a href="/admin" class="relative text-gray-300 hover:text-white transition-colors duration-200">
+							<a href="/admin" onclick="window.smoothNavigate && window.smoothNavigate('/admin'); return false;" class="relative text-gray-300 hover:text-white transition-colors duration-200">
 								Admin Panel
 								if pendingRequestsCount > 0 {
 									<span class="absolute -top-1.5 -right-2.5 bg-red-500 rounded-full w-2.5 h-2.5 animate-pulse"></span>
@@ -182,7 +182,7 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 					<!-- Navigation links -->
 					<div class="flex-1 py-4">
 						<div class="space-y-2 px-4">
-							<a href="/" class="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200">
+							<a href="/" onclick="window.smoothNavigate && window.smoothNavigate('/'); return false;" class="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200">
 								<div class="flex items-center space-x-3">
 									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
@@ -192,7 +192,7 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 								</div>
 							</a>
 							if user.IsAdmin {
-								<a href="/admin" class="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200">
+								<a href="/admin" onclick="window.smoothNavigate && window.smoothNavigate('/admin'); return false;" class="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200">
 									<div class="flex items-center justify-between">
 										<div class="flex items-center space-x-3">
 											<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,8 +315,19 @@ templ MobileMenuScript() {
 			// Close menu when clicking on navigation links
 			const mobileMenuLinks = document.querySelectorAll('#mobile-menu a[href]');
 			mobileMenuLinks.forEach(link => {
-				link.addEventListener('click', function() {
-					setTimeout(closeMenu, 100);
+				link.addEventListener('click', function(e) {
+					// If this is a smooth navigation link, handle it specially
+					if (link.onclick) {
+						e.preventDefault();
+						closeMenu();
+						// Wait for menu close animation to complete before navigating
+						setTimeout(() => {
+							link.onclick.call(link, e);
+						}, 300);
+					} else {
+						// For regular links, close menu with a small delay
+						setTimeout(closeMenu, 100);
+					}
 				});
 			});
 

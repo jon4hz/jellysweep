@@ -125,4 +125,33 @@ func DebounceUtil() templ.Component {
 	})
 }
 
+func SmoothNavigationUtils() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var5 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var5 == nil {
+			templ_7745c5c3_Var5 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<script>\n\t\tif (!window.smoothNavigate) {\n\t\t\twindow.smoothNavigate = function(url, options = {}) {\n\t\t\t\tconst {\n\t\t\t\t\tfadeOut = true,\n\t\t\t\t\tshowLoader = true,\n\t\t\t\t\tdelay = 150\n\t\t\t\t} = options;\n\n\t\t\t\tif (fadeOut) {\n\t\t\t\t\tconst main = document.querySelector('main');\n\t\t\t\t\tif (main) {\n\t\t\t\t\t\tmain.style.transition = 'opacity 150ms ease-out';\n\t\t\t\t\t\tmain.style.opacity = '0';\n\t\t\t\t\t}\n\t\t\t\t}\n\n\t\t\t\tif (showLoader) {\n\t\t\t\t\tconst loader = document.createElement('div');\n\t\t\t\t\tloader.id = 'page-loader';\n\t\t\t\t\tloader.className = 'fixed inset-0 bg-gray-950/50 backdrop-blur-sm z-50 flex items-center justify-center';\n\t\t\t\t\tloader.innerHTML = `\n\t\t\t\t\t\t<div class=\"flex items-center space-x-3 bg-gray-900 px-6 py-4 rounded-lg border border-gray-700\">\n\t\t\t\t\t\t\t<div class=\"animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500\"></div>\n\t\t\t\t\t\t\t<span class=\"text-gray-300\">Loading...</span>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t`;\n\t\t\t\t\tdocument.body.appendChild(loader);\n\t\t\t\t}\n\n\t\t\t\tsetTimeout(() => {\n\t\t\t\t\twindow.location.href = url;\n\t\t\t\t}, delay);\n\t\t\t};\n\n\t\t\t// Enhanced API request with better error handling and loading states\n\t\t\twindow.makeApiRequestEnhanced = function(url, options = {}) {\n\t\t\t\tconst {\n\t\t\t\t\tmethod = 'POST',\n\t\t\t\t\tbody = null,\n\t\t\t\t\tshowProgress = true,\n\t\t\t\t\toptimistic = false,\n\t\t\t\t\tonProgress = null\n\t\t\t\t} = options;\n\n\t\t\t\tconst requestOptions = {\n\t\t\t\t\tmethod: method,\n\t\t\t\t\theaders: {\n\t\t\t\t\t\t'Content-Type': 'application/json',\n\t\t\t\t\t},\n\t\t\t\t};\n\n\t\t\t\tif (body) {\n\t\t\t\t\trequestOptions.body = JSON.stringify(body);\n\t\t\t\t}\n\n\t\t\t\t// Show progress indicator\n\t\t\t\tif (showProgress && onProgress) {\n\t\t\t\t\tonProgress('started');\n\t\t\t\t}\n\n\t\t\t\treturn fetch(url, requestOptions)\n\t\t\t\t\t.then(response => {\n\t\t\t\t\t\tif (showProgress && onProgress) {\n\t\t\t\t\t\t\tonProgress('processing');\n\t\t\t\t\t\t}\n\n\t\t\t\t\t\tif (!response.ok) {\n\t\t\t\t\t\t\tthrow new Error(`HTTP ${response.status}: ${response.statusText}`);\n\t\t\t\t\t\t}\n\n\t\t\t\t\t\treturn response.json();\n\t\t\t\t\t})\n\t\t\t\t\t.then(data => {\n\t\t\t\t\t\tif (showProgress && onProgress) {\n\t\t\t\t\t\t\tonProgress('completed');\n\t\t\t\t\t\t}\n\t\t\t\t\t\treturn data;\n\t\t\t\t\t})\n\t\t\t\t\t.catch(error => {\n\t\t\t\t\t\tif (showProgress && onProgress) {\n\t\t\t\t\t\t\tonProgress('error', error);\n\t\t\t\t\t\t}\n\t\t\t\t\t\tthrow error;\n\t\t\t\t\t});\n\t\t\t};\n\n\t\t\t// Virtual scrolling for large lists\n\t\t\twindow.initVirtualScroll = function(containerId, itemHeight = 100) {\n\t\t\t\tconst container = document.getElementById(containerId);\n\t\t\t\tif (!container) return;\n\n\t\t\t\tconst items = Array.from(container.children);\n\t\t\t\tconst totalItems = items.length;\n\t\t\t\tconst containerHeight = container.clientHeight;\n\t\t\t\tconst visibleItems = Math.ceil(containerHeight / itemHeight) + 2; // Buffer\n\n\t\t\t\tlet scrollTop = 0;\n\t\t\t\tlet startIndex = 0;\n\n\t\t\t\tfunction updateVisibleItems() {\n\t\t\t\t\tstartIndex = Math.floor(scrollTop / itemHeight);\n\t\t\t\t\tconst endIndex = Math.min(startIndex + visibleItems, totalItems);\n\n\t\t\t\t\t// Hide all items\n\t\t\t\t\titems.forEach((item, index) => {\n\t\t\t\t\t\tif (index >= startIndex && index < endIndex) {\n\t\t\t\t\t\t\titem.style.display = 'block';\n\t\t\t\t\t\t\titem.style.transform = `translateY(${index * itemHeight}px)`;\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\titem.style.display = 'none';\n\t\t\t\t\t\t}\n\t\t\t\t\t});\n\t\t\t\t}\n\n\t\t\t\tcontainer.addEventListener('scroll', () => {\n\t\t\t\t\tscrollTop = container.scrollTop;\n\t\t\t\t\trequestAnimationFrame(updateVisibleItems);\n\t\t\t\t});\n\n\t\t\t\tupdateVisibleItems();\n\t\t\t};\n\t\t}\n\t</script>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
 var _ = templruntime.GeneratedTemplate

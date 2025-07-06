@@ -1,0 +1,919 @@
+package components
+
+import "github.com/jon4hz/jellysweep/api/models"
+import "fmt"
+
+// MediaGridConfig holds configuration for the media grid
+type MediaGridConfig struct {
+	ContainerID    string
+	GridID         string
+	EnableSearch   bool
+	EnableFilters  bool
+	EnableSorting  bool
+	EnableRefresh  bool
+	PageSize       int
+	MobilePageSize int
+	AnimateChanges bool
+}
+
+// DefaultMediaGridConfig returns a default configuration for the media grid
+func DefaultMediaGridConfig() MediaGridConfig {
+	return MediaGridConfig{
+		ContainerID:    "media-grid-container",
+		GridID:         "media-grid",
+		EnableSearch:   true,
+		EnableFilters:  true,
+		EnableSorting:  true,
+		EnableRefresh:  true,
+		PageSize:       10, // Reduced from 12 for better mid-screen display
+		MobilePageSize: 6,
+		AnimateChanges: true,
+	}
+}
+
+// MediaGrid is a generic, reusable media grid component
+templ MediaGrid(mediaItems []models.MediaItem, config MediaGridConfig, customContent templ.Component) {
+	<div id={ config.ContainerID } class="space-y-4">
+		<!-- Loading State -->
+		<div id={ config.ContainerID + "-grid-loading" } class="hidden">
+			@SkeletonGrid(12)
+		</div>
+		<!-- Custom content (filters, search, etc.) -->
+		if customContent != nil {
+			@customContent
+		}
+		<!-- Media Grid -->
+		<div
+			id={ config.GridID }
+			class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 transition-opacity duration-200"
+			data-page-size={ fmt.Sprint(config.PageSize) }
+			data-mobile-page-size={ fmt.Sprint(config.MobilePageSize) }
+			data-total-items={ fmt.Sprint(len(mediaItems)) }
+			data-enable-search={ fmt.Sprint(config.EnableSearch) }
+			data-enable-filters={ fmt.Sprint(config.EnableFilters) }
+			data-enable-sorting={ fmt.Sprint(config.EnableSorting) }
+			data-enable-refresh={ fmt.Sprint(config.EnableRefresh) }
+			data-animate-changes={ fmt.Sprint(config.AnimateChanges) }
+			data-media-items={ templ.JSONString(mediaItems) }
+		>
+			<!-- Items will be populated by JavaScript -->
+		</div>
+		<!-- Loading indicator for infinite scroll -->
+		<div id={ config.ContainerID + "-scroll-loading" } class="hidden text-center py-8">
+			<div class="inline-flex items-center space-x-2">
+				<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+				<span class="text-gray-400">Loading more...</span>
+			</div>
+		</div>
+		<!-- Load More Button (fallback for poor connections) -->
+		<div id={ config.ContainerID + "-load-more-container" } class="text-center mt-6 hidden">
+			<button id={ config.ContainerID + "-load-more-btn" } class="btn-secondary">
+				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+				</svg>
+				Load More
+			</button>
+		</div>
+		<!-- Scroll to Top Button -->
+		<button
+			id={ config.ContainerID + "-scroll-to-top" }
+			class="fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white p-2 md:p-3 rounded-full shadow-lg transition-all duration-200 opacity-0 pointer-events-none z-50 transform translate-y-4"
+			aria-label="Scroll to top"
+		>
+			<svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+			</svg>
+		</button>
+		<!-- Virtual scroll sentinel for intersection observer -->
+		<div id={ config.ContainerID + "-scroll-sentinel" } class="h-1 opacity-0"></div>
+	</div>
+}
+
+// GetUniqueLibraries extracts unique library names from media items
+func GetUniqueLibraries(items []models.MediaItem) []string {
+	libraryMap := make(map[string]bool)
+	var libraries []string
+
+	for _, item := range items {
+		if item.Library != "" && !libraryMap[item.Library] {
+			libraryMap[item.Library] = true
+			libraries = append(libraries, item.Library)
+		}
+	}
+
+	return libraries
+}
+
+script MediaGridScript() {
+	class MediaGridManager {
+		constructor(containerId, options = {}) {
+			this.containerId = containerId;
+			this.container = document.getElementById(containerId);
+			this.grid = document.getElementById(options.gridId || 'media-grid');
+			this.loadingEl = document.getElementById(containerId + '-grid-loading');
+			this.scrollLoadingEl = document.getElementById(containerId + '-scroll-loading');
+			this.scrollSentinel = document.getElementById(containerId + '-scroll-sentinel');
+			this.loadMoreContainer = document.getElementById(containerId + '-load-more-container');
+			this.loadMoreBtn = document.getElementById(containerId + '-load-more-btn');
+			this.scrollToTopBtn = document.getElementById(containerId + '-scroll-to-top');
+
+			if (!this.container || !this.grid) {
+				console.error('MediaGridManager: Required elements not found', {
+					container: this.container,
+					grid: this.grid,
+					containerId: containerId,
+					gridId: options.gridId
+				});
+				return;
+			}
+
+			// Read configuration from data attributes
+			const config = this.readConfigFromGrid();
+
+			// More granular responsive page sizing based on device width
+			const screenWidth = window.innerWidth;
+			const isMobile = screenWidth < 640; // sm breakpoint
+			const isTablet = screenWidth >= 640 && screenWidth < 1024; // between sm and lg
+			const isDesktop = screenWidth >= 1024;
+
+			// Adjust page size based on screen size for better mid-screen display
+			if (isMobile) {
+				this.pageSize = config.mobilePageSize;
+			} else if (isTablet) {
+				this.pageSize = Math.max(4, Math.floor(config.pageSize * 0.6)); // Reduced for tablet
+			} else {
+				this.pageSize = config.pageSize;
+			}
+
+			this.batchSize = isMobile ? Math.ceil(this.pageSize / 2) : Math.ceil(this.pageSize * 0.75);
+
+			this.currentPage = 1;
+			this.filteredItems = [];
+			this.allItems = [];
+			this.renderedItems = new Set(); // Track rendered items to avoid duplicates
+			this.isLoading = false;
+			this.hasMoreData = true;
+			this.lastScrollTop = 0;
+			this.scrollDirection = 'down';
+
+			this.options = {
+				enableVirtualScroll: true,
+				enableInfiniteScroll: true,
+				animateChanges: config.animateChanges && !isMobile, // Disable animations on mobile for better performance
+				useIntersectionObserver: true,
+				throttleDelay: isMobile ? 150 : 100,
+				enableSearch: config.enableSearch,
+				enableFilters: config.enableFilters,
+				enableSorting: config.enableSorting,
+				enableRefresh: config.enableRefresh,
+				...options
+			};
+
+			this.intersectionObserver = null;
+			this.scrollThrottle = null;
+
+			this.init();
+		}
+
+		readConfigFromGrid() {
+			const grid = this.grid;
+			return {
+				pageSize: parseInt(grid.dataset.pageSize) || 10,
+				mobilePageSize: parseInt(grid.dataset.mobilePageSize) || 6,
+				enableSearch: grid.dataset.enableSearch === 'true',
+				enableFilters: grid.dataset.enableFilters === 'true',
+				enableSorting: grid.dataset.enableSorting === 'true',
+				enableRefresh: grid.dataset.enableRefresh === 'true',
+				animateChanges: grid.dataset.animateChanges === 'true'
+			};
+		}
+
+		init() {
+			// Load media items from data attribute
+			this.loadMediaItemsFromDOM();
+
+			this.setupIntersectionObserver();
+			if (this.options.enableSearch || this.options.enableFilters || this.options.enableSorting) {
+				this.setupSearch();
+			}
+			this.setupScrollToTop();
+			this.setupScrollOptimizations();
+
+			const screenWidth = window.innerWidth;
+			const isMobile = screenWidth < 640;
+			// Add performance optimizations for mobile
+			if (isMobile) {
+				this.setupMobileOptimizations();
+			}
+
+			// Handle viewport changes for responsive behavior
+			window.addEventListener('resize', this.handleResize.bind(this), { passive: true });
+		}
+
+		loadMediaItemsFromDOM() {
+			try {
+				const mediaItemsData = this.grid.dataset.mediaItems;
+				if (mediaItemsData) {
+					const rawMediaItems = JSON.parse(mediaItemsData);
+					// Transform Go struct field names to JavaScript-friendly names
+					const transformedItems = rawMediaItems.map(item => ({
+						id: item.ID,
+						title: item.Title,
+						type: item.Type,
+						year: item.Year,
+						library: item.Library,
+						posterURL: item.PosterURL,
+						deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
+						expiryTimestamp: item.ExpiryDate ? new Date(item.ExpiryDate).getTime() : 0,
+						canRequest: item.CanRequest,
+						hasRequested: item.HasRequested,
+						mustDelete: item.MustDelete,
+						fileSize: item.FileSize,
+						cleanupMode: item.CleanupMode,
+						keepCount: item.KeepCount
+					}));
+					this.setItems(transformedItems);
+				} else {
+					console.warn('No media items data found in grid element');
+					this.setItems([]);
+				}
+			} catch (error) {
+				console.error('Failed to parse media items data:', error);
+				this.setItems([]);
+			}
+		}
+
+		setupMobileOptimizations() {
+			// Enable hardware acceleration
+			this.grid.style.transform = 'translateZ(0)';
+			this.grid.style.backfaceVisibility = 'hidden';
+			this.grid.style.perspective = '1000px';
+
+			// Use will-change for better scrolling performance
+			this.grid.style.willChange = 'transform';
+
+			// Add touch-action optimization
+			this.grid.style.touchAction = 'pan-y';
+		}
+
+		setupScrollOptimizations() {
+			let ticking = false;
+			let lastScrollTime = 0;
+
+			const handleScroll = () => {
+				if (!ticking) {
+					const now = Date.now();
+					if (now - lastScrollTime >= this.options.throttleDelay) {
+						requestAnimationFrame(() => {
+							this.handleScrollEvent();
+							lastScrollTime = now;
+							ticking = false;
+						});
+						ticking = true;
+					}
+				}
+			};
+
+			// Use passive listeners for better scroll performance
+			window.addEventListener('scroll', handleScroll, { passive: true });
+		}
+
+		handleScrollEvent() {
+			const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+			this.scrollDirection = currentScrollTop > this.lastScrollTop ? 'down' : 'up';
+			this.lastScrollTop = currentScrollTop;
+
+			// Update scroll to top button visibility
+			this.updateScrollToTopButton();
+		}
+
+		setupIntersectionObserver() {
+			if (!this.options.useIntersectionObserver || !window.IntersectionObserver || !this.scrollSentinel) {
+				return this.setupLegacyInfiniteScroll();
+			}
+
+			this.intersectionObserver = new IntersectionObserver(
+				(entries) => {
+					entries.forEach(entry => {
+						if (entry.isIntersecting && !this.isLoading && this.hasMoreData) {
+							this.loadMore();
+						}
+					});
+				},
+				{
+					rootMargin: '100px', // Start loading when 100px away
+					threshold: 0.1
+				}
+			);
+
+			this.intersectionObserver.observe(this.scrollSentinel);
+		}
+
+		setupLegacyInfiniteScroll() {
+			// Fallback for browsers without IntersectionObserver
+			let ticking = false;
+			const threshold = 200;
+
+			const checkScroll = () => {
+				const scrollPosition = window.innerHeight + window.scrollY;
+				const documentHeight = document.documentElement.scrollHeight;
+				const shouldLoadMore = scrollPosition >= documentHeight - threshold;
+
+				if (shouldLoadMore && !this.isLoading && this.hasMoreData) {
+					this.loadMore();
+				}
+				ticking = false;
+			};
+
+			window.addEventListener('scroll', () => {
+				if (!ticking) {
+					requestAnimationFrame(checkScroll);
+					ticking = true;
+				}
+			}, { passive: true });
+		}
+
+		setItems(items) {
+			this.allItems = items;
+			this.filteredItems = [...items];
+			this.currentPage = 1;
+			this.renderedItems.clear();
+			this.hasMoreData = items.length > this.batchSize;
+			this.clearGrid();
+			this.renderInitialBatch();
+		}
+
+		renderInitialBatch() {
+			if (this.isLoading) return;
+
+			const initialBatch = this.filteredItems.slice(0, this.batchSize);
+			this.renderItems(initialBatch, false); // false = don't append, replace
+
+			// Update the rendered items set
+			initialBatch.forEach((item, index) => this.renderedItems.add(index));
+		}
+
+		loadMore() {
+			if (this.isLoading || !this.hasMoreData) return;
+
+			this.isLoading = true;
+			this.showScrollLoading();
+
+			// Calculate which items to load next
+			const startIndex = this.renderedItems.size;
+			const endIndex = Math.min(startIndex + this.batchSize, this.filteredItems.length);
+			const newItems = this.filteredItems.slice(startIndex, endIndex);
+
+			if (newItems.length === 0) {
+				this.hasMoreData = false;
+				this.hideScrollLoading();
+				this.isLoading = false;
+				return;
+			}
+
+			// Add progressive loading delay for smoother experience
+			const screenWidth = window.innerWidth;
+			const isMobile = screenWidth < 640;
+			const delay = isMobile ? 100 : 50;
+
+			setTimeout(() => {
+				this.renderItems(newItems, true); // true = append
+
+				// Update rendered items tracking
+				for (let i = startIndex; i < endIndex; i++) {
+					this.renderedItems.add(i);
+				}
+
+				// Check if we have more data
+				this.hasMoreData = endIndex < this.filteredItems.length;
+
+				this.hideScrollLoading();
+				this.isLoading = false;
+			}, delay);
+		}
+
+		renderItems(items, append = false) {
+			if (!append) {
+				this.grid.innerHTML = '';
+			}
+
+			const fragment = document.createDocumentFragment();
+
+			items.forEach((item, index) => {
+				// Create skeleton placeholder first
+				const skeletonEl = this.createSkeletonElement();
+				skeletonEl.setAttribute('data-skeleton-index', index);
+				fragment.appendChild(skeletonEl);
+			});
+
+			// Add skeletons to DOM immediately
+			this.grid.appendChild(fragment);
+
+			// Then replace skeletons with actual content progressively
+			items.forEach((item, index) => {
+				setTimeout(() => {
+					const cardEl = this.createCardElement(item);
+					const skeletonEl = this.grid.querySelector(`[data-skeleton-index="${index}"]`);
+
+					if (skeletonEl) {
+						// Add entrance animation for better UX (only on desktop)
+						if (this.options.animateChanges && append) {
+							cardEl.style.opacity = '0';
+							cardEl.style.transform = 'translateY(20px)';
+
+							skeletonEl.replaceWith(cardEl);
+
+							// Trigger animation after replacement
+							requestAnimationFrame(() => {
+								cardEl.style.transition = 'opacity 200ms ease-out, transform 200ms ease-out';
+								cardEl.style.opacity = '1';
+								cardEl.style.transform = 'translateY(0)';
+							});
+						} else {
+							skeletonEl.replaceWith(cardEl);
+						}
+					}
+				}, index * 50); // Stagger the replacement for smoother loading
+			});
+		}
+
+		filterItems(searchTerm, libraryFilter) {
+			// Clear current state
+			this.renderedItems.clear();
+			this.currentPage = 1;
+			this.hasMoreData = true;
+
+			// Apply filters
+			this.filteredItems = this.allItems.filter(item => {
+				const matchesSearch = !searchTerm ||
+					item.title.toLowerCase().includes(searchTerm.toLowerCase());
+				const matchesLibrary = !libraryFilter || item.library === libraryFilter;
+				return matchesSearch && matchesLibrary;
+			});
+
+			// Re-render with new filtered data
+			this.clearGrid();
+			this.renderInitialBatch();
+
+			// Update has more data status
+			this.hasMoreData = this.filteredItems.length > this.batchSize;
+		}
+
+		sortItems(sortBy) {
+			// Store current scroll position
+			const scrollPosition = window.scrollY;
+
+			this.filteredItems.sort((a, b) => {
+				switch (sortBy) {
+					case 'title-asc':
+						return a.title.localeCompare(b.title);
+					case 'title-desc':
+						return b.title.localeCompare(a.title);
+					case 'deletion-date-asc':
+						return a.deletionTimestamp - b.deletionTimestamp;
+					case 'deletion-date-desc':
+						return b.deletionTimestamp - a.deletionTimestamp;
+					case 'size-asc':
+						return a.fileSize - b.fileSize;
+					case 'size-desc':
+						return b.fileSize - a.fileSize;
+					default:
+						return 0;
+				}
+			});
+
+			// Re-render everything
+			this.renderedItems.clear();
+			this.hasMoreData = true;
+			this.clearGrid();
+			this.renderInitialBatch();
+
+			// Restore scroll position smoothly
+			requestAnimationFrame(() => {
+				window.scrollTo({
+					top: Math.min(scrollPosition, document.body.scrollHeight - window.innerHeight),
+					behavior: 'smooth'
+				});
+			});
+		}
+
+		clearGrid() {
+			// Quick clear without animation for better performance
+			this.grid.innerHTML = '';
+		}
+
+		showScrollLoading() {
+			if (this.scrollLoadingEl) {
+				this.scrollLoadingEl.classList.remove('hidden');
+			}
+		}
+
+		hideScrollLoading() {
+			if (this.scrollLoadingEl) {
+				this.scrollLoadingEl.classList.add('hidden');
+			}
+		}
+
+		// These methods should be overridden by subclasses for custom card rendering
+		createCardElement(item) {
+			// Default implementation - should be overridden
+			const div = document.createElement('div');
+			div.className = 'media-card';
+			div.innerHTML = this.createCardHTML(item);
+			return div;
+		}
+
+		createCardHTML(item) {
+			// Default implementation - should be overridden
+			return `<div class="card p-4"><h3>${item.title}</h3><p>${item.library}</p></div>`;
+		}
+
+		createSkeletonElement() {
+			const div = document.createElement('div');
+			div.className = 'media-card animate-pulse';
+			div.innerHTML = this.createSkeletonHTML();
+			return div;
+		}
+
+		createSkeletonHTML() {
+			const isMobile = window.innerWidth < 640; // Use same breakpoint as grid
+
+			if (isMobile) {
+				// Mobile layout skeleton
+				return `
+					<div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+						<div class="flex">
+							<!-- Skeleton poster -->
+							<div class="w-24 h-36 bg-gray-700 flex-shrink-0"></div>
+							<div class="flex-1 p-4">
+								<!-- Skeleton title -->
+								<div class="h-4 bg-gray-700 rounded mb-2 w-3/4"></div>
+								<div class="h-3 bg-gray-700 rounded mb-3 w-1/2"></div>
+
+								<!-- Skeleton metadata -->
+								<div class="space-y-2 mb-3">
+									<div class="h-3 bg-gray-700 rounded w-2/3"></div>
+									<div class="h-3 bg-gray-700 rounded w-1/3"></div>
+								</div>
+
+								<!-- Skeleton pills -->
+								<div class="flex flex-wrap gap-1 mb-3">
+									<div class="h-6 bg-gray-700 rounded-full w-12"></div>
+									<div class="h-6 bg-gray-700 rounded-full w-10"></div>
+									<div class="h-6 bg-gray-700 rounded-full w-16"></div>
+								</div>
+
+								<!-- Skeleton button -->
+								<div class="h-8 bg-gray-700 rounded w-full"></div>
+							</div>
+						</div>
+					</div>
+				`;
+			} else {
+				// Desktop layout skeleton
+				return `
+					<div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+						<!-- Skeleton poster -->
+						<div class="w-full h-64 bg-gray-700"></div>
+						<div class="p-4">
+							<!-- Skeleton title -->
+							<div class="h-5 bg-gray-700 rounded mb-2 w-3/4"></div>
+							<div class="h-4 bg-gray-700 rounded mb-3 w-1/2"></div>
+
+							<!-- Skeleton metadata -->
+							<div class="space-y-2 mb-3">
+								<div class="h-3 bg-gray-700 rounded w-2/3"></div>
+								<div class="h-3 bg-gray-700 rounded w-1/3"></div>
+							</div>
+
+							<!-- Skeleton pills -->
+							<div class="flex flex-wrap gap-2 mb-3">
+								<div class="h-6 bg-gray-700 rounded-full w-12"></div>
+								<div class="h-6 bg-gray-700 rounded-full w-10"></div>
+								<div class="h-6 bg-gray-700 rounded-full w-16"></div>
+							</div>
+
+							<!-- Skeleton button -->
+							<div class="h-9 bg-gray-700 rounded w-full"></div>
+						</div>
+					</div>
+				`;
+			}
+		}
+
+		setupSearch() {
+			const searchInput = document.getElementById('search');
+			const libraryFilter = document.getElementById('library-filter');
+			const sortSelect = document.getElementById('sort-by');
+
+			if (this.options.enableSearch && searchInput) {
+				let searchTimeout;
+				searchInput.addEventListener('input', (e) => {
+					clearTimeout(searchTimeout);
+					searchTimeout = setTimeout(() => {
+						this.handleFilters();
+					}, 300); // Debounce search
+				});
+			}
+
+			if (this.options.enableFilters && libraryFilter) {
+				libraryFilter.addEventListener('change', () => this.handleFilters());
+			}
+
+			if (this.options.enableSorting && sortSelect) {
+				sortSelect.addEventListener('change', (e) => this.sortItems(e.target.value));
+			}
+		}
+
+		handleFilters() {
+			const searchTerm = this.options.enableSearch ? (document.getElementById('search')?.value || '') : '';
+			const libraryFilter = this.options.enableFilters ? (document.getElementById('library-filter')?.value || '') : '';
+			this.filterItems(searchTerm, libraryFilter);
+		}
+
+		setupScrollToTop() {
+			if (!this.scrollToTopBtn) return;
+
+			this.scrollToTopBtn.addEventListener('click', () => {
+				window.scrollTo({ top: 0, behavior: 'smooth' });
+			});
+		}
+
+		updateScrollToTopButton() {
+			if (!this.scrollToTopBtn) return;
+
+			const isMobile = window.innerWidth < 640; // Use same breakpoint as grid
+			const threshold = isMobile ? 200 : 400; // Show button sooner on mobile
+			const scrolled = window.scrollY > threshold;
+
+			const opacity = scrolled ? '1' : '0';
+			const pointerEvents = scrolled ? 'auto' : 'none';
+			const transform = scrolled ? 'translateY(0)' : 'translateY(1rem)';
+
+			this.scrollToTopBtn.style.opacity = opacity;
+			this.scrollToTopBtn.style.pointerEvents = pointerEvents;
+			this.scrollToTopBtn.style.transform = transform;
+		}
+
+		refresh() {
+			// Re-render current items
+			const currentItems = this.filteredItems.slice(0, this.renderedItems.size);
+			this.renderedItems.clear();
+			this.clearGrid();
+			this.renderItems(currentItems, false);
+
+			// Restore rendered items tracking
+			currentItems.forEach((item, index) => this.renderedItems.add(index));
+		}
+
+		handleResize() {
+			const screenWidth = window.innerWidth;
+			const isMobile = screenWidth < 640; // sm breakpoint
+			const isTablet = screenWidth >= 640 && screenWidth < 1024; // between sm and lg
+			const wasPageSize = this.pageSize;
+
+			// Update page size based on new viewport
+			const config = this.readConfigFromGrid();
+			if (isMobile) {
+				this.pageSize = config.mobilePageSize;
+			} else if (isTablet) {
+				this.pageSize = Math.max(4, Math.floor(config.pageSize * 0.6)); // Reduced for tablet
+			} else {
+				this.pageSize = config.pageSize;
+			}
+			this.batchSize = isMobile ? Math.ceil(this.pageSize / 2) : Math.ceil(this.pageSize * 0.75);
+
+			// Update animations based on device performance
+			this.options.animateChanges = config.animateChanges && !isMobile;
+
+			// If page size changed significantly, re-render to adjust content
+			if (Math.abs(wasPageSize - this.pageSize) > 2) {
+				this.refresh();
+			}
+		}
+
+		// Remove an item from the grid with animation
+		removeItem(itemId, animationType = 'default') {
+			const cardElement = this.findCardElementByItemId(itemId);
+			if (!cardElement) {
+				console.warn(`Card element not found for item ID: ${itemId}`);
+				return Promise.resolve();
+			}
+
+			return this.animateCardRemoval(cardElement, animationType).then(() => {
+				// Remove from data structures
+				this.allItems = this.allItems.filter(item => item.id !== itemId);
+				this.filteredItems = this.filteredItems.filter(item => item.id !== itemId);
+
+				// Update rendered items tracking
+				this.updateRenderedItemsAfterRemoval();
+
+				// Update pagination status
+				this.hasMoreData = this.filteredItems.length > this.renderedItems.size;
+			});
+		}
+
+		// Find card element by item ID
+		findCardElementByItemId(itemId) {
+			// Try multiple selectors to find the card
+			const selectors = [
+				`[data-media-id="${itemId}"]`,
+				`[data-item-id="${itemId}"]`,
+				`#item-${itemId}`,
+				`#media-${itemId}`,
+				`#request-${itemId}`
+			];
+
+			for (const selector of selectors) {
+				const element = this.grid.querySelector(selector);
+				if (element) {
+					// Return the closest media-card container
+					return element.closest('.media-card') || element;
+				}
+			}
+
+			// Fallback: search by data attributes on the card itself
+			const cards = this.grid.querySelectorAll('.media-card');
+			for (const card of cards) {
+				if (card.getAttribute('data-media-id') === itemId ||
+					card.getAttribute('data-item-id') === itemId) {
+					return card;
+				}
+			}
+
+			return null;
+		}
+
+		// Animate card removal with different animation types
+		animateCardRemoval(cardElement, animationType = 'default') {
+			if (!cardElement) return Promise.resolve();
+
+			return new Promise((resolve) => {
+				const isMobile = window.innerWidth < 640; // Use same breakpoint as grid
+				let transform = '';
+				let opacity = '0';
+				const duration = isMobile ? 500 : 300; // Slightly longer on mobile for smoothness
+
+				// Set animation based on type with smoother mobile transforms
+				switch (animationType) {
+					case 'swipe-right':
+						if (isMobile) {
+							// Smoother mobile swipe with less dramatic movement
+							transform = 'translateX(120%) scale(0.95) rotateZ(2deg)';
+							opacity = '0';
+						} else {
+							transform = 'translateX(50px) scale(0.95)';
+						}
+						break;
+					case 'swipe-left':
+						if (isMobile) {
+							// Smoother mobile swipe with less dramatic movement
+							transform = 'translateX(-120%) scale(0.95) rotateZ(-2deg)';
+							opacity = '0';
+						} else {
+							transform = 'translateX(-50px) scale(0.95)';
+						}
+						break;
+					case 'fly-up':
+						if (isMobile) {
+							// Smoother upward motion with gentle scale and rotation
+							transform = 'translateY(-120%) scale(0.85) rotateZ(1deg)';
+							opacity = '0';
+						} else {
+							transform = 'translateY(-100px) scale(0.9)';
+						}
+						break;
+					case 'fly-down':
+						if (isMobile) {
+							// Smoother downward motion
+							transform = 'translateY(120%) scale(0.85) rotateZ(-1deg)';
+							opacity = '0';
+						} else {
+							transform = 'translateY(100px) scale(0.9)';
+						}
+						break;
+					case 'scale-out':
+						transform = 'scale(0.8)';
+						break;
+					default:
+						transform = 'translateY(20px) scale(0.95)';
+				}
+
+				// Use smoother easing curve for mobile animations
+				const easingCurve = isMobile ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'cubic-bezier(0.4, 0, 0.2, 1)';
+
+				// Apply animation styles
+				cardElement.style.transition = `all ${duration}ms ${easingCurve}`;
+				cardElement.style.opacity = opacity;
+				cardElement.style.transform = transform;
+				cardElement.style.pointerEvents = 'none';
+
+				// Add subtle effects for mobile without harsh blur
+				if (isMobile && animationType.startsWith('swipe')) {
+					// Use box-shadow instead of blur for better performance and smoother appearance
+					cardElement.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.12)';
+				}
+
+				setTimeout(() => {
+					// Animate the grid layout to fill the gap
+					this.animateGridReflow(cardElement);
+
+					setTimeout(() => {
+						cardElement.remove();
+						resolve();
+					}, 100); // Reduced delay for smoother flow
+				}, duration);
+			});
+		}
+
+		// Animate grid reflow when an item is removed
+		animateGridReflow(removedElement) {
+			const allCards = Array.from(this.grid.querySelectorAll('.media-card'));
+			const removedIndex = allCards.indexOf(removedElement);
+
+			if (removedIndex === -1) return;
+
+			const isMobile = window.innerWidth < 640; // Use same breakpoint as grid
+			const transitionDuration = isMobile ? 300 : 200;
+			const easingCurve = isMobile ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'ease-out';
+
+			// Apply smooth transition to remaining cards for reflow
+			allCards.forEach((card, index) => {
+				if (index > removedIndex && card !== removedElement) {
+					card.style.transition = `transform ${transitionDuration}ms ${easingCurve}`;
+				}
+			});
+
+			// Clean up transitions after animation
+			setTimeout(() => {
+				allCards.forEach(card => {
+					if (card.parentNode) {
+						card.style.transition = '';
+					}
+				});
+			}, transitionDuration + 50);
+		}
+
+		// Update rendered items tracking after removal
+		updateRenderedItemsAfterRemoval() {
+			// Rebuild the rendered items set based on current DOM state
+			const currentCards = this.grid.querySelectorAll('.media-card');
+			this.renderedItems.clear();
+
+			// Re-index the remaining items
+			for (let i = 0; i < currentCards.length; i++) {
+				this.renderedItems.add(i);
+			}
+		}
+
+		// Batch remove multiple items (useful for bulk operations)
+		removeItems(itemIds, animationType = 'default') {
+			const promises = itemIds.map(itemId => this.removeItem(itemId, animationType));
+			return Promise.all(promises);
+		}
+
+		// Generic action handler that can be overridden by subclasses
+		handleItemAction(itemId, actionType, cardElement = null) {
+			const animationMap = {
+				'accept': 'swipe-right',
+				'decline': 'swipe-left',
+				'keep': 'swipe-right',
+				'keep-forever': 'fly-up',
+				'delete': 'swipe-left',
+				'sweep': 'swipe-left',
+				'remove': 'scale-out'
+			};
+
+			const animationType = animationMap[actionType] || 'default';
+
+			// If no card element provided, try to find it
+			if (!cardElement) {
+				cardElement = this.findCardElementByItemId(itemId);
+			}
+
+			if (cardElement) {
+				return this.animateCardRemoval(cardElement, animationType).then(() => {
+					// Remove from data structures
+					this.allItems = this.allItems.filter(item => item.id !== itemId);
+					this.filteredItems = this.filteredItems.filter(item => item.id !== itemId);
+					this.updateRenderedItemsAfterRemoval();
+					this.hasMoreData = this.filteredItems.length > this.renderedItems.size;
+				});
+			}
+
+			return Promise.resolve();
+		}
+
+		// Cleanup method for proper memory management
+		destroy() {
+			if (this.intersectionObserver) {
+				this.intersectionObserver.disconnect();
+			}
+
+			// Remove event listeners would go here if we stored references
+		}
+	}
+
+	// Export the class for use by other scripts
+	window.MediaGridManager = MediaGridManager;
+}

@@ -11,7 +11,8 @@ import (
 )
 
 type AdminHandler struct {
-	engine *engine.Engine
+	engine       *engine.Engine
+	cacheManager CacheManager
 }
 
 func NewAdmin(eng *engine.Engine) *AdminHandler {
@@ -20,9 +21,25 @@ func NewAdmin(eng *engine.Engine) *AdminHandler {
 	}
 }
 
+// SetCacheManager allows setting the cache manager for admin operations.
+func (h *AdminHandler) SetCacheManager(cm CacheManager) {
+	h.cacheManager = cm
+}
+
 // AdminPanel shows the admin panel with keep requests.
 func (h *AdminHandler) AdminPanel(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
+
+	// Create cache key based on user (admin cache)
+	userID := user.Sub + "_admin"
+
+	// Check if this is a forced refresh
+	cacheControl := c.GetHeader("Cache-Control")
+	pragma := c.GetHeader("Pragma")
+	forceRefresh := c.Query("refresh") == RefreshParamTrue ||
+		cacheControl == CacheControlNoCache ||
+		cacheControl == CacheControlMaxAge0 ||
+		pragma == PragmaNoCache
 
 	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context())
 	if err != nil {
@@ -30,11 +47,27 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 		return
 	}
 
-	// Get media items for the keep/delete tab
-	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
-		return
+	var mediaItemsMap map[string][]models.MediaItem
+
+	// Try to get from cache first (if not forced refresh and cache manager available)
+	if !forceRefresh && h.cacheManager != nil {
+		if cachedData, found := h.cacheManager.Get(userID); found {
+			mediaItemsMap = cachedData
+		}
+	}
+
+	// If not in cache or forced refresh, get fresh data
+	if mediaItemsMap == nil || forceRefresh {
+		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
+			return
+		}
+
+		// Store in cache if cache manager is available
+		if h.cacheManager != nil {
+			h.cacheManager.Set(userID, mediaItemsMap)
+		}
 	}
 
 	// Flatten the map to a slice
@@ -62,6 +95,13 @@ func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 		return
 	}
 
+	// Clear admin cache since data has changed
+	if h.cacheManager != nil {
+		user := c.MustGet("user").(*models.User)
+		userID := user.Sub + "_admin"
+		h.cacheManager.Clear(userID)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Keep request accepted successfully",
@@ -79,6 +119,13 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 			"error":   err.Error(),
 		})
 		return
+	}
+
+	// Clear admin cache since data has changed
+	if h.cacheManager != nil {
+		user := c.MustGet("user").(*models.User)
+		userID := user.Sub + "_admin"
+		h.cacheManager.Clear(userID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -100,6 +147,13 @@ func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
 		return
 	}
 
+	// Clear admin cache since data has changed
+	if h.cacheManager != nil {
+		user := c.MustGet("user").(*models.User)
+		userID := user.Sub + "_admin"
+		h.cacheManager.Clear(userID)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Media marked as keep successfully",
@@ -117,6 +171,13 @@ func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
 			"error":   err.Error(),
 		})
 		return
+	}
+
+	// Clear admin cache since data has changed
+	if h.cacheManager != nil {
+		user := c.MustGet("user").(*models.User)
+		userID := user.Sub + "_admin"
+		h.cacheManager.Clear(userID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -138,8 +199,84 @@ func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 		return
 	}
 
+	// Clear admin cache since data has changed
+	if h.cacheManager != nil {
+		user := c.MustGet("user").(*models.User)
+		userID := user.Sub + "_admin"
+		h.cacheManager.Clear(userID)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Media protected forever successfully",
+	})
+}
+
+// GetKeepRequests returns keep requests as JSON with caching support.
+func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
+	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get keep requests",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":      true,
+		"keepRequests": keepRequests,
+	})
+}
+
+// GetAdminMediaItems returns media items for admin with caching support.
+func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+	userID := user.Sub + "_admin"
+
+	// Check if this is a forced refresh
+	cacheControl := c.GetHeader("Cache-Control")
+	pragma := c.GetHeader("Pragma")
+	forceRefresh := c.Query("refresh") == RefreshParamTrue ||
+		cacheControl == CacheControlNoCache ||
+		cacheControl == CacheControlMaxAge0 ||
+		pragma == PragmaNoCache
+
+	var mediaItemsMap map[string][]models.MediaItem
+	var err error
+
+	// Try to get from cache first (if not forced refresh and cache manager available)
+	if !forceRefresh && h.cacheManager != nil {
+		if cachedData, found := h.cacheManager.Get(userID); found {
+			mediaItemsMap = cachedData
+		}
+	}
+
+	// If not in cache or forced refresh, get fresh data
+	if mediaItemsMap == nil || forceRefresh {
+		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to get media items",
+			})
+			return
+		}
+
+		// Store in cache if cache manager is available
+		if h.cacheManager != nil {
+			h.cacheManager.Set(userID, mediaItemsMap)
+		}
+	}
+
+	// Convert to flat list
+	var mediaItems []models.MediaItem
+	for _, libraryItems := range mediaItemsMap {
+		mediaItems = append(mediaItems, libraryItems...)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"mediaItems": mediaItems,
 	})
 }

@@ -79,6 +79,25 @@
 
   .card {
     @apply bg-gray-900 border border-gray-800 rounded-lg shadow-lg;
+    /* Optimize for mobile scrolling */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Card without hover effects for filter bars */
+  .card-no-hover {
+    @apply bg-gray-900 border border-gray-800 rounded-lg shadow-lg;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Media cards with proper spacing for ring effects */
+  .media-card {
+    @apply bg-gray-900 border border-gray-800 rounded-lg shadow-lg transition-all duration-200;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    /* Add padding for ring effect - use padding instead of margin to prevent grid issues */
+    margin: 3px;
   }
 
   .input-field {
@@ -94,5 +113,56 @@
 
   .tab-content-active {
     @apply block;
+  }
+
+  /* Optimizations for smooth scrolling */
+  #media-grid {
+    contain: layout style paint;
+    will-change: transform;
+    /* Add padding to prevent ring clipping */
+    padding: 4px;
+    margin: -4px; /* Negative margin to maintain layout */
+  }
+
+  #media-grid .card {
+    contain: layout style paint;
+  }
+
+  /* Mobile-specific optimizations */
+  @media (max-width: 767px) {
+    #media-grid {
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      perspective: 1000px;
+      touch-action: pan-y;
+    }
+
+    .card {
+      /* Reduce shadow complexity on mobile for better performance */
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+
+    /* Disable hover effects on mobile */
+    .card:hover, .media-card:hover {
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      transform: none;
+    }
+
+    /* Optimize transitions for mobile */
+    * {
+      transition-duration: 150ms !important;
+    }
+  }
+
+  /* Desktop optimizations */
+  @media (min-width: 768px) {
+    .card:hover {
+      transform: translateY(-2px);
+    }
+
+    .media-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 0 2px rgb(79 70 229), 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
   }
 }

@@ -3,10 +3,8 @@ package pages
 import (
 	"fmt"
 	"github.com/jon4hz/jellysweep/api/models"
-	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates"
 	"github.com/jon4hz/jellysweep/web/templates/components"
-	"sort"
 	"strings"
 	"time"
 )
@@ -79,181 +77,6 @@ func getSeasonTooltip(keepCount int) string {
 	return b.String()
 }
 
-// getUniqueLibraries extracts unique library names from media items
-func getUniqueLibraries(items []models.MediaItem) []string {
-	libraryMap := make(map[string]bool)
-	var libraries []string
-
-	for _, item := range items {
-		if item.Library != "" && !libraryMap[item.Library] {
-			libraryMap[item.Library] = true
-			libraries = append(libraries, item.Library)
-		}
-	}
-
-	return libraries
-}
-
-// DailyCleanupPoint represents storage cleaned up on a specific day
-type DailyCleanupPoint struct {
-	Date       time.Time
-	DailyBytes int64
-	ItemsCount int
-}
-
-// CumulativeCleanupPoint represents cumulative storage freed over time
-type CumulativeCleanupPoint struct {
-	Date            time.Time
-	CumulativeBytes int64
-	ItemsDeleted    int
-}
-
-// calculateDailyCleanupData processes media items to create data points for daily cleanup graph
-func calculateDailyCleanupData(items []models.MediaItem) []DailyCleanupPoint {
-	if len(items) == 0 {
-		return []DailyCleanupPoint{}
-	}
-
-	// Group items by date (day)
-	dailyMap := make(map[string][]models.MediaItem)
-	for _, item := range items {
-		dateKey := item.DeletionDate.Format("2006-01-02")
-		dailyMap[dateKey] = append(dailyMap[dateKey], item)
-	}
-
-	var points []DailyCleanupPoint
-	for dateKey, dayItems := range dailyMap {
-		date, _ := time.Parse("2006-01-02", dateKey)
-
-		var dailyBytes int64
-		for _, item := range dayItems {
-			dailyBytes += item.FileSize
-		}
-
-		points = append(points, DailyCleanupPoint{
-			Date:       date,
-			DailyBytes: dailyBytes,
-			ItemsCount: len(dayItems),
-		})
-	}
-
-	// Sort points by date
-	sort.Slice(points, func(i, j int) bool {
-		return points[i].Date.Before(points[j].Date)
-	})
-
-	return points
-}
-
-// calculateCumulativeCleanupData processes media items to create data points for cumulative cleanup graph
-func calculateCumulativeCleanupData(items []models.MediaItem) []CumulativeCleanupPoint {
-	if len(items) == 0 {
-		return []CumulativeCleanupPoint{}
-	}
-
-	// Sort items by deletion date
-	sortedItems := make([]models.MediaItem, len(items))
-	copy(sortedItems, items)
-	sort.Slice(sortedItems, func(i, j int) bool {
-		return sortedItems[i].DeletionDate.Before(sortedItems[j].DeletionDate)
-	})
-
-	var points []CumulativeCleanupPoint
-	var cumulativeBytes int64
-	var itemsDeleted int
-
-	// Start from the first deletion date
-	firstDeletionDate := sortedItems[0].DeletionDate
-	points = append(points, CumulativeCleanupPoint{
-		Date:            firstDeletionDate,
-		CumulativeBytes: 0,
-		ItemsDeleted:    0,
-	})
-
-	// Calculate cumulative storage freed at each deletion date
-	for _, item := range sortedItems {
-		cumulativeBytes += item.FileSize
-		itemsDeleted++
-
-		points = append(points, CumulativeCleanupPoint{
-			Date:            item.DeletionDate,
-			CumulativeBytes: cumulativeBytes,
-			ItemsDeleted:    itemsDeleted,
-		})
-	}
-
-	return points
-}
-
-// getTotalStorageToFree calculates the total storage that will be freed
-func getTotalStorageToFree(items []models.MediaItem) int64 {
-	var total int64
-	for _, item := range items {
-		total += item.FileSize
-	}
-	return total
-}
-
-// DailyChartData represents the structure for daily chart JSON data
-type DailyChartData struct {
-	Points       []DailyChartPoint `json:"points"`
-	TotalStorage int64             `json:"totalStorage"`
-}
-
-// DailyChartPoint represents a single data point for the daily chart
-type DailyChartPoint struct {
-	Date       string `json:"date"`
-	DailyBytes int64  `json:"dailyBytes"`
-	ItemsCount int    `json:"itemsCount"`
-}
-
-// CumulativeChartData represents the structure for cumulative chart JSON data
-type CumulativeChartData struct {
-	Points       []CumulativeChartPoint `json:"points"`
-	TotalStorage int64                  `json:"totalStorage"`
-}
-
-// CumulativeChartPoint represents a single data point for the cumulative chart
-type CumulativeChartPoint struct {
-	Date            string `json:"date"`
-	CumulativeBytes int64  `json:"cumulativeBytes"`
-	ItemsDeleted    int    `json:"itemsDeleted"`
-}
-
-// generateDailyChartData creates the data structure for the daily cleanup chart
-func generateDailyChartData(points []DailyCleanupPoint, totalStorage int64) DailyChartData {
-	chartPoints := make([]DailyChartPoint, len(points))
-	for i, point := range points {
-		chartPoints[i] = DailyChartPoint{
-			Date:       point.Date.Format("2006-01-02T15:04:05Z07:00"),
-			DailyBytes: point.DailyBytes,
-			ItemsCount: point.ItemsCount,
-		}
-	}
-
-	return DailyChartData{
-		Points:       chartPoints,
-		TotalStorage: totalStorage,
-	}
-}
-
-// generateCumulativeChartData creates the data structure for the cumulative cleanup chart
-func generateCumulativeChartData(points []CumulativeCleanupPoint, totalStorage int64) CumulativeChartData {
-	chartPoints := make([]CumulativeChartPoint, len(points))
-	for i, point := range points {
-		chartPoints[i] = CumulativeChartPoint{
-			Date:            point.Date.Format("2006-01-02T15:04:05Z07:00"),
-			CumulativeBytes: point.CumulativeBytes,
-			ItemsDeleted:    point.ItemsDeleted,
-		}
-	}
-
-	return CumulativeChartData{
-		Points:       chartPoints,
-		TotalStorage: totalStorage,
-	}
-}
-
 templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
 	@DashboardWithPendingRequests(user, mediaItems, 0)
 }
@@ -299,8 +122,13 @@ templ DashboardContent(user *models.User, mediaItems []models.MediaItem) {
 	@templates.ButtonLoadingUtils()
 	@templates.ApiUtils()
 	@templates.DebounceUtil()
+	@templates.SmoothNavigationUtils()
 	<!-- Include tab functionality -->
 	@components.TabsScript()
+	<!-- Include optimized grid script -->
+	@components.MediaGridScript()
+	@components.DashboardMediaGridScript()
+	@components.StatsScript()
 	@dashboardScripts()
 }
 
@@ -318,292 +146,10 @@ templ DashboardTabs(mediaItems []models.MediaItem) {
 		}
 		if len(mediaItems) > 0 {
 			@components.TabContent("cleanup-timeline", false) {
-				@StatsTab(mediaItems)
+				@components.StatsTab(mediaItems)
 			}
 		}
 	}
-}
-
-templ DailyCleanupGraph(dailyPoints []DailyCleanupPoint, totalStorage int64) {
-	<div class="card p-6 mb-6">
-		<div class="flex items-center justify-between mb-6">
-			<div>
-				<h2 class="text-xl font-semibold text-gray-100">Daily Storage Cleanup</h2>
-				<p class="text-sm text-gray-400 mt-1">Storage freed per day</p>
-			</div>
-			<div class="text-right">
-				<div class="text-lg font-semibold text-green-400">{ components.FormatFileSize(totalStorage) }</div>
-				<div class="text-sm text-gray-400">Total to be freed</div>
-			</div>
-		</div>
-		if len(dailyPoints) > 0 {
-			<div class="relative">
-				<!-- Chart.js Canvas -->
-				<canvas id="daily-cleanup-chart" class="w-full h-64"></canvas>
-				<!-- Hidden data for JavaScript -->
-				@templ.JSONScript("daily-cleanup-data", generateDailyChartData(dailyPoints, totalStorage))
-			</div>
-		} else {
-			<div class="text-center py-8 text-gray-400">
-				<svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-				</svg>
-				<p>No data available for daily cleanup graph</p>
-			</div>
-		}
-	</div>
-}
-
-templ CumulativeCleanupGraph(cumulativePoints []CumulativeCleanupPoint, totalStorage int64) {
-	<div class="card p-6">
-		<div class="flex items-center justify-between mb-6">
-			<div>
-				<h2 class="text-xl font-semibold text-gray-100">Cumulative Storage Timeline</h2>
-				<p class="text-sm text-gray-400 mt-1">Total storage freed over time</p>
-			</div>
-			<div class="text-right">
-				<div class="text-lg font-semibold text-blue-400">{ components.FormatFileSize(totalStorage) }</div>
-				<div class="text-sm text-gray-400">Total to be freed</div>
-			</div>
-		</div>
-		if len(cumulativePoints) > 1 {
-			<div class="relative">
-				<!-- Chart.js Canvas -->
-				<canvas id="cumulative-cleanup-chart" class="w-full h-64"></canvas>
-				<!-- Hidden data for JavaScript -->
-				@templ.JSONScript("cumulative-cleanup-data", generateCumulativeChartData(cumulativePoints, totalStorage))
-			</div>
-		} else {
-			<div class="text-center py-8 text-gray-400">
-				<svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-				</svg>
-				<p>Not enough data points for cumulative graph</p>
-			</div>
-		}
-	</div>
-}
-
-templ MediaCard(item models.MediaItem) {
-	<div
-		class="card hover:ring-2 hover:ring-indigo-500 transition-all duration-200"
-		data-title={ item.Title }
-		data-deletion-timestamp={ fmt.Sprintf("%d", item.DeletionDate.Unix()) }
-		data-library={ item.Library }
-		data-size={ item.FileSize }
-	>
-		<!-- Card layout: grid on larger screens, horizontal on smaller screens -->
-		<div class="hidden sm:block">
-			<!-- Grid layout for larger screens (card style) -->
-			<div class="aspect-w-2 aspect-h-3 bg-gray-800 overflow-hidden rounded-t-lg">
-				if item.PosterURL != "" {
-					<img src={ item.PosterURL } alt={ item.Title } class="w-full h-64 object-cover"/>
-				} else {
-					<div class="w-full h-64 bg-gray-800 flex items-center justify-center">
-						<svg class="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
-						</svg>
-					</div>
-				}
-			</div>
-			<div class="p-4">
-				<div class="flex items-start justify-between">
-					<div class="flex-1 min-w-0">
-						<h3 class="text-lg font-semibold text-gray-100 truncate">{ item.Title }</h3>
-						<div class="flex items-center space-x-2 mt-1">
-							<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
-								{ item.Type }
-							</span>
-							if item.CleanupMode != "" && item.CleanupMode != engine.CleanupModeAll {
-								if item.CleanupMode == engine.CleanupModeKeepEpisodes {
-									<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-blue-100" title={ getEpisodeTooltip(item.KeepCount) }>
-										if item.KeepCount == 1 {
-											Keep { fmt.Sprint(item.KeepCount) } Episode
-										} else {
-											Keep { fmt.Sprint(item.KeepCount) } Episodes
-										}
-									</span>
-								} else if item.CleanupMode == engine.CleanupModeKeepSeasons {
-									<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-blue-100" title={ getSeasonTooltip(item.KeepCount) }>
-										if item.KeepCount == 1 {
-											Keep { fmt.Sprint(item.KeepCount) } Season
-										} else {
-											Keep { fmt.Sprint(item.KeepCount) } Seasons
-										}
-									</span>
-								} else {
-									<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-blue-100" title={ "Cleanup mode: " + item.CleanupMode }>
-										{ item.CleanupMode }
-									</span>
-								}
-							}
-							if item.Year > 0 {
-								<span class="text-sm text-gray-400">{ fmt.Sprint(item.Year) }</span>
-							}
-						</div>
-					</div>
-				</div>
-				<div class="mt-3 space-y-2">
-					<div class="flex items-center text-sm text-gray-400">
-						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-						</svg>
-						{ item.Library }
-					</div>
-					<div class="flex items-center text-sm text-gray-400">
-						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-						</svg>
-						{ components.FormatFileSize(item.FileSize) }
-					</div>
-					<div class="flex items-center text-sm text-red-400" title={ formatExactDate(item.DeletionDate) }>
-						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-						</svg>
-						Deletes { components.FormatRelativeTime(item.DeletionDate) }
-					</div>
-				</div>
-				<div class="mt-4">
-					if item.HasRequested && !item.MustDelete {
-						<button disabled class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
-							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-							</svg>
-							Request Submitted
-						</button>
-					} else if item.CanRequest {
-						<button id={ "request-" + item.ID } data-media-id={ item.ID } class="w-full flex items-center justify-center btn-primary">
-							<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-							</svg>
-							if item.CleanupMode != "" && item.CleanupMode != engine.CleanupModeAll {
-								Request to Keep All
-							} else {
-								Request to Keep
-							}
-						</button>
-					} else if item.MustDelete {
-						<button disabled class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
-							Request Unavailable
-						</button>
-					}
-				</div>
-			</div>
-		</div>
-		<!-- Horizontal layout for smaller screens (similar to admin cards) -->
-		<div class="block sm:hidden">
-			<div class="flex items-center p-4 gap-4">
-				<div class="shrink-0">
-					if item.PosterURL != "" {
-						<img src={ item.PosterURL } alt={ item.Title } class="w-16 h-24 object-cover rounded"/>
-					} else {
-						<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
-							<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
-							</svg>
-						</div>
-					}
-				</div>
-				<div class="flex-1 min-w-0">
-					<div class="flex items-center space-x-2">
-						<h4 class="text-lg font-medium text-gray-100 truncate">{ item.Title }</h4>
-						<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
-							{ item.Type }
-						</span>
-						if item.Year > 0 {
-							<span class="text-sm text-gray-400">{ fmt.Sprint(item.Year) }</span>
-						}
-					</div>
-					<div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-400">
-						<div class="flex items-center">
-							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-							</svg>
-							{ item.Library }
-						</div>
-						<div class="flex items-center">
-							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-							</svg>
-							{ components.FormatFileSize(item.FileSize) }
-						</div>
-						<div class="flex items-center text-red-400" title={ formatExactDate(item.DeletionDate) }>
-							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-							</svg>
-							{ components.FormatRelativeTime(item.DeletionDate) }
-						</div>
-					</div>
-					<div class="mt-2 flex flex-wrap items-center gap-2">
-						if item.CleanupMode != "" && item.CleanupMode != engine.CleanupModeAll {
-							if item.CleanupMode == engine.CleanupModeKeepEpisodes {
-								<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-blue-100" title={ getEpisodeTooltip(item.KeepCount) }>
-									if item.KeepCount == 1 {
-										Keep { fmt.Sprint(item.KeepCount) } Episode
-									} else {
-										Keep { fmt.Sprint(item.KeepCount) } Episodes
-									}
-								</span>
-							} else if item.CleanupMode == engine.CleanupModeKeepSeasons {
-								<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-blue-100" title={ getSeasonTooltip(item.KeepCount) }>
-									if item.KeepCount == 1 {
-										Keep { fmt.Sprint(item.KeepCount) } Season
-									} else {
-										Keep { fmt.Sprint(item.KeepCount) } Seasons
-									}
-								</span>
-							} else {
-								<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-blue-100" title={ "Cleanup mode: " + item.CleanupMode }>
-									{ item.CleanupMode }
-								</span>
-							}
-						}
-						if item.HasRequested && !item.MustDelete {
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
-								<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-								</svg>
-								Keep Requested
-							</span>
-						}
-						if item.MustDelete {
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
-								<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-								</svg>
-								Must Delete
-							</span>
-						}
-					</div>
-					<div class="mt-3">
-						if item.HasRequested && !item.MustDelete {
-							<button disabled class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed text-sm">
-								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-								</svg>
-								Request Submitted
-							</button>
-						} else if item.CanRequest {
-							<button id={ "request-mobile-" + item.ID } data-media-id={ item.ID } class="w-full flex items-center justify-center btn-primary text-sm">
-								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-								</svg>
-								if item.CleanupMode != "" && item.CleanupMode != engine.CleanupModeAll {
-									Request to Keep All
-								} else {
-									Request to Keep
-								}
-							</button>
-						} else if item.MustDelete {
-							<button disabled class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed text-sm">
-								Request Unavailable
-							</button>
-						}
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
 }
 
 templ EmptyState() {
@@ -614,9 +160,18 @@ templ EmptyState() {
 			</svg>
 		</div>
 		<h3 class="text-xl font-semibold text-gray-300 mb-2">No media scheduled for deletion</h3>
-		<p class="text-gray-500">
+		<p class="text-gray-500 mb-6">
 			All your media is safe! Check back later or refresh to see if anything changes.
 		</p>
+		<button
+			id="refresh-btn"
+			class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+		>
+			<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+			</svg>
+			Refresh
+		</button>
 	</div>
 }
 
@@ -624,376 +179,91 @@ script dashboardScripts() {
 	// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
-		initializeFilters();
+		initializeDashboardGrid();
 		initializeMediaRequests();
-		initializeStorageCharts();
 
-		// Add custom handler for chart reinitializtion when switching to stats tab
-		const statsTabButton = document.getElementById('cleanup-timeline');
-		if (statsTabButton) {
-			statsTabButton.addEventListener('click', function() {
-				setTimeout(() => {
-					initializeStorageCharts();
-				}, 100);
-			});
+		// Initialize optimized charts from stats component
+		if (window.initializeOptimizedCharts) {
+			window.initializeOptimizedCharts();
 		}
 	});
 
-	// Store chart instances to properly destroy them
-	let dailyChart = null;
-	let cumulativeChart = null;
+	function initializeDashboardGrid() {
+		// Initialize the media grid with data from the JSON script
+		const dataScript = document.getElementById('media-items-data');
+		if (dataScript && window.dashboardMediaGridManager) {
+			try {
+				const mediaItems = JSON.parse(dataScript.textContent);
+				console.log('Raw media items from server:', mediaItems);
 
-	function initializeStorageCharts() {
-		// Destroy existing charts before creating new ones
-		if (dailyChart) {
-			dailyChart.destroy();
-			dailyChart = null;
+				// Convert server data to client format
+				const clientItems = mediaItems.map(item => ({
+					...item,
+					// Ensure proper data format for client-side handling
+					id: item.ID || item.id,
+					title: item.Title || item.title,
+					library: item.Library || item.library,
+					posterURL: item.PosterURL || item.posterURL,
+					fileSize: parseInt(item.FileSize || item.fileSize || 0),
+					deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
+					hasRequested: item.HasRequested || item.hasRequested,
+					canRequest: item.CanRequest || item.canRequest,
+					mustDelete: item.MustDelete || item.mustDelete,
+					cleanupMode: item.CleanupMode || item.cleanupMode,
+					keepCount: parseInt(item.KeepCount || item.keepCount || 0),
+					type: item.Type || item.type,
+					year: parseInt(item.Year || item.year || 0)
+				}));
+
+				console.log('Converted client items:', clientItems);
+
+				// Set items in the grid manager
+				window.dashboardMediaGridManager.setItems(clientItems);
+			} catch (error) {
+				console.error('Error initializing dashboard grid:', error);
+				// Fallback to original grid if there's an error
+				showFallbackGrid();
+			}
 		}
-		if (cumulativeChart) {
-			cumulativeChart.destroy();
-			cumulativeChart = null;
-		}
 
-		initializeDailyChart();
-		initializeCumulativeChart();
-	}
-
-	function initializeDailyChart() {
-		const canvas = document.getElementById('daily-cleanup-chart');
-		const dataScript = document.getElementById('daily-cleanup-data');
-
-		if (!canvas || !dataScript) return;
-
-		try {
-			const data = JSON.parse(dataScript.textContent);
-			const points = data.points || [];
-
-			if (points.length === 0) return;
-
-			// Format data for Chart.js
-			const chartData = points.map(point => ({
-				x: new Date(point.date),
-				y: point.dailyBytes
-			}));
-
-			// Initialize Chart.js as a bar chart
-			dailyChart = new Chart(canvas, {
-				type: 'bar',
-				data: {
-					datasets: [{
-						label: 'Daily Storage Freed',
-						data: chartData,
-						backgroundColor: 'rgba(34, 197, 94, 0.8)',
-						borderColor: 'rgb(34, 197, 94)',
-						borderWidth: 1
-					}]
-				},
-				options: {
-					responsive: true,
-					maintainAspectRatio: false,
-					plugins: {
-						legend: {
-							display: false
-						},
-						tooltip: {
-							backgroundColor: 'rgba(17, 24, 39, 0.95)',
-							titleColor: 'rgb(229, 231, 235)',
-							bodyColor: 'rgb(156, 163, 175)',
-							borderColor: 'rgb(75, 85, 99)',
-							borderWidth: 1,
-							callbacks: {
-								title: function(context) {
-									const date = new Date(context[0].parsed.x);
-									return date.toLocaleDateString('en-US', {
-										month: 'short',
-										day: 'numeric',
-										year: 'numeric'
-									});
-								},
-								label: function(context) {
-									const bytes = context.parsed.y;
-									const pointIndex = context.dataIndex;
-									const point = points[pointIndex];
-
-									return [
-										'Storage freed: ' + formatBytes(bytes),
-										'Items deleted: ' + point.itemsCount
-									];
-								}
-							}
-						}
-					},
-					scales: {
-						x: {
-							type: 'time',
-							time: {
-								unit: 'day',
-								displayFormats: {
-									day: 'MMM d',
-									week: 'MMM d',
-									month: 'MMM yyyy'
-								},
-								tooltipFormat: 'MMM d, yyyy'
-							},
-							grid: {
-								color: 'rgba(75, 85, 99, 0.3)'
-							},
-							ticks: {
-								color: 'rgb(156, 163, 175)',
-								maxTicksLimit: 30
-							}
-						},
-						y: {
-							beginAtZero: true,
-							grid: {
-								color: 'rgba(75, 85, 99, 0.3)'
-							},
-							ticks: {
-								color: 'rgb(156, 163, 175)',
-								callback: function(value) {
-									return formatBytes(value);
-								}
-							}
-						}
-					},
-					interaction: {
-						intersect: false,
-						mode: 'index'
-					}
-				}
-			});
-		} catch (error) {
-			console.error('Error initializing daily chart:', error);
-		}
-	}
-
-	function initializeCumulativeChart() {
-		const canvas = document.getElementById('cumulative-cleanup-chart');
-		const dataScript = document.getElementById('cumulative-cleanup-data');
-
-		if (!canvas || !dataScript) return;
-
-		try {
-			const data = JSON.parse(dataScript.textContent);
-			const points = data.points || [];
-
-			if (points.length < 2) return;
-
-			// Format data for Chart.js
-			const chartData = points.map(point => ({
-				x: new Date(point.date),
-				y: point.cumulativeBytes
-			}));
-
-			// Initialize Chart.js
-			cumulativeChart = new Chart(canvas, {
-				type: 'line',
-				data: {
-					datasets: [{
-						label: 'Cumulative Storage Freed',
-						data: chartData,
-						borderColor: 'rgb(59, 130, 246)',
-						backgroundColor: 'rgba(59, 130, 246, 0.1)',
-						fill: true,
-						tension: 0.2,
-						pointBackgroundColor: 'rgb(59, 130, 246)',
-						pointBorderColor: 'rgb(59, 130, 246)',
-						pointRadius: 4,
-						pointHoverRadius: 6
-					}]
-				},
-				options: {
-					responsive: true,
-					maintainAspectRatio: false,
-					plugins: {
-						legend: {
-							display: false
-						},
-						tooltip: {
-							backgroundColor: 'rgba(17, 24, 39, 0.95)',
-							titleColor: 'rgb(229, 231, 235)',
-							bodyColor: 'rgb(156, 163, 175)',
-							borderColor: 'rgb(75, 85, 99)',
-							borderWidth: 1,
-							callbacks: {
-								title: function(context) {
-									const date = new Date(context[0].parsed.x);
-									return date.toLocaleDateString('en-US', {
-										month: 'short',
-										day: 'numeric',
-										year: 'numeric'
-									});
-								},
-								label: function(context) {
-									const bytes = context.parsed.y;
-									const pointIndex = context.dataIndex;
-									const point = points[pointIndex];
-
-									return [
-										'Total storage freed: ' + formatBytes(bytes),
-										'Total items deleted: ' + point.itemsDeleted
-									];
-								}
-							}
-						}
-					},
-					scales: {
-						x: {
-							type: 'time',
-							time: {
-								unit: 'day',
-								displayFormats: {
-									day: 'MMM d',
-									week: 'MMM d',
-									month: 'MMM yyyy'
-								},
-								tooltipFormat: 'MMM d, yyyy'
-							},
-							grid: {
-								color: 'rgba(75, 85, 99, 0.3)'
-							},
-							ticks: {
-								color: 'rgb(156, 163, 175)',
-								maxTicksLimit: 30
-							}
-						},
-						y: {
-							beginAtZero: true,
-							grid: {
-								color: 'rgba(75, 85, 99, 0.3)'
-							},
-							ticks: {
-								color: 'rgb(156, 163, 175)',
-								callback: function(value) {
-									return formatBytes(value);
-								}
-							}
-						}
-					},
-					interaction: {
-						intersect: false,
-						mode: 'index'
-					}
-				}
-			});
-		} catch (error) {
-			console.error('Error initializing cumulative chart:', error);
-		}
-	}
-
-	function formatBytes(bytes) {
-		if (bytes === 0) return '0 Bytes';
-
-		const k = 1024;
-		const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-	}
-
-	function initializeFilters() {
-		const searchInput = document.getElementById('search');
-		const libraryFilter = document.getElementById('library-filter');
-		const sortBy = document.getElementById('sort-by');
+		// Setup refresh button - works for both empty state and grid state
 		const refreshBtn = document.getElementById('refresh-btn');
-
-		if (searchInput) {
-			searchInput.addEventListener('input', window.debounce ? window.debounce(filterMedia, 300) : filterMedia);
-		}
-
-		if (libraryFilter) {
-			libraryFilter.addEventListener('change', filterMedia);
-		}
-
-		if (sortBy) {
-			sortBy.addEventListener('change', sortMedia);
-		}
-
 		if (refreshBtn) {
-			refreshBtn.addEventListener('click', refreshMedia);
+			refreshBtn.addEventListener('click', function() {
+				// Always fetch fresh data from the backend
+				refreshMedia();
+			});
 		}
+	}
+
+	function showFallbackGrid() {
+		// Show the original static grid if the optimized version fails
+		const container = document.getElementById('media-grid-container');
+		const loading = document.getElementById('dashboard-loading');
+		if (container) container.style.display = 'none';
+		if (loading) loading.style.display = 'none';
+
+		// Show any existing static grid
+		const staticGrid = document.getElementById('static-media-grid');
+		if (staticGrid) staticGrid.style.display = 'grid';
 	}
 
 	function initializeMediaRequests() {
-		// Add click handlers for all request buttons
+		// Simple event delegation for all request buttons
 		document.addEventListener('click', function(e) {
-			if (e.target.matches('button[data-media-id]')) {
-				const mediaId = e.target.getAttribute('data-media-id');
-				requestKeepMedia(mediaId, e.target);
+			// Find the button (handle clicks on button or child elements like SVG)
+			let button = e.target.closest('button[data-media-id]');
+
+			if (button && !button.disabled) {
+				e.preventDefault();
+				e.stopPropagation();
+
+				const mediaId = button.getAttribute('data-media-id');
+				if (mediaId) {
+					requestKeepMedia(mediaId, button);
+				}
 			}
 		});
-	}
-
-	function filterMedia() {
-		const searchTerm = document.getElementById('search')?.value.toLowerCase() || '';
-		const libraryFilter = document.getElementById('library-filter')?.value || '';
-
-		const mediaCards = document.querySelectorAll('#media-grid > div');
-
-		mediaCards.forEach(card => {
-			const title = (card.getAttribute('data-title') || '').toLowerCase();
-			const library = card.getAttribute('data-library') || '';
-
-			const matchesSearch = title.includes(searchTerm);
-			const matchesLibrary = !libraryFilter || library === libraryFilter;
-
-			if (matchesSearch && matchesLibrary) {
-				card.style.display = 'block';
-			} else {
-				card.style.display = 'none';
-			}
-		});
-	}
-
-	function sortMedia() {
-		const sortBy = document.getElementById('sort-by')?.value || 'deletion-date-asc';
-		const mediaGrid = document.getElementById('media-grid');
-
-		if (!mediaGrid) return;
-
-		const cards = Array.from(mediaGrid.children);
-
-		cards.sort((a, b) => {
-			let aValue, bValue;
-
-			switch (sortBy) {
-				case 'title-asc':
-					aValue = a.getAttribute('data-title') || '';
-					bValue = b.getAttribute('data-title') || '';
-					return aValue.localeCompare(bValue);
-
-				case 'title-desc':
-					aValue = a.getAttribute('data-title') || '';
-					bValue = b.getAttribute('data-title') || '';
-					return bValue.localeCompare(aValue);
-
-				case 'deletion-date-asc':
-					aValue = parseInt(a.getAttribute('data-deletion-timestamp')) || 0;
-					bValue = parseInt(b.getAttribute('data-deletion-timestamp')) || 0;
-					return aValue - bValue; // Earlier dates first
-
-				case 'deletion-date-desc':
-					aValue = parseInt(a.getAttribute('data-deletion-timestamp')) || 0;
-					bValue = parseInt(b.getAttribute('data-deletion-timestamp')) || 0;
-					return bValue - aValue; // Later dates first
-
-				case 'size-asc':
-					aValue = parseInt(a.getAttribute('data-size')) || 0;
-					bValue = parseInt(b.getAttribute('data-size')) || 0;
-					return aValue - bValue; // Smaller files first
-
-				case 'size-desc':
-					aValue = parseInt(a.getAttribute('data-size')) || 0;
-					bValue = parseInt(b.getAttribute('data-size')) || 0;
-					return bValue - aValue; // Larger files first
-
-				default:
-					return 0;
-			}
-		});
-
-		// Re-append sorted cards
-		cards.forEach(card => mediaGrid.appendChild(card));
 	}
 
 	function requestKeepMedia(mediaId, button) {
@@ -1003,7 +273,17 @@ script dashboardScripts() {
 		const originalContent = window.setButtonLoading(buttonId, 'Submitting...');
 		if (!originalContent) return;
 
-		window.makeApiRequest('/api/media/' + mediaId + '/request-keep')
+		window.makeApiRequestEnhanced('/api/media/' + mediaId + '/request-keep', {
+			method: 'POST',
+			showProgress: true,
+			onProgress: function(status, error) {
+				if (status === 'error') {
+					console.error('API Error:', error);
+					window.showToast('Failed to submit request: ' + error.message, 'error');
+					window.restoreButton(buttonId, originalContent);
+				}
+			}
+		})
 		.then(data => {
 			if (data.success) {
 				window.setButtonSuccess(buttonId, 'Request Submitted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
@@ -1029,16 +309,61 @@ script dashboardScripts() {
 		const originalContent = window.setButtonLoading(buttonId, 'Refreshing...');
 		if (!originalContent) return;
 
-		window.makeApiRequest('/api/refresh')
+		// Use the consistent API approach - /api/media with refresh=true parameter
+		window.makeApiRequestEnhanced('/api/media?refresh=true', {
+			method: 'GET',
+			showProgress: true,
+			onProgress: function(status, error) {
+				if (status === 'error') {
+					console.error('Refresh Error:', error);
+					window.showToast('Failed to refresh data: ' + error.message, 'error');
+					window.restoreButton(buttonId, originalContent);
+				}
+			}
+		})
 		.then(data => {
 			if (data.success) {
+				const hasItemsNow = data.mediaItems && data.mediaItems.length > 0;
+				const hadItemsBefore = window.dashboardMediaGridManager && window.dashboardMediaGridManager.getItems && window.dashboardMediaGridManager.getItems().length > 0;
+
+				// If we're transitioning from empty to having items, or vice versa, reload the page
+				if (hasItemsNow !== hadItemsBefore) {
+					window.showToast('Data refreshed successfully - reloading page', 'success');
+					setTimeout(() => {
+						window.location.reload();
+					}, 1000);
+					return;
+				}
+
+				// Update the grid with new data
+				if (window.dashboardMediaGridManager) {
+					const clientItems = data.mediaItems.map(item => ({
+						...item,
+						// Ensure proper data format for client-side handling
+						id: item.ID || item.id,
+						title: item.Title || item.title,
+						library: item.Library || item.library,
+						posterURL: item.PosterURL || item.posterURL,
+						fileSize: parseInt(item.FileSize || item.fileSize || 0),
+						deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
+						hasRequested: item.HasRequested || item.hasRequested,
+						canRequest: item.CanRequest || item.canRequest,
+						mustDelete: item.MustDelete || item.mustDelete,
+						cleanupMode: item.CleanupMode || item.cleanupMode,
+						keepCount: parseInt(item.KeepCount || item.keepCount || 0),
+						type: item.Type || item.type,
+						year: parseInt(item.Year || item.year || 0)
+					}));
+
+					console.log('Refreshed media items:', clientItems);
+					window.dashboardMediaGridManager.setItems(clientItems);
+					window.dashboardMediaGridManager.refresh();
+				}
+
 				window.showToast('Data refreshed successfully', 'success');
-				// Reload the page to show fresh data
-				setTimeout(() => {
-					window.location.reload();
-				}, 1000);
+				window.restoreButton(buttonId, originalContent);
 			} else {
-				throw new Error(data.message || 'Failed to refresh data');
+				throw new Error(data.message || 'Failed to get refreshed data');
 			}
 		})
 		.catch(error => {
@@ -1050,56 +375,17 @@ script dashboardScripts() {
 }
 
 templ OverviewTab(mediaItems []models.MediaItem) {
-	<!-- Filters and Search -->
-	<div class="card p-4 sm:p-6 mb-6">
-		<div class="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
-			<div class="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-				<div class="relative flex-1 sm:flex-none">
-					<input type="text" id="search" placeholder="Search media..." class="input-field pl-10 pr-4 py-2 w-full sm:w-64"/>
-					<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-						<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-						</svg>
-					</div>
-				</div>
-				<select id="library-filter" class="input-field flex-1 sm:flex-none">
-					<option value="">All Libraries</option>
-					for _, library := range getUniqueLibraries(mediaItems) {
-						<option value={ library }>{ library }</option>
-					}
-				</select>
-				<select id="sort-by" class="input-field flex-1 sm:flex-none">
-					<option value="deletion-date-asc">Deletion Date (Earliest First)</option>
-					<option value="deletion-date-desc">Deletion Date (Latest First)</option>
-					<option value="title-asc">Title (A-Z)</option>
-					<option value="title-desc">Title (Z-A)</option>
-					<option value="size-asc">File Size (Smallest First)</option>
-					<option value="size-desc">File Size (Largest First)</option>
-				</select>
-			</div>
-			<div class="flex items-center">
-				<button id="refresh-btn" class="flex items-center justify-center btn-secondary w-full sm:w-auto">
-					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-					</svg>
-					Refresh
-				</button>
-			</div>
-		</div>
-	</div>
 	<!-- Media Grid -->
 	if len(mediaItems) == 0 {
 		@EmptyState()
 	} else {
-		<div id="media-grid" class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-			for _, item := range mediaItems {
-				@MediaCard(item)
-			}
+		<!-- Show loading spinner initially -->
+		<div id="dashboard-loading" class="hidden">
+			@components.LoadingSpinnerLarge()
 		</div>
+		<!-- Optimized Media Grid -->
+		@components.DashboardMediaGrid(mediaItems, 14)
+		<!-- Pass data to JavaScript -->
+		@templ.JSONScript("media-items-data", mediaItems)
 	}
-}
-
-templ StatsTab(mediaItems []models.MediaItem) {
-	@DailyCleanupGraph(calculateDailyCleanupData(mediaItems), getTotalStorageToFree(mediaItems))
-	@CumulativeCleanupGraph(calculateCumulativeCleanupData(mediaItems), getTotalStorageToFree(mediaItems))
 }
