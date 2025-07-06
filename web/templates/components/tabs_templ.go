@@ -29,7 +29,7 @@ func TabContainer(id string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex justify-start mb-6\"><div class=\"inline-flex bg-gray-800/90 backdrop-blur-sm rounded-xl p-1.5 border border-gray-700/20 shadow-lg\"><nav class=\"flex space-x-1 relative\" id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex justify-start mb-6 overflow-x-auto\"><div class=\"inline-flex bg-gray-800/90 backdrop-blur-sm rounded-xl p-1.5 border border-gray-700/20 shadow-lg min-w-max\"><nav class=\"flex space-x-1 relative\" id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -92,7 +92,7 @@ func TabButton(id string, label string, icon string, active bool) templ.Componen
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var5 = []any{"tab-button relative z-10 flex items-center px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 shadow-sm",
+		var templ_7745c5c3_Var5 = []any{"tab-button relative z-10 flex items-center px-3 sm:px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-300 shadow-sm whitespace-nowrap",
 			templ.KV("tab-active text-white", active),
 			templ.KV("text-gray-400 hover:text-gray-200 hover:bg-gray-700/30", !active)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var5...)
@@ -146,16 +146,33 @@ func TabButton(id string, label string, icon string, active bool) templ.Componen
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"hidden sm:inline\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/tabs.templ`, Line: 24, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/tabs.templ`, Line: 24, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</button>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</span> <span class=\"inline sm:hidden\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var10 string
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(label)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/tabs.templ`, Line: 25, Col: 40}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span></button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -179,53 +196,53 @@ func TabContent(id string, active bool) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var10 == nil {
-			templ_7745c5c3_Var10 = templ.NopComponent
+		templ_7745c5c3_Var11 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var11 == nil {
+			templ_7745c5c3_Var11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var11 = []any{"tab-content",
+		var templ_7745c5c3_Var12 = []any{"tab-content",
 			templ.KV("tab-content-active", active),
 			templ.KV("hidden", !active)}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var11...)
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var12...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div id=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(id + "-content")
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/tabs.templ`, Line: 30, Col: 22}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var11).String())
+		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(id + "-content")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/tabs.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/tabs.templ`, Line: 31, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ_7745c5c3_Var10.Render(ctx, templ_7745c5c3_Buffer)
+		var templ_7745c5c3_Var14 string
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var12).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/tabs.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templ_7745c5c3_Var11.Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -249,20 +266,20 @@ func TabContentContainer() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var14 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var14 == nil {
-			templ_7745c5c3_Var14 = templ.NopComponent
+		templ_7745c5c3_Var15 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var15 == nil {
+			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div id=\"tab-content\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div id=\"tab-content\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ_7745c5c3_Var14.Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templ_7745c5c3_Var15.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -286,12 +303,12 @@ func TabsScript() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var15 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var15 == nil {
-			templ_7745c5c3_Var15 = templ.NopComponent
+		templ_7745c5c3_Var16 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var16 == nil {
+			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<script>\n\t\tfunction initializeTabs(containerId) {\n\t\t\tconst tabButtons = document.querySelectorAll('#' + containerId + '-nav .tab-button');\n\t\t\tconst tabContents = document.querySelectorAll('#tab-content .tab-content');\n\t\t\tconst tabSlider = document.getElementById(containerId + '-slider');\n\n\t\t\t// Initialize the slider position\n\t\t\tupdateSliderPosition();\n\n\t\t\ttabButtons.forEach(button => {\n\t\t\t\tbutton.addEventListener('click', function() {\n\t\t\t\t\tconst targetTab = this.getAttribute('data-tab');\n\n\t\t\t\t\t// Update button states\n\t\t\t\t\ttabButtons.forEach(btn => {\n\t\t\t\t\t\tbtn.classList.remove('tab-active', 'text-white');\n\t\t\t\t\t\tbtn.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');\n\t\t\t\t\t});\n\n\t\t\t\t\tthis.classList.add('tab-active', 'text-white');\n\t\t\t\t\tthis.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');\n\n\t\t\t\t\t// Update slider position with a small delay to ensure DOM is updated\n\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\tupdateSliderPosition();\n\t\t\t\t\t}, 10);\n\n\t\t\t\t\t// Update content visibility\n\t\t\t\t\ttabContents.forEach(content => {\n\t\t\t\t\t\tcontent.classList.add('hidden');\n\t\t\t\t\t\tcontent.classList.remove('tab-content-active');\n\t\t\t\t\t});\n\n\t\t\t\t\tconst targetContent = document.getElementById(targetTab + '-content');\n\t\t\t\t\tif (targetContent) {\n\t\t\t\t\t\ttargetContent.classList.remove('hidden');\n\t\t\t\t\t\ttargetContent.classList.add('tab-content-active');\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t});\n\n\t\t\tfunction updateSliderPosition() {\n\t\t\t\tconst activeTab = document.querySelector('#' + containerId + '-nav .tab-button.tab-active');\n\t\t\t\tif (activeTab && tabSlider) {\n\t\t\t\t\t// Force a reflow to ensure accurate measurements\n\t\t\t\t\tactiveTab.offsetHeight;\n\n\t\t\t\t\t// Calculate position relative to the nav container\n\t\t\t\t\tconst navContainer = activeTab.parentElement;\n\t\t\t\t\tconst containerRect = navContainer.getBoundingClientRect();\n\t\t\t\t\tconst activeRect = activeTab.getBoundingClientRect();\n\n\t\t\t\t\t// Calculate the left position relative to the nav container\n\t\t\t\t\tconst leftPosition = activeRect.left - containerRect.left;\n\n\t\t\t\t\ttabSlider.style.width = activeTab.offsetWidth + 'px';\n\t\t\t\t\ttabSlider.style.height = (activeTab.offsetHeight) + 'px';\n\t\t\t\t\ttabSlider.style.left = leftPosition + 'px';\n\t\t\t\t\ttabSlider.style.top = '0px';\n\t\t\t\t}\n\t\t\t}\n\n\t\t\t// Update slider on window resize\n\t\t\twindow.addEventListener('resize', updateSliderPosition);\n\t\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<script>\n\t\tfunction initializeTabs(containerId) {\n\t\t\tconst tabButtons = document.querySelectorAll('#' + containerId + '-nav .tab-button');\n\t\t\tconst tabContents = document.querySelectorAll('#tab-content .tab-content');\n\t\t\tconst tabSlider = document.getElementById(containerId + '-slider');\n\n\t\t\t// Initialize the slider position\n\t\t\tupdateSliderPosition();\n\n\t\t\ttabButtons.forEach(button => {\n\t\t\t\tbutton.addEventListener('click', function() {\n\t\t\t\t\tconst targetTab = this.getAttribute('data-tab');\n\n\t\t\t\t\t// Update button states\n\t\t\t\t\ttabButtons.forEach(btn => {\n\t\t\t\t\t\tbtn.classList.remove('tab-active', 'text-white');\n\t\t\t\t\t\tbtn.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');\n\t\t\t\t\t});\n\n\t\t\t\t\tthis.classList.add('tab-active', 'text-white');\n\t\t\t\t\tthis.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-gray-700/30');\n\n\t\t\t\t\t// Update slider position with a small delay to ensure DOM is updated\n\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\tupdateSliderPosition();\n\t\t\t\t\t}, 10);\n\n\t\t\t\t\t// Update content visibility\n\t\t\t\t\ttabContents.forEach(content => {\n\t\t\t\t\t\tcontent.classList.add('hidden');\n\t\t\t\t\t\tcontent.classList.remove('tab-content-active');\n\t\t\t\t\t});\n\n\t\t\t\t\tconst targetContent = document.getElementById(targetTab + '-content');\n\t\t\t\t\tif (targetContent) {\n\t\t\t\t\t\ttargetContent.classList.remove('hidden');\n\t\t\t\t\t\ttargetContent.classList.add('tab-content-active');\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t});\n\n\t\t\tfunction updateSliderPosition() {\n\t\t\t\tconst activeTab = document.querySelector('#' + containerId + '-nav .tab-button.tab-active');\n\t\t\t\tif (activeTab && tabSlider) {\n\t\t\t\t\t// Force a reflow to ensure accurate measurements\n\t\t\t\t\tactiveTab.offsetHeight;\n\n\t\t\t\t\t// Calculate position relative to the nav container\n\t\t\t\t\tconst navContainer = activeTab.parentElement;\n\t\t\t\t\tconst containerRect = navContainer.getBoundingClientRect();\n\t\t\t\t\tconst activeRect = activeTab.getBoundingClientRect();\n\n\t\t\t\t\t// Calculate the left position relative to the nav container\n\t\t\t\t\tconst leftPosition = activeRect.left - containerRect.left;\n\n\t\t\t\t\ttabSlider.style.width = activeTab.offsetWidth + 'px';\n\t\t\t\t\ttabSlider.style.height = (activeTab.offsetHeight) + 'px';\n\t\t\t\t\ttabSlider.style.left = leftPosition + 'px';\n\t\t\t\t\ttabSlider.style.top = '0px';\n\t\t\t\t}\n\t\t\t}\n\n\t\t\t// Update slider on window resize\n\t\t\twindow.addEventListener('resize', updateSliderPosition);\n\t\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -388,12 +405,12 @@ func InitializeTabsScript(containerId string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var16 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var16 == nil {
-			templ_7745c5c3_Var16 = templ.NopComponent
+		templ_7745c5c3_Var17 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var17 == nil {
+			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<script>\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t{ templ.JSFuncCall(\"initializeTabs\", containerId) };\n\t\t});\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<script>\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t{ templ.JSFuncCall(\"initializeTabs\", containerId) };\n\t\t});\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
