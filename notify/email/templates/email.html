@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JellySweep Media Cleanup Notification</title>
+    <title>Jellysweep Media Cleanup Notification</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -270,13 +270,13 @@
         <div class="header">
             <div class="header-brand">
                 <div class="brand-icon">
-                    {{if .JellySweepURL}}
-                    <img src="{{.JellySweepURL}}/static/jellysweep.png" alt="🧹" class="brand-icon-img" />
+                    {{if .JellysweepURL}}
+                    <img src="{{.JellysweepURL}}/static/jellysweep.png" alt="🧹" class="brand-icon-img" />
                     {{else}}
                     🧹
                     {{end}}
                 </div>
-                <div class="brand-name">JellySweep</div>
+                <div class="brand-name">Jellysweep</div>
             </div>
             <h2>Media Cleanup Notification</h2>
             <p>Hello {{.UserName}},</p>
@@ -305,10 +305,10 @@
                     These items will be permanently deleted on {{.CleanupDate.Format "January 2, 2006"}}.
                     If you wish to keep any of these items, please submit a request using the link below:
                     <br><br>
-                    {{if .JellySweepURL}}
-                    <a href="{{.JellySweepURL}}" target="_blank" class="jellysweep-link">
-                        <img src="{{.JellySweepURL}}/static/jellysweep.png" alt="🧹" class="jellysweep-link-icon" />
-                        Open JellySweep
+                    {{if .JellysweepURL}}
+                    <a href="{{.JellysweepURL}}" target="_blank" class="jellysweep-link">
+                        <img src="{{.JellysweepURL}}/static/jellysweep.png" alt="🧹" class="jellysweep-link-icon" />
+                        Open Jellysweep
                     </a>
                     {{else}}
                     Please contact your administrator.
@@ -318,10 +318,10 @@
         </div>
 
         <div class="footer">
-            <p>This notification was sent by JellySweep automated cleanup system.</p>
+            <p>This notification was sent by Jellysweep automated cleanup system.</p>
             <p>If you have any questions, please contact your administrator.</p>
             <div class="footer-logo">
-                Powered by JellySweep
+                Powered by Jellysweep
             </div>
         </div>
     </div>

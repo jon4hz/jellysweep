@@ -1,17 +1,17 @@
-# JellySweep
+# Jellysweep
 
 [![CI](https://github.com/jon4hz/jellysweep/actions/workflows/ci.yml/badge.svg)](https://github.com/jon4hz/jellysweep/actions/workflows/ci.yml)
 [![release](https://github.com/jon4hz/jellysweep/actions/workflows/release.yml/badge.svg)](https://github.com/jon4hz/jellysweep/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jon4hz/jellysweep)](https://goreportcard.com/report/github.com/jon4hz/jellysweep)
 
-<img src="static/static/jellysweep.png" alt="JellySweep Logo" width="40%" height="20%">
+<img src="static/static/jellysweep.png" alt="Jellysweep Logo" width="40%" height="20%">
 
-JellySweep is a smart cleanup tool for your Jellyfin media server.
+Jellysweep is a smart cleanup tool for your Jellyfin media server.
 It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests.
 
 > [!CAUTION]
 > Always test with dry-run mode first!
-> JellySweep is powerful - configure it correctly!
+> Jellysweep is powerful - configure it correctly!
 
 
 ---
@@ -31,7 +31,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 ## 📋 Table of Contents
 
-- [JellySweep](#jellysweep)
+- [Jellysweep](#jellysweep)
   - [✨ Key Features](#-key-features)
   - [📋 Table of Contents](#-table-of-contents)
   - [🚀 How It Works](#-how-it-works)
@@ -87,7 +87,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 ## 🧹 Cleanup Modes
 
-JellySweep supports three different cleanup modes for TV series, configurable globally through the `cleanup_mode` setting. The mode determines how much content is removed when a series is marked for deletion. Movies are always deleted entirely regardless of the cleanup mode.
+Jellysweep supports three different cleanup modes for TV series, configurable globally through the `cleanup_mode` setting. The mode determines how much content is removed when a series is marked for deletion. Movies are always deleted entirely regardless of the cleanup mode.
 
 The `all` mode removes the entire series and all its files, providing maximum storage reclamation. This is the default setting.
 
@@ -202,13 +202,13 @@ docker compose exec jellysweep ./jellysweep reset
 
 ## 🔐 Authentication
 
-JellySweep supports multiple authentication methods to secure your web interface:
+Jellysweep supports multiple authentication methods to secure your web interface:
 
 ### OIDC/SSO Authentication
 
 - **Tested Providers**: Authentik
 - **Group-based Admin Access**: Read admin groups from `group` claim.
-- **Single Sign-On**: Users authenticate once and access JellySweep seamlessly
+- **Single Sign-On**: Users authenticate once and access Jellysweep seamlessly
 
 **Configuration:**
 ```yaml
@@ -226,7 +226,7 @@ auth:
 ### Jellyfin Authentication
 
 - **Direct Integration**: Leverages your existing Jellyfin user database
-- **Admin Detection**: Jellyfin administrators automatically get admin access in JellySweep
+- **Admin Detection**: Jellyfin administrators automatically get admin access in Jellysweep
 - **No Additional Setup**: Works out of the box with your Jellyfin instance
 - **Form-based Login**: Traditional username/password login form
 - **Admin Access**: All Jellyfin admins will have access to the admin panel
@@ -264,7 +264,7 @@ webpush:
 
 ## ⚙️ Configuration
 
-JellySweep supports configuration through YAML files and environment variables. Environment variables use the `JELLYSWEEP_` prefix and follow the configuration structure with underscores (e.g., `JELLYSWEEP_DRY_RUN`).
+Jellysweep supports configuration through YAML files and environment variables. Environment variables use the `JELLYSWEEP_` prefix and follow the configuration structure with underscores (e.g., `JELLYSWEEP_DRY_RUN`).
 
 ### Environment Variables
 
@@ -272,7 +272,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 
 | Environment Variable | Default Value | Description |
 |---------------------|---------------|-------------|
-| **JellySweep Server** | | |
+| **Jellysweep Server** | | |
 | `JELLYSWEEP_LISTEN` | `0.0.0.0:3002` | Address and port for the web interface |
 | `JELLYSWEEP_CLEANUP_INTERVAL` | `12` | Hours between automatic cleanup runs |
 | `JELLYSWEEP_CLEANUP_MODE` | `all` | Cleanup mode: `all`, `keep_episodes`, or `keep_seasons` |
@@ -280,7 +280,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_DRY_RUN` | `false` | Run in dry-run mode (no actual deletions) |
 | `JELLYSWEEP_SESSION_KEY` | *(required)* | Random string for session encryption (`openssl rand -base64 32`) |
 | `JELLYSWEEP_SESSION_MAX_AGE` | `172800` | Session maximum age in seconds (48 hours) |
-| `JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the JellySweep server |
+| `JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the Jellysweep server |
 | **OIDC Authentication** | | |
 | `JELLYSWEEP_AUTH_OIDC_ENABLED` | `false` | Enable OIDC/SSO authentication |
 | `JELLYSWEEP_AUTH_OIDC_NAME` | OIDC | Display name on the login page |
@@ -304,7 +304,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_EMAIL_USERNAME` | *(required if email enabled)* | SMTP username |
 | `JELLYSWEEP_EMAIL_PASSWORD` | *(required if email enabled)* | SMTP password |
 | `JELLYSWEEP_EMAIL_FROM_EMAIL` | *(required if email enabled)* | From email address |
-| `JELLYSWEEP_EMAIL_FROM_NAME` | `JellySweep` | From name for emails |
+| `JELLYSWEEP_EMAIL_FROM_NAME` | `Jellysweep` | From name for emails |
 | `JELLYSWEEP_EMAIL_USE_TLS` | `true` | Use TLS for SMTP connection |
 | `JELLYSWEEP_EMAIL_USE_SSL` | `false` | Use SSL for SMTP connection |
 | `JELLYSWEEP_EMAIL_INSECURE_SKIP_VERIFY` | `false` | Skip TLS certificate verification |
@@ -339,7 +339,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 
 ### Configuration File
 
-JellySweep uses a YAML configuration file with the following structure:
+Jellysweep uses a YAML configuration file with the following structure:
 
 ```yaml
 dry_run: false                   # Set to true for testing
@@ -419,7 +419,7 @@ email:
   username: "your-smtp-username"
   password: "your-smtp-password"
   from_email: "jellysweep@example.com"
-  from_name: "JellySweep"
+  from_name: "Jellysweep"
   use_tls: true              # Use STARTTLS
   use_ssl: false             # Use implicit SSL/TLS
   insecure_skip_verify: false
@@ -463,7 +463,7 @@ jellystat:
 
 ## 🏷️ Tag System
 
-JellySweep uses the tagging feature from sonarr and radarr to track media state:
+Jellysweep uses the tagging feature from sonarr and radarr to track media state:
 
 ### Automatic Tags
 - `jellysweep-delete-YYYY-MM-DD` - Media marked for deletion on date
@@ -487,7 +487,7 @@ Configure custom tags in your Sonarr/Radarr to:
 # Start with specific configuration file
 ./jellysweep --config /path/to/config.yml
 
-# Reset all JellySweep tags
+# Reset all Jellysweep tags
 ./jellysweep reset
 
 # Generate VAPID keys for web push notifications
