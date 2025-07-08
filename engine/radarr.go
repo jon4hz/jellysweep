@@ -1156,8 +1156,8 @@ func (e *Engine) addRadarrKeepTagWithRequester(ctx context.Context, movieID int3
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
-	// Create keep tag with 1 year expiry and requester information
-	expiryDate := time.Now().Add(365 * 24 * time.Hour)
+	// Create keep tag with 90 days expiry and requester information
+	expiryDate := time.Now().Add(90 * 24 * time.Hour)
 	keepTag := e.createKeepTagWithRequester(expiryDate, requester)
 
 	// Ensure the tag exists
