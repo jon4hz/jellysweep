@@ -701,6 +701,11 @@ func (e *Engine) removeRadarrKeepRequestAndDeleteTags(ctx context.Context, movie
 		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
 
+	if e.radarrItemKeepRequestAlreadyProcessed(movie, radarrTags) {
+		log.Warnf("Radarr movie %s already has a must-keep or must-delete-for-sure tag", movie.GetTitle())
+		return ErrRequestAlreadyProcessed
+	}
+
 	// Remove keep request and delete tags
 	var newTags []int32
 	for _, tagID := range movie.GetTags() {
@@ -726,6 +731,23 @@ func (e *Engine) removeRadarrKeepRequestAndDeleteTags(ctx context.Context, movie
 	return nil
 }
 
+func (e *Engine) radarrItemKeepRequestAlreadyProcessed(movie *radarr.MovieResource, tags map[int32]string) bool {
+	if movie == nil {
+		return false
+	}
+
+	// Check if the series has any keep request tags
+	for _, tagID := range movie.GetTags() {
+		tagName := tags[tagID]
+		if strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
+			tagName == JellysweepDeleteForSureTag {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (e *Engine) addRadarrDeleteForSureTag(ctx context.Context, movieID int32) error {
 	if e.radarr == nil {
 		return fmt.Errorf("radarr client not available")
@@ -737,6 +759,27 @@ func (e *Engine) addRadarrDeleteForSureTag(ctx context.Context, movieID int32) e
 		return fmt.Errorf("failed to get radarr movie: %w", err)
 	}
 	defer resp.Body.Close() //nolint: errcheck
+
+	// Get current tags
+	radarrTags, err := e.getRadarrTags(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+
+	if e.radarrItemKeepRequestAlreadyProcessed(movie, radarrTags) {
+		log.Warn("Radarr movie %s already has a must-keep or must-delete-for-sure tag", movie.GetTitle())
+		return ErrRequestAlreadyProcessed
+	}
+
+	// Remove keep request and delete tags
+	var newTags []int32
+	for _, tagID := range movie.GetTags() {
+		tagName := radarrTags[tagID]
+		if !strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) &&
+			!strings.HasPrefix(tagName, jellysweepTagPrefix) {
+			newTags = append(newTags, tagID)
+		}
+	}
 
 	// Ensure the delete-for-sure tag exists
 	if err := e.ensureRadarrTagExists(ctx, JellysweepDeleteForSureTag); err != nil {
@@ -750,7 +793,8 @@ func (e *Engine) addRadarrDeleteForSureTag(ctx context.Context, movieID int32) e
 	}
 
 	// Add the tag to the movie
-	movie.Tags = append(movie.Tags, tagID)
+	newTags = append(newTags, tagID)
+	movie.Tags = newTags
 
 	// Update the movie
 	_, resp, err = e.radarr.MovieAPI.UpdateMovie(radarrAuthCtx(ctx, e.cfg.Radarr), fmt.Sprintf("%d", movieID)).
