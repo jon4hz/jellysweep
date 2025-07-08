@@ -12,8 +12,8 @@ import (
 type Config struct {
 	// Listen is the address the JellySweep server will listen on.
 	Listen string `yaml:"listen" mapstructure:"listen"`
-	// CleanupInterval is the interval in hours for the cleanup job.
-	CleanupInterval int `yaml:"cleanup_interval" mapstructure:"cleanup_interval"`
+	// CleanupSchedule is the cron schedule for the cleanup job (e.g., "0 */12 * * *" for every 12 hours).
+	CleanupSchedule string `yaml:"cleanup_schedule" mapstructure:"cleanup_schedule"`
 	// Libraries is a map of libraries to their cleanup configurations.
 	Libraries map[string]*CleanupConfig `yaml:"libraries" mapstructure:"libraries"`
 	// DryRun indicates whether the cleanup job should run in dry-run mode.
@@ -255,9 +255,9 @@ func Load(path string) (*Config, error) {
 func setDefaults(v *viper.Viper) {
 	// JellySweep defaults
 	v.SetDefault("jellysweep.listen", "0.0.0.0:3002")
-	v.SetDefault("jellysweep.cleanup_interval", 12)
-	v.SetDefault("jellysweep.cleanup_mode", "all") // Default to cleaning up everything
-	v.SetDefault("jellysweep.keep_count", 1)       // Default to keeping 1 episode/season if mode is not "all"
+	v.SetDefault("jellysweep.cleanup_schedule", "0 */12 * * *") // Every 12 hours
+	v.SetDefault("jellysweep.cleanup_mode", "all")              // Default to cleaning up everything
+	v.SetDefault("jellysweep.keep_count", 1)                    // Default to keeping 1 episode/season if mode is not "all"
 	v.SetDefault("jellysweep.dry_run", false)
 	v.SetDefault("jellysweep.server_url", "http://localhost:3002")
 	v.SetDefault("jellysweep.session_max_age", 172800) // 48 hour
@@ -299,6 +299,16 @@ func setDefaults(v *viper.Viper) {
 func validateConfig(c *Config) error {
 	if c == nil {
 		return fmt.Errorf("missing jellysweep config")
+	}
+
+	// Validate cleanup schedule
+	if c.CleanupSchedule == "" {
+		return fmt.Errorf("cleanup schedule is required")
+	}
+	// Basic validation for cron format (5 fields)
+	cronFields := strings.Fields(c.CleanupSchedule)
+	if len(cronFields) != 5 {
+		return fmt.Errorf("cleanup schedule must be a valid cron expression with 5 fields (minute hour day month weekday)")
 	}
 
 	// Validate auth configuration

@@ -1,80 +1,64 @@
 package cache
 
 import (
-	"sync"
 	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/patrickmn/go-cache"
 )
 
-// CacheEntry represents a cached item with its expiration time.
-type CacheEntry struct {
-	Data      map[string][]models.MediaItem
-	ExpiresAt time.Time
+// Manager wraps the shared cache with convenience methods for API use.
+type Manager struct {
+	cache *cache.Cache
 }
 
-// CacheManager manages user-specific caches.
-type CacheManager struct {
-	cache map[string]*CacheEntry // key is user ID
-	mutex sync.RWMutex
-	ttl   time.Duration
-}
-
-// NewCacheManager creates a new cache manager.
-func NewCacheManager(ttl time.Duration) *CacheManager {
-	return &CacheManager{
-		cache: make(map[string]*CacheEntry),
-		mutex: sync.RWMutex{},
-		ttl:   ttl,
+// NewManager creates a new cache manager that wraps the shared cache.
+func NewManager(sharedCache *cache.Cache) *Manager {
+	return &Manager{
+		cache: sharedCache,
 	}
 }
 
-// Get retrieves cached data for a user.
-func (cm *CacheManager) Get(userID string) (map[string][]models.MediaItem, bool) {
-	cm.mutex.RLock()
-	defer cm.mutex.RUnlock()
-
-	entry, exists := cm.cache[userID]
-	if !exists || time.Now().After(entry.ExpiresAt) {
-		log.Debug("Cache miss for user", "userID", userID)
-		return nil, false
-	}
-	log.Debug("Cache hit for user", "userID", userID)
-	return entry.Data, true
-}
-
-// Set stores data in cache for a user.
-func (cm *CacheManager) Set(userID string, data map[string][]models.MediaItem) {
-	cm.mutex.Lock()
-	defer cm.mutex.Unlock()
-
-	cm.cache[userID] = &CacheEntry{
-		Data:      data,
-		ExpiresAt: time.Now().Add(cm.ttl),
-	}
-	log.Debug("Cache set for user", "userID", userID, "expiresAt", cm.cache[userID].ExpiresAt)
-}
-
-// Clear removes cached data for a user.
-func (cm *CacheManager) Clear(userID string) {
-	cm.mutex.Lock()
-	defer cm.mutex.Unlock()
-
-	delete(cm.cache, userID)
-	log.Debug("Cache cleared for user", "userID", userID)
-}
-
-// CleanupExpired removes expired cache entries.
-func (cm *CacheManager) CleanupExpired() {
-	cm.mutex.Lock()
-	defer cm.mutex.Unlock()
-
-	now := time.Now()
-	for userID, entry := range cm.cache {
-		if now.After(entry.ExpiresAt) {
-			delete(cm.cache, userID)
-			log.Debug("Removed expired cache entry", "userID", userID, "expiresAt", entry.ExpiresAt)
+// GetMediaItems retrieves cached media items for a user.
+func (m *Manager) GetMediaItems(userID string) (map[string][]models.MediaItem, bool) {
+	key := "media_items_" + userID
+	if data, found := m.cache.Get(key); found {
+		if mediaItems, ok := data.(map[string][]models.MediaItem); ok {
+			log.Debug("Cache hit for media items", "userID", userID)
+			return mediaItems, true
 		}
 	}
+	log.Debug("Cache miss for media items", "userID", userID)
+	return nil, false
+}
+
+// SetMediaItems stores media items in cache for a user.
+func (m *Manager) SetMediaItems(userID string, data map[string][]models.MediaItem, ttl time.Duration) {
+	key := "media_items_" + userID
+	m.cache.Set(key, data, ttl)
+	log.Debug("Cache set for media items", "userID", userID, "ttl", ttl)
+}
+
+// ClearMediaItems removes cached media items for a user.
+func (m *Manager) ClearMediaItems(userID string) {
+	key := "media_items_" + userID
+	m.cache.Delete(key)
+	log.Debug("Cache cleared for media items", "userID", userID)
+}
+
+// Get retrieves cached media items for a user (implements handler.CacheManager).
+func (m *Manager) Get(userID string) (map[string][]models.MediaItem, bool) {
+	return m.GetMediaItems(userID)
+}
+
+// Set stores media items in cache for a user (implements handler.CacheManager).
+func (m *Manager) Set(userID string, data map[string][]models.MediaItem) {
+	// Use a default TTL of 5 minutes for handler interface compatibility
+	m.SetMediaItems(userID, data, 5*time.Minute)
+}
+
+// Clear removes cached media items for a user (implements handler.CacheManager).
+func (m *Manager) Clear(userID string) {
+	m.ClearMediaItems(userID)
 }

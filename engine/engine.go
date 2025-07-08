@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/log"
 	radarr "github.com/devopsarr/radarr-go/radarr"
 	sonarr "github.com/devopsarr/sonarr-go/sonarr"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellyseerr"
@@ -19,6 +20,7 @@ import (
 	"github.com/jon4hz/jellysweep/notify/email"
 	"github.com/jon4hz/jellysweep/notify/ntfy"
 	"github.com/jon4hz/jellysweep/notify/webpush"
+	"github.com/jon4hz/jellysweep/scheduler"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
@@ -52,6 +54,7 @@ type Engine struct {
 	email      *email.NotificationService
 	ntfy       *ntfy.Client
 	webpush    *webpush.Client
+	scheduler  *scheduler.Scheduler
 
 	data *data
 }
@@ -75,6 +78,12 @@ type data struct {
 
 // New creates a new Engine instance.
 func New(cfg *config.Config) (*Engine, error) {
+	// Create scheduler first
+	sched, err := scheduler.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scheduler: %w", err)
+	}
+
 	jellystatClient := jellystat.New(cfg.Jellystat)
 	var sonarrClient *sonarr.APIClient
 	if cfg.Sonarr != nil {
@@ -121,7 +130,7 @@ func New(cfg *config.Config) (*Engine, error) {
 		webpushClient = webpush.NewClient(cfg.WebPush)
 	}
 
-	return &Engine{
+	engine := &Engine{
 		cfg:        cfg,
 		jellystat:  jellystatClient,
 		jellyseerr: jellyseerrClient,
@@ -130,10 +139,18 @@ func New(cfg *config.Config) (*Engine, error) {
 		email:      emailService,
 		ntfy:       ntfyClient,
 		webpush:    webpushClient,
+		scheduler:  sched,
 		data: &data{
 			userNotifications: make(map[string][]MediaItem),
 		},
-	}, nil
+	}
+
+	// Setup scheduled jobs
+	if err := engine.setupJobs(); err != nil {
+		return nil, fmt.Errorf("failed to setup jobs: %w", err)
+	}
+
+	return engine, nil
 }
 
 // Run starts the engine and all its background jobs.
@@ -141,40 +158,77 @@ func (e *Engine) Run(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	go e.cleanupLoop(ctx)
+
+	// Start the scheduler
+	e.scheduler.Start()
+
+	// Wait for context cancellation
 	<-ctx.Done()
 	return nil
 }
 
 // Close stops the engine and cleans up resources.
 func (e *Engine) Close() error {
+	return e.scheduler.Stop()
+}
+
+// setupJobs configures all scheduled jobs.
+func (e *Engine) setupJobs() error {
+	// Add cleanup job as singleton (only one instance can run at a time)
+	cleanupJobDef := gocron.CronJob(e.cfg.CleanupSchedule, false)
+	if err := e.scheduler.AddSingletonJob(
+		"cleanup",
+		"Media Cleanup",
+		"Runs the cleanup loop",
+		e.cfg.CleanupSchedule,
+		cleanupJobDef,
+		e.runCleanupJob,
+	); err != nil {
+		return fmt.Errorf("failed to add cleanup job: %w", err)
+	}
+
+	// Add cache cleanup job as singleton (runs every 10 minutes)
+	const cacheCleanupSchedule = "*/10 * * * *"
+	cacheCleanupJobDef := gocron.CronJob(cacheCleanupSchedule, false)
+	if err := e.scheduler.AddSingletonJob(
+		"cache-cleanup",
+		"Cache Cleanup",
+		"Removes expired cache entries",
+		cacheCleanupSchedule,
+		cacheCleanupJobDef,
+		e.runCacheCleanupJob,
+	); err != nil {
+		return fmt.Errorf("failed to add cache cleanup job: %w", err)
+	}
+
+	log.Info("Scheduled jobs configured successfully")
 	return nil
 }
 
-func (e *Engine) cleanupLoop(ctx context.Context) {
-	// Perform an initial cleanup immediately
+// runCleanupJob is the main cleanup job function.
+func (e *Engine) runCleanupJob(ctx context.Context) error {
+	log.Info("Starting scheduled cleanup job")
+
 	e.removeExpiredKeepTags(ctx)
 	e.cleanupOldTags(ctx)
 	e.markForDeletion(ctx)
 	e.removeRecentlyPlayedDeleteTags(ctx)
 	e.cleanupMedia(ctx)
 
-	// Set up a ticker to perform cleanup at the specified interval
-	ticker := time.NewTicker(time.Duration(e.cfg.CleanupInterval) * time.Hour)
-	defer ticker.Stop()
+	log.Info("Scheduled cleanup job completed")
+	return nil
+}
 
-	for {
-		select {
-		case <-ticker.C:
-			e.removeExpiredKeepTags(ctx)
-			e.cleanupOldTags(ctx)
-			e.markForDeletion(ctx)
-			e.removeRecentlyPlayedDeleteTags(ctx)
-			e.cleanupMedia(ctx)
-		case <-ctx.Done():
-			return
-		}
-	}
+// runCacheCleanupJob cleans up expired cache entries.
+func (e *Engine) runCacheCleanupJob(ctx context.Context) error {
+	log.Debug("Running cache cleanup job")
+	e.scheduler.GetCache().Flush()
+	return nil
+}
+
+// GetScheduler returns the scheduler instance for API access.
+func (e *Engine) GetScheduler() *scheduler.Scheduler {
+	return e.scheduler
 }
 
 // removeRecentlyPlayedDeleteTags removes jellysweep-delete tags from media that has been played recently.

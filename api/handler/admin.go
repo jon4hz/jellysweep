@@ -280,3 +280,106 @@ func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
 		"mediaItems": mediaItems,
 	})
 }
+
+// GetSchedulerJobs returns all scheduler jobs as JSON.
+func (h *AdminHandler) GetSchedulerJobs(c *gin.Context) {
+	jobs := h.engine.GetScheduler().GetJobs()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"jobs":    jobs,
+	})
+}
+
+// RunSchedulerJob manually triggers a scheduler job.
+func (h *AdminHandler) RunSchedulerJob(c *gin.Context) {
+	jobID := c.Param("id")
+
+	err := h.engine.GetScheduler().RunJobNow(jobID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Job triggered successfully",
+	})
+}
+
+// EnableSchedulerJob enables a scheduler job.
+func (h *AdminHandler) EnableSchedulerJob(c *gin.Context) {
+	jobID := c.Param("id")
+
+	err := h.engine.GetScheduler().EnableJob(jobID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Job enabled successfully",
+	})
+}
+
+// DisableSchedulerJob disables a scheduler job.
+func (h *AdminHandler) DisableSchedulerJob(c *gin.Context) {
+	jobID := c.Param("id")
+
+	err := h.engine.GetScheduler().DisableJob(jobID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Job disabled successfully",
+	})
+}
+
+// GetSchedulerCacheStats returns cache statistics.
+func (h *AdminHandler) GetSchedulerCacheStats(c *gin.Context) {
+	stats := h.engine.GetScheduler().GetCacheStats()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"stats":   stats,
+	})
+}
+
+// ClearSchedulerCache clears the scheduler cache.
+func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
+	h.engine.GetScheduler().ClearCache()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Cache cleared successfully",
+	})
+}
+
+// SchedulerPanel shows the scheduler management panel.
+func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
+	// Get scheduler jobs
+	jobs := h.engine.GetScheduler().GetJobs()
+
+	// Get cache stats
+	cacheStats := h.engine.GetScheduler().GetCacheStats()
+
+	c.Header("Content-Type", "text/html")
+	if err := pages.SchedulerPanel(user, jobs, cacheStats).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Error("Failed to render scheduler panel", "error", err)
+	}
+}

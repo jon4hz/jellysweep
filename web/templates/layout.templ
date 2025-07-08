@@ -69,6 +69,9 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 									<span class="absolute -top-1.5 -right-2.5 bg-red-500 rounded-full w-2.5 h-2.5 animate-pulse"></span>
 								}
 							</a>
+							<a href="/admin/scheduler" onclick="window.smoothNavigate && window.smoothNavigate('/admin/scheduler'); return false;" class="text-gray-300 hover:text-white transition-colors duration-200">
+								Scheduler
+							</a>
 						</div>
 					}
 				</div>
@@ -204,6 +207,14 @@ templ Navbar(user *models.User, pendingRequestsCount int) {
 										if pendingRequestsCount > 0 {
 											<span class="bg-red-500 text-white rounded-full px-2 py-1 text-xs font-medium">{ pendingRequestsCount }</span>
 										}
+									</div>
+								</a>
+								<a href="/admin/scheduler" onclick="window.smoothNavigate && window.smoothNavigate('/admin/scheduler'); return false;" class="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors duration-200">
+									<div class="flex items-center space-x-3">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+										</svg>
+										<span>Scheduler</span>
 									</div>
 								</a>
 							}

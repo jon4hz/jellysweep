@@ -24,7 +24,7 @@ type Server struct {
 	ginEngine    *gin.Engine
 	engine       *engine.Engine
 	authProvider auth.AuthProvider
-	cacheManager *cache.CacheManager
+	cacheManager *cache.Manager
 	imageCache   *cache.ImageCache
 }
 
@@ -47,21 +47,20 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 		authProvider = auth.NewNoOpProvider()
 	}
 
-	// Create cache manager with 5 minute TTL
-	cacheManager := cache.NewCacheManager(5 * time.Minute)
+	// Create cache manager using the shared cache from the engine
+	cacheManager := cache.NewManager(e.GetScheduler().GetCache())
 
 	// Create image cache in ./cache/images directory
 	imageCache := cache.NewImageCache("./data/cache/images")
 
-	// Start cleanup goroutine for expired cache entries
+	// Start cleanup goroutine for old images only (shared cache handles its own cleanup)
 	go func() {
 		ticker := time.NewTicker(10 * time.Minute) // Cleanup every 10 minutes
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				cacheManager.CleanupExpired()
-				// Also cleanup old images (older than 7 days)
+				// Cleanup old images (older than 7 days)
 				if err := imageCache.CleanupOldImages(7 * 24 * time.Hour); err != nil {
 					log.Errorf("Failed to cleanup old images: %v", err)
 				}
@@ -158,6 +157,9 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup.GET("", h.AdminPanel)
 	adminGroup.GET("/", h.AdminPanel)
 
+	// Scheduler panel page
+	adminGroup.GET("/scheduler", h.SchedulerPanel)
+
 	// Admin API routes
 	adminAPI := adminGroup.Group("/api")
 	adminAPI.POST("/keep-requests/:id/accept", h.AcceptKeepRequest)
@@ -169,6 +171,14 @@ func (s *Server) setupAdminRoutes() {
 	// New consistent API endpoints with caching support
 	adminAPI.GET("/keep-requests", h.GetKeepRequests)
 	adminAPI.GET("/media", h.GetAdminMediaItems)
+
+	// Scheduler management endpoints
+	adminAPI.GET("/scheduler/jobs", h.GetSchedulerJobs)
+	adminAPI.POST("/scheduler/jobs/:id/run", h.RunSchedulerJob)
+	adminAPI.POST("/scheduler/jobs/:id/enable", h.EnableSchedulerJob)
+	adminAPI.POST("/scheduler/jobs/:id/disable", h.DisableSchedulerJob)
+	adminAPI.GET("/scheduler/cache/stats", h.GetSchedulerCacheStats)
+	adminAPI.POST("/scheduler/cache/clear", h.ClearSchedulerCache)
 }
 
 func (s *Server) Run() error {
