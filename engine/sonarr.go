@@ -1353,8 +1353,8 @@ func (e *Engine) addSonarrKeepTagWithRequester(ctx context.Context, seriesID int
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
-	// Create keep tag with 1 year expiry and requester information
-	expiryDate := time.Now().Add(365 * 24 * time.Hour)
+	// Create keep tag with 90 days expiry and requester information
+	expiryDate := time.Now().Add(90 * 24 * time.Hour)
 	keepTag := e.createKeepTagWithRequester(expiryDate, requester)
 
 	// Ensure the tag exists
