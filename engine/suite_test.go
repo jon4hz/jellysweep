@@ -109,19 +109,6 @@ func (suite *EngineTestSuite) TestFilteringLogic() {
 	suite.Equal("Regular Movie", suite.engine.data.mediaItems["Movies"][0].Title)
 }
 
-// TestTagManagement tests tag-related functionality
-func (suite *EngineTestSuite) TestTagManagement() {
-	// Test tag constants
-	suite.Equal("jellysweep-keep", TagKeep)
-	suite.Equal("must-delete", TagMustDelete)
-
-	// Test tag validation
-	suite.True(isValidTag(TagKeep))
-	suite.True(isValidTag(TagMustDelete))
-	suite.False(isValidTag("invalid-tag"))
-	suite.False(isValidTag(""))
-}
-
 // TestMediaItemOperations tests operations on media items
 func (suite *EngineTestSuite) TestMediaItemOperations() {
 	// Test media item creation

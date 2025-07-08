@@ -80,12 +80,12 @@ func TestEngine_APIFunctions(t *testing.T) {
 
 	t.Run("AddTagToMedia", func(t *testing.T) {
 		// Test adding tags to media
-		err := engine.AddTagToMedia(ctx, "sonarr:123", TagKeep)
+		err := engine.AddTagToMedia(ctx, "sonarr:123", JellysweepKeepPrefix)
 		if err != nil {
 			t.Logf("Expected error in test environment: %v", err)
 		}
 
-		err = engine.AddTagToMedia(ctx, "radarr:789", TagMustDelete)
+		err = engine.AddTagToMedia(ctx, "radarr:789", JellysweepDeleteForSureTag)
 		if err != nil {
 			t.Logf("Expected error in test environment: %v", err)
 		}
@@ -209,12 +209,12 @@ func TestEngine_TagValidation(t *testing.T) {
 	}{
 		{
 			name:    "valid keep tag",
-			tagName: TagKeep,
+			tagName: JellysweepKeepPrefix,
 			isValid: true,
 		},
 		{
 			name:    "valid must delete tag",
-			tagName: TagMustDelete,
+			tagName: JellysweepDeleteForSureTag,
 			isValid: true,
 		},
 		{
@@ -240,7 +240,7 @@ func TestEngine_TagValidation(t *testing.T) {
 
 // Helper function to validate tags
 func isValidTag(tagName string) bool {
-	return tagName == TagKeep || tagName == TagMustDelete
+	return tagName == JellysweepKeepPrefix || tagName == JellysweepDeleteForSureTag
 }
 
 // TestEngine_CachedImageURL tests the cached image URL generation
@@ -400,16 +400,14 @@ func TestEngine_DryRunMode(t *testing.T) {
 func TestEngine_Constants(t *testing.T) {
 	t.Run("tag constants", func(t *testing.T) {
 		// Verify exported constants
-		assert.Equal(t, "jellysweep-keep", TagKeep)
-		assert.Equal(t, "must-delete", TagMustDelete)
+		assert.Equal(t, "jellysweep-must-keep-", JellysweepKeepPrefix)
+		assert.Equal(t, "jellysweep-must-delete-for-sure", JellysweepDeleteForSureTag)
 
 		// Verify internal constants exist and are reasonable
 		assert.NotEmpty(t, jellysweepTagPrefix)
 		assert.NotEmpty(t, jellysweepKeepRequestPrefix)
-		assert.NotEmpty(t, jellysweepKeepPrefix)
-		assert.NotEmpty(t, jellysweepDeleteForSureTag)
-		assert.NotEmpty(t, jellysweepKeepTag)
-		assert.NotEmpty(t, jellysweepMustDeleteTag)
+		assert.NotEmpty(t, JellysweepKeepPrefix)
+		assert.NotEmpty(t, JellysweepDeleteForSureTag)
 	})
 
 	t.Run("media type constants", func(t *testing.T) {
@@ -443,7 +441,7 @@ func TestEngine_ErrorHandlingAPI(t *testing.T) {
 			err = engine.DeclineKeepRequest(ctx, id)
 			assert.Error(t, err, "Should error for invalid media ID: %s", id)
 
-			err = engine.AddTagToMedia(ctx, id, TagKeep)
+			err = engine.AddTagToMedia(ctx, id, JellysweepKeepPrefix)
 			assert.Error(t, err, "Should error for invalid media ID: %s", id)
 
 			err = engine.RemoveConflictingTags(ctx, id)

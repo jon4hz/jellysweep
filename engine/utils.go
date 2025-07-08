@@ -52,7 +52,7 @@ func (e *Engine) filterMediaTags() {
 				// Check if the tag is in the exclude list
 				libraryConfig := e.cfg.GetLibraryConfig(lib)
 				if libraryConfig != nil {
-					if slices.Contains(libraryConfig.ExcludeTags, jellysweepIgnoreTag) {
+					if slices.Contains(libraryConfig.ExcludeTags, JellysweepIgnoreTag) {
 						log.Debugf("Ignoring item %s due to jellysweep-ignore tag", item.Title)
 						hasExcludedTag = true
 						break
@@ -64,7 +64,7 @@ func (e *Engine) filterMediaTags() {
 					}
 				}
 				// Check for jellysweep-must-keep- tags
-				if strings.HasPrefix(tagName, jellysweepKeepPrefix) {
+				if strings.HasPrefix(tagName, JellysweepKeepPrefix) {
 					// Parse the date and requester from the keep tag
 					keepDate, _, err := e.parseKeepTagWithRequester(tagName)
 					if err != nil {
@@ -80,7 +80,7 @@ func (e *Engine) filterMediaTags() {
 					}
 				}
 				// Check for jellysweep-must-delete-for-sure tags
-				if strings.HasPrefix(tagName, jellysweepDeleteForSureTag) {
+				if strings.HasPrefix(tagName, JellysweepDeleteForSureTag) {
 					// This tag indicates the item should be deleted regardless of other tags
 					log.Debugf("Item %s has must-delete-for-sure tag: %s", item.Title, tagName)
 					hasExcludedTag = true
@@ -105,12 +105,12 @@ func (e *Engine) filterMediaTags() {
 // parseKeepTagWithRequester extracts the date and requester from a jellysweep-must-keep tag.
 // Format: jellysweep-must-keep-YYYY-MM-DD-requester.
 func (e *Engine) parseKeepTagWithRequester(tagName string) (time.Time, string, error) { //nolint:unparam
-	if !strings.HasPrefix(tagName, jellysweepKeepPrefix) {
+	if !strings.HasPrefix(tagName, JellysweepKeepPrefix) {
 		return time.Time{}, "", fmt.Errorf("not a keep tag")
 	}
 
 	// Remove the prefix
-	tagContent := strings.TrimPrefix(tagName, jellysweepKeepPrefix)
+	tagContent := strings.TrimPrefix(tagName, JellysweepKeepPrefix)
 
 	// Split by dash to separate date and requester
 	parts := strings.Split(tagContent, "-")
@@ -144,9 +144,9 @@ func (e *Engine) createKeepTagWithRequester(date time.Time, requester string) st
 		// Sanitize requester to avoid issues with special characters
 		sanitizedRequester := strings.ReplaceAll(requester, "-", "_")
 		sanitizedRequester = strings.ReplaceAll(sanitizedRequester, " ", "_")
-		return fmt.Sprintf("%s%s-%s", jellysweepKeepPrefix, dateStr, sanitizedRequester)
+		return fmt.Sprintf("%s%s-%s", JellysweepKeepPrefix, dateStr, sanitizedRequester)
 	}
-	return fmt.Sprintf("%s%s", jellysweepKeepPrefix, dateStr)
+	return fmt.Sprintf("%s%s", JellysweepKeepPrefix, dateStr)
 }
 
 // parseKeepRequestTagWithRequester extracts the date and requester from a jellysweep-keep-request tag.

@@ -202,7 +202,7 @@ func TestEngine_RadarrKeepTags(t *testing.T) {
 
 			// Test keep tag detection
 			isKeepTag := func(tag string) bool {
-				return len(tag) > len(jellysweepKeepPrefix) && tag[:len(jellysweepKeepPrefix)] == jellysweepKeepPrefix
+				return len(tag) > len(JellysweepKeepPrefix) && tag[:len(JellysweepKeepPrefix)] == JellysweepKeepPrefix
 			}
 
 			actualIsKeepTag := isKeepRequestTag(tt.tagName) || isKeepTag(tt.tagName)
@@ -220,7 +220,7 @@ func TestEngine_RadarrKeepTags(t *testing.T) {
 					}
 				} else if isKeepTag(tt.tagName) {
 					// Extract date from keep tag (format: jellysweep-must-keep-YYYY-MM-DD)
-					dateStr = tt.tagName[len(jellysweepKeepPrefix):]
+					dateStr = tt.tagName[len(JellysweepKeepPrefix):]
 				}
 
 				if dateStr != "" {
@@ -336,7 +336,7 @@ func TestEngine_RadarrTagLifecycle(t *testing.T) {
 		assert.Contains(t, keepRequestTag, "user@example.com")
 
 		// Test keep tag format
-		keepTag := jellysweepKeepPrefix + futureDate.Format("2006-01-02")
+		keepTag := JellysweepKeepPrefix + futureDate.Format("2006-01-02")
 		assert.Contains(t, keepTag, "jellysweep-must-keep-")
 
 		// Test delete tag format
@@ -344,7 +344,7 @@ func TestEngine_RadarrTagLifecycle(t *testing.T) {
 		assert.Contains(t, deleteTag, "jellysweep-delete-")
 
 		// Test delete-for-sure tag
-		deleteForSureTag := jellysweepDeleteForSureTag
+		deleteForSureTag := JellysweepDeleteForSureTag
 		assert.Equal(t, "jellysweep-must-delete-for-sure", deleteForSureTag)
 	})
 
@@ -354,15 +354,15 @@ func TestEngine_RadarrTagLifecycle(t *testing.T) {
 		expiredDate := now.AddDate(0, 0, -10) // 10 days ago
 		futureDate := now.AddDate(0, 0, 10)   // 10 days from now
 
-		expiredKeepTag := jellysweepKeepPrefix + expiredDate.Format("2006-01-02")
-		validKeepTag := jellysweepKeepPrefix + futureDate.Format("2006-01-02")
+		expiredKeepTag := JellysweepKeepPrefix + expiredDate.Format("2006-01-02")
+		validKeepTag := JellysweepKeepPrefix + futureDate.Format("2006-01-02")
 
 		// Test expiration detection
 		isExpired := func(tagName string) bool {
-			if len(tagName) <= len(jellysweepKeepPrefix) {
+			if len(tagName) <= len(JellysweepKeepPrefix) {
 				return false
 			}
-			dateStr := tagName[len(jellysweepKeepPrefix):]
+			dateStr := tagName[len(JellysweepKeepPrefix):]
 			keepDate, err := time.Parse("2006-01-02", dateStr)
 			if err != nil {
 				return false

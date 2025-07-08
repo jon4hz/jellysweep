@@ -25,11 +25,9 @@ import (
 const (
 	jellysweepTagPrefix         = "jellysweep-delete-"
 	jellysweepKeepRequestPrefix = "jellysweep-keep-request-"
-	jellysweepKeepPrefix        = "jellysweep-must-keep-"
-	jellysweepDeleteForSureTag  = "jellysweep-must-delete-for-sure"
-	jellysweepKeepTag           = "jellysweep-keep"
-	jellysweepMustDeleteTag     = "must-delete"
-	jellysweepIgnoreTag         = "jellysweep-ignore"
+	JellysweepKeepPrefix        = "jellysweep-must-keep-"
+	JellysweepDeleteForSureTag  = "jellysweep-must-delete-for-sure"
+	JellysweepIgnoreTag         = "jellysweep-ignore"
 )
 
 // Cleanup mode constants.
@@ -37,13 +35,6 @@ const (
 	CleanupModeAll          = "all"
 	CleanupModeKeepEpisodes = "keep_episodes"
 	CleanupModeKeepSeasons  = "keep_seasons"
-)
-
-// Exported constants for API handlers.
-const (
-	TagKeep       = jellysweepKeepTag
-	TagMustDelete = jellysweepMustDeleteTag
-	TagIgnore     = jellysweepIgnoreTag
 )
 
 // Engine is the main engine for JellySweep, managing interactions with sonarr, radarr, and other services.
@@ -642,21 +633,21 @@ func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName stri
 
 		// Use dedicated tag-resetting functions based on the action
 		switch tagName {
-		case jellysweepKeepTag:
+		case JellysweepKeepPrefix:
 			// For "keep": remove all tags (including delete) before adding must-keep
 			if err := e.resetSingleSonarrTagsForKeep(ctx, int32(seriesID)); err != nil {
 				return fmt.Errorf("failed to reset sonarr tags for keep: %w", err)
 			}
 			// This will add a jellysweep-must-keep tag with expiry date
 			return e.addSonarrKeepTag(ctx, int32(seriesID))
-		case jellysweepMustDeleteTag:
+		case JellysweepDeleteForSureTag:
 			// For "must-delete": remove all tags except jellysweep-delete before adding must-delete-for-sure
 			if err := e.resetSingleSonarrTagsForMustDelete(ctx, int32(seriesID)); err != nil {
 				return fmt.Errorf("failed to reset sonarr tags for must-delete: %w", err)
 			}
 			// This will add a jellysweep-must-delete-for-sure tag
 			return e.addSonarrDeleteForSureTag(ctx, int32(seriesID))
-		case jellysweepIgnoreTag:
+		case JellysweepIgnoreTag:
 			// For "ignore": remove all jellysweep tags and add ignore tag in one operation
 			return e.resetAllSonarrTagsAndAddIgnore(ctx, int32(seriesID))
 		default:
@@ -670,21 +661,21 @@ func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName stri
 
 		// Use dedicated tag-resetting functions based on the action
 		switch tagName {
-		case jellysweepKeepTag:
+		case JellysweepKeepPrefix:
 			// For "keep": remove all tags (including delete) before adding must-keep
 			if err := e.resetSingleRadarrTagsForKeep(ctx, int32(movieID)); err != nil {
 				return fmt.Errorf("failed to reset radarr tags for keep: %w", err)
 			}
 			// This will add a jellysweep-must-keep tag with expiry date
 			return e.addRadarrKeepTag(ctx, int32(movieID))
-		case jellysweepMustDeleteTag:
+		case JellysweepDeleteForSureTag:
 			// For "must-delete": remove all tags except jellysweep-delete before adding must-delete-for-sure
 			if err := e.resetSingleRadarrTagsForMustDelete(ctx, int32(movieID)); err != nil {
 				return fmt.Errorf("failed to reset radarr tags for must-delete: %w", err)
 			}
 			// This will add a jellysweep-must-delete-for-sure tag
 			return e.addRadarrDeleteForSureTag(ctx, int32(movieID))
-		case jellysweepIgnoreTag:
+		case JellysweepIgnoreTag:
 			// For "ignore": remove all jellysweep tags and add ignore tag in one operation
 			return e.resetAllRadarrTagsAndAddIgnore(ctx, int32(movieID))
 		default:

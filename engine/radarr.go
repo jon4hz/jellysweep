@@ -91,7 +91,7 @@ func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 					log.Debugf("Radarr movie %s already marked for deletion with tag %s", item.Title, tagName)
 					continue movieLoop
 				}
-				if strings.HasPrefix(tagName, jellysweepKeepPrefix) {
+				if strings.HasPrefix(tagName, JellysweepKeepPrefix) {
 					log.Debugf("Radarr movie %s has expired keep tag %s", item.Title, tagName)
 				}
 			}
@@ -355,7 +355,7 @@ func (e *Engine) removeExpiredRadarrKeepTags(ctx context.Context) error {
 	var expiredKeepTagIDs []int32
 	for tagID, tagName := range e.data.radarrTags {
 		// Check for both jellysweep-keep-request- and jellysweep-keep- tags
-		if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) || strings.HasPrefix(tagName, jellysweepKeepPrefix) {
+		if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) || strings.HasPrefix(tagName, JellysweepKeepPrefix) {
 			// Parse the date from the tag name using the appropriate parser
 			var expirationDate time.Time
 			var err error
@@ -454,13 +454,13 @@ func (e *Engine) getRadarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 					if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
 						hasRequested = true
 						canRequest = false
-					} else if strings.HasPrefix(tagName, jellysweepKeepPrefix) {
+					} else if strings.HasPrefix(tagName, JellysweepKeepPrefix) {
 						// If it has an active keep tag, it shouldn't be requestable
 						keepDate, _, err := e.parseKeepTagWithRequester(tagName)
 						if err == nil && time.Now().Before(keepDate) {
 							canRequest = false // Don't allow requests for items with active keep tags
 						}
-					} else if tagName == jellysweepDeleteForSureTag {
+					} else if tagName == JellysweepDeleteForSureTag {
 						canRequest = false // Don't allow requests but still show the media
 						mustDelete = true  // This movie is marked for deletion for sure
 					}
@@ -516,7 +516,7 @@ func (e *Engine) addRadarrKeepRequestTag(ctx context.Context, movieID int32, use
 		if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
 			return fmt.Errorf("keep request already exists for this movie")
 		}
-		if tagName == jellysweepDeleteForSureTag {
+		if tagName == JellysweepDeleteForSureTag {
 			return fmt.Errorf("keep requests are not allowed for this movie")
 		}
 	}
@@ -577,7 +577,7 @@ func (e *Engine) getRadarrKeepRequests(ctx context.Context) ([]models.KeepReques
 			tagName := radarrTags[tagID]
 			if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
 				// skip if the movie has a delete-for-sure tag
-				forSureTag, err := e.getRadarrTagIDByLabel(jellysweepDeleteForSureTag)
+				forSureTag, err := e.getRadarrTagIDByLabel(JellysweepDeleteForSureTag)
 				if err != nil {
 					log.Warnf("failed to get delete-for-sure tag ID: %v", err)
 				}
@@ -739,12 +739,12 @@ func (e *Engine) addRadarrDeleteForSureTag(ctx context.Context, movieID int32) e
 	defer resp.Body.Close() //nolint: errcheck
 
 	// Ensure the delete-for-sure tag exists
-	if err := e.ensureRadarrTagExists(ctx, jellysweepDeleteForSureTag); err != nil {
+	if err := e.ensureRadarrTagExists(ctx, JellysweepDeleteForSureTag); err != nil {
 		return fmt.Errorf("failed to create delete-for-sure tag: %w", err)
 	}
 
 	// Get tag ID
-	tagID, err := e.getRadarrTagIDByLabel(jellysweepDeleteForSureTag)
+	tagID, err := e.getRadarrTagIDByLabel(JellysweepDeleteForSureTag)
 	if err != nil {
 		return fmt.Errorf("failed to get tag ID: %w", err)
 	}
@@ -779,7 +779,7 @@ func (e *Engine) addRadarrKeepTag(ctx context.Context, movieID int32) error {
 
 	// Create keep tag with 90 days expiry
 	expiryDate := time.Now().Add(90 * 24 * time.Hour)
-	keepTag := fmt.Sprintf("%s%s", jellysweepKeepPrefix, expiryDate.Format("2006-01-02"))
+	keepTag := fmt.Sprintf("%s%s", JellysweepKeepPrefix, expiryDate.Format("2006-01-02"))
 
 	// Ensure the tag exists
 	if err := e.ensureRadarrTagExists(ctx, keepTag); err != nil {
@@ -847,8 +847,8 @@ func (e *Engine) resetRadarrTags(ctx context.Context, additionalTags []string) e
 			tagName := tags[tagID]
 			isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 				strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
-				strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
-				tagName == jellysweepDeleteForSureTag ||
+				strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
+				tagName == JellysweepDeleteForSureTag ||
 				slices.Contains(additionalTags, tagName)
 
 			if isJellysweepTag {
@@ -902,8 +902,8 @@ func (e *Engine) cleanupAllRadarrTags(ctx context.Context, additionalTags []stri
 		tagName := tag.GetLabel()
 		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
-			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
-			tagName == jellysweepDeleteForSureTag ||
+			strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
+			tagName == JellysweepDeleteForSureTag ||
 			slices.Contains(additionalTags, tagName)
 
 		if isJellysweepTag {
@@ -955,8 +955,8 @@ func (e *Engine) resetSingleRadarrTagsForKeep(ctx context.Context, movieID int32
 		tagName := tags[tagID]
 		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
-			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
-			tagName == jellysweepDeleteForSureTag
+			strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
+			tagName == JellysweepDeleteForSureTag
 
 		if isJellysweepTag {
 			hasJellysweepTags = true
@@ -1009,8 +1009,8 @@ func (e *Engine) resetSingleRadarrTagsForMustDelete(ctx context.Context, movieID
 		tagName := tags[tagID]
 		isJellysweepDeleteTag := strings.HasPrefix(tagName, jellysweepTagPrefix) // jellysweep-delete-*
 		isOtherJellysweepTag := strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
-			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
-			tagName == jellysweepDeleteForSureTag
+			strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
+			tagName == JellysweepDeleteForSureTag
 
 		if isOtherJellysweepTag {
 			hasJellysweepTags = true
@@ -1053,12 +1053,12 @@ func (e *Engine) resetAllRadarrTagsAndAddIgnore(ctx context.Context, movieID int
 	}
 
 	// Ensure the ignore tag exists
-	if err := e.ensureRadarrTagExists(ctx, jellysweepIgnoreTag); err != nil {
+	if err := e.ensureRadarrTagExists(ctx, JellysweepIgnoreTag); err != nil {
 		return fmt.Errorf("failed to create ignore tag: %w", err)
 	}
 
 	// Get ignore tag ID
-	ignoreTagID, err := e.getRadarrTagIDByLabel(jellysweepIgnoreTag)
+	ignoreTagID, err := e.getRadarrTagIDByLabel(JellysweepIgnoreTag)
 	if err != nil {
 		return fmt.Errorf("failed to get ignore tag ID: %w", err)
 	}
@@ -1076,11 +1076,9 @@ func (e *Engine) resetAllRadarrTagsAndAddIgnore(ctx context.Context, movieID int
 		tagName := tags[tagID]
 		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
-			strings.HasPrefix(tagName, jellysweepKeepPrefix) ||
-			tagName == jellysweepDeleteForSureTag ||
-			tagName == jellysweepKeepTag ||
-			tagName == jellysweepMustDeleteTag ||
-			tagName == jellysweepIgnoreTag
+			strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
+			tagName == JellysweepDeleteForSureTag ||
+			tagName == JellysweepIgnoreTag
 
 		if isJellysweepTag {
 			log.Debugf("Removing jellysweep tag '%s' from Radarr movie: %s", tagName, movie.GetTitle())

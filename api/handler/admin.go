@@ -138,7 +138,7 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
 	mediaID := c.Param("id")
 
-	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.TagKeep)
+	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.JellysweepKeepPrefix)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -164,7 +164,7 @@ func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
 func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
 	mediaID := c.Param("id")
 
-	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.TagMustDelete)
+	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.JellysweepDeleteForSureTag)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -190,7 +190,7 @@ func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
 func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 	mediaID := c.Param("id")
 
-	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.TagIgnore)
+	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.JellysweepIgnoreTag)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

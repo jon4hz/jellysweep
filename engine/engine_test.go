@@ -203,11 +203,6 @@ func TestMediaType_Constants(t *testing.T) {
 	assert.Equal(t, MediaType("movie"), MediaTypeMovie)
 }
 
-func TestTagConstants(t *testing.T) {
-	assert.Equal(t, jellysweepKeepTag, TagKeep)
-	assert.Equal(t, jellysweepMustDeleteTag, TagMustDelete)
-}
-
 func TestMediaItem_Structure(t *testing.T) {
 	item := MediaItem{
 		JellystatID: "test-id",
