@@ -908,6 +908,11 @@ func (e *Engine) removeSonarrKeepRequestAndDeleteTags(ctx context.Context, serie
 		return fmt.Errorf("failed to get sonarr tags: %w", err)
 	}
 
+	if e.sonarrItemKeepRequestAlreadyProcessed(series, sonarrTags) {
+		log.Warn("Sonarr series %s already has a must-keep or must-delete-for-sure tag", series.GetTitle())
+		return ErrRequestAlreadyProcessed
+	}
+
 	// Remove keep request and delete tags
 	var newTags []int32
 	for _, tagID := range series.GetTags() {
@@ -932,6 +937,23 @@ func (e *Engine) removeSonarrKeepRequestAndDeleteTags(ctx context.Context, serie
 	return nil
 }
 
+func (e *Engine) sonarrItemKeepRequestAlreadyProcessed(series *sonarr.SeriesResource, tags map[int32]string) bool {
+	if series == nil {
+		return false
+	}
+
+	// Check if the series has any keep request tags
+	for _, tagID := range series.GetTags() {
+		tagName := tags[tagID]
+		if strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
+			tagName == JellysweepDeleteForSureTag {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (e *Engine) addSonarrDeleteForSureTag(ctx context.Context, seriesID int32) error {
 	if e.sonarr == nil {
 		return fmt.Errorf("sonarr client not available")
@@ -941,6 +963,27 @@ func (e *Engine) addSonarrDeleteForSureTag(ctx context.Context, seriesID int32) 
 	series, _, err := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), seriesID).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to get sonarr series: %w", err)
+	}
+
+	// Get current tags
+	sonarrTags, err := e.getSonarrTags(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get sonarr tags: %w", err)
+	}
+
+	if e.sonarrItemKeepRequestAlreadyProcessed(series, sonarrTags) {
+		log.Warn("Sonarr series %s already has a must-keep or must-delete-for-sure tag", series.GetTitle())
+		return ErrRequestAlreadyProcessed
+	}
+
+	// Remove keep request and delete tags
+	var newTags []int32
+	for _, tagID := range series.GetTags() {
+		tagName := sonarrTags[tagID]
+		if !strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) &&
+			!strings.HasPrefix(tagName, jellysweepTagPrefix) {
+			newTags = append(newTags, tagID)
+		}
 	}
 
 	// Ensure the delete-for-sure tag exists
@@ -955,7 +998,8 @@ func (e *Engine) addSonarrDeleteForSureTag(ctx context.Context, seriesID int32) 
 	}
 
 	// Add the tag to the series
-	series.Tags = append(series.Tags, tagID)
+	newTags = append(newTags, tagID)
+	series.Tags = newTags
 
 	// Update the series
 	_, _, err = e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", seriesID)).
