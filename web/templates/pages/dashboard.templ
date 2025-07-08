@@ -194,8 +194,6 @@ script dashboardScripts() {
 		if (dataScript && window.dashboardMediaGridManager) {
 			try {
 				const mediaItems = JSON.parse(dataScript.textContent);
-				console.log('Raw media items from server:', mediaItems);
-
 				// Convert server data to client format
 				const clientItems = mediaItems.map(item => ({
 					...item,
@@ -214,8 +212,6 @@ script dashboardScripts() {
 					type: item.Type || item.type,
 					year: parseInt(item.Year || item.year || 0)
 				}));
-
-				console.log('Converted client items:', clientItems);
 
 				// Set items in the grid manager
 				window.dashboardMediaGridManager.setItems(clientItems);
@@ -355,7 +351,6 @@ script dashboardScripts() {
 						year: parseInt(item.Year || item.year || 0)
 					}));
 
-					console.log('Refreshed media items:', clientItems);
 					window.dashboardMediaGridManager.setItems(clientItems);
 					window.dashboardMediaGridManager.refresh();
 				}

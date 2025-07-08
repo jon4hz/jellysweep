@@ -67,7 +67,6 @@ templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItem
 					if (keepRequestsScript) {
 						try {
 							const keepRequests = JSON.parse(keepRequestsScript.textContent);
-							console.log('Raw keep requests from server:', keepRequests);
 							keepRequestGrid.setItems(keepRequests);
 						} catch (error) {
 							console.error('Error parsing keep requests data:', error);
@@ -94,7 +93,6 @@ templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItem
 					if (mediaItemsScript) {
 						try {
 							const mediaItems = JSON.parse(mediaItemsScript.textContent);
-							console.log('Raw admin media items from server:', mediaItems);
 							adminMediaGrid.setItems(mediaItems);
 						} catch (error) {
 							console.error('Error parsing admin media items data:', error);
@@ -395,7 +393,6 @@ templ AdminUtilityScripts() {
 
 					// Update the grid with new data
 					if (keepRequestGrid && keepRequestGrid.setItems) {
-						console.log('Refreshed keep requests:', data.keepRequests);
 						keepRequestGrid.setItems(data.keepRequests);
 						keepRequestGrid.refresh();
 					}
@@ -446,7 +443,6 @@ templ AdminUtilityScripts() {
 
 					// Update the grid with new data
 					if (adminMediaGrid && adminMediaGrid.setItems) {
-						console.log('Refreshed admin media items:', data.mediaItems);
 						adminMediaGrid.setItems(data.mediaItems);
 						adminMediaGrid.refresh();
 					}

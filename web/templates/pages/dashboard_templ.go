@@ -456,8 +456,8 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_0064`,
-		Function: `function __templ_dashboardScripts_0064(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_3013`,
+		Function: `function __templ_dashboardScripts_3013(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
 		initializeDashboardGrid();
@@ -475,8 +475,6 @@ func dashboardScripts() templ.ComponentScript {
 		if (dataScript && window.dashboardMediaGridManager) {
 			try {
 				const mediaItems = JSON.parse(dataScript.textContent);
-				console.log('Raw media items from server:', mediaItems);
-
 				// Convert server data to client format
 				const clientItems = mediaItems.map(item => ({
 					...item,
@@ -495,8 +493,6 @@ func dashboardScripts() templ.ComponentScript {
 					type: item.Type || item.type,
 					year: parseInt(item.Year || item.year || 0)
 				}));
-
-				console.log('Converted client items:', clientItems);
 
 				// Set items in the grid manager
 				window.dashboardMediaGridManager.setItems(clientItems);
@@ -636,7 +632,6 @@ func dashboardScripts() templ.ComponentScript {
 						year: parseInt(item.Year || item.year || 0)
 					}));
 
-					console.log('Refreshed media items:', clientItems);
 					window.dashboardMediaGridManager.setItems(clientItems);
 					window.dashboardMediaGridManager.refresh();
 				}
@@ -654,8 +649,8 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_0064`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_0064`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_3013`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_3013`),
 	}
 }
 
