@@ -2,9 +2,9 @@ package engine
 
 import (
 	"context"
-	"sync"
 
 	"github.com/charmbracelet/log"
+	"golang.org/x/sync/errgroup"
 )
 
 // populateRequesterInfo populates the RequestedBy and RequestDate fields for media items using Jellyseerr data.
@@ -14,55 +14,39 @@ func (e *Engine) populateRequesterInfo(ctx context.Context) {
 		return
 	}
 
-	const batchSize = 10
-	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, batchSize)
+	const concurrencyLimit = 10
 
 	for lib, items := range e.data.mediaItems {
-		// Process items in batches of 10 concurrently
-		for i := 0; i < len(items); i += batchSize {
-			end := i + batchSize
-			if end > len(items) {
-				end = len(items)
-			}
+		// Create errgroup with concurrency limit
+		g, ctx := errgroup.WithContext(ctx)
+		g.SetLimit(concurrencyLimit)
 
-			batch := items[i:end]
-			wg.Add(1)
+		// Process each item concurrently with the errgroup
+		for i := range items {
+			g.Go(func() error {
+				item := &items[i] // Capture the item reference
 
-			go func(batch []MediaItem) {
-				defer wg.Done()
-
-				var batchWg sync.WaitGroup
-
-				// Process each item in the batch concurrently
-				for j := range batch {
-					batchWg.Add(1)
-					semaphore <- struct{}{} // Acquire semaphore slot
-
-					go func(item *MediaItem) {
-						defer batchWg.Done()
-						defer func() { <-semaphore }() // Release semaphore slot
-
-						requestInfo, err := e.jellyseerr.GetRequestInfo(ctx, item.TmdbId, string(item.MediaType))
-						if err != nil {
-							log.Debugf("Failed to get request info for item %s: %v", item.Title, err)
-							return
-						}
-
-						if requestInfo != nil && requestInfo.RequestTime != nil {
-							item.RequestDate = *requestInfo.RequestTime
-							item.RequestedBy = requestInfo.UserEmail
-							log.Debugf("Populated requester info for %s: requested by %s on %s",
-								item.Title, item.RequestedBy, item.RequestDate.Format("2006-01-02"))
-						}
-					}(&batch[j])
+				requestInfo, err := e.jellyseerr.GetRequestInfo(ctx, item.TmdbId, string(item.MediaType))
+				if err != nil {
+					log.Errorf("Failed to get request info for item %s: %v", item.Title, err)
+					return nil // Don't fail the entire operation for individual item errors
 				}
 
-				batchWg.Wait()
-			}(batch)
+				if requestInfo != nil && requestInfo.RequestTime != nil {
+					item.RequestDate = *requestInfo.RequestTime
+					item.RequestedBy = requestInfo.UserEmail
+					log.Debugf("Populated requester info for %s: requested by %s on %s",
+						item.Title, item.RequestedBy, item.RequestDate.Format("2006-01-02"))
+				}
+
+				return nil
+			})
 		}
 
-		wg.Wait()
+		// Wait for all goroutines to complete
+		if err := g.Wait(); err != nil {
+			log.Errorf("Error processing requester info for library %s: %v", lib, err)
+		}
 
 		// Update the items in the map
 		e.data.mediaItems[lib] = items
