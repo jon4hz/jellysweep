@@ -13,6 +13,14 @@ import (
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 )
 
+const (
+	// Cache control constants.
+	CacheControlNoCache = "no-cache"
+	CacheControlMaxAge0 = "max-age=0"
+	PragmaNoCache       = "no-cache"
+	RefreshParamTrue    = "true"
+)
+
 // CacheManager interface for managing user-specific caches.
 type CacheManager interface {
 	Get(userID string) (map[string][]models.MediaItem, bool)
@@ -45,10 +53,10 @@ func (h *Handler) Home(c *gin.Context) {
 	// Check if this is a forced refresh
 	cacheControl := c.GetHeader("Cache-Control")
 	pragma := c.GetHeader("Pragma")
-	forceRefresh := c.Query("refresh") == "true" ||
-		cacheControl == "no-cache" ||
-		cacheControl == "max-age=0" ||
-		pragma == "no-cache"
+	forceRefresh := c.Query("refresh") == RefreshParamTrue ||
+		cacheControl == CacheControlNoCache ||
+		cacheControl == CacheControlMaxAge0 ||
+		pragma == PragmaNoCache
 
 	var mediaItemsMap map[string][]models.MediaItem
 	var err error
@@ -168,29 +176,6 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 	})
 }
 
-// RefreshData forces a refresh of the cached data for the current user.
-func (h *Handler) RefreshData(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
-	userID := user.Sub
-
-	// Clear the user's cache
-	h.cacheManager.Clear(userID)
-
-	// Get fresh data from the engine
-	_, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to refresh data",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Data refreshed successfully",
-	})
-}
-
 // ImageCache serves cached images or downloads them if not cached.
 func (h *Handler) ImageCache(c *gin.Context) {
 	imageURL := c.Query("url")
@@ -214,5 +199,55 @@ func (h *Handler) Me(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"username": user.Username,
 		"isAdmin":  user.IsAdmin,
+	})
+}
+
+// GetMediaItems returns the current user's media items as JSON.
+func (h *Handler) GetMediaItems(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+	userID := user.Sub
+
+	// Check if this is a forced refresh
+	cacheControl := c.GetHeader("Cache-Control")
+	pragma := c.GetHeader("Pragma")
+	forceRefresh := c.Query("refresh") == RefreshParamTrue ||
+		cacheControl == CacheControlNoCache ||
+		cacheControl == CacheControlMaxAge0 ||
+		pragma == PragmaNoCache
+
+	var mediaItemsMap map[string][]models.MediaItem
+	var err error
+
+	// Try to get from cache first (if not forced refresh)
+	if !forceRefresh {
+		if cachedData, found := h.cacheManager.Get(userID); found {
+			mediaItemsMap = cachedData
+		}
+	}
+
+	// If not in cache or forced refresh, get fresh data
+	if mediaItemsMap == nil || forceRefresh {
+		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to get media items",
+			})
+			return
+		}
+
+		// Store in cache
+		h.cacheManager.Set(userID, mediaItemsMap)
+	}
+
+	// Convert to flat list for the dashboard
+	var mediaItems []models.MediaItem
+	for _, libraryItems := range mediaItemsMap {
+		mediaItems = append(mediaItems, libraryItems...)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"mediaItems": mediaItems,
 	})
 }

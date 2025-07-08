@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"fmt"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/web/templates"
 	"github.com/jon4hz/jellysweep/web/templates/components"
@@ -30,14 +29,91 @@ templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItem
 		@templates.ToastScript()
 		@templates.ButtonLoadingUtils()
 		@templates.ApiUtils()
+		@templates.SmoothNavigationUtils()
 		<!-- Include tab functionality -->
 		@components.TabsScript()
+		<!-- Include grid functionality -->
+		@components.MediaGridScript()
+		@components.AdminKeepRequestGridScript()
+		@components.AdminMediaGridScript()
 		<!-- Include admin utility functions -->
 		@AdminUtilityScripts()
 		<script>
+			let keepRequestGrid = null;
+			let adminMediaGrid = null;
+
 			document.addEventListener('DOMContentLoaded', function() {
 				initializeTabs('admin-tabs');
+				initializeAdminGrids();
 			});
+
+			function initializeAdminGrids() {
+				// Initialize Keep Request Grid (Approval Queue)
+				const keepRequestContainer = document.getElementById('approval-queue-container');
+				if (keepRequestContainer && window.AdminKeepRequestGridManager) {
+					keepRequestGrid = new window.AdminKeepRequestGridManager('approval-queue-container', {
+						gridId: 'approval-queue-grid',
+						enableSearch: true,
+						enableFilters: true,
+						enableSorting: true,
+						enableRefresh: true,
+						pageSize: 10,
+						mobilePageSize: 4,
+						animateChanges: true
+					});
+
+					// Initialize with data from JSON script
+					const keepRequestsScript = document.getElementById('keep-requests-data');
+					if (keepRequestsScript) {
+						try {
+							const keepRequests = JSON.parse(keepRequestsScript.textContent);
+							keepRequestGrid.setItems(keepRequests);
+						} catch (error) {
+							console.error('Error parsing keep requests data:', error);
+						}
+					}
+				}
+
+				// Initialize Admin Media Grid (Keep/Sweep)
+				const adminMediaContainer = document.getElementById('keep-sweep-container');
+				if (adminMediaContainer && window.AdminMediaGridManager) {
+					adminMediaGrid = new window.AdminMediaGridManager('keep-sweep-container', {
+						gridId: 'keep-sweep-grid',
+						enableSearch: true,
+						enableFilters: true,
+						enableSorting: true,
+						enableRefresh: true,
+						pageSize: 10,
+						mobilePageSize: 4,
+						animateChanges: true
+					});
+
+					// Initialize with data from JSON script
+					const mediaItemsScript = document.getElementById('media-items-data');
+					if (mediaItemsScript) {
+						try {
+							const mediaItems = JSON.parse(mediaItemsScript.textContent);
+							adminMediaGrid.setItems(mediaItems);
+						} catch (error) {
+							console.error('Error parsing admin media items data:', error);
+						}
+					}
+				}
+
+				// Setup refresh button handlers only
+				setupRefreshHandlers();
+			}
+
+			function setupRefreshHandlers() {
+				// Setup refresh button handlers
+				document.addEventListener('click', function(event) {
+					if (event.target.id === 'request-refresh-btn' || event.target.closest('#request-refresh-btn')) {
+						refreshApprovalQueue();
+					} else if (event.target.id === 'media-refresh-btn' || event.target.closest('#media-refresh-btn')) {
+						refreshKeepSweepMedia();
+					}
+				});
+			}
 		</script>
 	}
 }
@@ -61,14 +137,9 @@ templ ApprovalQueueTab(keepRequests []models.KeepRequest) {
 	if len(keepRequests) == 0 {
 		@AdminEmptyState()
 	} else {
-		<div class="space-y-4">
-			<h3 class="text-xl font-semibold text-gray-100">Keep Requests</h3>
-			<div class="space-y-4">
-				for _, request := range keepRequests {
-					@AdminKeepRequestCard(request)
-				}
-			</div>
-		</div>
+		@components.AdminKeepRequestGrid(keepRequests)
+		<!-- Pass data to JavaScript -->
+		@templ.JSONScript("keep-requests-data", keepRequests)
 	}
 }
 
@@ -76,99 +147,10 @@ templ KeepSweepTab(mediaItems []models.MediaItem) {
 	if len(mediaItems) == 0 {
 		@KeepSweepEmptyState()
 	} else {
-		<div class="space-y-4">
-			<h3 class="text-xl font-semibold text-gray-100">Media for Review</h3>
-			<div class="space-y-4">
-				for _, item := range mediaItems {
-					@KeepSweepCard(item)
-				}
-			</div>
-		</div>
+		@components.AdminMediaGrid(mediaItems)
+		<!-- Pass data to JavaScript -->
+		@templ.JSONScript("media-items-data", mediaItems)
 	}
-}
-
-templ AdminKeepRequestCard(request models.KeepRequest) {
-	<div class="card" id={ "request-" + request.MediaID }>
-		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 gap-4">
-			<div class="flex items-center space-x-4 flex-1 min-w-0">
-				<!-- Poster/Icon -->
-				<div class="shrink-0">
-					if request.PosterURL != "" {
-						<img src={ request.PosterURL } alt={ request.Title } class="w-16 h-24 object-cover rounded"/>
-					} else {
-						<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
-							<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
-							</svg>
-						</div>
-					}
-				</div>
-				<!-- Details -->
-				<div class="flex-1 min-w-0">
-					<div class="flex items-center space-x-2">
-						<h4 class="text-lg font-medium text-gray-100 truncate">{ request.Title }</h4>
-						<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
-							{ request.Type }
-						</span>
-						if request.Year > 0 {
-							<span class="text-sm text-gray-400">{ fmt.Sprint(request.Year) }</span>
-						}
-					</div>
-					<div class="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-gray-400">
-						<div class="flex items-center">
-							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-							</svg>
-							{ request.Library }
-						</div>
-						if !request.DeletionDate.IsZero() {
-							<div class="flex items-center">
-								<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-								</svg>
-								Deletes { components.FormatRelativeTime(request.DeletionDate) }
-							</div>
-						}
-						<div class="flex items-center">
-							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4M5 7h14l-1 14H6L5 7z"></path>
-							</svg>
-							Expires { components.FormatRelativeTime(request.ExpiryDate) }
-						</div>
-					</div>
-				</div>
-			</div>
-			<!-- Actions -->
-			<div class="flex flex-wrap items-center gap-2 sm:gap-2 justify-end sm:justify-start">
-				<button
-					id={ "accept-" + request.MediaID }
-					onclick={ acceptKeepRequest(request.MediaID) }
-					class="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap"
-					style="background-color: #16a34a; color: white;"
-					onmouseover="this.style.backgroundColor='#15803d'"
-					onmouseout="this.style.backgroundColor='#16a34a'"
-				>
-					<svg class="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-					</svg>
-					Accept
-				</button>
-				<button
-					id={ "decline-" + request.MediaID }
-					onclick={ declineKeepRequest(request.MediaID) }
-					class="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap"
-					style="background-color: #dc2626; color: white;"
-					onmouseover="this.style.backgroundColor='#b91c1c'"
-					onmouseout="this.style.backgroundColor='#dc2626'"
-				>
-					<svg class="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-					</svg>
-					Decline
-				</button>
-			</div>
-		</div>
-	</div>
 }
 
 templ AdminEmptyState() {
@@ -179,125 +161,18 @@ templ AdminEmptyState() {
 			</svg>
 		</div>
 		<h3 class="text-xl font-semibold text-gray-300 mb-2">No pending keep requests</h3>
-		<p class="text-gray-500">
+		<p class="text-gray-500 mb-6">
 			All keep requests have been processed. Check back later for new requests.
 		</p>
-	</div>
-}
-
-templ KeepSweepCard(item models.MediaItem) {
-	<div class="card" id={ "media-" + item.ID }>
-		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 gap-4">
-			<div class="flex items-center space-x-4 flex-1 min-w-0">
-				<!-- Poster/Icon -->
-				<div class="shrink-0">
-					if item.PosterURL != "" {
-						<img src={ item.PosterURL } alt={ item.Title } class="w-16 h-24 object-cover rounded"/>
-					} else {
-						<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
-							<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
-							</svg>
-						</div>
-					}
-				</div>
-				<!-- Details -->
-				<div class="flex-1 min-w-0">
-					<div class="flex items-center space-x-2">
-						<h4 class="text-lg font-medium text-gray-100 truncate">{ item.Title }</h4>
-						<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
-							{ item.Type }
-						</span>
-						if item.Year > 0 {
-							<span class="text-sm text-gray-400">{ fmt.Sprint(item.Year) }</span>
-						}
-					</div>
-					<div class="mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-gray-400">
-						<div class="flex items-center">
-							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-							</svg>
-							{ item.Library }
-						</div>
-						if !item.DeletionDate.IsZero() {
-							<div class="flex items-center">
-								<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-								</svg>
-								Deletes { components.FormatRelativeTime(item.DeletionDate) }
-							</div>
-						}
-						<div class="flex items-center">
-							<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-							</svg>
-							{ components.FormatFileSize(item.FileSize) }
-						</div>
-					</div>
-					<div class="mt-2 flex flex-wrap items-center gap-2">
-						<!-- Tag status badges -->
-						if item.HasRequested {
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
-								<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-								</svg>
-								Keep Requested
-							</span>
-						}
-						if item.MustDelete {
-							<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
-								<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-								</svg>
-								Must Delete
-							</span>
-						}
-					</div>
-				</div>
-			</div>
-			<!-- Actions -->
-			<div class="flex flex-wrap items-center gap-2 sm:gap-2 justify-end sm:justify-start">
-				<button
-					id={ "keep-" + item.ID }
-					onclick={ markAsKeep(item.ID) }
-					class="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap"
-					style="background-color: #16a34a; color: white;"
-					onmouseover="this.style.backgroundColor='#15803d'"
-					onmouseout="this.style.backgroundColor='#16a34a'"
-				>
-					<svg class="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-					</svg>
-					Keep
-				</button>
-				<button
-					id={ "keep-forever-" + item.ID }
-					onclick={ markAsKeepForever(item.ID) }
-					class="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap"
-					style="background-color: #4f46e5; color: white;"
-					onmouseover="this.style.backgroundColor='#3730a3'"
-					onmouseout="this.style.backgroundColor='#4f46e5'"
-				>
-					<svg class="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-					</svg>
-					Keep Forever
-				</button>
-				<button
-					id={ "delete-" + item.ID }
-					onclick={ markAsDelete(item.ID) }
-					class="inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap"
-					style="background-color: #dc2626; color: white;"
-					onmouseover="this.style.backgroundColor='#b91c1c'"
-					onmouseout="this.style.backgroundColor='#dc2626'"
-				>
-					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-					</svg>
-					Sweep
-				</button>
-			</div>
-		</div>
+		<button
+			id="request-refresh-btn"
+			class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+		>
+			<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+			</svg>
+			Refresh
+		</button>
 	</div>
 }
 
@@ -309,14 +184,282 @@ templ KeepSweepEmptyState() {
 			</svg>
 		</div>
 		<h3 class="text-xl font-semibold text-gray-300 mb-2">No media available for review</h3>
-		<p class="text-gray-500">
+		<p class="text-gray-500 mb-6">
 			All media has been reviewed or there are no items available for keep/delete decisions.
 		</p>
+		<button
+			id="media-refresh-btn"
+			class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+		>
+			<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+			</svg>
+			Refresh
+		</button>
 	</div>
 }
 
 templ AdminUtilityScripts() {
 	<script>
+		// Define all admin action functions and expose them globally
+		window.acceptKeepRequest = function(mediaID) {
+			const buttonId = 'accept-' + mediaID;
+			const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+			if (!originalContent) return Promise.reject(new Error('Button not found'));
+
+			return window.makeApiRequestEnhanced('/admin/api/keep-requests/' + mediaID + '/accept', {
+				method: 'POST',
+				showProgress: true,
+				onProgress: function(status, error) {
+					if (status === 'error') {
+						console.error('Accept Error:', error);
+						window.showToast('Failed to accept request: ' + error.message, 'error');
+						window.restoreButton(buttonId, originalContent);
+					}
+				}
+			})
+			.then(data => {
+				if (data.success) {
+					window.setButtonSuccess(buttonId, 'Accepted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+					updatePendingCount(-1);
+					window.showToast('Keep request accepted successfully', 'success');
+					return data;
+				} else {
+					throw new Error(data.error || 'Unknown error');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				window.showToast('Failed to accept request: ' + error.message, 'error');
+				window.restoreButton(buttonId, originalContent);
+				throw error;
+			});
+		};
+
+		window.declineKeepRequest = function(mediaID) {
+			const buttonId = 'decline-' + mediaID;
+			const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+			if (!originalContent) return Promise.reject(new Error('Button not found'));
+
+			return window.makeApiRequestEnhanced('/admin/api/keep-requests/' + mediaID + '/decline', {
+				method: 'POST',
+				showProgress: true,
+				onProgress: function(status, error) {
+					if (status === 'error') {
+						console.error('Decline Error:', error);
+						window.showToast('Failed to decline request: ' + error.message, 'error');
+						window.restoreButton(buttonId, originalContent);
+					}
+				}
+			})
+			.then(data => {
+				if (data.success) {
+					window.setButtonSuccess(buttonId, 'Declined', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>');
+					updatePendingCount(-1);
+					window.showToast('Keep request declined successfully', 'success');
+					return data;
+				} else {
+					throw new Error(data.error || 'Unknown error');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				window.showToast('Failed to decline request: ' + error.message, 'error');
+				window.restoreButton(buttonId, originalContent);
+				throw error;
+			});
+		};
+
+		window.markAsKeep = function(mediaID) {
+			const buttonId = 'keep-' + mediaID;
+			const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+			if (!originalContent) return Promise.reject(new Error('Button not found'));
+
+			return window.makeApiRequestEnhanced('/admin/api/media/' + mediaID + '/keep', {
+				method: 'POST',
+				showProgress: true,
+				onProgress: function(status, error) {
+					if (status === 'error') {
+						console.error('Keep Error:', error);
+						window.showToast('Failed to mark as keep: ' + error.message, 'error');
+						window.restoreButton(buttonId, originalContent);
+					}
+				}
+			})
+			.then(data => {
+				if (data.success) {
+					window.setButtonSuccess(buttonId, 'Kept', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+					window.showToast('Media marked as keep successfully', 'success');
+					return data;
+				} else {
+					throw new Error(data.error || 'Unknown error');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				window.showToast('Failed to mark as keep: ' + error.message, 'error');
+				window.restoreButton(buttonId, originalContent);
+				throw error;
+			});
+		};
+
+		window.markAsDelete = function(mediaID) {
+			const buttonId = 'delete-' + mediaID;
+			const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+			if (!originalContent) return Promise.reject(new Error('Button not found'));
+
+			return window.makeApiRequestEnhanced('/admin/api/media/' + mediaID + '/delete', {
+				method: 'POST',
+				showProgress: true,
+				onProgress: function(status, error) {
+					if (status === 'error') {
+						console.error('Delete Error:', error);
+						window.showToast('Failed to mark for deletion: ' + error.message, 'error');
+						window.restoreButton(buttonId, originalContent);
+					}
+				}
+			})
+			.then(data => {
+				if (data.success) {
+					window.setButtonSuccess(buttonId, 'Deleted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+					window.showToast('Media marked for deletion successfully', 'success');
+					return data;
+				} else {
+					throw new Error(data.error || 'Unknown error');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				window.showToast('Failed to mark for deletion: ' + error.message, 'error');
+				window.restoreButton(buttonId, originalContent);
+				throw error;
+			});
+		};
+
+		window.markAsKeepForever = function(mediaID) {
+			const buttonId = 'keep-forever-' + mediaID;
+			const originalContent = window.setButtonLoading(buttonId, 'Processing...');
+			if (!originalContent) return Promise.reject(new Error('Button not found'));
+
+			return window.makeApiRequest('/admin/api/media/' + mediaID + '/keep-forever')
+			.then(data => {
+				if (data.success) {
+					window.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>');
+					window.showToast('Media protected forever successfully', 'success');
+					return data;
+				} else {
+					throw new Error(data.error || 'Unknown error');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				window.showToast('Failed to protect media: ' + error.message, 'error');
+				window.restoreButton(buttonId, originalContent);
+				throw error;
+			});
+		};
+
+		// Utility functions
+		function refreshApprovalQueue() {
+			const buttonId = 'request-refresh-btn';
+			const originalContent = window.setButtonLoading(buttonId, 'Refreshing...');
+			if (!originalContent) return;
+
+			// Use the consistent API approach - /admin/api/keep-requests to get fresh data
+			window.makeApiRequestEnhanced('/admin/api/keep-requests', {
+				method: 'GET',
+				showProgress: true,
+				onProgress: function(status, error) {
+					if (status === 'error') {
+						console.error('Queue Refresh Error:', error);
+						window.showToast('Failed to refresh queue: ' + error.message, 'error');
+						window.restoreButton(buttonId, originalContent);
+					}
+				}
+			})
+			.then(data => {
+				if (data.success) {
+					const hasItemsNow = data.keepRequests && data.keepRequests.length > 0;
+					const hadItemsBefore = keepRequestGrid && keepRequestGrid.getItems && keepRequestGrid.getItems().length > 0;
+
+					// If we're transitioning from empty to having items, or vice versa, reload the page
+					if (hasItemsNow !== hadItemsBefore) {
+						window.showToast('Queue refreshed successfully - reloading page', 'success');
+						setTimeout(() => {
+							window.location.reload();
+						}, 1000);
+						return;
+					}
+
+					// Update the grid with new data
+					if (keepRequestGrid && keepRequestGrid.setItems) {
+						keepRequestGrid.setItems(data.keepRequests);
+						keepRequestGrid.refresh();
+					}
+
+					window.showToast('Queue refreshed successfully', 'success');
+					window.restoreButton(buttonId, originalContent);
+				} else {
+					throw new Error(data.message || 'Failed to refresh queue');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				window.showToast('Failed to refresh queue: ' + error.message, 'error');
+				window.restoreButton(buttonId, originalContent);
+			});
+		}
+
+		function refreshKeepSweepMedia() {
+			const buttonId = 'media-refresh-btn';
+			const originalContent = window.setButtonLoading(buttonId, 'Refreshing...');
+			if (!originalContent) return;
+
+			// Use the consistent API approach - /admin/api/media with refresh=true parameter
+			window.makeApiRequestEnhanced('/admin/api/media?refresh=true', {
+				method: 'GET',
+				showProgress: true,
+				onProgress: function(status, error) {
+					if (status === 'error') {
+						console.error('Media Refresh Error:', error);
+						window.showToast('Failed to refresh media: ' + error.message, 'error');
+						window.restoreButton(buttonId, originalContent);
+					}
+				}
+			})
+			.then(data => {
+				if (data.success) {
+					const hasItemsNow = data.mediaItems && data.mediaItems.length > 0;
+					const hadItemsBefore = adminMediaGrid && adminMediaGrid.getItems && adminMediaGrid.getItems().length > 0;
+
+					// If we're transitioning from empty to having items, or vice versa, reload the page
+					if (hasItemsNow !== hadItemsBefore) {
+						window.showToast('Media refreshed successfully - reloading page', 'success');
+						setTimeout(() => {
+							window.location.reload();
+						}, 1000);
+						return;
+					}
+
+					// Update the grid with new data
+					if (adminMediaGrid && adminMediaGrid.setItems) {
+						adminMediaGrid.setItems(data.mediaItems);
+						adminMediaGrid.refresh();
+					}
+
+					window.showToast('Media refreshed successfully', 'success');
+					window.restoreButton(buttonId, originalContent);
+				} else {
+					throw new Error(data.message || 'Failed to refresh media');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				window.showToast('Failed to refresh media: ' + error.message, 'error');
+				window.restoreButton(buttonId, originalContent);
+			});
+		}
+
 		function updatePendingCount(delta) {
 			const badge = document.querySelector('.bg-blue-900.text-blue-200');
 			if (badge) {
@@ -327,207 +470,35 @@ templ AdminUtilityScripts() {
 			}
 		}
 
-		function checkForEmptyState() {
-			const requestCards = document.querySelectorAll('[id^="request-"]');
-			const requestsList = document.querySelector('.space-y-4 h3').parentElement;
-			const emptyState = document.querySelector('.text-center.py-12');
+		function animateCardRemoval(cardElement, direction = 'right') {
+			if (!cardElement) return Promise.resolve();
 
-			if (requestCards.length === 0) {
-				// Hide the requests list and show empty state
-				if (requestsList) {
-					requestsList.style.display = 'none';
-				}
+			return new Promise((resolve) => {
+				const translateX = direction === 'right' ? '20px' : '-20px';
+				cardElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+				cardElement.style.opacity = '0';
+				cardElement.style.transform = `translateX(${translateX})`;
 
-				// Create and show empty state if it doesn't exist
-				if (!emptyState) {
-					const emptyStateHTML = `
-						<div class="text-center py-12">
-							<div class="mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6">
-								<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-								</svg>
-							</div>
-							<h3 class="text-xl font-semibold text-gray-300 mb-2">No pending keep requests</h3>
-							<p class="text-gray-500">
-								All keep requests have been processed. Check back later for new requests.
-							</p>
-						</div>
-					`;
-					const mainDiv = document.querySelector('.space-y-6');
-					if (mainDiv) {
-						mainDiv.insertAdjacentHTML('beforeend', emptyStateHTML);
-					}
-				}
+				setTimeout(() => {
+					cardElement.remove();
+					resolve();
+				}, 300);
+			});
+		}
+
+		// Legacy function for backward compatibility (not used by grid managers)
+		function removeCardFromGrid(cardId) {
+			const card = document.getElementById(cardId);
+			if (card) {
+				// Fallback to simple animation for any legacy calls
+				animateCardRemoval(card);
 			}
 		}
+
+		// Expose utility functions globally if needed
+		window.refreshApprovalQueue = refreshApprovalQueue;
+		window.refreshKeepSweepMedia = refreshKeepSweepMedia;
+		window.updatePendingCount = updatePendingCount;
+		window.removeCardFromGrid = removeCardFromGrid;
 	</script>
-}
-
-script acceptKeepRequest(mediaID string) {
-	const buttonId = 'accept-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/keep-requests/' + mediaID + '/accept')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Accepted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-
-			// Hide the request card with a smooth animation
-			const requestCard = document.getElementById('request-' + mediaID);
-			if (requestCard) {
-				requestCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				requestCard.style.opacity = '0';
-				requestCard.style.transform = 'translateX(20px)';
-				setTimeout(() => {
-					requestCard.remove();
-					updatePendingCount(-1);
-					checkForEmptyState();
-				}, 300);
-			}
-
-			window.showToast('Keep request accepted successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to accept request: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
-}
-
-script declineKeepRequest(mediaID string) {
-	const buttonId = 'decline-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/keep-requests/' + mediaID + '/decline')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Declined', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>');
-
-			// Hide the request card with a smooth animation
-			const requestCard = document.getElementById('request-' + mediaID);
-			if (requestCard) {
-				requestCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				requestCard.style.opacity = '0';
-				requestCard.style.transform = 'translateX(-20px)';
-				setTimeout(() => {
-					requestCard.remove();
-					updatePendingCount(-1);
-					checkForEmptyState();
-				}, 300);
-			}
-
-			window.showToast('Keep request declined successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to decline request: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
-}
-
-script markAsKeep(mediaID string) {
-	const buttonId = 'keep-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/media/' + mediaID + '/keep')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Kept', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-
-			// Hide the media card with a smooth animation
-			const mediaCard = document.getElementById('media-' + mediaID);
-			if (mediaCard) {
-				mediaCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				mediaCard.style.opacity = '0';
-				mediaCard.style.transform = 'translateX(20px)';
-				setTimeout(() => {
-					mediaCard.remove();
-				}, 300);
-			}
-
-			window.showToast('Media marked as keep successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to mark as keep: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
-}
-
-script markAsDelete(mediaID string) {
-	const buttonId = 'delete-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/media/' + mediaID + '/delete')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Deleted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-
-			// Hide the media card with a smooth animation
-			const mediaCard = document.getElementById('media-' + mediaID);
-			if (mediaCard) {
-				mediaCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				mediaCard.style.opacity = '0';
-				mediaCard.style.transform = 'translateX(-20px)';
-				setTimeout(() => {
-					mediaCard.remove();
-				}, 300);
-			}
-
-			window.showToast('Media marked for deletion successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to mark for deletion: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
-}
-
-script markAsKeepForever(mediaID string) {
-	const buttonId = 'keep-forever-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/media/' + mediaID + '/keep-forever')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>');
-
-			// Hide the media card with a smooth animation
-			const mediaCard = document.getElementById('media-' + mediaID);
-			if (mediaCard) {
-				mediaCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				mediaCard.style.opacity = '0';
-				mediaCard.style.transform = 'translateY(-20px)';
-				setTimeout(() => {
-					mediaCard.remove();
-				}, 300);
-			}
-
-			window.showToast('Media protected forever successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to protect media: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
 }

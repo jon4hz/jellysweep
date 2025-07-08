@@ -12,3 +12,4 @@ jellysweep.log
 completions/
 .venv/
 .env
+.crush/

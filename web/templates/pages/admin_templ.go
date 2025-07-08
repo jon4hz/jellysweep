@@ -9,7 +9,6 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"fmt"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/web/templates"
 	"github.com/jon4hz/jellysweep/web/templates/components"
@@ -55,7 +54,7 @@ func AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(len(keepRequests))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 23, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 22, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -93,7 +92,15 @@ func AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " <!-- Include tab functionality --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templates.SmoothNavigationUtils().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " <!-- Include tab functionality --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -101,7 +108,31 @@ func AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " <!-- Include admin utility functions --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, " <!-- Include grid functionality --> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = components.MediaGridScript().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = components.AdminKeepRequestGridScript().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = components.AdminMediaGridScript().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " <!-- Include admin utility functions --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -109,7 +140,7 @@ func AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, " <script>\n\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t\tinitializeTabs('admin-tabs');\n\t\t\t});\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " <script>\n\t\t\tlet keepRequestGrid = null;\n\t\t\tlet adminMediaGrid = null;\n\n\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t\tinitializeTabs('admin-tabs');\n\t\t\t\tinitializeAdminGrids();\n\t\t\t});\n\n\t\t\tfunction initializeAdminGrids() {\n\t\t\t\t// Initialize Keep Request Grid (Approval Queue)\n\t\t\t\tconst keepRequestContainer = document.getElementById('approval-queue-container');\n\t\t\t\tif (keepRequestContainer && window.AdminKeepRequestGridManager) {\n\t\t\t\t\tkeepRequestGrid = new window.AdminKeepRequestGridManager('approval-queue-container', {\n\t\t\t\t\t\tgridId: 'approval-queue-grid',\n\t\t\t\t\t\tenableSearch: true,\n\t\t\t\t\t\tenableFilters: true,\n\t\t\t\t\t\tenableSorting: true,\n\t\t\t\t\t\tenableRefresh: true,\n\t\t\t\t\t\tpageSize: 10,\n\t\t\t\t\t\tmobilePageSize: 4,\n\t\t\t\t\t\tanimateChanges: true\n\t\t\t\t\t});\n\n\t\t\t\t\t// Initialize with data from JSON script\n\t\t\t\t\tconst keepRequestsScript = document.getElementById('keep-requests-data');\n\t\t\t\t\tif (keepRequestsScript) {\n\t\t\t\t\t\ttry {\n\t\t\t\t\t\t\tconst keepRequests = JSON.parse(keepRequestsScript.textContent);\n\t\t\t\t\t\t\tkeepRequestGrid.setItems(keepRequests);\n\t\t\t\t\t\t} catch (error) {\n\t\t\t\t\t\t\tconsole.error('Error parsing keep requests data:', error);\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\n\t\t\t\t// Initialize Admin Media Grid (Keep/Sweep)\n\t\t\t\tconst adminMediaContainer = document.getElementById('keep-sweep-container');\n\t\t\t\tif (adminMediaContainer && window.AdminMediaGridManager) {\n\t\t\t\t\tadminMediaGrid = new window.AdminMediaGridManager('keep-sweep-container', {\n\t\t\t\t\t\tgridId: 'keep-sweep-grid',\n\t\t\t\t\t\tenableSearch: true,\n\t\t\t\t\t\tenableFilters: true,\n\t\t\t\t\t\tenableSorting: true,\n\t\t\t\t\t\tenableRefresh: true,\n\t\t\t\t\t\tpageSize: 10,\n\t\t\t\t\t\tmobilePageSize: 4,\n\t\t\t\t\t\tanimateChanges: true\n\t\t\t\t\t});\n\n\t\t\t\t\t// Initialize with data from JSON script\n\t\t\t\t\tconst mediaItemsScript = document.getElementById('media-items-data');\n\t\t\t\t\tif (mediaItemsScript) {\n\t\t\t\t\t\ttry {\n\t\t\t\t\t\t\tconst mediaItems = JSON.parse(mediaItemsScript.textContent);\n\t\t\t\t\t\t\tadminMediaGrid.setItems(mediaItems);\n\t\t\t\t\t\t} catch (error) {\n\t\t\t\t\t\t\tconsole.error('Error parsing admin media items data:', error);\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\n\t\t\t\t// Setup refresh button handlers only\n\t\t\t\tsetupRefreshHandlers();\n\t\t\t}\n\n\t\t\tfunction setupRefreshHandlers() {\n\t\t\t\t// Setup refresh button handlers\n\t\t\t\tdocument.addEventListener('click', function(event) {\n\t\t\t\t\tif (event.target.id === 'request-refresh-btn' || event.target.closest('#request-refresh-btn')) {\n\t\t\t\t\t\trefreshApprovalQueue();\n\t\t\t\t\t} else if (event.target.id === 'media-refresh-btn' || event.target.closest('#media-refresh-btn')) {\n\t\t\t\t\t\trefreshKeepSweepMedia();\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t}\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -160,7 +191,7 @@ func AdminTabs(keepRequests []models.KeepRequest, mediaItems []models.MediaItem)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -208,7 +239,7 @@ func AdminTabs(keepRequests []models.KeepRequest, mediaItems []models.MediaItem)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -271,17 +302,15 @@ func ApprovalQueueTab(keepRequests []models.KeepRequest) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"space-y-4\"><h3 class=\"text-xl font-semibold text-gray-100\">Keep Requests</h3><div class=\"space-y-4\">")
+			templ_7745c5c3_Err = components.AdminKeepRequestGrid(keepRequests).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, request := range keepRequests {
-				templ_7745c5c3_Err = AdminKeepRequestCard(request).Render(ctx, templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, " <!-- Pass data to JavaScript --> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div></div>")
+			templ_7745c5c3_Err = templ.JSONScript("keep-requests-data", keepRequests).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -317,261 +346,18 @@ func KeepSweepTab(mediaItems []models.MediaItem) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"space-y-4\"><h3 class=\"text-xl font-semibold text-gray-100\">Media for Review</h3><div class=\"space-y-4\">")
+			templ_7745c5c3_Err = components.AdminMediaGrid(mediaItems).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, item := range mediaItems {
-				templ_7745c5c3_Err = KeepSweepCard(item).Render(ctx, templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " <!-- Pass data to JavaScript --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-		}
-		return nil
-	})
-}
-
-func AdminKeepRequestCard(request models.KeepRequest) templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
-			return templ_7745c5c3_CtxErr
-		}
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
-		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var11 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var11 == nil {
-			templ_7745c5c3_Var11 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"card\" id=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs("request-" + request.MediaID)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 91, Col: 52}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\"><div class=\"flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 gap-4\"><div class=\"flex items-center space-x-4 flex-1 min-w-0\"><!-- Poster/Icon --><div class=\"shrink-0\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if request.PosterURL != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<img src=\"")
+			templ_7745c5c3_Err = templ.JSONScript("media-items-data", mediaItems).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(request.PosterURL)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 97, Col: 34}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" alt=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(request.Title)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 97, Col: 56}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" class=\"w-16 h-24 object-cover rounded\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"w-16 h-24 bg-gray-700 rounded flex items-center justify-center\"><svg class=\"w-8 h-8 text-gray-500\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z\"></path></svg></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div><!-- Details --><div class=\"flex-1 min-w-0\"><div class=\"flex items-center space-x-2\"><h4 class=\"text-lg font-medium text-gray-100 truncate\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(request.Title)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 109, Col: 76}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</h4><span class=\"inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(request.Type)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 111, Col: 21}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if request.Year > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<span class=\"text-sm text-gray-400\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var17 string
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(request.Year))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 114, Col: 69}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</span>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div><div class=\"mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-gray-400\"><div class=\"flex items-center\"><svg class=\"w-4 h-4 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var18 string
-		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(request.Library)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 122, Col: 24}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if !request.DeletionDate.IsZero() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"flex items-center\"><svg class=\"w-4 h-4 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg> Deletes ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var19 string
-			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(components.FormatRelativeTime(request.DeletionDate))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 129, Col: 69}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div class=\"flex items-center\"><svg class=\"w-4 h-4 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 7V3a4 4 0 118 0v4M5 7h14l-1 14H6L5 7z\"></path></svg> Expires ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(components.FormatRelativeTime(request.ExpiryDate))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 136, Col: 66}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</div></div></div></div><!-- Actions --><div class=\"flex flex-wrap items-center gap-2 sm:gap-2 justify-end sm:justify-start\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, acceptKeepRequest(request.MediaID))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<button id=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var21 string
-		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs("accept-" + request.MediaID)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 144, Col: 37}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" onclick=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var22 templ.ComponentScript = acceptKeepRequest(request.MediaID)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22.Call)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" class=\"inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap\" style=\"background-color: #16a34a; color: white;\" onmouseover=\"this.style.backgroundColor='#15803d'\" onmouseout=\"this.style.backgroundColor='#16a34a'\"><svg class=\"w-4 h-4 mr-1 sm:mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path></svg> Accept</button> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, declineKeepRequest(request.MediaID))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<button id=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var23 string
-		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs("decline-" + request.MediaID)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 157, Col: 38}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" onclick=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var24 templ.ComponentScript = declineKeepRequest(request.MediaID)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24.Call)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" class=\"inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap\" style=\"background-color: #dc2626; color: white;\" onmouseover=\"this.style.backgroundColor='#b91c1c'\" onmouseout=\"this.style.backgroundColor='#dc2626'\"><svg class=\"w-4 h-4 mr-1 sm:mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg> Decline</button></div></div></div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
 		}
 		return nil
 	})
@@ -593,299 +379,12 @@ func AdminEmptyState() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var25 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var25 == nil {
-			templ_7745c5c3_Var25 = templ.NopComponent
+		templ_7745c5c3_Var11 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var11 == nil {
+			templ_7745c5c3_Var11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"text-center py-12\"><div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\"><svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg></div><h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No pending keep requests</h3><p class=\"text-gray-500\">All keep requests have been processed. Check back later for new requests.</p></div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		return nil
-	})
-}
-
-func KeepSweepCard(item models.MediaItem) templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
-			return templ_7745c5c3_CtxErr
-		}
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
-		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var26 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var26 == nil {
-			templ_7745c5c3_Var26 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"card\" id=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs("media-" + item.ID)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 189, Col: 42}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\"><div class=\"flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 gap-4\"><div class=\"flex items-center space-x-4 flex-1 min-w-0\"><!-- Poster/Icon --><div class=\"shrink-0\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if item.PosterURL != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<img src=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var28 string
-			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(item.PosterURL)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 195, Col: 31}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" alt=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var29 string
-			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(item.Title)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 195, Col: 50}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\" class=\"w-16 h-24 object-cover rounded\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<div class=\"w-16 h-24 bg-gray-700 rounded flex items-center justify-center\"><svg class=\"w-8 h-8 text-gray-500\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z\"></path></svg></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</div><!-- Details --><div class=\"flex-1 min-w-0\"><div class=\"flex items-center space-x-2\"><h4 class=\"text-lg font-medium text-gray-100 truncate\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var30 string
-		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(item.Title)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 207, Col: 73}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</h4><span class=\"inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var31 string
-		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(item.Type)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 209, Col: 18}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</span> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if item.Year > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<span class=\"text-sm text-gray-400\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var32 string
-			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(item.Year))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 212, Col: 66}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</span>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</div><div class=\"mt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-gray-400\"><div class=\"flex items-center\"><svg class=\"w-4 h-4 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var33 string
-		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(item.Library)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 220, Col: 21}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if !item.DeletionDate.IsZero() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<div class=\"flex items-center\"><svg class=\"w-4 h-4 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg> Deletes ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var34 string
-			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(components.FormatRelativeTime(item.DeletionDate))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 227, Col: 66}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<div class=\"flex items-center\"><svg class=\"w-4 h-4 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z\"></path></svg> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var35 string
-		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(components.FormatFileSize(item.FileSize))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 234, Col: 49}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</div></div><div class=\"mt-2 flex flex-wrap items-center gap-2\"><!-- Tag status badges -->")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if item.HasRequested {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<span class=\"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200\"><svg class=\"w-3 h-3 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg> Keep Requested</span> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		if item.MustDelete {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<span class=\"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200\"><svg class=\"w-3 h-3 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16\"></path></svg> Must Delete</span>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</div></div></div><!-- Actions --><div class=\"flex flex-wrap items-center gap-2 sm:gap-2 justify-end sm:justify-start\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, markAsKeep(item.ID))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<button id=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var36 string
-		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs("keep-" + item.ID)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 261, Col: 27}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\" onclick=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var37 templ.ComponentScript = markAsKeep(item.ID)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37.Call)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\" class=\"inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap\" style=\"background-color: #16a34a; color: white;\" onmouseover=\"this.style.backgroundColor='#15803d'\" onmouseout=\"this.style.backgroundColor='#16a34a'\"><svg class=\"w-4 h-4 mr-1 sm:mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z\"></path></svg> Keep</button> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, markAsKeepForever(item.ID))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<button id=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var38 string
-		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs("keep-forever-" + item.ID)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 274, Col: 35}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" onclick=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var39 templ.ComponentScript = markAsKeepForever(item.ID)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var39.Call)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\" class=\"inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap\" style=\"background-color: #4f46e5; color: white;\" onmouseover=\"this.style.backgroundColor='#3730a3'\" onmouseout=\"this.style.backgroundColor='#4f46e5'\"><svg class=\"w-4 h-4 mr-1 sm:mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z\"></path></svg> Keep Forever</button> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, markAsDelete(item.ID))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<button id=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var40 string
-		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs("delete-" + item.ID)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 287, Col: 29}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "\" onclick=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var41 templ.ComponentScript = markAsDelete(item.ID)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41.Call)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "\" class=\"inline-flex items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm whitespace-nowrap\" style=\"background-color: #dc2626; color: white;\" onmouseover=\"this.style.backgroundColor='#b91c1c'\" onmouseout=\"this.style.backgroundColor='#dc2626'\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16\"></path></svg> Sweep</button></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"text-center py-12\"><div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\"><svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg></div><h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No pending keep requests</h3><p class=\"text-gray-500 mb-6\">All keep requests have been processed. Check back later for new requests.</p><button id=\"request-refresh-btn\" class=\"inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -909,12 +408,12 @@ func KeepSweepEmptyState() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var42 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var42 == nil {
-			templ_7745c5c3_Var42 = templ.NopComponent
+		templ_7745c5c3_Var12 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var12 == nil {
+			templ_7745c5c3_Var12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<div class=\"text-center py-12\"><div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\"><svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg></div><h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No media available for review</h3><p class=\"text-gray-500\">All media has been reviewed or there are no items available for keep/delete decisions.</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"text-center py-12\"><div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\"><svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg></div><h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No media available for review</h3><p class=\"text-gray-500 mb-6\">All media has been reviewed or there are no items available for keep/delete decisions.</p><button id=\"media-refresh-btn\" class=\"inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -938,216 +437,17 @@ func AdminUtilityScripts() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var43 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var43 == nil {
-			templ_7745c5c3_Var43 = templ.NopComponent
+		templ_7745c5c3_Var13 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var13 == nil {
+			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<script>\n\t\tfunction updatePendingCount(delta) {\n\t\t\tconst badge = document.querySelector('.bg-blue-900.text-blue-200');\n\t\t\tif (badge) {\n\t\t\t\tconst currentText = badge.textContent.trim();\n\t\t\t\tconst currentCount = parseInt(currentText.match(/\\d+/)[0]);\n\t\t\t\tconst newCount = Math.max(0, currentCount + delta);\n\t\t\t\tbadge.textContent = newCount + ' pending requests';\n\t\t\t}\n\t\t}\n\n\t\tfunction checkForEmptyState() {\n\t\t\tconst requestCards = document.querySelectorAll('[id^=\"request-\"]');\n\t\t\tconst requestsList = document.querySelector('.space-y-4 h3').parentElement;\n\t\t\tconst emptyState = document.querySelector('.text-center.py-12');\n\n\t\t\tif (requestCards.length === 0) {\n\t\t\t\t// Hide the requests list and show empty state\n\t\t\t\tif (requestsList) {\n\t\t\t\t\trequestsList.style.display = 'none';\n\t\t\t\t}\n\n\t\t\t\t// Create and show empty state if it doesn't exist\n\t\t\t\tif (!emptyState) {\n\t\t\t\t\tconst emptyStateHTML = `\n\t\t\t\t\t\t<div class=\"text-center py-12\">\n\t\t\t\t\t\t\t<div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\">\n\t\t\t\t\t\t\t\t<svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n\t\t\t\t\t\t\t\t\t<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path>\n\t\t\t\t\t\t\t\t</svg>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t<h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No pending keep requests</h3>\n\t\t\t\t\t\t\t<p class=\"text-gray-500\">\n\t\t\t\t\t\t\t\tAll keep requests have been processed. Check back later for new requests.\n\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t`;\n\t\t\t\t\tconst mainDiv = document.querySelector('.space-y-6');\n\t\t\t\t\tif (mainDiv) {\n\t\t\t\t\t\tmainDiv.insertAdjacentHTML('beforeend', emptyStateHTML);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<script>\n\t\t// Define all admin action functions and expose them globally\n\t\twindow.acceptKeepRequest = function(mediaID) {\n\t\t\tconst buttonId = 'accept-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/keep-requests/' + mediaID + '/accept', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Accept Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to accept request: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Accepted', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>');\n\t\t\t\t\tupdatePendingCount(-1);\n\t\t\t\t\twindow.showToast('Keep request accepted successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to accept request: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.declineKeepRequest = function(mediaID) {\n\t\t\tconst buttonId = 'decline-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/keep-requests/' + mediaID + '/decline', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Decline Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to decline request: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Declined', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path>');\n\t\t\t\t\tupdatePendingCount(-1);\n\t\t\t\t\twindow.showToast('Keep request declined successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to decline request: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.markAsKeep = function(mediaID) {\n\t\t\tconst buttonId = 'keep-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/media/' + mediaID + '/keep', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Keep Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to mark as keep: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Kept', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>');\n\t\t\t\t\twindow.showToast('Media marked as keep successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to mark as keep: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.markAsDelete = function(mediaID) {\n\t\t\tconst buttonId = 'delete-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/media/' + mediaID + '/delete', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Delete Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to mark for deletion: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Deleted', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>');\n\t\t\t\t\twindow.showToast('Media marked for deletion successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to mark for deletion: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.markAsKeepForever = function(mediaID) {\n\t\t\tconst buttonId = 'keep-forever-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequest('/admin/api/media/' + mediaID + '/keep-forever')\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z\"></path>');\n\t\t\t\t\twindow.showToast('Media protected forever successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to protect media: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\t// Utility functions\n\t\tfunction refreshApprovalQueue() {\n\t\t\tconst buttonId = 'request-refresh-btn';\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Refreshing...');\n\t\t\tif (!originalContent) return;\n\n\t\t\t// Use the consistent API approach - /admin/api/keep-requests to get fresh data\n\t\t\twindow.makeApiRequestEnhanced('/admin/api/keep-requests', {\n\t\t\t\tmethod: 'GET',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Queue Refresh Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to refresh queue: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\tconst hasItemsNow = data.keepRequests && data.keepRequests.length > 0;\n\t\t\t\t\tconst hadItemsBefore = keepRequestGrid && keepRequestGrid.getItems && keepRequestGrid.getItems().length > 0;\n\n\t\t\t\t\t// If we're transitioning from empty to having items, or vice versa, reload the page\n\t\t\t\t\tif (hasItemsNow !== hadItemsBefore) {\n\t\t\t\t\t\twindow.showToast('Queue refreshed successfully - reloading page', 'success');\n\t\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\t\twindow.location.reload();\n\t\t\t\t\t\t}, 1000);\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\t// Update the grid with new data\n\t\t\t\t\tif (keepRequestGrid && keepRequestGrid.setItems) {\n\t\t\t\t\t\tkeepRequestGrid.setItems(data.keepRequests);\n\t\t\t\t\t\tkeepRequestGrid.refresh();\n\t\t\t\t\t}\n\n\t\t\t\t\twindow.showToast('Queue refreshed successfully', 'success');\n\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.message || 'Failed to refresh queue');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to refresh queue: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t});\n\t\t}\n\n\t\tfunction refreshKeepSweepMedia() {\n\t\t\tconst buttonId = 'media-refresh-btn';\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Refreshing...');\n\t\t\tif (!originalContent) return;\n\n\t\t\t// Use the consistent API approach - /admin/api/media with refresh=true parameter\n\t\t\twindow.makeApiRequestEnhanced('/admin/api/media?refresh=true', {\n\t\t\t\tmethod: 'GET',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Media Refresh Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to refresh media: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\tconst hasItemsNow = data.mediaItems && data.mediaItems.length > 0;\n\t\t\t\t\tconst hadItemsBefore = adminMediaGrid && adminMediaGrid.getItems && adminMediaGrid.getItems().length > 0;\n\n\t\t\t\t\t// If we're transitioning from empty to having items, or vice versa, reload the page\n\t\t\t\t\tif (hasItemsNow !== hadItemsBefore) {\n\t\t\t\t\t\twindow.showToast('Media refreshed successfully - reloading page', 'success');\n\t\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\t\twindow.location.reload();\n\t\t\t\t\t\t}, 1000);\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\t// Update the grid with new data\n\t\t\t\t\tif (adminMediaGrid && adminMediaGrid.setItems) {\n\t\t\t\t\t\tadminMediaGrid.setItems(data.mediaItems);\n\t\t\t\t\t\tadminMediaGrid.refresh();\n\t\t\t\t\t}\n\n\t\t\t\t\twindow.showToast('Media refreshed successfully', 'success');\n\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.message || 'Failed to refresh media');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to refresh media: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t});\n\t\t}\n\n\t\tfunction updatePendingCount(delta) {\n\t\t\tconst badge = document.querySelector('.bg-blue-900.text-blue-200');\n\t\t\tif (badge) {\n\t\t\t\tconst currentText = badge.textContent.trim();\n\t\t\t\tconst currentCount = parseInt(currentText.match(/\\d+/)[0]);\n\t\t\t\tconst newCount = Math.max(0, currentCount + delta);\n\t\t\t\tbadge.textContent = newCount + ' pending requests';\n\t\t\t}\n\t\t}\n\n\t\tfunction animateCardRemoval(cardElement, direction = 'right') {\n\t\t\tif (!cardElement) return Promise.resolve();\n\n\t\t\treturn new Promise((resolve) => {\n\t\t\t\tconst translateX = direction === 'right' ? '20px' : '-20px';\n\t\t\t\tcardElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';\n\t\t\t\tcardElement.style.opacity = '0';\n\t\t\t\tcardElement.style.transform = `translateX(${translateX})`;\n\n\t\t\t\tsetTimeout(() => {\n\t\t\t\t\tcardElement.remove();\n\t\t\t\t\tresolve();\n\t\t\t\t}, 300);\n\t\t\t});\n\t\t}\n\n\t\t// Legacy function for backward compatibility (not used by grid managers)\n\t\tfunction removeCardFromGrid(cardId) {\n\t\t\tconst card = document.getElementById(cardId);\n\t\t\tif (card) {\n\t\t\t\t// Fallback to simple animation for any legacy calls\n\t\t\t\tanimateCardRemoval(card);\n\t\t\t}\n\t\t}\n\n\t\t// Expose utility functions globally if needed\n\t\twindow.refreshApprovalQueue = refreshApprovalQueue;\n\t\twindow.refreshKeepSweepMedia = refreshKeepSweepMedia;\n\t\twindow.updatePendingCount = updatePendingCount;\n\t\twindow.removeCardFromGrid = removeCardFromGrid;\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
-}
-
-func acceptKeepRequest(mediaID string) templ.ComponentScript {
-	return templ.ComponentScript{
-		Name: `__templ_acceptKeepRequest_34ab`,
-		Function: `function __templ_acceptKeepRequest_34ab(mediaID){const buttonId = 'accept-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/keep-requests/' + mediaID + '/accept')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Accepted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-
-			// Hide the request card with a smooth animation
-			const requestCard = document.getElementById('request-' + mediaID);
-			if (requestCard) {
-				requestCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				requestCard.style.opacity = '0';
-				requestCard.style.transform = 'translateX(20px)';
-				setTimeout(() => {
-					requestCard.remove();
-					updatePendingCount(-1);
-					checkForEmptyState();
-				}, 300);
-			}
-
-			window.showToast('Keep request accepted successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to accept request: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
-}`,
-		Call:       templ.SafeScript(`__templ_acceptKeepRequest_34ab`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_acceptKeepRequest_34ab`, mediaID),
-	}
-}
-
-func declineKeepRequest(mediaID string) templ.ComponentScript {
-	return templ.ComponentScript{
-		Name: `__templ_declineKeepRequest_37c1`,
-		Function: `function __templ_declineKeepRequest_37c1(mediaID){const buttonId = 'decline-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/keep-requests/' + mediaID + '/decline')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Declined', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>');
-
-			// Hide the request card with a smooth animation
-			const requestCard = document.getElementById('request-' + mediaID);
-			if (requestCard) {
-				requestCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				requestCard.style.opacity = '0';
-				requestCard.style.transform = 'translateX(-20px)';
-				setTimeout(() => {
-					requestCard.remove();
-					updatePendingCount(-1);
-					checkForEmptyState();
-				}, 300);
-			}
-
-			window.showToast('Keep request declined successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to decline request: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
-}`,
-		Call:       templ.SafeScript(`__templ_declineKeepRequest_37c1`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_declineKeepRequest_37c1`, mediaID),
-	}
-}
-
-func markAsKeep(mediaID string) templ.ComponentScript {
-	return templ.ComponentScript{
-		Name: `__templ_markAsKeep_5a0c`,
-		Function: `function __templ_markAsKeep_5a0c(mediaID){const buttonId = 'keep-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/media/' + mediaID + '/keep')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Kept', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-
-			// Hide the media card with a smooth animation
-			const mediaCard = document.getElementById('media-' + mediaID);
-			if (mediaCard) {
-				mediaCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				mediaCard.style.opacity = '0';
-				mediaCard.style.transform = 'translateX(20px)';
-				setTimeout(() => {
-					mediaCard.remove();
-				}, 300);
-			}
-
-			window.showToast('Media marked as keep successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to mark as keep: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
-}`,
-		Call:       templ.SafeScript(`__templ_markAsKeep_5a0c`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_markAsKeep_5a0c`, mediaID),
-	}
-}
-
-func markAsDelete(mediaID string) templ.ComponentScript {
-	return templ.ComponentScript{
-		Name: `__templ_markAsDelete_89f6`,
-		Function: `function __templ_markAsDelete_89f6(mediaID){const buttonId = 'delete-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/media/' + mediaID + '/delete')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Deleted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
-
-			// Hide the media card with a smooth animation
-			const mediaCard = document.getElementById('media-' + mediaID);
-			if (mediaCard) {
-				mediaCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				mediaCard.style.opacity = '0';
-				mediaCard.style.transform = 'translateX(-20px)';
-				setTimeout(() => {
-					mediaCard.remove();
-				}, 300);
-			}
-
-			window.showToast('Media marked for deletion successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to mark for deletion: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
-}`,
-		Call:       templ.SafeScript(`__templ_markAsDelete_89f6`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_markAsDelete_89f6`, mediaID),
-	}
-}
-
-func markAsKeepForever(mediaID string) templ.ComponentScript {
-	return templ.ComponentScript{
-		Name: `__templ_markAsKeepForever_0eca`,
-		Function: `function __templ_markAsKeepForever_0eca(mediaID){const buttonId = 'keep-forever-' + mediaID;
-	const originalContent = window.setButtonLoading(buttonId, 'Processing...');
-	if (!originalContent) return;
-
-	window.makeApiRequest('/admin/api/media/' + mediaID + '/keep-forever')
-	.then(data => {
-		if (data.success) {
-			window.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>');
-
-			// Hide the media card with a smooth animation
-			const mediaCard = document.getElementById('media-' + mediaID);
-			if (mediaCard) {
-				mediaCard.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-				mediaCard.style.opacity = '0';
-				mediaCard.style.transform = 'translateY(-20px)';
-				setTimeout(() => {
-					mediaCard.remove();
-				}, 300);
-			}
-
-			window.showToast('Media protected forever successfully', 'success');
-		} else {
-			throw new Error(data.error || 'Unknown error');
-		}
-	})
-	.catch(error => {
-		console.error('Error:', error);
-		window.showToast('Failed to protect media: ' + error.message, 'error');
-		window.restoreButton(buttonId, originalContent);
-	});
-}`,
-		Call:       templ.SafeScript(`__templ_markAsKeepForever_0eca`, mediaID),
-		CallInline: templ.SafeScriptInline(`__templ_markAsKeepForever_0eca`, mediaID),
-	}
 }
 
 var _ = templruntime.GeneratedTemplate
