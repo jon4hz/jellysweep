@@ -702,7 +702,7 @@ func (e *Engine) removeRadarrKeepRequestAndDeleteTags(ctx context.Context, movie
 	}
 
 	if e.radarrItemKeepRequestAlreadyProcessed(movie, radarrTags) {
-		log.Warn("Radarr movie %s already has a must-keep or must-delete-for-sure tag", movie.GetTitle())
+		log.Warnf("Radarr movie %s already has a must-keep or must-delete-for-sure tag", movie.GetTitle())
 		return ErrRequestAlreadyProcessed
 	}
 

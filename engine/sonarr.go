@@ -909,7 +909,7 @@ func (e *Engine) removeSonarrKeepRequestAndDeleteTags(ctx context.Context, serie
 	}
 
 	if e.sonarrItemKeepRequestAlreadyProcessed(series, sonarrTags) {
-		log.Warn("Sonarr series %s already has a must-keep or must-delete-for-sure tag", series.GetTitle())
+		log.Warnf("Sonarr series %s already has a must-keep or must-delete-for-sure tag", series.GetTitle())
 		return ErrRequestAlreadyProcessed
 	}
 
