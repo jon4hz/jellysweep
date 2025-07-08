@@ -39,68 +39,14 @@ templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItem
 		<!-- Include admin utility functions -->
 		@AdminUtilityScripts()
 		<script>
-			let keepRequestGrid = null;
-			let adminMediaGrid = null;
-
 			document.addEventListener('DOMContentLoaded', function() {
 				initializeTabs('admin-tabs');
 				initializeAdminGrids();
 			});
 
 			function initializeAdminGrids() {
-				// Initialize Keep Request Grid (Approval Queue)
-				const keepRequestContainer = document.getElementById('approval-queue-container');
-				if (keepRequestContainer && window.AdminKeepRequestGridManager) {
-					keepRequestGrid = new window.AdminKeepRequestGridManager('approval-queue-container', {
-						gridId: 'approval-queue-grid',
-						enableSearch: true,
-						enableFilters: true,
-						enableSorting: true,
-						enableRefresh: true,
-						pageSize: 10,
-						mobilePageSize: 4,
-						animateChanges: true
-					});
-
-					// Initialize with data from JSON script
-					const keepRequestsScript = document.getElementById('keep-requests-data');
-					if (keepRequestsScript) {
-						try {
-							const keepRequests = JSON.parse(keepRequestsScript.textContent);
-							keepRequestGrid.setItems(keepRequests);
-						} catch (error) {
-							console.error('Error parsing keep requests data:', error);
-						}
-					}
-				}
-
-				// Initialize Admin Media Grid (Keep/Sweep)
-				const adminMediaContainer = document.getElementById('keep-sweep-container');
-				if (adminMediaContainer && window.AdminMediaGridManager) {
-					adminMediaGrid = new window.AdminMediaGridManager('keep-sweep-container', {
-						gridId: 'keep-sweep-grid',
-						enableSearch: true,
-						enableFilters: true,
-						enableSorting: true,
-						enableRefresh: true,
-						pageSize: 10,
-						mobilePageSize: 4,
-						animateChanges: true
-					});
-
-					// Initialize with data from JSON script
-					const mediaItemsScript = document.getElementById('media-items-data');
-					if (mediaItemsScript) {
-						try {
-							const mediaItems = JSON.parse(mediaItemsScript.textContent);
-							adminMediaGrid.setItems(mediaItems);
-						} catch (error) {
-							console.error('Error parsing admin media items data:', error);
-						}
-					}
-				}
-
-				// Setup refresh button handlers only
+				// Admin grids are now initialized automatically by their components
+				// Just set up refresh handlers
 				setupRefreshHandlers();
 			}
 
@@ -380,7 +326,7 @@ templ AdminUtilityScripts() {
 			.then(data => {
 				if (data.success) {
 					const hasItemsNow = data.keepRequests && data.keepRequests.length > 0;
-					const hadItemsBefore = keepRequestGrid && keepRequestGrid.getItems && keepRequestGrid.getItems().length > 0;
+					const hadItemsBefore = window.adminKeepRequestGridManager && window.adminKeepRequestGridManager.getItems && window.adminKeepRequestGridManager.getItems().length > 0;
 
 					// If we're transitioning from empty to having items, or vice versa, reload the page
 					if (hasItemsNow !== hadItemsBefore) {
@@ -392,9 +338,9 @@ templ AdminUtilityScripts() {
 					}
 
 					// Update the grid with new data
-					if (keepRequestGrid && keepRequestGrid.setItems) {
-						keepRequestGrid.setItems(data.keepRequests);
-						keepRequestGrid.refresh();
+					if (window.adminKeepRequestGridManager && window.adminKeepRequestGridManager.setItems) {
+						window.adminKeepRequestGridManager.setItems(data.keepRequests);
+						window.adminKeepRequestGridManager.refresh();
 					}
 
 					window.showToast('Queue refreshed successfully', 'success');
@@ -430,7 +376,7 @@ templ AdminUtilityScripts() {
 			.then(data => {
 				if (data.success) {
 					const hasItemsNow = data.mediaItems && data.mediaItems.length > 0;
-					const hadItemsBefore = adminMediaGrid && adminMediaGrid.getItems && adminMediaGrid.getItems().length > 0;
+					const hadItemsBefore = window.adminMediaGridManager && window.adminMediaGridManager.getItems && window.adminMediaGridManager.getItems().length > 0;
 
 					// If we're transitioning from empty to having items, or vice versa, reload the page
 					if (hasItemsNow !== hadItemsBefore) {
@@ -442,9 +388,9 @@ templ AdminUtilityScripts() {
 					}
 
 					// Update the grid with new data
-					if (adminMediaGrid && adminMediaGrid.setItems) {
-						adminMediaGrid.setItems(data.mediaItems);
-						adminMediaGrid.refresh();
+					if (window.adminMediaGridManager && window.adminMediaGridManager.setItems) {
+						window.adminMediaGridManager.setItems(data.mediaItems);
+						window.adminMediaGridManager.refresh();
 					}
 
 					window.showToast('Media refreshed successfully', 'success');

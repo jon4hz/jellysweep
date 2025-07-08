@@ -397,8 +397,8 @@ func convertKeepRequestsToMediaItems(requests []models.KeepRequest) []models.Med
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_7ddb`,
-		Function: `function __templ_AdminKeepRequestGridScript_7ddb(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_a913`,
+		Function: `function __templ_AdminKeepRequestGridScript_a913(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 			// Store original keep requests data for expiry information
@@ -907,10 +907,11 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			this.filteredItems = [...this.allItems];
 			this.renderedItems.clear();
 			this.currentPage = 1;
-			this.hasMoreData = true;
+			this.hasMoreData = this.filteredItems.length > this.batchSize;
 
-			// Apply current filters after setting new items
-			this.handleFilters();
+			// Clear grid and render initial batch (handleFilters will call renderInitialBatch too)
+			this.clearGrid();
+			this.renderInitialBatch();
 		}
 
 		// Refresh method to update grid with current data
@@ -929,16 +930,32 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 
 	// Export for admin use
 	window.AdminKeepRequestGridManager = AdminKeepRequestGridManager;
+
+	// Initialize admin keep request grid when DOM loads
+	document.addEventListener('DOMContentLoaded', function() {
+		if (document.getElementById('approval-queue-container')) {
+			window.adminKeepRequestGridManager = new AdminKeepRequestGridManager('approval-queue-container', {
+				gridId: 'approval-queue-grid',
+				enableSearch: true,
+				enableFilters: true,
+				enableSorting: true,
+				enableRefresh: true,
+				pageSize: 10,
+				mobilePageSize: 4,
+				animateChanges: true
+			});
+		}
+	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_7ddb`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_7ddb`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_a913`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_a913`),
 	}
 }
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_dc3f`,
-		Function: `function __templ_AdminMediaGridScript_dc3f(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_11e6`,
+		Function: `function __templ_AdminMediaGridScript_11e6(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -1513,10 +1530,11 @@ func AdminMediaGridScript() templ.ComponentScript {
 			this.filteredItems = [...this.allItems];
 			this.renderedItems.clear();
 			this.currentPage = 1;
-			this.hasMoreData = true;
+			this.hasMoreData = this.filteredItems.length > this.batchSize;
 
-			// Apply current filters after setting new items
-			this.handleFilters();
+			// Clear grid and render initial batch (handleFilters will call renderInitialBatch too)
+			this.clearGrid();
+			this.renderInitialBatch();
 		}
 
 		// Refresh method to update grid with current data
@@ -1536,9 +1554,25 @@ func AdminMediaGridScript() templ.ComponentScript {
 
 	// Export for admin use
 	window.AdminMediaGridManager = AdminMediaGridManager;
+
+	// Initialize admin media grid when DOM loads
+	document.addEventListener('DOMContentLoaded', function() {
+		if (document.getElementById('keep-sweep-container')) {
+			window.adminMediaGridManager = new AdminMediaGridManager('keep-sweep-container', {
+				gridId: 'keep-sweep-grid',
+				enableSearch: true,
+				enableFilters: true,
+				enableSorting: true,
+				enableRefresh: true,
+				pageSize: 10,
+				mobilePageSize: 4,
+				animateChanges: true
+			});
+		}
+	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_dc3f`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_dc3f`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_11e6`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_11e6`),
 	}
 }
 

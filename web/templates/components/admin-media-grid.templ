@@ -750,10 +750,11 @@ script AdminKeepRequestGridScript() {
 			this.filteredItems = [...this.allItems];
 			this.renderedItems.clear();
 			this.currentPage = 1;
-			this.hasMoreData = true;
+			this.hasMoreData = this.filteredItems.length > this.batchSize;
 
-			// Apply current filters after setting new items
-			this.handleFilters();
+			// Clear grid and render initial batch (handleFilters will call renderInitialBatch too)
+			this.clearGrid();
+			this.renderInitialBatch();
 		}
 
 		// Refresh method to update grid with current data
@@ -772,6 +773,22 @@ script AdminKeepRequestGridScript() {
 
 	// Export for admin use
 	window.AdminKeepRequestGridManager = AdminKeepRequestGridManager;
+
+	// Initialize admin keep request grid when DOM loads
+	document.addEventListener('DOMContentLoaded', function() {
+		if (document.getElementById('approval-queue-container')) {
+			window.adminKeepRequestGridManager = new AdminKeepRequestGridManager('approval-queue-container', {
+				gridId: 'approval-queue-grid',
+				enableSearch: true,
+				enableFilters: true,
+				enableSorting: true,
+				enableRefresh: true,
+				pageSize: 10,
+				mobilePageSize: 4,
+				animateChanges: true
+			});
+		}
+	});
 }
 
 script AdminMediaGridScript() {
@@ -1350,10 +1367,11 @@ script AdminMediaGridScript() {
 			this.filteredItems = [...this.allItems];
 			this.renderedItems.clear();
 			this.currentPage = 1;
-			this.hasMoreData = true;
+			this.hasMoreData = this.filteredItems.length > this.batchSize;
 
-			// Apply current filters after setting new items
-			this.handleFilters();
+			// Clear grid and render initial batch (handleFilters will call renderInitialBatch too)
+			this.clearGrid();
+			this.renderInitialBatch();
 		}
 
 		// Refresh method to update grid with current data
@@ -1373,4 +1391,20 @@ script AdminMediaGridScript() {
 
 	// Export for admin use
 	window.AdminMediaGridManager = AdminMediaGridManager;
+
+	// Initialize admin media grid when DOM loads
+	document.addEventListener('DOMContentLoaded', function() {
+		if (document.getElementById('keep-sweep-container')) {
+			window.adminMediaGridManager = new AdminMediaGridManager('keep-sweep-container', {
+				gridId: 'keep-sweep-grid',
+				enableSearch: true,
+				enableFilters: true,
+				enableSorting: true,
+				enableRefresh: true,
+				pageSize: 10,
+				mobilePageSize: 4,
+				animateChanges: true
+			});
+		}
+	});
 }
