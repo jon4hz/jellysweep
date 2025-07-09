@@ -22,19 +22,20 @@ const (
 
 // JobInfo contains information about a scheduled job.
 type JobInfo struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Status      JobStatus  `json:"status"`
-	LastRun     time.Time  `json:"lastRun"`
-	NextRun     time.Time  `json:"nextRun"`
-	Schedule    string     `json:"schedule"`
-	Enabled     bool       `json:"enabled"`
-	RunCount    int        `json:"runCount"`
-	ErrorCount  int        `json:"errorCount"`
-	LastError   string     `json:"lastError,omitempty"`
-	Singleton   bool       `json:"singleton"`
-	GocronJob   gocron.Job `json:"-"` // Store gocron job reference, exclude from JSON
+	ID                string     `json:"id"`
+	Name              string     `json:"name"`
+	Description       string     `json:"description"`
+	Status            JobStatus  `json:"status"`
+	LastRun           time.Time  `json:"lastRun"`
+	NextRun           time.Time  `json:"nextRun"`
+	Schedule          string     `json:"schedule"`
+	Enabled           bool       `json:"enabled"`
+	RunCount          int        `json:"runCount"`
+	ErrorCount        int        `json:"errorCount"`
+	LastError         string     `json:"lastError,omitempty"`
+	Singleton         bool       `json:"singleton"`
+	GocronJob         gocron.Job `json:"-"`                           // Store gocron job reference, exclude from JSON
+	InstantAfterStart bool       `json:"instantAfterStart,omitempty"` // Whether to run immediately after adding
 }
 
 // JobFunc represents a function that can be scheduled.
@@ -95,6 +96,17 @@ func (s *Scheduler) Start() {
 			log.Warn("Gocron job reference not found for job", "id", id)
 		}
 	}
+
+	// Start jobs marked for immediate execution
+	for id, jobInfo := range s.jobs {
+		if jobInfo.InstantAfterStart {
+			log.Info("Running job immediately after start", "id", id, "name", jobInfo.Name)
+			if err := s.RunJobNow(id); err != nil {
+				log.Error("Failed to run job immediately after start", "id", id, "error", err)
+			}
+		}
+	}
+	log.Info("Job scheduler started")
 }
 
 // Stop stops the scheduler.
@@ -105,31 +117,32 @@ func (s *Scheduler) Stop() error {
 }
 
 // AddJob adds a new job to the scheduler.
-func (s *Scheduler) AddJob(id, name, description, definitionString string, jobDef gocron.JobDefinition, jobFunc JobFunc) error {
-	return s.AddJobWithOptions(id, name, description, definitionString, jobDef, jobFunc, false)
+func (s *Scheduler) AddJob(id, name, description, definitionString string, jobDef gocron.JobDefinition, jobFunc JobFunc, instantAfterStart bool) error {
+	return s.AddJobWithOptions(id, name, description, definitionString, jobDef, jobFunc, false, instantAfterStart)
 }
 
 // AddSingletonJob adds a new singleton job to the scheduler that can only run one instance at a time.
-func (s *Scheduler) AddSingletonJob(id, name, description, definitionString string, jobDef gocron.JobDefinition, jobFunc JobFunc) error {
-	return s.AddJobWithOptions(id, name, description, definitionString, jobDef, jobFunc, true)
+func (s *Scheduler) AddSingletonJob(id, name, description, definitionString string, jobDef gocron.JobDefinition, jobFunc JobFunc, instantAfterStart bool) error {
+	return s.AddJobWithOptions(id, name, description, definitionString, jobDef, jobFunc, true, instantAfterStart)
 }
 
 // AddJobWithOptions adds a new job to the scheduler with optional singleton behavior.
-func (s *Scheduler) AddJobWithOptions(id, name, description, definitionString string, jobDef gocron.JobDefinition, jobFunc JobFunc, singleton bool) error {
+func (s *Scheduler) AddJobWithOptions(id, name, description, definitionString string, jobDef gocron.JobDefinition, jobFunc JobFunc, singleton, instantAfterStart bool) error {
 	// Store the job function
 	s.jobFuncs[id] = jobFunc
 
 	// Create job info
 	jobInfo := &JobInfo{
-		ID:          id,
-		Name:        name,
-		Description: description,
-		Status:      JobStatusScheduled,
-		Schedule:    definitionString,
-		Enabled:     true,
-		RunCount:    0,
-		ErrorCount:  0,
-		Singleton:   singleton,
+		ID:                id,
+		Name:              name,
+		Description:       description,
+		Status:            JobStatusScheduled,
+		Schedule:          definitionString,
+		Enabled:           true,
+		RunCount:          0,
+		ErrorCount:        0,
+		Singleton:         singleton,
+		InstantAfterStart: instantAfterStart,
 	}
 
 	// Wrap the job function to update job info

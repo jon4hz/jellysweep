@@ -183,6 +183,7 @@ func (e *Engine) setupJobs() error {
 		e.cfg.CleanupSchedule,
 		cleanupJobDef,
 		e.runCleanupJob,
+		true,
 	); err != nil {
 		return fmt.Errorf("failed to add cleanup job: %w", err)
 	}
@@ -197,6 +198,7 @@ func (e *Engine) setupJobs() error {
 		cacheCleanupSchedule,
 		cacheCleanupJobDef,
 		e.runCacheCleanupJob,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to add cache cleanup job: %w", err)
 	}
