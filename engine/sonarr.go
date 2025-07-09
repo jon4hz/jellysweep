@@ -1633,8 +1633,9 @@ func (e *Engine) unmonitorDeletedEpisodes(ctx context.Context, series sonarr.Ser
 		})
 
 		// Unmonitor regular episodes beyond the first keepCount episodes
+		now := time.Now().UTC()
 		for i, episode := range regularEpisodes {
-			if i >= keepCount {
+			if i >= keepCount && episodeAlreadyAired(episode, now) {
 				episodesToUnmonitor = append(episodesToUnmonitor, episode.GetId())
 			}
 		}
@@ -1652,14 +1653,18 @@ func (e *Engine) unmonitorDeletedEpisodes(ctx context.Context, series sonarr.Ser
 
 		// Get sorted season numbers (lowest to highest - earliest seasons first), excluding Season 0
 		var seasons []int32
+		now := time.Now().UTC()
+	seasonLoop:
 		for seasonNum := range seasonEpisodes {
+			// if the season contains unaired episodes, we dont unmonitor it
+			for _, episode := range seasonEpisodes[seasonNum] {
+				if !episodeAlreadyAired(episode, now) {
+					continue seasonLoop
+				}
+			}
 			seasons = append(seasons, seasonNum)
 		}
-
-		// Sort in ascending order (lowest season numbers first)
-		slices.SortFunc(seasons, func(a, b int32) int {
-			return int(a - b) // a - b for ascending order
-		})
+		slices.Sort(seasons)
 
 		// Unmonitor episodes from regular seasons beyond the first keepCount seasons
 		log.Debugf("Series %s (unmonitor): Total regular seasons found: %d, seasons to keep: %d (excluding specials)", series.GetTitle(), len(seasons), keepCount)
@@ -1698,6 +1703,11 @@ func (e *Engine) unmonitorDeletedEpisodes(ctx context.Context, series sonarr.Ser
 	}
 
 	return nil
+}
+
+func episodeAlreadyAired(episode sonarr.EpisodeResource, now time.Time) bool {
+	// An episode is considered aired if it has a non-zero air date
+	return !episode.GetAirDateUtc().IsZero() && episode.GetAirDateUtc().Before(now)
 }
 
 // removeSonarrDeleteTags removes jellysweep-delete- and jellysweep-must-delete- tags from a Sonarr series.
