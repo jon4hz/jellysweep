@@ -82,6 +82,7 @@ func (s *Scheduler) GetCache() *cache.Cache {
 func (s *Scheduler) Start() {
 	log.Info("Starting job scheduler")
 	s.gocron.Start()
+	log.Info("Job scheduler started")
 
 	// after starting the scheduler, populate the next run times for all jobs
 	for id, jobInfo := range s.jobs {
@@ -106,7 +107,6 @@ func (s *Scheduler) Start() {
 			}
 		}
 	}
-	log.Info("Job scheduler started")
 }
 
 // Stop stops the scheduler.
@@ -163,14 +163,6 @@ func (s *Scheduler) AddJobWithOptions(id, name, description, definitionString st
 
 	// Store the gocron job reference in JobInfo
 	jobInfo.GocronJob = job
-
-	// Update next run time
-	if nextRun, err := job.NextRun(); err == nil {
-		jobInfo.NextRun = nextRun
-		log.Debug("Next run time for job", "id", id, "nextRun", nextRun)
-	} else {
-		log.Warn("Failed to get next run time for job", "id", id, "error", err)
-	}
 
 	s.jobs[id] = jobInfo
 	log.Info("Added job to scheduler", "id", id, "name", name, "singleton", singleton)
