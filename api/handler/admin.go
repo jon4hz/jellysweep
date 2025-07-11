@@ -32,7 +32,7 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 		cacheControl == CacheControlMaxAge0 ||
 		pragma == PragmaNoCache
 
-	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context())
+	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context(), forceRefresh)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to get keep requests: %v", err)
 		return
@@ -155,9 +155,9 @@ func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 	})
 }
 
-// GetKeepRequests returns keep requests as JSON with caching support.
+// GetKeepRequests returns keep requests as JSON.
 func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
-	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context())
+	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context(), false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

@@ -136,7 +136,6 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI.POST("/media/:id/delete", h.MarkMediaForDeletion)
 	adminAPI.POST("/media/:id/keep-forever", h.MarkMediaAsKeepForever)
 
-	// New consistent API endpoints with caching support
 	adminAPI.GET("/keep-requests", h.GetKeepRequests)
 	adminAPI.GET("/media", h.GetAdminMediaItems)
 

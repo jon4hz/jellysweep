@@ -61,7 +61,7 @@ func (h *Handler) Home(c *gin.Context) {
 			c.Header("Content-Type", "text/html")
 			if user.IsAdmin {
 				// Try to get pending requests for admin even on error
-				if keepRequests, keepErr := h.engine.GetKeepRequests(c.Request.Context()); keepErr == nil {
+				if keepRequests, keepErr := h.engine.GetKeepRequests(c.Request.Context(), forceRefresh); keepErr == nil {
 					if err := pages.DashboardWithPendingRequests(user, []models.MediaItem{}, len(keepRequests)).Render(c.Request.Context(), c.Writer); err != nil {
 						log.Error("Failed to render dashboard with pending requests", "error", err)
 					}
@@ -89,7 +89,7 @@ func (h *Handler) Home(c *gin.Context) {
 
 	// If user is admin, get pending requests count for navbar indicator
 	if user.IsAdmin {
-		keepRequests, err := h.engine.GetKeepRequests(c.Request.Context())
+		keepRequests, err := h.engine.GetKeepRequests(c.Request.Context(), false)
 		if err != nil {
 			// Log error but continue without pending count
 			if err := pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {

@@ -8,6 +8,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+type CacheType string
+
+const (
+	CacheTypeMemory CacheType = "memory"
+	CacheTypeRedis  CacheType = "redis"
+)
+
 // Config holds the configuration for the JellySweep server and its dependencies.
 type Config struct {
 	// Listen is the address the JellySweep server will listen on.
@@ -37,6 +44,8 @@ type Config struct {
 	WebPush *WebPushConfig `yaml:"webpush" mapstructure:"webpush"`
 	// ServerURL is the base URL of the JellySweep server.
 	ServerURL string `yaml:"server_url" mapstructure:"server_url"`
+	// Cache holds the cache engine configuration.
+	Cache *CacheConfig `yaml:"cache" mapstructure:"cache"`
 
 	// Jellyseerr holds the configuration for the Jellyseerr server.
 	Jellyseerr *JellyseerrConfig `yaml:"jellyseerr" mapstructure:"jellyseerr"`
@@ -136,6 +145,7 @@ type WebPushConfig struct {
 	PrivateKey string `yaml:"private_key" mapstructure:"private_key"`
 }
 
+// CleanupConfig holds the configuration for the cleanup job.
 type CleanupConfig struct {
 	// Enabled indicates whether the cleanup job is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
@@ -147,6 +157,22 @@ type CleanupConfig struct {
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// CleanupDelay is the delay in days before a media item is deleted after being marked for deletion.
 	CleanupDelay int `yaml:"cleanup_delay" mapstructure:"cleanup_delay"`
+}
+
+// CacheConfig holds the configuration for the cache engine.
+type CacheConfig struct {
+	// Enabled indicates whether the cache engine is enabled.
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+	// Type is the type of cache engine to use (e.g., "memory", "redis").
+	Type CacheType `yaml:"type" mapstructure:"type"`
+	// RedisURL is the URL for the Redis cache if using Redis.
+	RedisURL string `yaml:"redis_url" mapstructure:"redis_url"`
+
+	// SonarrEnabled and RadarrEnabled are used to determine if the Sonarr and Radarr servers are enabled.
+	// These fields are not serialized to YAML or used in the config file.
+	// They are only used internally to determine if the cache should be initialized for these services.
+	SonarrEnabled bool `yaml:"-" mapstructure:"-"`
+	RadarrEnabled bool `yaml:"-" mapstructure:"-"`
 }
 
 // JellyseerrConfig holds the configuration for the Jellyseerr server.
@@ -272,6 +298,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jellysweep.auth.oidc.admin_group", "")
 	v.SetDefault("jellysweep.auth.jellyfin.enabled", true)
 
+	// Cache defaults
+	v.SetDefault("jellysweep.cache.enabled", true)
+	v.SetDefault("jellysweep.cache.type", CacheTypeMemory) // Default to in-memory
+
 	// Email defaults
 	v.SetDefault("jellysweep.email.enabled", false)
 	v.SetDefault("jellysweep.email.smtp_port", 587)
@@ -333,6 +363,15 @@ func validateConfig(c *Config) error {
 		}
 		if c.Auth.OIDC.AdminGroup == "" {
 			return fmt.Errorf("OIDC admin group is required when OIDC is enabled")
+		}
+	}
+
+	if c.Cache != nil && c.Cache.Enabled {
+		if c.Cache.Type == "" {
+			return fmt.Errorf("cache type is required when cache is enabled")
+		}
+		if c.Cache.Type == CacheTypeRedis && c.Cache.RedisURL == "" {
+			return fmt.Errorf("Redis URL is required when Redis cache is enabled") //nolint:staticcheck
 		}
 	}
 

@@ -50,15 +50,29 @@ func newSonarrClient(cfg *config.SonarrConfig) *sonarr.APIClient {
 }
 
 // getSonarrItems retrieves all series from Sonarr.
-func (e *Engine) getSonarrItems(ctx context.Context) ([]sonarr.SeriesResource, error) {
+func (e *Engine) getSonarrItems(ctx context.Context, forceRefresh bool) ([]sonarr.SeriesResource, error) {
 	if e.sonarr == nil {
 		return nil, fmt.Errorf("sonarr client not available")
 	}
+
+	cachedItems, err := e.cache.SonarrItemsCache.Get(ctx, "all")
+	if err != nil {
+		return nil, err
+	}
+	if len(cachedItems) != 0 && !forceRefresh {
+		return cachedItems, nil
+	}
+
 	series, resp, err := e.sonarr.SeriesAPI.ListSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr)).IncludeSeasonImages(false).Execute()
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close() //nolint: errcheck
+
+	if err := e.cache.SonarrItemsCache.Set(ctx, "all", series); err != nil {
+		log.Warnf("Failed to cache Sonarr items: %v", err)
+	}
+
 	return series, nil
 }
 
@@ -619,7 +633,7 @@ func (e *Engine) getSonarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 	}
 
 	// Get all series from Sonarr
-	sonarrItems, err := e.getSonarrItems(ctx)
+	sonarrItems, err := e.getSonarrItems(ctx, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sonarr items: %w", err)
 	}
@@ -760,7 +774,7 @@ func (e *Engine) addSonarrKeepRequestTag(ctx context.Context, seriesID int32, us
 }
 
 // getSonarrKeepRequests returns all Sonarr series that have keep request tags.
-func (e *Engine) getSonarrKeepRequests(ctx context.Context) ([]models.KeepRequest, error) {
+func (e *Engine) getSonarrKeepRequests(ctx context.Context, forceRefresh bool) ([]models.KeepRequest, error) {
 	result := make([]models.KeepRequest, 0)
 
 	if e.sonarr == nil {
@@ -768,7 +782,7 @@ func (e *Engine) getSonarrKeepRequests(ctx context.Context) ([]models.KeepReques
 	}
 
 	// Get all series from Sonarr
-	sonarrItems, err := e.getSonarrItems(ctx)
+	sonarrItems, err := e.getSonarrItems(ctx, forceRefresh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sonarr items: %w", err)
 	}

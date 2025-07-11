@@ -58,6 +58,7 @@ type Engine struct {
 	scheduler  *scheduler.Scheduler
 
 	imageCache *cache.ImageCache
+	cache      *cache.EngineCache // Cache for engine-specific data
 
 	data *data
 }
@@ -133,6 +134,11 @@ func New(cfg *config.Config) (*Engine, error) {
 		webpushClient = webpush.NewClient(cfg.WebPush)
 	}
 
+	engineCache, err := cache.NewEngineCache(cfg.Cache)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create engine cache: %w", err)
+	}
+
 	engine := &Engine{
 		cfg:        cfg,
 		jellystat:  jellystatClient,
@@ -147,6 +153,7 @@ func New(cfg *config.Config) (*Engine, error) {
 			userNotifications: make(map[string][]MediaItem),
 		},
 		imageCache: cache.NewImageCache("./data/cache/images"),
+		cache:      engineCache,
 	}
 
 	// Setup scheduled jobs
@@ -275,7 +282,7 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		e.data.jellystatItems = jellystatItems
 	}
 	if e.sonarr != nil {
-		sonarrItems, err := e.getSonarrItems(ctx)
+		sonarrItems, err := e.getSonarrItems(ctx, true)
 		if err != nil {
 			log.Errorf("failed to get sonarr delete candidates: %v", err)
 			return
@@ -561,11 +568,11 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 }
 
 // GetKeepRequests returns all media items that have keep request tags.
-func (e *Engine) GetKeepRequests(ctx context.Context) ([]models.KeepRequest, error) {
+func (e *Engine) GetKeepRequests(ctx context.Context, forceRefresh bool) ([]models.KeepRequest, error) {
 	var result []models.KeepRequest
 
 	// Get Sonarr keep requests
-	sonarrKeepRequests, err := e.getSonarrKeepRequests(ctx)
+	sonarrKeepRequests, err := e.getSonarrKeepRequests(ctx, forceRefresh)
 	if err != nil {
 		log.Errorf("failed to get sonarr keep requests: %v", err)
 	} else {
