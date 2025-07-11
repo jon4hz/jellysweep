@@ -1,8 +1,10 @@
 package cache
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/charmbracelet/log"
 	"github.com/devopsarr/radarr-go/radarr"
 	"github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/eko/gocache/lib/v4/cache"
@@ -20,9 +22,9 @@ const (
 
 type EngineCache struct {
 	SonarrItemsCache *PrefixedCache[[]sonarr.SeriesResource]
-	SonarrTagsCache  *PrefixedCache[[]sonarr.TagResource]
+	SonarrTagsCache  *PrefixedCache[map[int32]string]
 	RadarrItemsCache *PrefixedCache[[]radarr.MovieResource]
-	RadarrTagsCache  *PrefixedCache[[]radarr.TagResource]
+	RadarrTagsCache  *PrefixedCache[map[int32]string]
 }
 
 func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
@@ -32,10 +34,24 @@ func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
 
 	return &EngineCache{
 		SonarrItemsCache: NewPrefixedCache[[]sonarr.SeriesResource](newCacheInstanceByType(cfg), SonarrItemsCachePrefix),
-		SonarrTagsCache:  NewPrefixedCache[[]sonarr.TagResource](newCacheInstanceByType(cfg), SonarrTagsCachePrefix),
+		SonarrTagsCache:  NewPrefixedCache[map[int32]string](newCacheInstanceByType(cfg), SonarrTagsCachePrefix),
 		RadarrItemsCache: NewPrefixedCache[[]radarr.MovieResource](newCacheInstanceByType(cfg), RadarrItemsCachePrefix),
-		RadarrTagsCache:  NewPrefixedCache[[]radarr.TagResource](newCacheInstanceByType(cfg), RadarrTagsCachePrefix),
+		RadarrTagsCache:  NewPrefixedCache[map[int32]string](newCacheInstanceByType(cfg), RadarrTagsCachePrefix),
 	}, nil
+}
+
+func (e *EngineCache) ClearAll(ctx context.Context) {
+	errs := []error{
+		e.SonarrItemsCache.Clear(ctx),
+		e.SonarrTagsCache.Clear(ctx),
+		e.RadarrItemsCache.Clear(ctx),
+		e.RadarrTagsCache.Clear(ctx),
+	}
+	for _, err := range errs {
+		if err != nil {
+			log.Errorf("failed to clear cache: %v", err)
+		}
+	}
 }
 
 func newCacheInstanceByType(cfg *config.CacheConfig) *cache.Cache[[]byte] {

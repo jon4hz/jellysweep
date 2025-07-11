@@ -67,9 +67,6 @@ type Engine struct {
 type data struct {
 	jellystatItems []jellystat.LibraryItem
 
-	sonarrItems []sonarr.SeriesResource
-	sonarrTags  map[int32]string
-
 	radarrItems []radarr.MovieResource
 	radarrTags  map[int32]string
 
@@ -223,6 +220,9 @@ func (e *Engine) setupJobs() error {
 func (e *Engine) runCleanupJob(ctx context.Context) error {
 	log.Info("Starting scheduled cleanup job")
 
+	// Clear all caches to ensure fresh data
+	e.cache.ClearAll(ctx)
+
 	e.removeExpiredKeepTags(ctx)
 	e.cleanupOldTags(ctx)
 	e.markForDeletion(ctx)
@@ -253,7 +253,9 @@ func (e *Engine) removeRecentlyPlayedDeleteTags(ctx context.Context) {
 	log.Info("Checking for recently played media with pending delete tags")
 
 	if e.sonarr != nil {
-		e.removeRecentlyPlayedSonarrDeleteTags(ctx)
+		if err := e.removeRecentlyPlayedSonarrDeleteTags(ctx); err != nil {
+			log.Error("Failed to remove recently played Sonarr delete tags", "error", err)
+		}
 	}
 
 	if e.radarr != nil {
@@ -286,21 +288,6 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		}
 		e.data.jellystatItems = jellystatItems
 	}
-	if e.sonarr != nil {
-		sonarrItems, err := e.getSonarrItems(ctx, true)
-		if err != nil {
-			log.Errorf("failed to get sonarr delete candidates: %v", err)
-			return
-		}
-		e.data.sonarrItems = sonarrItems
-
-		sonarrTags, err := e.getSonarrTags(ctx)
-		if err != nil {
-			log.Errorf("failed to get sonarr tags: %v", err)
-			return
-		}
-		e.data.sonarrTags = sonarrTags
-	}
 	if e.radarr != nil {
 		radarrItems, err := e.getRadarrItems(ctx)
 		if err != nil {
@@ -317,7 +304,7 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		e.data.radarrTags = radarrTags
 	}
 
-	e.mergeMediaItems()
+	e.mergeMediaItems(ctx)
 	log.Info("Media items merged successfully")
 
 	// Filter out series that already meet the keep criteria
@@ -397,14 +384,26 @@ type MediaItem struct {
 }
 
 // mergeMediaItems merges jellystat items and sonarr/radarr items and groups them by their library.
-func (e *Engine) mergeMediaItems() {
+func (e *Engine) mergeMediaItems(ctx context.Context) {
+	sonarrItems, err := e.getSonarrItems(ctx, true)
+	if err != nil {
+		log.Errorf("failed to get sonarr items: %v", err)
+		return
+	}
+
+	sonarrTags, err := e.getSonarrTags(ctx, true)
+	if err != nil {
+		log.Errorf("failed to get sonarr tags: %v", err)
+		return
+	}
+
 	mediaItems := make(map[string][]MediaItem, 0)
 	for _, item := range e.data.jellystatItems {
 		libraryName := strings.ToLower(e.data.libraryIDMap[item.ParentID])
 
 		// Handle TV Series (Sonarr)
 		if item.Type == jellystat.ItemTypeSeries {
-			lo.ForEach(e.data.sonarrItems, func(s sonarr.SeriesResource, _ int) {
+			lo.ForEach(sonarrItems, func(s sonarr.SeriesResource, _ int) {
 				if s.GetTitle() == item.Name && s.GetYear() == item.ProductionYear && !item.Archived {
 					if s.GetTmdbId() == 0 {
 						log.Warnf("Sonarr series %s has no TMDB ID, skipping", s.GetTitle())
@@ -417,7 +416,7 @@ func (e *Engine) mergeMediaItems() {
 						TmdbId:         s.GetTmdbId(),
 						Year:           s.GetYear(),
 						Title:          item.Name,
-						Tags:           lo.Map(s.GetTags(), func(tag int32, _ int) string { return e.data.sonarrTags[tag] }),
+						Tags:           lo.Map(s.GetTags(), func(tag int32, _ int) string { return sonarrTags[tag] }),
 						MediaType:      MediaTypeTV,
 					})
 				}
@@ -490,11 +489,11 @@ func (e *Engine) cleanupMedia(ctx context.Context) {
 }
 
 // GetMediaItemsMarkedForDeletion returns all media items that are marked for deletion.
-func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context) (map[string][]models.MediaItem, error) {
+func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefresh bool) (map[string][]models.MediaItem, error) {
 	result := make(map[string][]models.MediaItem)
 
 	// Get Sonarr items marked for deletion
-	sonarrItems, err := e.getSonarrMediaItemsMarkedForDeletion(ctx)
+	sonarrItems, err := e.getSonarrMediaItemsMarkedForDeletion(ctx, forceRefresh)
 	if err != nil {
 		log.Errorf("failed to get sonarr media items marked for deletion: %v", err)
 	} else {
@@ -526,21 +525,37 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 	var err error
 
 	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
+		if e.sonarr == nil {
+			return fmt.Errorf("sonarr client not available")
+		}
+
 		seriesID, parseErr := strconv.ParseInt(seriesIDStr, 10, 32)
 		if parseErr != nil {
 			return fmt.Errorf("invalid sonarr series ID: %w", parseErr)
 		}
 
-		// Get series title before adding tag
-		if e.sonarr != nil {
-			series, resp, getErr := e.sonarr.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, e.cfg.Sonarr), int32(seriesID)).Execute()
-			if getErr == nil {
-				mediaTitle = series.GetTitle()
+		var wantedSeries sonarr.SeriesResource
+		series, err := e.getSonarrItems(ctx, true)
+		if err != nil {
+			return fmt.Errorf("failed to get Sonarr series from cache: %w", err)
+		}
+		if len(series) == 0 {
+			return fmt.Errorf("no Sonarr series found in cache")
+		}
+		for _, s := range series {
+			if s.GetId() == int32(seriesID) {
+				wantedSeries = s
+				mediaTitle = s.GetTitle()
+				break
 			}
-			defer resp.Body.Close() //nolint: errcheck
+		}
+		if mediaTitle == "" {
+			return fmt.Errorf("sonarr series with ID %d not found", seriesID)
 		}
 		mediaType = "TV Show"
-		err = e.addSonarrKeepRequestTag(ctx, int32(seriesID), username)
+		if err := e.addSonarrKeepRequestTag(ctx, wantedSeries, username); err != nil {
+			return fmt.Errorf("failed to add Sonarr keep request tag: %w", err)
+		}
 	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
 		movieID, parseErr := strconv.ParseInt(movieIDStr, 10, 32)
 		if parseErr != nil {
@@ -701,6 +716,10 @@ func getCachedImageURL(imageURL string) string {
 func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
 	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
+		defer func() {
+			_ = e.cache.SonarrItemsCache.Clear(ctx)
+		}()
+
 		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
 		if err != nil {
 			return fmt.Errorf("invalid sonarr series ID: %w", err)
@@ -729,6 +748,10 @@ func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName stri
 			return fmt.Errorf("unsupported tag name: %s", tagName)
 		}
 	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
+		defer func() {
+			_ = e.cache.RadarrItemsCache.Clear(ctx)
+		}()
+
 		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
 		if err != nil {
 			return fmt.Errorf("invalid radarr movie ID: %w", err)
@@ -758,26 +781,5 @@ func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName stri
 		}
 	}
 
-	return fmt.Errorf("unsupported media ID format: %s", mediaID)
-}
-
-// RemoveConflictingTags removes jellysweep-keep-request and jellysweep-must-keep tags from a media item.
-func (e *Engine) RemoveConflictingTags(ctx context.Context, mediaID string) error {
-	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if strings.HasPrefix(mediaID, "sonarr-") {
-		seriesIDStr := strings.TrimPrefix(mediaID, "sonarr-")
-		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", err)
-		}
-		return e.removeSonarrKeepRequestAndDeleteTags(ctx, int32(seriesID))
-	} else if strings.HasPrefix(mediaID, "radarr-") {
-		movieIDStr := strings.TrimPrefix(mediaID, "radarr-")
-		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", err)
-		}
-		return e.removeRadarrKeepRequestAndDeleteTags(ctx, int32(movieID))
-	}
 	return fmt.Errorf("unsupported media ID format: %s", mediaID)
 }

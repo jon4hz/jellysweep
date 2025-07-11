@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/codec"
@@ -81,8 +82,8 @@ func (p *PrefixedCache[T]) GetStats() *codec.Stats {
 
 func newMemoryCache[T any]() *cache.Cache[T] {
 	// never expire items in memory cache by ttl, we use the scheduler to handle expiration
-	gocacheClient := gocache.New(gocache.NoExpiration, gocache.NoExpiration)
-	gocacheStore := go_store.NewGoCache(gocacheClient)
+	gocacheClient := gocache.New(time.Minute*5, gocache.NoExpiration)                       // TODO: increase this to a higher value
+	gocacheStore := go_store.NewGoCache(gocacheClient, store.WithExpiration(time.Minute*5)) // TODO: increase this to a higher value
 	return cache.New[T](gocacheStore)
 }
 
@@ -90,6 +91,6 @@ func newRedisCache[T any](cfg *config.CacheConfig) *cache.Cache[T] {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: cfg.RedisURL,
 	})
-	redisStore := redis_store.NewRedis(redisClient)
+	redisStore := redis_store.NewRedis(redisClient, store.WithExpiration(time.Minute*5)) // TODO: increase this to a higher value
 	return cache.New[T](redisStore)
 }

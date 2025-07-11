@@ -6,9 +6,11 @@ import (
 	"io/fs"
 	"net/http"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+
 	"github.com/jon4hz/jellysweep/api/auth"
 	"github.com/jon4hz/jellysweep/api/handler"
 	"github.com/jon4hz/jellysweep/config"
@@ -77,6 +79,7 @@ func (s *Server) setupRoutes() error {
 		return fmt.Errorf("failed to create static FS sub: %w", err)
 	}
 	s.ginEngine.StaticFS("/static", http.FS(staticSub))
+	s.ginEngine.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// Setup routes depending on authentication status
 	if s.cfg.IsAuthenticationEnabled() {

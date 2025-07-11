@@ -484,6 +484,17 @@ templ CacheStatsEnabled(caches []*cache.Stats) {
 		<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
 			<div class="text-center">
 				<div class="flex items-center justify-center mb-2">
+					<svg class="w-6 h-6 text-purple-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+					</svg>
+					<p class="text-3xl font-bold text-purple-400">
+						{ fmt.Sprintf("%d", len(caches)) }
+					</p>
+				</div>
+				<p class="text-sm text-gray-400">Active Caches</p>
+			</div>
+			<div class="text-center">
+				<div class="flex items-center justify-center mb-2">
 					<svg class="w-6 h-6 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 					</svg>
@@ -514,17 +525,6 @@ templ CacheStatsEnabled(caches []*cache.Stats) {
 					</p>
 				</div>
 				<p class="text-sm text-gray-400">Overall Hit Rate</p>
-			</div>
-			<div class="text-center">
-				<div class="flex items-center justify-center mb-2">
-					<svg class="w-6 h-6 text-purple-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-					</svg>
-					<p class="text-3xl font-bold text-purple-400">
-						{ fmt.Sprintf("%d", len(caches)) }
-					</p>
-				</div>
-				<p class="text-sm text-gray-400">Active Caches</p>
 			</div>
 		</div>
 	</div>

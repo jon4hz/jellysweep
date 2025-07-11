@@ -50,33 +50,27 @@ func (h *Handler) Home(c *gin.Context) {
 		cacheControl == CacheControlMaxAge0 ||
 		pragma == PragmaNoCache
 
-	var mediaItemsMap map[string][]models.MediaItem
-	var err error
-
-	// If not in cache or forced refresh, get fresh data
-	if mediaItemsMap == nil || forceRefresh {
-		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
-		if err != nil {
-			// Log error and fall back to empty data
-			c.Header("Content-Type", "text/html")
-			if user.IsAdmin {
-				// Try to get pending requests for admin even on error
-				if keepRequests, keepErr := h.engine.GetKeepRequests(c.Request.Context(), forceRefresh); keepErr == nil {
-					if err := pages.DashboardWithPendingRequests(user, []models.MediaItem{}, len(keepRequests)).Render(c.Request.Context(), c.Writer); err != nil {
-						log.Error("Failed to render dashboard with pending requests", "error", err)
-					}
-				} else {
-					if err := pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer); err != nil {
-						log.Error("Failed to render dashboard", "error", err)
-					}
+	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	if err != nil {
+		// Log error and fall back to empty data
+		c.Header("Content-Type", "text/html")
+		if user.IsAdmin {
+			// Try to get pending requests for admin even on error
+			if keepRequests, keepErr := h.engine.GetKeepRequests(c.Request.Context(), forceRefresh); keepErr == nil {
+				if err := pages.DashboardWithPendingRequests(user, []models.MediaItem{}, len(keepRequests)).Render(c.Request.Context(), c.Writer); err != nil {
+					log.Error("Failed to render dashboard with pending requests", "error", err)
 				}
 			} else {
 				if err := pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer); err != nil {
 					log.Error("Failed to render dashboard", "error", err)
 				}
 			}
-			return
+		} else {
+			if err := pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer); err != nil {
+				log.Error("Failed to render dashboard", "error", err)
+			}
 		}
+		return
 	}
 
 	// Convert to flat list for the dashboard
@@ -190,19 +184,13 @@ func (h *Handler) GetMediaItems(c *gin.Context) {
 		cacheControl == CacheControlMaxAge0 ||
 		pragma == PragmaNoCache
 
-	var mediaItemsMap map[string][]models.MediaItem
-	var err error
-
-	// If not in cache or forced refresh, get fresh data
-	if mediaItemsMap == nil || forceRefresh {
-		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   "Failed to get media items",
-			})
-			return
-		}
+	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get media items",
+		})
+		return
 	}
 
 	// Convert to flat list for the dashboard

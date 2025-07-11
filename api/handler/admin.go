@@ -39,14 +39,10 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 		return
 	}
 
-	var mediaItemsMap map[string][]models.MediaItem
-	// If not in cache or forced refresh, get fresh data
-	if mediaItemsMap == nil || forceRefresh {
-		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
-			return
-		}
+	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
+		return
 	}
 
 	// Flatten the map to a slice
@@ -183,18 +179,13 @@ func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
 		cacheControl == CacheControlMaxAge0 ||
 		pragma == PragmaNoCache
 
-	var mediaItemsMap map[string][]models.MediaItem
-	var err error
-	// If not in cache or forced refresh, get fresh data
-	if mediaItemsMap == nil || forceRefresh {
-		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   "Failed to get media items",
-			})
-			return
-		}
+	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get media items",
+		})
+		return
 	}
 
 	// Convert to flat list

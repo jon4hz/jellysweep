@@ -701,59 +701,59 @@ func CacheStatsEnabled(caches []*cache.Stats) templ.Component {
 			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<!-- Summary Stats --><div class=\"bg-gray-900 rounded-lg p-6 mb-6\"><h3 class=\"text-lg font-medium text-gray-100\">Overall Cache Performance</h3><div class=\"grid grid-cols-1 md:grid-cols-4 gap-6\"><div class=\"text-center\"><div class=\"flex items-center justify-center mb-2\"><svg class=\"w-6 h-6 text-green-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg><p class=\"text-3xl font-bold text-green-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<!-- Summary Stats --><div class=\"bg-gray-900 rounded-lg p-6 mb-6\"><h3 class=\"text-lg font-medium text-gray-100\">Overall Cache Performance</h3><div class=\"grid grid-cols-1 md:grid-cols-4 gap-6\"><div class=\"text-center\"><div class=\"flex items-center justify-center mb-2\"><svg class=\"w-6 h-6 text-purple-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4\"></path></svg><p class=\"text-3xl font-bold text-purple-400\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var22 string
-		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", calculateTotalHits(caches)))
+		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(caches)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/scheduler.templ`, Line: 491, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/scheduler.templ`, Line: 491, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</p></div><p class=\"text-sm text-gray-400\">Total Hits</p></div><div class=\"text-center\"><div class=\"flex items-center justify-center mb-2\"><svg class=\"w-6 h-6 text-red-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg><p class=\"text-3xl font-bold text-red-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</p></div><p class=\"text-sm text-gray-400\">Active Caches</p></div><div class=\"text-center\"><div class=\"flex items-center justify-center mb-2\"><svg class=\"w-6 h-6 text-green-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg><p class=\"text-3xl font-bold text-green-400\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var23 string
-		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", calculateTotalMisses(caches)))
+		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", calculateTotalHits(caches)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/scheduler.templ`, Line: 502, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/scheduler.templ`, Line: 502, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</p></div><p class=\"text-sm text-gray-400\">Total Misses</p></div><div class=\"text-center\"><div class=\"flex items-center justify-center mb-2\"><svg class=\"w-6 h-6 text-blue-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M13 7h8m0 0v8m0-8l-8 8-4-4-6 6\"></path></svg><p class=\"text-3xl font-bold text-blue-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</p></div><p class=\"text-sm text-gray-400\">Total Hits</p></div><div class=\"text-center\"><div class=\"flex items-center justify-center mb-2\"><svg class=\"w-6 h-6 text-red-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg><p class=\"text-3xl font-bold text-red-400\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var24 string
-		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f%%", calculateOverallHitRate(caches)))
+		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", calculateTotalMisses(caches)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/scheduler.templ`, Line: 513, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/scheduler.templ`, Line: 513, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</p></div><p class=\"text-sm text-gray-400\">Overall Hit Rate</p></div><div class=\"text-center\"><div class=\"flex items-center justify-center mb-2\"><svg class=\"w-6 h-6 text-purple-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4\"></path></svg><p class=\"text-3xl font-bold text-purple-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</p></div><p class=\"text-sm text-gray-400\">Total Misses</p></div><div class=\"text-center\"><div class=\"flex items-center justify-center mb-2\"><svg class=\"w-6 h-6 text-blue-400 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M13 7h8m0 0v8m0-8l-8 8-4-4-6 6\"></path></svg><p class=\"text-3xl font-bold text-blue-400\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var25 string
-		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(caches)))
+		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f%%", calculateOverallHitRate(caches)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/scheduler.templ`, Line: 524, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/scheduler.templ`, Line: 524, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</p></div><p class=\"text-sm text-gray-400\">Active Caches</p></div></div></div><!-- Individual Cache Stats Table --><div class=\"overflow-x-auto mb-4\"><table class=\"w-full bg-gray-900 rounded-lg\"><thead class=\"bg-gray-800\"><tr><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Cache</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Status</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Hits</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Misses</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Hit Rate</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Total Requests</th></tr></thead> <tbody class=\"divide-y divide-gray-700\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</p></div><p class=\"text-sm text-gray-400\">Overall Hit Rate</p></div></div></div><!-- Individual Cache Stats Table --><div class=\"overflow-x-auto mb-4\"><table class=\"w-full bg-gray-900 rounded-lg\"><thead class=\"bg-gray-800\"><tr><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Cache</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Status</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Hits</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Misses</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Hit Rate</th><th class=\"px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider\">Total Requests</th></tr></thead> <tbody class=\"divide-y divide-gray-700\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
