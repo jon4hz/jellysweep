@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	sonarr "github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellystat"
 )
@@ -83,7 +84,7 @@ func (e *Engine) getSonarrItems(ctx context.Context, forceRefresh bool) ([]sonar
 }
 
 // getSonarrTags retrieves all tags from Sonarr and returns them as a map with tag IDs as keys and tag names as values.
-func (e *Engine) getSonarrTags(ctx context.Context, forceRefresh bool) (map[int32]string, error) {
+func (e *Engine) getSonarrTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
 	if e.sonarr == nil {
 		return nil, fmt.Errorf("sonarr client not available")
 	}
@@ -107,7 +108,7 @@ func (e *Engine) getSonarrTags(ctx context.Context, forceRefresh bool) (map[int3
 		return nil, err
 	}
 	defer resp.Body.Close() //nolint: errcheck
-	tagMap := make(map[int32]string)
+	tagMap := make(cache.TagMap)
 	for _, tag := range tags {
 		tagMap[tag.GetId()] = tag.GetLabel()
 	}
@@ -1069,7 +1070,7 @@ func (e *Engine) removeSonarrKeepRequestAndDeleteTags(ctx context.Context, serie
 	return nil
 }
 
-func (e *Engine) sonarrItemKeepRequestAlreadyProcessed(series *sonarr.SeriesResource, tags map[int32]string) bool {
+func (e *Engine) sonarrItemKeepRequestAlreadyProcessed(series *sonarr.SeriesResource, tags cache.TagMap) bool {
 	if series == nil {
 		return false
 	}

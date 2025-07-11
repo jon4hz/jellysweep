@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/charmbracelet/log"
 	"github.com/devopsarr/radarr-go/radarr"
@@ -11,6 +10,8 @@ import (
 	"github.com/eko/gocache/lib/v4/codec"
 	"github.com/jon4hz/jellysweep/config"
 )
+
+type TagMap map[int32]string
 
 // Cache key prefixes.
 const (
@@ -22,21 +23,33 @@ const (
 
 type EngineCache struct {
 	SonarrItemsCache *PrefixedCache[[]sonarr.SeriesResource]
-	SonarrTagsCache  *PrefixedCache[map[int32]string]
+	SonarrTagsCache  *PrefixedCache[TagMap]
 	RadarrItemsCache *PrefixedCache[[]radarr.MovieResource]
-	RadarrTagsCache  *PrefixedCache[map[int32]string]
+	RadarrTagsCache  *PrefixedCache[TagMap]
 }
 
 func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
-	if !cfg.Enabled {
-		return nil, fmt.Errorf("cache is not enabled")
-	}
-
 	return &EngineCache{
-		SonarrItemsCache: NewPrefixedCache[[]sonarr.SeriesResource](newCacheInstanceByType(cfg), SonarrItemsCachePrefix),
-		SonarrTagsCache:  NewPrefixedCache[map[int32]string](newCacheInstanceByType(cfg), SonarrTagsCachePrefix),
-		RadarrItemsCache: NewPrefixedCache[[]radarr.MovieResource](newCacheInstanceByType(cfg), RadarrItemsCachePrefix),
-		RadarrTagsCache:  NewPrefixedCache[map[int32]string](newCacheInstanceByType(cfg), RadarrTagsCachePrefix),
+		SonarrItemsCache: NewPrefixedCache[[]sonarr.SeriesResource](
+			newCacheInstanceByType(cfg),
+			cfg.Type,
+			SonarrItemsCachePrefix,
+		),
+		SonarrTagsCache: NewPrefixedCache[TagMap](
+			newCacheInstanceByType(cfg),
+			cfg.Type,
+			SonarrTagsCachePrefix,
+		),
+		RadarrItemsCache: NewPrefixedCache[[]radarr.MovieResource](
+			newCacheInstanceByType(cfg),
+			cfg.Type,
+			RadarrItemsCachePrefix,
+		),
+		RadarrTagsCache: NewPrefixedCache[TagMap](
+			newCacheInstanceByType(cfg),
+			cfg.Type,
+			RadarrTagsCachePrefix,
+		),
 	}, nil
 }
 
@@ -54,14 +67,14 @@ func (e *EngineCache) ClearAll(ctx context.Context) {
 	}
 }
 
-func newCacheInstanceByType(cfg *config.CacheConfig) *cache.Cache[[]byte] {
+func newCacheInstanceByType(cfg *config.CacheConfig) *cache.Cache[any] {
 	switch cfg.Type {
 	case config.CacheTypeMemory:
-		return newMemoryCache[[]byte]()
+		return newMemoryCache[any]()
 	case config.CacheTypeRedis:
-		return newRedisCache[[]byte](cfg)
+		return newRedisCache[any](cfg)
 	default:
-		return newMemoryCache[[]byte]()
+		return newMemoryCache[any]()
 	}
 }
 

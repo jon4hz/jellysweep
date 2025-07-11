@@ -18,15 +18,17 @@ import (
 
 // PrefixedCache wraps a cache.Cache and adds a prefix to all keys.
 type PrefixedCache[T any] struct {
-	cache  *cache.Cache[[]byte]
-	prefix string
+	cacheType config.CacheType
+	cache     *cache.Cache[any]
+	prefix    string
 }
 
 // NewPrefixedCache creates a new prefixed cache wrapper.
-func NewPrefixedCache[T any](cache *cache.Cache[[]byte], prefix string) *PrefixedCache[T] {
+func NewPrefixedCache[T any](cache *cache.Cache[any], cacheType config.CacheType, prefix string) *PrefixedCache[T] {
 	return &PrefixedCache[T]{
-		cache:  cache,
-		prefix: prefix,
+		cache:     cache,
+		cacheType: cacheType,
+		prefix:    prefix,
 	}
 }
 
@@ -37,8 +39,15 @@ func (p *PrefixedCache[T]) Get(ctx context.Context, key any) (T, error) {
 	if err != nil {
 		return *new(T), err
 	}
+	var byteData []byte
+	// special case for redis, because it returns a string
+	if p.cacheType == config.CacheTypeRedis {
+		byteData = []byte(data.(string))
+	} else {
+		byteData = data.([]byte)
+	}
 	var result T
-	if err := json.Unmarshal(data, &result); err != nil {
+	if err := json.Unmarshal(byteData, &result); err != nil {
 		return *new(T), err
 	}
 	return result, nil
@@ -82,8 +91,8 @@ func (p *PrefixedCache[T]) GetStats() *codec.Stats {
 
 func newMemoryCache[T any]() *cache.Cache[T] {
 	// never expire items in memory cache by ttl, we use the scheduler to handle expiration
-	gocacheClient := gocache.New(time.Minute*5, gocache.NoExpiration)                       // TODO: increase this to a higher value
-	gocacheStore := go_store.NewGoCache(gocacheClient, store.WithExpiration(time.Minute*5)) // TODO: increase this to a higher value
+	gocacheClient := gocache.New(time.Hour, gocache.NoExpiration)
+	gocacheStore := go_store.NewGoCache(gocacheClient, store.WithExpiration(time.Hour))
 	return cache.New[T](gocacheStore)
 }
 
@@ -91,6 +100,6 @@ func newRedisCache[T any](cfg *config.CacheConfig) *cache.Cache[T] {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: cfg.RedisURL,
 	})
-	redisStore := redis_store.NewRedis(redisClient, store.WithExpiration(time.Minute*5)) // TODO: increase this to a higher value
+	redisStore := redis_store.NewRedis(redisClient, store.WithExpiration(time.Hour))
 	return cache.New[T](redisStore)
 }

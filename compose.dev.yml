@@ -13,6 +13,17 @@ services:
       default:
     environment:
       TZ: Europe/Zurich
+      JELLYSWEEP_CACHE_TYPE: redis
+      JELLYSWEEP_CACHE_REDIS_URL: valkey:6379
+
+  valkey:
+    image: valkey/valkey:8-bookworm
+    container_name: jellysweep-valkey
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      default:
 
 networks:
   default:

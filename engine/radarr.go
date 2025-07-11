@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	radarr "github.com/devopsarr/radarr-go/radarr"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellystat"
 )
@@ -80,7 +81,7 @@ func (e *Engine) getRadarrItems(ctx context.Context, forceRefresh bool) ([]radar
 }
 
 // getRadarrTags retrieves all tags from Radarr and returns them as a map with tag IDs as keys and tag names as values.
-func (e *Engine) getRadarrTags(ctx context.Context, forceRefresh bool) (map[int32]string, error) {
+func (e *Engine) getRadarrTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
 	if e.radarr == nil {
 		return nil, fmt.Errorf("radarr client not available")
 	}
@@ -104,7 +105,7 @@ func (e *Engine) getRadarrTags(ctx context.Context, forceRefresh bool) (map[int3
 		return nil, err
 	}
 	defer resp.Body.Close() //nolint: errcheck
-	tagMap := make(map[int32]string)
+	tagMap := make(cache.TagMap)
 	for _, tag := range tags {
 		tagMap[tag.GetId()] = tag.GetLabel()
 	}
@@ -841,7 +842,7 @@ func (e *Engine) removeRadarrKeepRequestAndDeleteTags(ctx context.Context, movie
 	return nil
 }
 
-func (e *Engine) radarrItemKeepRequestAlreadyProcessed(movie *radarr.MovieResource, tags map[int32]string) bool {
+func (e *Engine) radarrItemKeepRequestAlreadyProcessed(movie *radarr.MovieResource, tags cache.TagMap) bool {
 	if movie == nil {
 		return false
 	}

@@ -161,8 +161,6 @@ type CleanupConfig struct {
 
 // CacheConfig holds the configuration for the cache engine.
 type CacheConfig struct {
-	// Enabled indicates whether the cache engine is enabled.
-	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
 	// Type is the type of cache engine to use (e.g., "memory", "redis").
 	Type CacheType `yaml:"type" mapstructure:"type"`
 	// RedisURL is the URL for the Redis cache if using Redis.
@@ -360,7 +358,7 @@ func validateConfig(c *Config) error {
 		}
 	}
 
-	if c.Cache != nil && c.Cache.Enabled {
+	if c.Cache != nil {
 		if c.Cache.Type == "" {
 			return fmt.Errorf("cache type is required when cache is enabled")
 		}
@@ -369,8 +367,7 @@ func validateConfig(c *Config) error {
 		}
 	} else {
 		c.Cache = &CacheConfig{
-			Enabled: true,
-			Type:    CacheTypeMemory, // Default to in-memory cache if not enabled
+			Type: CacheTypeMemory, // Default to in-memory cache if not enabled
 		}
 	}
 
