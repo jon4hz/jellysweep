@@ -16,7 +16,6 @@ require (
 	github.com/go-co-op/gocron/v2 v2.16.2
 	github.com/google/uuid v1.6.0
 	github.com/mergestat/timediff v0.0.4
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/samber/lo v1.51.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1

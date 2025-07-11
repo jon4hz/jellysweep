@@ -30,12 +30,14 @@ templ SchedulerPanel(user *models.User, jobs map[string]*scheduler.JobInfo, cach
 					</button>
 					<button
 						id="clear-cache-btn"
-						class="inline-flex items-center px-4 py-2 border border-red-600 rounded-md shadow-sm text-sm font-medium text-red-300 bg-red-700 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+						disabled
+						title="Cache is disabled"
+						class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-500 bg-gray-800 cursor-not-allowed opacity-50"
 					>
 						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636"></path>
 						</svg>
-						Clear Cache
+						Cache Disabled
 					</button>
 				</div>
 			</div>
@@ -57,55 +59,50 @@ templ SchedulerPanel(user *models.User, jobs map[string]*scheduler.JobInfo, cach
 templ CacheStatsCard(cacheStats map[string]interface{}) {
 	<div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
 		<div class="flex items-center justify-between mb-4">
-			<h2 class="text-xl font-semibold text-gray-100">Cache Statistics</h2>
+			<h2 class="text-xl font-semibold text-gray-100">Cache Status</h2>
 			<div class="flex items-center space-x-2">
-				<div class="w-2 h-2 bg-green-500 rounded-full"></div>
-				<span class="text-sm text-gray-400">Active</span>
+				<div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+				<span class="text-sm text-gray-400">Disabled</span>
 			</div>
 		</div>
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 			<div class="bg-gray-900 rounded-lg p-4">
 				<div class="flex items-center">
 					<div class="flex-shrink-0">
-						<svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
 						</svg>
 					</div>
 					<div class="ml-4">
 						<p class="text-sm text-gray-400">Cache Items</p>
-						<p class="text-2xl font-semibold text-gray-100">
-							if itemCount, ok := cacheStats["itemCount"].(int); ok {
-								{ fmt.Sprintf("%d", itemCount) }
-							} else {
-								0
-							}
-						</p>
+						<p class="text-2xl font-semibold text-gray-100">0</p>
+						<p class="text-xs text-gray-500">Caching Disabled</p>
 					</div>
 				</div>
 			</div>
 			<div class="bg-gray-900 rounded-lg p-4">
 				<div class="flex items-center">
 					<div class="flex-shrink-0">
-						<svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+						<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
 						</svg>
 					</div>
 					<div class="ml-4">
 						<p class="text-sm text-gray-400">Status</p>
-						<p class="text-lg font-semibold text-green-400">Healthy</p>
+						<p class="text-lg font-semibold text-gray-400">Disabled</p>
 					</div>
 				</div>
 			</div>
 			<div class="bg-gray-900 rounded-lg p-4">
 				<div class="flex items-center">
 					<div class="flex-shrink-0">
-						<svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+						<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636"></path>
 						</svg>
 					</div>
 					<div class="ml-4">
-						<p class="text-sm text-gray-400">Expiry</p>
-						<p class="text-lg font-semibold text-purple-400">5 min</p>
+						<p class="text-sm text-gray-400">Cache Type</p>
+						<p class="text-lg font-semibold text-gray-400">None</p>
 					</div>
 				</div>
 			</div>
@@ -314,13 +311,11 @@ templ SchedulerScript() {
 				});
 			}
 
-			// Clear cache handler
+			// Clear cache handler (disabled)
 			const clearCacheBtn = document.getElementById('clear-cache-btn');
 			if (clearCacheBtn) {
 				clearCacheBtn.addEventListener('click', function() {
-					if (confirm('Are you sure you want to clear the cache? This will remove all cached data.')) {
-						clearCache();
-					}
+					showToast('Cache functionality is disabled', 'info');
 				});
 			}
 
@@ -414,26 +409,6 @@ templ SchedulerScript() {
 			}
 		}
 
-		async function clearCache() {
-			try {
-				const response = await fetch('/admin/api/scheduler/cache/clear', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-				});
 
-				const result = await response.json();
-				if (result.success) {
-					showToast('Cache cleared successfully', 'success');
-					location.reload();
-				} else {
-					showToast(result.error || 'Failed to clear cache', 'error');
-				}
-			} catch (error) {
-				showToast('Error clearing cache', 'error');
-				console.error('Error:', error);
-			}
-		}
 	</script>
 }

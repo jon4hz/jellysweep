@@ -29,26 +29,21 @@ type CacheManager interface {
 }
 
 type Handler struct {
-	engine       *engine.Engine
-	cacheManager CacheManager
-	imageCache   *cache.ImageCache
-	authConfig   *config.AuthConfig
+	engine     *engine.Engine
+	imageCache *cache.ImageCache
+	authConfig *config.AuthConfig
 }
 
-func New(eng *engine.Engine, cm CacheManager, im *cache.ImageCache, authConfig *config.AuthConfig) *Handler {
+func New(eng *engine.Engine, im *cache.ImageCache, authConfig *config.AuthConfig) *Handler {
 	return &Handler{
-		engine:       eng,
-		cacheManager: cm,
-		imageCache:   im,
-		authConfig:   authConfig,
+		engine:     eng,
+		imageCache: im,
+		authConfig: authConfig,
 	}
 }
 
 func (h *Handler) Home(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
-
-	// Create cache key based on user
-	userID := user.Sub // Use the subject from OIDC token as user ID
 
 	// Check if this is a forced refresh
 	cacheControl := c.GetHeader("Cache-Control")
@@ -60,13 +55,6 @@ func (h *Handler) Home(c *gin.Context) {
 
 	var mediaItemsMap map[string][]models.MediaItem
 	var err error
-
-	// Try to get from cache first (if not forced refresh)
-	if !forceRefresh {
-		if cachedData, found := h.cacheManager.Get(userID); found {
-			mediaItemsMap = cachedData
-		}
-	}
 
 	// If not in cache or forced refresh, get fresh data
 	if mediaItemsMap == nil || forceRefresh {
@@ -92,9 +80,6 @@ func (h *Handler) Home(c *gin.Context) {
 			}
 			return
 		}
-
-		// Store in cache
-		h.cacheManager.Set(userID, mediaItemsMap)
 	}
 
 	// Convert to flat list for the dashboard
@@ -166,10 +151,6 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 		return
 	}
 
-	// Clear the user's cache since media status has changed
-	userID := user.Sub
-	h.cacheManager.Clear(userID)
-
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Keep request submitted successfully",
@@ -204,9 +185,6 @@ func (h *Handler) Me(c *gin.Context) {
 
 // GetMediaItems returns the current user's media items as JSON.
 func (h *Handler) GetMediaItems(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
-	userID := user.Sub
-
 	// Check if this is a forced refresh
 	cacheControl := c.GetHeader("Cache-Control")
 	pragma := c.GetHeader("Pragma")
@@ -218,13 +196,6 @@ func (h *Handler) GetMediaItems(c *gin.Context) {
 	var mediaItemsMap map[string][]models.MediaItem
 	var err error
 
-	// Try to get from cache first (if not forced refresh)
-	if !forceRefresh {
-		if cachedData, found := h.cacheManager.Get(userID); found {
-			mediaItemsMap = cachedData
-		}
-	}
-
 	// If not in cache or forced refresh, get fresh data
 	if mediaItemsMap == nil || forceRefresh {
 		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
@@ -235,9 +206,6 @@ func (h *Handler) GetMediaItems(c *gin.Context) {
 			})
 			return
 		}
-
-		// Store in cache
-		h.cacheManager.Set(userID, mediaItemsMap)
 	}
 
 	// Convert to flat list for the dashboard

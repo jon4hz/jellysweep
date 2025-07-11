@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/go-co-op/gocron/v2"
-	"github.com/patrickmn/go-cache"
 )
 
 // JobStatus represents the status of a job.
@@ -41,41 +40,31 @@ type JobInfo struct {
 // JobFunc represents a function that can be scheduled.
 type JobFunc func(ctx context.Context) error
 
-// Scheduler manages scheduled jobs and shared cache.
+// Scheduler manages scheduled jobs.
 type Scheduler struct {
 	gocron   gocron.Scheduler
-	cache    *cache.Cache
 	jobs     map[string]*JobInfo
 	jobFuncs map[string]JobFunc
 	ctx      context.Context
 	cancel   context.CancelFunc
 }
 
-// New creates a new scheduler with shared cache.
+// New creates a new scheduler.
 func New() (*Scheduler, error) {
 	gocronScheduler, err := gocron.NewScheduler(gocron.WithLogger(newLogger()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gocron scheduler: %w", err)
 	}
 
-	// Create shared cache with 5 minute default expiration and 10 minute cleanup interval
-	sharedCache := cache.New(5*time.Minute, 10*time.Minute)
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Scheduler{
 		gocron:   gocronScheduler,
-		cache:    sharedCache,
 		jobs:     make(map[string]*JobInfo),
 		jobFuncs: make(map[string]JobFunc),
 		ctx:      ctx,
 		cancel:   cancel,
 	}, nil
-}
-
-// GetCache returns the shared cache instance.
-func (s *Scheduler) GetCache() *cache.Cache {
-	return s.cache
 }
 
 // Start starts the scheduler.
@@ -117,17 +106,40 @@ func (s *Scheduler) Stop() error {
 }
 
 // AddJob adds a new job to the scheduler.
-func (s *Scheduler) AddJob(id, name, description, definitionString string, jobDef gocron.JobDefinition, jobFunc JobFunc, instantAfterStart bool) error {
-	return s.AddJobWithOptions(id, name, description, definitionString, jobDef, jobFunc, false, instantAfterStart)
+func (s *Scheduler) AddJob(
+	id, name, description, definitionString string,
+	jobDef gocron.JobDefinition,
+	jobFunc JobFunc,
+	instantAfterStart bool,
+) error {
+	return s.AddJobWithOptions(id, name, description, definitionString,
+		jobDef,
+		jobFunc,
+		false, instantAfterStart,
+	)
 }
 
 // AddSingletonJob adds a new singleton job to the scheduler that can only run one instance at a time.
-func (s *Scheduler) AddSingletonJob(id, name, description, definitionString string, jobDef gocron.JobDefinition, jobFunc JobFunc, instantAfterStart bool) error {
-	return s.AddJobWithOptions(id, name, description, definitionString, jobDef, jobFunc, true, instantAfterStart)
+func (s *Scheduler) AddSingletonJob(
+	id, name, description, definitionString string,
+	jobDef gocron.JobDefinition,
+	jobFunc JobFunc,
+	instantAfterStart bool,
+) error {
+	return s.AddJobWithOptions(id, name, description, definitionString,
+		jobDef,
+		jobFunc,
+		true, instantAfterStart,
+	)
 }
 
 // AddJobWithOptions adds a new job to the scheduler with optional singleton behavior.
-func (s *Scheduler) AddJobWithOptions(id, name, description, definitionString string, jobDef gocron.JobDefinition, jobFunc JobFunc, singleton, instantAfterStart bool) error {
+func (s *Scheduler) AddJobWithOptions(
+	id, name, description, definitionString string,
+	jobDef gocron.JobDefinition,
+	jobFunc JobFunc,
+	singleton, instantAfterStart bool,
+) error {
 	// Store the job function
 	s.jobFuncs[id] = jobFunc
 
@@ -266,15 +278,14 @@ func (s *Scheduler) wrapJobFunc(id string, jobFunc JobFunc) func() {
 	}
 }
 
-// ClearCache clears all cached data.
+// ClearCache is a no-op since caching is disabled.
 func (s *Scheduler) ClearCache() {
-	s.cache.Flush()
-	log.Info("Cleared all cached data")
+	log.Info("Cache clearing is disabled")
 }
 
-// GetCacheStats returns cache statistics.
+// GetCacheStats returns dummy cache statistics.
 func (s *Scheduler) GetCacheStats() map[string]any {
 	return map[string]any{
-		"itemCount": s.cache.ItemCount(),
+		"itemCount": 0,
 	}
 }

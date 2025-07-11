@@ -24,7 +24,6 @@ type Server struct {
 	ginEngine    *gin.Engine
 	engine       *engine.Engine
 	authProvider auth.AuthProvider
-	cacheManager *cache.Manager
 	imageCache   *cache.ImageCache
 }
 
@@ -47,10 +46,7 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 		authProvider = auth.NewNoOpProvider()
 	}
 
-	// Create cache manager using the shared cache from the engine
-	cacheManager := cache.NewManager(e.GetScheduler().GetCache())
-
-	// Create image cache in ./cache/images directory
+	// Create image cache in ./data/cache/images directory
 	imageCache := cache.NewImageCache("./data/cache/images")
 
 	// Start cleanup goroutine for old images only (shared cache handles its own cleanup)
@@ -79,7 +75,6 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 		ginEngine:    gin.Default(),
 		authProvider: authProvider,
 		engine:       e,
-		cacheManager: cacheManager,
 		imageCache:   imageCache,
 	}, nil
 }
@@ -100,7 +95,7 @@ func (s *Server) setupSession() {
 func (s *Server) setupRoutes() error {
 	s.setupSession()
 
-	h := handler.New(s.engine, s.cacheManager, s.imageCache, s.authProvider.GetAuthConfig())
+	h := handler.New(s.engine, s.imageCache, s.authProvider.GetAuthConfig())
 
 	staticSub, err := fs.Sub(static.StaticFS, "static")
 	if err != nil {
@@ -150,8 +145,6 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
 	h := handler.NewAdmin(s.engine)
-	// Wire up the cache manager for admin operations
-	h.SetCacheManager(s.cacheManager)
 
 	// Admin panel page
 	adminGroup.GET("", h.AdminPanel)

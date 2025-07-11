@@ -188,21 +188,6 @@ func (e *Engine) setupJobs() error {
 		return fmt.Errorf("failed to add cleanup job: %w", err)
 	}
 
-	// Add cache cleanup job as singleton (runs every 10 minutes)
-	const cacheCleanupSchedule = "*/10 * * * *"
-	cacheCleanupJobDef := gocron.CronJob(cacheCleanupSchedule, false)
-	if err := e.scheduler.AddSingletonJob(
-		"cache-cleanup",
-		"Cache Cleanup",
-		"Removes expired cache entries",
-		cacheCleanupSchedule,
-		cacheCleanupJobDef,
-		e.runCacheCleanupJob,
-		false,
-	); err != nil {
-		return fmt.Errorf("failed to add cache cleanup job: %w", err)
-	}
-
 	log.Info("Scheduled jobs configured successfully")
 	return nil
 }
@@ -218,13 +203,6 @@ func (e *Engine) runCleanupJob(ctx context.Context) error {
 	e.cleanupMedia(ctx)
 
 	log.Info("Scheduled cleanup job completed")
-	return nil
-}
-
-// runCacheCleanupJob cleans up expired cache entries.
-func (e *Engine) runCacheCleanupJob(ctx context.Context) error {
-	log.Debug("Running cache cleanup job")
-	e.scheduler.GetCache().Flush()
 	return nil
 }
 
