@@ -67,9 +67,6 @@ type Engine struct {
 type data struct {
 	jellystatItems []jellystat.LibraryItem
 
-	radarrItems []radarr.MovieResource
-	radarrTags  map[int32]string
-
 	libraryIDMap map[string]string
 	mediaItems   map[string][]MediaItem
 
@@ -288,21 +285,21 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		}
 		e.data.jellystatItems = jellystatItems
 	}
-	if e.radarr != nil {
-		radarrItems, err := e.getRadarrItems(ctx)
+	/* if e.radarr != nil {
+		radarrItems, err := e.getRadarrItems(ctx, true)
 		if err != nil {
 			log.Errorf("failed to get radarr delete candidates: %v", err)
 			return
 		}
 		e.data.radarrItems = radarrItems
 
-		radarrTags, err := e.getRadarrTags(ctx)
+		radarrTags, err := e.getRadarrTags(ctx, true)
 		if err != nil {
 			log.Errorf("failed to get radarr tags: %v", err)
 			return
 		}
 		e.data.radarrTags = radarrTags
-	}
+	} */
 
 	e.mergeMediaItems(ctx)
 	log.Info("Media items merged successfully")
@@ -397,6 +394,18 @@ func (e *Engine) mergeMediaItems(ctx context.Context) {
 		return
 	}
 
+	radarrItems, err := e.getRadarrItems(ctx, true)
+	if err != nil {
+		log.Errorf("failed to get radarr items: %v", err)
+		return
+	}
+
+	radarrTags, err := e.getRadarrTags(ctx, true)
+	if err != nil {
+		log.Errorf("failed to get radarr tags: %v", err)
+		return
+	}
+
 	mediaItems := make(map[string][]MediaItem, 0)
 	for _, item := range e.data.jellystatItems {
 		libraryName := strings.ToLower(e.data.libraryIDMap[item.ParentID])
@@ -425,7 +434,7 @@ func (e *Engine) mergeMediaItems(ctx context.Context) {
 
 		// Handle Movies (Radarr)
 		if item.Type == jellystat.ItemTypeMovie {
-			lo.ForEach(e.data.radarrItems, func(m radarr.MovieResource, _ int) {
+			lo.ForEach(radarrItems, func(m radarr.MovieResource, _ int) {
 				if m.GetTitle() == item.Name && m.GetYear() == item.ProductionYear && !item.Archived {
 					if m.GetTmdbId() == 0 {
 						log.Warnf("Radarr movie %s has no TMDB ID, skipping", m.GetTitle())
@@ -438,7 +447,7 @@ func (e *Engine) mergeMediaItems(ctx context.Context) {
 						TmdbId:        m.GetTmdbId(),
 						Title:         item.Name,
 						Year:          m.GetYear(),
-						Tags:          lo.Map(m.GetTags(), func(tag int32, _ int) string { return e.data.radarrTags[tag] }),
+						Tags:          lo.Map(m.GetTags(), func(tag int32, _ int) string { return radarrTags[tag] }),
 						MediaType:     MediaTypeMovie,
 					})
 				}
@@ -503,7 +512,7 @@ func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefres
 	}
 
 	// Get Radarr items marked for deletion
-	radarrItems, err := e.getRadarrMediaItemsMarkedForDeletion(ctx)
+	radarrItems, err := e.getRadarrMediaItemsMarkedForDeletion(ctx, forceRefresh)
 	if err != nil {
 		log.Errorf("failed to get radarr media items marked for deletion: %v", err)
 	} else {
@@ -600,7 +609,7 @@ func (e *Engine) GetKeepRequests(ctx context.Context, forceRefresh bool) ([]mode
 	}
 
 	// Get Radarr keep requests
-	radarrKeepRequests, err := e.getRadarrKeepRequests(ctx)
+	radarrKeepRequests, err := e.getRadarrKeepRequests(ctx, forceRefresh)
 	if err != nil {
 		log.Errorf("failed to get radarr keep requests: %v", err)
 	} else {
