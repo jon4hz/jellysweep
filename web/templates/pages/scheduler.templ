@@ -5,6 +5,7 @@ import (
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/scheduler"
 	"github.com/jon4hz/jellysweep/web/templates"
+	"sort"
 )
 
 templ SchedulerPanel(user *models.User, jobs map[string]*scheduler.JobInfo, cacheStats map[string]interface{}) {
@@ -142,6 +143,18 @@ templ JobsEmptyState() {
 	</div>
 }
 
+func sortJobsByName(jobs map[string]*scheduler.JobInfo) []*scheduler.JobInfo {
+	jobList := make([]*scheduler.JobInfo, 0, len(jobs))
+	for _, job := range jobs {
+		jobList = append(jobList, job)
+	}
+	// Sort jobs by name
+	sort.Slice(jobList, func(i, j int) bool {
+		return jobList[i].Name < jobList[j].Name
+	})
+	return jobList
+}
+
 templ JobsTable(jobs map[string]*scheduler.JobInfo) {
 	<div class="overflow-x-auto">
 		<table class="w-full">
@@ -157,7 +170,7 @@ templ JobsTable(jobs map[string]*scheduler.JobInfo) {
 				</tr>
 			</thead>
 			<tbody class="divide-y divide-gray-700">
-				for _, job := range jobs {
+				for _, job := range sortJobsByName(jobs) {
 					@JobRow(job)
 				}
 			</tbody>

@@ -14,6 +14,7 @@ import (
 	sonarr "github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellyseerr"
 	"github.com/jon4hz/jellysweep/jellystat"
@@ -55,6 +56,8 @@ type Engine struct {
 	ntfy       *ntfy.Client
 	webpush    *webpush.Client
 	scheduler  *scheduler.Scheduler
+
+	imageCache *cache.ImageCache
 
 	data *data
 }
@@ -143,6 +146,7 @@ func New(cfg *config.Config) (*Engine, error) {
 		data: &data{
 			userNotifications: make(map[string][]MediaItem),
 		},
+		imageCache: cache.NewImageCache("./data/cache/images"),
 	}
 
 	// Setup scheduled jobs
@@ -188,6 +192,22 @@ func (e *Engine) setupJobs() error {
 		return fmt.Errorf("failed to add cleanup job: %w", err)
 	}
 
+	// Add job to clear image cache once a week
+	clearImageCacheJobDef := gocron.CronJob("0 0 * * 0", false) // Every Sunday at midnight
+	if err := e.scheduler.AddSingletonJob(
+		"clear_image_cache",
+		"Clear Image Cache",
+		"Clears the image cache to free up space",
+		"0 0 * * 0", // Every Sunday at midnight
+		clearImageCacheJobDef,
+		func(ctx context.Context) error {
+			return e.imageCache.Clear(ctx)
+		},
+		false, // Not a singleton, can run multiple times
+	); err != nil {
+		return fmt.Errorf("failed to add clear image cache job: %w", err)
+	}
+
 	log.Info("Scheduled jobs configured successfully")
 	return nil
 }
@@ -209,6 +229,11 @@ func (e *Engine) runCleanupJob(ctx context.Context) error {
 // GetScheduler returns the scheduler instance for API access.
 func (e *Engine) GetScheduler() *scheduler.Scheduler {
 	return e.scheduler
+}
+
+// GetImageCache returns the image cache instance for API access.
+func (e *Engine) GetImageCache() *cache.ImageCache {
+	return e.imageCache
 }
 
 // removeRecentlyPlayedDeleteTags removes jellysweep-delete tags from media that has been played recently.

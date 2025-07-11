@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/jon4hz/jellysweep/api/cache"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/engine"
@@ -30,14 +29,12 @@ type CacheManager interface {
 
 type Handler struct {
 	engine     *engine.Engine
-	imageCache *cache.ImageCache
 	authConfig *config.AuthConfig
 }
 
-func New(eng *engine.Engine, im *cache.ImageCache, authConfig *config.AuthConfig) *Handler {
+func New(eng *engine.Engine, authConfig *config.AuthConfig) *Handler {
 	return &Handler{
 		engine:     eng,
-		imageCache: im,
 		authConfig: authConfig,
 	}
 }
@@ -166,7 +163,7 @@ func (h *Handler) ImageCache(c *gin.Context) {
 	}
 
 	// Serve the cached image
-	err := h.imageCache.ServeImage(c.Request.Context(), imageURL, c.Writer, c.Request)
+	err := h.engine.GetImageCache().ServeImage(c.Request.Context(), imageURL, c.Writer, c.Request)
 	if err != nil {
 		// Error is already handled in ServeImage
 		return

@@ -5,14 +5,11 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"time"
 
-	"github.com/charmbracelet/log"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/auth"
-	"github.com/jon4hz/jellysweep/api/cache"
 	"github.com/jon4hz/jellysweep/api/handler"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/engine"
@@ -24,7 +21,6 @@ type Server struct {
 	ginEngine    *gin.Engine
 	engine       *engine.Engine
 	authProvider auth.AuthProvider
-	imageCache   *cache.ImageCache
 }
 
 func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) (*Server, error) {
@@ -46,26 +42,6 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 		authProvider = auth.NewNoOpProvider()
 	}
 
-	// Create image cache in ./data/cache/images directory
-	imageCache := cache.NewImageCache("./data/cache/images")
-
-	// Start cleanup goroutine for old images only (shared cache handles its own cleanup)
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute) // Cleanup every 10 minutes
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				// Cleanup old images (older than 7 days)
-				if err := imageCache.CleanupOldImages(7 * 24 * time.Hour); err != nil {
-					log.Errorf("Failed to cleanup old images: %v", err)
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -75,7 +51,6 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 		ginEngine:    gin.Default(),
 		authProvider: authProvider,
 		engine:       e,
-		imageCache:   imageCache,
 	}, nil
 }
 
@@ -95,7 +70,7 @@ func (s *Server) setupSession() {
 func (s *Server) setupRoutes() error {
 	s.setupSession()
 
-	h := handler.New(s.engine, s.imageCache, s.authProvider.GetAuthConfig())
+	h := handler.New(s.engine, s.authProvider.GetAuthConfig())
 
 	staticSub, err := fs.Sub(static.StaticFS, "static")
 	if err != nil {
