@@ -243,6 +243,11 @@ func (e *Engine) GetImageCache() *cache.ImageCache {
 	return e.imageCache
 }
 
+// GetEngineCache returns the engine cache instance.
+func (e *Engine) GetEngineCache() *cache.EngineCache {
+	return e.cache
+}
+
 // removeRecentlyPlayedDeleteTags removes jellysweep-delete tags from media that has been played recently.
 func (e *Engine) removeRecentlyPlayedDeleteTags(ctx context.Context) {
 	log.Info("Checking for recently played media with pending delete tags")

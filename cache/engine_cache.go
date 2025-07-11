@@ -6,6 +6,7 @@ import (
 	"github.com/devopsarr/radarr-go/radarr"
 	"github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/eko/gocache/lib/v4/cache"
+	"github.com/eko/gocache/lib/v4/codec"
 	"github.com/jon4hz/jellysweep/config"
 )
 
@@ -29,20 +30,47 @@ func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
 		return nil, fmt.Errorf("cache is not enabled")
 	}
 
-	var cacheInstance *cache.Cache[[]byte]
+	return &EngineCache{
+		SonarrItemsCache: NewPrefixedCache[[]sonarr.SeriesResource](newCacheInstanceByType(cfg), SonarrItemsCachePrefix),
+		SonarrTagsCache:  NewPrefixedCache[[]sonarr.TagResource](newCacheInstanceByType(cfg), SonarrTagsCachePrefix),
+		RadarrItemsCache: NewPrefixedCache[[]radarr.MovieResource](newCacheInstanceByType(cfg), RadarrItemsCachePrefix),
+		RadarrTagsCache:  NewPrefixedCache[[]radarr.TagResource](newCacheInstanceByType(cfg), RadarrTagsCachePrefix),
+	}, nil
+}
+
+func newCacheInstanceByType(cfg *config.CacheConfig) *cache.Cache[[]byte] {
 	switch cfg.Type {
 	case config.CacheTypeMemory:
-		cacheInstance = newMemoryCache[[]byte]()
+		return newMemoryCache[[]byte]()
 	case config.CacheTypeRedis:
-		cacheInstance = newRedisCache[[]byte](cfg)
+		return newRedisCache[[]byte](cfg)
 	default:
-		return nil, fmt.Errorf("unsupported cache type: %s", cfg.Type)
+		return newMemoryCache[[]byte]()
 	}
+}
 
-	return &EngineCache{
-		SonarrItemsCache: NewPrefixedCache[[]sonarr.SeriesResource](cacheInstance, SonarrItemsCachePrefix),
-		SonarrTagsCache:  NewPrefixedCache[[]sonarr.TagResource](cacheInstance, SonarrTagsCachePrefix),
-		RadarrItemsCache: NewPrefixedCache[[]radarr.MovieResource](cacheInstance, RadarrItemsCachePrefix),
-		RadarrTagsCache:  NewPrefixedCache[[]radarr.TagResource](cacheInstance, RadarrTagsCachePrefix),
-	}, nil
+type Stats struct {
+	*codec.Stats
+	CacheName string `json:"cacheName"`
+}
+
+func (e *EngineCache) GetStats() []*Stats {
+	return []*Stats{
+		{
+			Stats:     e.SonarrItemsCache.GetStats(),
+			CacheName: "sonarr-items",
+		},
+		{
+			Stats:     e.SonarrTagsCache.GetStats(),
+			CacheName: "sonarr-tags",
+		},
+		{
+			Stats:     e.RadarrItemsCache.GetStats(),
+			CacheName: "radarr-items",
+		},
+		{
+			Stats:     e.RadarrTagsCache.GetStats(),
+			CacheName: "radarr-tags",
+		},
+	}
 }

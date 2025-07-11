@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 )
@@ -277,7 +278,7 @@ func (h *AdminHandler) DisableSchedulerJob(c *gin.Context) {
 
 // GetSchedulerCacheStats returns cache statistics.
 func (h *AdminHandler) GetSchedulerCacheStats(c *gin.Context) {
-	stats := h.engine.GetScheduler().GetCacheStats()
+	stats := h.engine.GetEngineCache().GetStats()
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -285,9 +286,23 @@ func (h *AdminHandler) GetSchedulerCacheStats(c *gin.Context) {
 	})
 }
 
-// ClearSchedulerCache clears the scheduler cache.
+// ClearSchedulerCache clears the engine cache.
 func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
-	h.engine.GetScheduler().ClearCache()
+	if engineCache := h.engine.GetEngineCache(); engineCache != nil {
+		// Clear each cache in the engine cache
+		if err := engineCache.SonarrItemsCache.Clear(c.Request.Context()); err != nil {
+			log.Error("Failed to clear Sonarr items cache", "error", err)
+		}
+		if err := engineCache.SonarrTagsCache.Clear(c.Request.Context()); err != nil {
+			log.Error("Failed to clear Sonarr tags cache", "error", err)
+		}
+		if err := engineCache.RadarrItemsCache.Clear(c.Request.Context()); err != nil {
+			log.Error("Failed to clear Radarr items cache", "error", err)
+		}
+		if err := engineCache.RadarrTagsCache.Clear(c.Request.Context()); err != nil {
+			log.Error("Failed to clear Radarr tags cache", "error", err)
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -302,8 +317,11 @@ func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
 	// Get scheduler jobs
 	jobs := h.engine.GetScheduler().GetJobs()
 
-	// Get cache stats
-	cacheStats := h.engine.GetScheduler().GetCacheStats()
+	// Get cache stats from engine cache
+	var cacheStats []*cache.Stats
+	if engineCache := h.engine.GetEngineCache(); engineCache != nil {
+		cacheStats = engineCache.GetStats()
+	}
 
 	c.Header("Content-Type", "text/html")
 	if err := pages.SchedulerPanel(user, jobs, cacheStats).Render(c.Request.Context(), c.Writer); err != nil {

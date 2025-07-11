@@ -57,7 +57,7 @@ func (e *Engine) getSonarrItems(ctx context.Context, forceRefresh bool) ([]sonar
 
 	cachedItems, err := e.cache.SonarrItemsCache.Get(ctx, "all")
 	if err != nil {
-		return nil, err
+		log.Debug("Failed to get Sonarr items from cache, fetching from API", "error", err)
 	}
 	if len(cachedItems) != 0 && !forceRefresh {
 		return cachedItems, nil

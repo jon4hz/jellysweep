@@ -167,12 +167,6 @@ type CacheConfig struct {
 	Type CacheType `yaml:"type" mapstructure:"type"`
 	// RedisURL is the URL for the Redis cache if using Redis.
 	RedisURL string `yaml:"redis_url" mapstructure:"redis_url"`
-
-	// SonarrEnabled and RadarrEnabled are used to determine if the Sonarr and Radarr servers are enabled.
-	// These fields are not serialized to YAML or used in the config file.
-	// They are only used internally to determine if the cache should be initialized for these services.
-	SonarrEnabled bool `yaml:"-" mapstructure:"-"`
-	RadarrEnabled bool `yaml:"-" mapstructure:"-"`
 }
 
 // JellyseerrConfig holds the configuration for the Jellyseerr server.
@@ -372,6 +366,11 @@ func validateConfig(c *Config) error {
 		}
 		if c.Cache.Type == CacheTypeRedis && c.Cache.RedisURL == "" {
 			return fmt.Errorf("Redis URL is required when Redis cache is enabled") //nolint:staticcheck
+		}
+	} else {
+		c.Cache = &CacheConfig{
+			Enabled: true,
+			Type:    CacheTypeMemory, // Default to in-memory cache if not enabled
 		}
 	}
 
