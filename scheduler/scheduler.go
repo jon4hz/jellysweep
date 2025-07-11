@@ -277,15 +277,3 @@ func (s *Scheduler) wrapJobFunc(id string, jobFunc JobFunc) func() {
 		}
 	}
 }
-
-// ClearCache is a no-op since caching is disabled.
-func (s *Scheduler) ClearCache() {
-	log.Info("Cache clearing is disabled")
-}
-
-// GetCacheStats returns dummy cache statistics.
-func (s *Scheduler) GetCacheStats() map[string]any {
-	return map[string]any{
-		"itemCount": 0,
-	}
-}
