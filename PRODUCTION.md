@@ -53,6 +53,48 @@ Jellysweep supports two authentication methods in production:
 > [!WARNING]
 > You should configure at least one authentication method (OIDC or Jellyfin).
 
+### Cache Configuration
+
+If you want persistent cache across application restarts, you can configure a redis/valkey cache.
+
+#### Compose
+
+
+```yaml
+services:
+  jellysweep:
+    image: ghcr.io/jon4hz/jellysweep:latest
+    container_name: jellysweep
+    environment:
+      # Cache configuration
+      - JELLYSWEEP_CACHE_TYPE=redis
+      - JELLYSWEEP_CACHE_REDIS_URL=valkey:6379
+      # ...other environment variables
+    depends_on:
+      - valkey
+    networks:
+      default:
+
+  valkey:
+    image: valkey/valkey:8-bookworm
+    container_name: jellysweep-valkey
+    restart: unless-stopped
+    networks:
+      default:
+```
+
+#### Cache Environment Variables
+
+Add these to your `.env` file for Redis caching:
+
+```env
+# Cache Configuration
+JELLYSWEEP_CACHE_ENABLED=true
+JELLYSWEEP_CACHE_TYPE=redis
+JELLYSWEEP_CACHE_REDIS_URL=valkey:6379
+```
+
+**Note**: Redis authentication is not yet supported.
 
 ### Library Configuration
 The example includes configuration for "TV Shows" and "Movies" libraries with:

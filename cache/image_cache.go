@@ -266,17 +266,23 @@ func (ic *ImageCache) ServeImage(ctx context.Context, imageURL string, w http.Re
 	return nil
 }
 
-// CleanupOldImages removes cached images older than the specified duration.
-func (ic *ImageCache) CleanupOldImages(maxAge time.Duration) error {
-	cutoff := time.Now().Add(-maxAge)
-
+// Clear clears the image cache directory without removing the directory itself.
+func (ic *ImageCache) Clear(ctx context.Context) error {
 	return filepath.Walk(ic.cacheDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if !info.IsDir() && info.ModTime().Before(cutoff) {
-			log.Debugf("Removing old cached image: %s", path)
+		select {
+		case <-ctx.Done():
+			log.Warn("Clearing image cache interrupted by context cancellation")
+			return ctx.Err()
+		default:
+			// Continue processing
+		}
+
+		if !info.IsDir() {
+			log.Debugf("Clearing cached image: %s", path)
 			return os.Remove(path)
 		}
 

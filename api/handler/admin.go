@@ -6,13 +6,13 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 )
 
 type AdminHandler struct {
-	engine       *engine.Engine
-	cacheManager CacheManager
+	engine *engine.Engine
 }
 
 func NewAdmin(eng *engine.Engine) *AdminHandler {
@@ -21,17 +21,9 @@ func NewAdmin(eng *engine.Engine) *AdminHandler {
 	}
 }
 
-// SetCacheManager allows setting the cache manager for admin operations.
-func (h *AdminHandler) SetCacheManager(cm CacheManager) {
-	h.cacheManager = cm
-}
-
 // AdminPanel shows the admin panel with keep requests.
 func (h *AdminHandler) AdminPanel(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
-
-	// Create cache key based on user (admin cache)
-	userID := user.Sub + "_admin"
 
 	// Check if this is a forced refresh
 	cacheControl := c.GetHeader("Cache-Control")
@@ -41,33 +33,16 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 		cacheControl == CacheControlMaxAge0 ||
 		pragma == PragmaNoCache
 
-	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context())
+	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context(), forceRefresh)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to get keep requests: %v", err)
 		return
 	}
 
-	var mediaItemsMap map[string][]models.MediaItem
-
-	// Try to get from cache first (if not forced refresh and cache manager available)
-	if !forceRefresh && h.cacheManager != nil {
-		if cachedData, found := h.cacheManager.Get(userID); found {
-			mediaItemsMap = cachedData
-		}
-	}
-
-	// If not in cache or forced refresh, get fresh data
-	if mediaItemsMap == nil || forceRefresh {
-		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
-			return
-		}
-
-		// Store in cache if cache manager is available
-		if h.cacheManager != nil {
-			h.cacheManager.Set(userID, mediaItemsMap)
-		}
+	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
+		return
 	}
 
 	// Flatten the map to a slice
@@ -95,13 +70,6 @@ func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 		return
 	}
 
-	// Clear admin cache since data has changed
-	if h.cacheManager != nil {
-		user := c.MustGet("user").(*models.User)
-		userID := user.Sub + "_admin"
-		h.cacheManager.Clear(userID)
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Keep request accepted successfully",
@@ -119,13 +87,6 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 			"error":   err.Error(),
 		})
 		return
-	}
-
-	// Clear admin cache since data has changed
-	if h.cacheManager != nil {
-		user := c.MustGet("user").(*models.User)
-		userID := user.Sub + "_admin"
-		h.cacheManager.Clear(userID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -147,13 +108,6 @@ func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
 		return
 	}
 
-	// Clear admin cache since data has changed
-	if h.cacheManager != nil {
-		user := c.MustGet("user").(*models.User)
-		userID := user.Sub + "_admin"
-		h.cacheManager.Clear(userID)
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Media marked as keep successfully",
@@ -171,13 +125,6 @@ func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
 			"error":   err.Error(),
 		})
 		return
-	}
-
-	// Clear admin cache since data has changed
-	if h.cacheManager != nil {
-		user := c.MustGet("user").(*models.User)
-		userID := user.Sub + "_admin"
-		h.cacheManager.Clear(userID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -199,22 +146,15 @@ func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 		return
 	}
 
-	// Clear admin cache since data has changed
-	if h.cacheManager != nil {
-		user := c.MustGet("user").(*models.User)
-		userID := user.Sub + "_admin"
-		h.cacheManager.Clear(userID)
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Media protected forever successfully",
 	})
 }
 
-// GetKeepRequests returns keep requests as JSON with caching support.
+// GetKeepRequests returns keep requests as JSON.
 func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
-	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context())
+	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context(), false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -231,9 +171,6 @@ func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 
 // GetAdminMediaItems returns media items for admin with caching support.
 func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
-	userID := user.Sub + "_admin"
-
 	// Check if this is a forced refresh
 	cacheControl := c.GetHeader("Cache-Control")
 	pragma := c.GetHeader("Pragma")
@@ -242,31 +179,13 @@ func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
 		cacheControl == CacheControlMaxAge0 ||
 		pragma == PragmaNoCache
 
-	var mediaItemsMap map[string][]models.MediaItem
-	var err error
-
-	// Try to get from cache first (if not forced refresh and cache manager available)
-	if !forceRefresh && h.cacheManager != nil {
-		if cachedData, found := h.cacheManager.Get(userID); found {
-			mediaItemsMap = cachedData
-		}
-	}
-
-	// If not in cache or forced refresh, get fresh data
-	if mediaItemsMap == nil || forceRefresh {
-		mediaItemsMap, err = h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   "Failed to get media items",
-			})
-			return
-		}
-
-		// Store in cache if cache manager is available
-		if h.cacheManager != nil {
-			h.cacheManager.Set(userID, mediaItemsMap)
-		}
+	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get media items",
+		})
+		return
 	}
 
 	// Convert to flat list
@@ -279,4 +198,124 @@ func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
 		"success":    true,
 		"mediaItems": mediaItems,
 	})
+}
+
+// GetSchedulerJobs returns all scheduler jobs as JSON.
+func (h *AdminHandler) GetSchedulerJobs(c *gin.Context) {
+	jobs := h.engine.GetScheduler().GetJobs()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"jobs":    jobs,
+	})
+}
+
+// RunSchedulerJob manually triggers a scheduler job.
+func (h *AdminHandler) RunSchedulerJob(c *gin.Context) {
+	jobID := c.Param("id")
+
+	err := h.engine.GetScheduler().RunJobNow(jobID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Job triggered successfully",
+	})
+}
+
+// EnableSchedulerJob enables a scheduler job.
+func (h *AdminHandler) EnableSchedulerJob(c *gin.Context) {
+	jobID := c.Param("id")
+
+	err := h.engine.GetScheduler().EnableJob(jobID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Job enabled successfully",
+	})
+}
+
+// DisableSchedulerJob disables a scheduler job.
+func (h *AdminHandler) DisableSchedulerJob(c *gin.Context) {
+	jobID := c.Param("id")
+
+	err := h.engine.GetScheduler().DisableJob(jobID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Job disabled successfully",
+	})
+}
+
+// GetSchedulerCacheStats returns cache statistics.
+func (h *AdminHandler) GetSchedulerCacheStats(c *gin.Context) {
+	stats := h.engine.GetEngineCache().GetStats()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"stats":   stats,
+	})
+}
+
+// ClearSchedulerCache clears the engine cache.
+func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
+	if engineCache := h.engine.GetEngineCache(); engineCache != nil {
+		// Clear each cache in the engine cache
+		if err := engineCache.SonarrItemsCache.Clear(c.Request.Context()); err != nil {
+			log.Error("Failed to clear Sonarr items cache", "error", err)
+		}
+		if err := engineCache.SonarrTagsCache.Clear(c.Request.Context()); err != nil {
+			log.Error("Failed to clear Sonarr tags cache", "error", err)
+		}
+		if err := engineCache.RadarrItemsCache.Clear(c.Request.Context()); err != nil {
+			log.Error("Failed to clear Radarr items cache", "error", err)
+		}
+		if err := engineCache.RadarrTagsCache.Clear(c.Request.Context()); err != nil {
+			log.Error("Failed to clear Radarr tags cache", "error", err)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Cache cleared successfully",
+	})
+}
+
+// SchedulerPanel shows the scheduler management panel.
+func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
+	// Get scheduler jobs
+	jobs := h.engine.GetScheduler().GetJobs()
+
+	// Get cache stats from engine cache
+	var cacheStats []*cache.Stats
+	if engineCache := h.engine.GetEngineCache(); engineCache != nil {
+		cacheStats = engineCache.GetStats()
+	}
+
+	c.Header("Content-Type", "text/html")
+	if err := pages.SchedulerPanel(user, jobs, cacheStats).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Error("Failed to render scheduler panel", "error", err)
+	}
 }

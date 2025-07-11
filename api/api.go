@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"time"
 
-	"github.com/charmbracelet/log"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+
 	"github.com/jon4hz/jellysweep/api/auth"
-	"github.com/jon4hz/jellysweep/api/cache"
 	"github.com/jon4hz/jellysweep/api/handler"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/engine"
@@ -24,8 +23,6 @@ type Server struct {
 	ginEngine    *gin.Engine
 	engine       *engine.Engine
 	authProvider auth.AuthProvider
-	cacheManager *cache.CacheManager
-	imageCache   *cache.ImageCache
 }
 
 func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) (*Server, error) {
@@ -47,30 +44,6 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 		authProvider = auth.NewNoOpProvider()
 	}
 
-	// Create cache manager with 5 minute TTL
-	cacheManager := cache.NewCacheManager(5 * time.Minute)
-
-	// Create image cache in ./cache/images directory
-	imageCache := cache.NewImageCache("./data/cache/images")
-
-	// Start cleanup goroutine for expired cache entries
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute) // Cleanup every 10 minutes
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				cacheManager.CleanupExpired()
-				// Also cleanup old images (older than 7 days)
-				if err := imageCache.CleanupOldImages(7 * 24 * time.Hour); err != nil {
-					log.Errorf("Failed to cleanup old images: %v", err)
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -80,8 +53,6 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 		ginEngine:    gin.Default(),
 		authProvider: authProvider,
 		engine:       e,
-		cacheManager: cacheManager,
-		imageCache:   imageCache,
 	}, nil
 }
 
@@ -101,13 +72,14 @@ func (s *Server) setupSession() {
 func (s *Server) setupRoutes() error {
 	s.setupSession()
 
-	h := handler.New(s.engine, s.cacheManager, s.imageCache, s.authProvider.GetAuthConfig())
+	h := handler.New(s.engine, s.authProvider.GetAuthConfig())
 
 	staticSub, err := fs.Sub(static.StaticFS, "static")
 	if err != nil {
 		return fmt.Errorf("failed to create static FS sub: %w", err)
 	}
 	s.ginEngine.StaticFS("/static", http.FS(staticSub))
+	s.ginEngine.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// Setup routes depending on authentication status
 	if s.cfg.IsAuthenticationEnabled() {
@@ -151,12 +123,13 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
 	h := handler.NewAdmin(s.engine)
-	// Wire up the cache manager for admin operations
-	h.SetCacheManager(s.cacheManager)
 
 	// Admin panel page
 	adminGroup.GET("", h.AdminPanel)
 	adminGroup.GET("/", h.AdminPanel)
+
+	// Scheduler panel page
+	adminGroup.GET("/scheduler", h.SchedulerPanel)
 
 	// Admin API routes
 	adminAPI := adminGroup.Group("/api")
@@ -166,9 +139,16 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI.POST("/media/:id/delete", h.MarkMediaForDeletion)
 	adminAPI.POST("/media/:id/keep-forever", h.MarkMediaAsKeepForever)
 
-	// New consistent API endpoints with caching support
 	adminAPI.GET("/keep-requests", h.GetKeepRequests)
 	adminAPI.GET("/media", h.GetAdminMediaItems)
+
+	// Scheduler management endpoints
+	adminAPI.GET("/scheduler/jobs", h.GetSchedulerJobs)
+	adminAPI.POST("/scheduler/jobs/:id/run", h.RunSchedulerJob)
+	adminAPI.POST("/scheduler/jobs/:id/enable", h.EnableSchedulerJob)
+	adminAPI.POST("/scheduler/jobs/:id/disable", h.DisableSchedulerJob)
+	adminAPI.GET("/scheduler/cache/stats", h.GetSchedulerCacheStats)
+	adminAPI.POST("/scheduler/cache/clear", h.ClearSchedulerCache)
 }
 
 func (s *Server) Run() error {

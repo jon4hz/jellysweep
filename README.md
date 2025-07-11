@@ -45,6 +45,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
     - [Prerequisites](#prerequisites)
     - [Quick Start](#quick-start)
     - [Docker Compose](#docker-compose)
+    - [Production Docker Compose with Redis Cache](#production-docker-compose-with-redis-cache)
   - [🔐 Authentication](#-authentication)
     - [OIDC/SSO Authentication](#oidcsso-authentication)
     - [Jellyfin Authentication](#jellyfin-authentication)
@@ -56,6 +57,11 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [🏷️ Tag System](#️-tag-system)
     - [Automatic Tags](#automatic-tags)
     - [Custom Tags](#custom-tags)
+  - [🚀 Performance \& Caching](#-performance--caching)
+    - [Cache Types](#cache-types)
+    - [Cache Benefits](#cache-benefits)
+    - [When to Use Redis Cache](#when-to-use-redis-cache)
+    - [Cache Configuration](#cache-configuration)
   - [🔧 Commands](#-commands)
   - [🤝 Contributing](#-contributing)
     - [Development Setup](#development-setup)
@@ -198,6 +204,60 @@ docker compose logs -f jellysweep
 docker compose exec jellysweep ./jellysweep reset
 ```
 
+### Production Docker Compose with Redis Cache
+
+For production deployments with Redis caching, you can use Valkey (Redis-compatible) for better performance and shared cache across multiple instances:
+
+```yaml
+services:
+  jellysweep:
+    image: ghcr.io/jon4hz/jellysweep:latest
+    container_name: jellysweep
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+      - ./data:/app/data
+    environment:
+      # Cache configuration
+      - JELLYSWEEP_CACHE_TYPE=redis
+      - JELLYSWEEP_CACHE_REDIS_URL=valkey:6379
+      # Other configuration
+      - JELLYSWEEP_DRY_RUN=false
+      - JELLYSWEEP_LISTEN=0.0.0.0:3002
+    restart: unless-stopped
+    depends_on:
+      - valkey
+    networks:
+      - jellyfin-network
+
+  valkey:
+    image: valkey/valkey:7-alpine
+    container_name: jellysweep-valkey
+    command: >
+      valkey-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - valkey_data:/data
+    restart: unless-stopped
+    networks:
+      - jellyfin-network
+
+volumes:
+  valkey_data:
+
+networks:
+  jellyfin-network:
+    external: true  # Assumes you have a shared network with your Jellyfin stack
+```
+
+**Benefits of Redis Cache:**
+- **Persistence**: Cache survives application restarts
+- **Performance**: Faster data retrieval for frequently accessed items
+- **Scalability**: Shared cache across multiple Jellysweep instances
+- **Memory Management**: Configurable memory limits and eviction policies
+
 ---
 
 ## 🔐 Authentication
@@ -334,6 +394,9 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_RADARR_API_KEY` | *(optional)* | Radarr API key |
 | `JELLYSWEEP_JELLYSTAT_URL` | *(optional)* | Jellystat server URL |
 | `JELLYSWEEP_JELLYSTAT_API_KEY` | *(optional)* | Jellystat API key |
+| **Cache Configuration** | | |
+| `JELLYSWEEP_CACHE_TYPE` | `memory` | Cache type: `memory` or `redis` |
+| `JELLYSWEEP_CACHE_REDIS_URL` | `localhost:6379` | Redis server URL (when using redis cache) |
 
 > **Note**: Either Sonarr or Radarr (or both) must be configured. If no authentication methods are enabled, the web interface will be accessible without authentication (recommended for development only).
 
@@ -350,6 +413,11 @@ keep_count: 1                    # Number of episodes/seasons to keep (when usin
 session_key: "your-session-key"  # Random string for session encryption
 session_max_age: 172800          # Session max age in seconds (48 hours)
 server_url: "http://localhost:3002"
+
+# Cache configuration (optional)
+cache:
+  type: "memory"                 # Cache type: "memory" or "redis"
+  redis_url: "localhost:6379"    # Redis server URL (when using redis cache)
 
 # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
 # Warning: No authentication is only recommended for development environments
@@ -457,6 +525,12 @@ radarr:
 jellystat:
   url: "http://localhost:3001"
   api_key: "your-jellystat-api-key"
+
+# Cache configuration (optional - improves performance for large libraries)
+cache:
+  enabled: true                  # Enable caching system
+  type: "memory"                 # Options: "memory", "redis"
+  redis_url: "localhost:6379"    # Redis server URL (when using redis cache)
 ```
 
 ---
@@ -475,6 +549,50 @@ Jellysweep uses the tagging feature from sonarr and radarr to track media state:
 ### Custom Tags
 Configure custom tags in your Sonarr/Radarr to:
 - **Exclude from deletion**: Add tags to `exclude_tags` list
+
+---
+
+## 🚀 Performance & Caching
+
+Jellysweep includes an intelligent caching system to improve performance, especially for large media libraries:
+
+### Cache Types
+
+- **Memory Cache** (default): Fast in-memory caching, data lost on restart
+- **Redis Cache**: Persistent caching with configurable memory limits and eviction policies
+
+### Cache Benefits
+
+- **Faster Library Scans**: Cached Sonarr/Radarr API responses reduce scan times
+- **Reduced API Load**: Minimizes requests to external services
+- **Improved Responsiveness**: Web interface loads faster with cached data
+- **Smart Invalidation**: Cache is automatically cleared when data changes
+
+### When to Use Redis Cache
+
+Consider Redis cache for:
+- **Large Libraries**: >1000 movies or TV series
+- **Multiple Instances**: Shared cache across Jellysweep instances
+- **Production Deployments**: Persistent cache across restarts
+- **Resource Optimization**: Better memory management and limits
+
+### Cache Configuration
+
+```yaml
+cache:
+  enabled: true                  # Enable caching system
+  type: "redis"                  # Use Redis for production
+  redis_url: "localhost:6379"    # Redis server URL
+```
+
+**Cache Options:**
+- **Type**: Choose between `memory` (default) or `redis`
+- **Redis URL**: Simple address format `host:port` (no authentication support yet)
+- **Automatic TTL**: Cache expiration is handled by the scheduler, not configurable
+
+**Recommended Setup:**
+- **Development**: Use `memory` cache for simplicity
+- **Production**: Use `redis` cache for persistence and better performance
 
 ---
 

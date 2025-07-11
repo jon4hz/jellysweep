@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/jon4hz/jellysweep/cache"
 )
 
 // parseDeletionDateFromTag extracts the deletion date from a jellysweep tag.
@@ -17,7 +18,7 @@ func (e *Engine) parseDeletionDateFromTag(tagName string) (time.Time, error) {
 }
 
 // triggerTagIDs returns tag IDs that should trigger deletion based on their date labels.
-func (e *Engine) triggerTagIDs(tags map[int32]string) []int32 {
+func (e *Engine) triggerTagIDs(tags cache.TagMap) []int32 {
 	triggerTagIDs := make([]int32, 0)
 	for id, tag := range tags {
 		if strings.HasPrefix(tag, jellysweepTagPrefix) {

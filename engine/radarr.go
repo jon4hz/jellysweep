@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	radarr "github.com/devopsarr/radarr-go/radarr"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/jellystat"
 )
@@ -47,36 +48,79 @@ func newRadarrClient(cfg *config.RadarrConfig) *radarr.APIClient {
 }
 
 // getRadarrItems retrieves all movies from Radarr.
-func (e *Engine) getRadarrItems(ctx context.Context) ([]radarr.MovieResource, error) {
+func (e *Engine) getRadarrItems(ctx context.Context, forceRefresh bool) ([]radarr.MovieResource, error) {
 	if e.radarr == nil {
 		return nil, fmt.Errorf("radarr client not available")
 	}
+
+	if forceRefresh {
+		if err := e.cache.RadarrItemsCache.Clear(ctx); err != nil {
+			log.Debug("Failed to clear Radarr items cache, fetching from API", "error", err)
+		}
+	}
+
+	cachedItems, err := e.cache.RadarrItemsCache.Get(ctx, "all")
+	if err != nil {
+		log.Debug("Failed to get Radarr items from cache, fetching from API", "error", err)
+	}
+	if len(cachedItems) != 0 && !forceRefresh {
+		return cachedItems, nil
+	}
+
 	movies, resp, err := e.radarr.MovieAPI.ListMovie(radarrAuthCtx(ctx, e.cfg.Radarr)).Execute()
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close() //nolint: errcheck
+
+	if err := e.cache.RadarrItemsCache.Set(ctx, "all", movies); err != nil {
+		log.Warnf("Failed to cache Radarr items: %v", err)
+	}
+
 	return movies, nil
 }
 
 // getRadarrTags retrieves all tags from Radarr and returns them as a map with tag IDs as keys and tag names as values.
-func (e *Engine) getRadarrTags(ctx context.Context) (map[int32]string, error) {
+func (e *Engine) getRadarrTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
 	if e.radarr == nil {
 		return nil, fmt.Errorf("radarr client not available")
 	}
+
+	if forceRefresh {
+		if err := e.cache.RadarrTagsCache.Clear(ctx); err != nil {
+			log.Debug("Failed to clear Radarr tags cache, fetching from API", "error", err)
+		}
+	}
+
+	cachedTags, err := e.cache.RadarrTagsCache.Get(ctx, "all")
+	if err != nil {
+		log.Debug("Failed to get Radarr tags from cache, fetching from API", "error", err)
+	}
+	if len(cachedTags) != 0 && !forceRefresh {
+		return cachedTags, nil
+	}
+
 	tags, resp, err := e.radarr.TagAPI.ListTag(radarrAuthCtx(ctx, e.cfg.Radarr)).Execute()
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close() //nolint: errcheck
-	tagMap := make(map[int32]string)
+	tagMap := make(cache.TagMap)
 	for _, tag := range tags {
 		tagMap[tag.GetId()] = tag.GetLabel()
+	}
+	if err := e.cache.RadarrTagsCache.Set(ctx, "all", tagMap); err != nil {
+		log.Warnf("Failed to cache Radarr tags: %v", err)
 	}
 	return tagMap, nil
 }
 
 func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun bool) error {
+	tags, err := e.getRadarrTags(ctx, false)
+	if err != nil {
+		return fmt.Errorf("failed to get Radarr tags: %w", err)
+	}
+	clearCache := false
 	for lib, items := range e.data.mediaItems {
 	movieLoop:
 		for _, item := range items {
@@ -86,7 +130,7 @@ func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 
 			// check if movie has already a jellysweep delete tag or keep tag
 			for _, tagID := range item.MovieResource.GetTags() {
-				tagName := e.data.radarrTags[tagID]
+				tagName := tags[tagID]
 				if strings.HasPrefix(tagName, jellysweepTagPrefix) {
 					log.Debugf("Radarr movie %s already marked for deletion with tag %s", item.Title, tagName)
 					continue movieLoop
@@ -130,13 +174,25 @@ func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 			}
 			defer resp.Body.Close() //nolint: errcheck
 			log.Infof("Marked Radarr movie %s for deletion with tag %s", item.Title, deleteTagLabel)
+			clearCache = true
+		}
+	}
+	if clearCache {
+		if err := e.cache.RadarrItemsCache.Clear(ctx); err != nil {
+			log.Warnf("Failed to clear Radarr items cache after marking for deletion: %v", err)
+		} else {
+			log.Debug("Cleared Radarr items cache after marking for deletion")
 		}
 	}
 	return nil
 }
 
 func (e *Engine) getRadarrTagIDByLabel(label string) (int32, error) {
-	for id, tag := range e.data.radarrTags {
+	tags, err := e.getRadarrTags(context.Background(), false)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+	for id, tag := range tags {
 		if tag == label {
 			return id, nil
 		}
@@ -145,7 +201,11 @@ func (e *Engine) getRadarrTagIDByLabel(label string) (int32, error) {
 }
 
 func (e *Engine) ensureRadarrTagExists(ctx context.Context, deleteTagLabel string) error {
-	for _, tag := range e.data.radarrTags {
+	tags, err := e.getRadarrTags(ctx, false)
+	if err != nil {
+		return fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+	for _, tag := range tags {
 		if tag == deleteTagLabel {
 			return nil
 		}
@@ -153,13 +213,16 @@ func (e *Engine) ensureRadarrTagExists(ctx context.Context, deleteTagLabel strin
 	tag := radarr.TagResource{
 		Label: *radarr.NewNullableString(&deleteTagLabel),
 	}
-	newTag, resp, err := e.radarr.TagAPI.CreateTag(radarrAuthCtx(ctx, e.cfg.Radarr)).TagResource(tag).Execute()
+	_, resp, err := e.radarr.TagAPI.CreateTag(radarrAuthCtx(ctx, e.cfg.Radarr)).TagResource(tag).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create Radarr tag %s: %w", deleteTagLabel, err)
 	}
 	defer resp.Body.Close() //nolint: errcheck
 	log.Infof("Created Radarr tag: %s", deleteTagLabel)
-	e.data.radarrTags[newTag.GetId()] = newTag.GetLabel()
+	// Clear the tags cache so the new tag will be available
+	if err := e.cache.RadarrTagsCache.Clear(ctx); err != nil {
+		log.Warnf("Failed to clear Radarr tags cache after creating tag: %v", err)
+	}
 	return nil
 }
 
@@ -191,14 +254,24 @@ func (e *Engine) cleanupRadarrTags(ctx context.Context) error {
 func (e *Engine) deleteRadarrMedia(ctx context.Context) ([]MediaItem, error) {
 	deletedItems := make([]MediaItem, 0)
 
-	triggerTagIDs := e.triggerTagIDs(e.data.radarrTags)
+	radarrTags, err := e.getRadarrTags(ctx, false)
+	if err != nil {
+		return deletedItems, fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+
+	triggerTagIDs := e.triggerTagIDs(radarrTags)
 
 	if len(triggerTagIDs) == 0 {
 		log.Info("No Radarr tags found for deletion")
 		return deletedItems, nil
 	}
 
-	for _, movie := range e.data.radarrItems {
+	radarrItems, err := e.getRadarrItems(ctx, false)
+	if err != nil {
+		return deletedItems, fmt.Errorf("failed to get radarr items: %w", err)
+	}
+
+	for _, movie := range radarrItems {
 		// Check if the movie has any of the trigger tags
 		// check if slices have matching tag IDs
 		var shouldDelete bool
@@ -239,13 +312,19 @@ func (e *Engine) deleteRadarrMedia(ctx context.Context) ([]MediaItem, error) {
 
 // removeRecentlyPlayedRadarrDeleteTags removes jellysweep-delete tags from Radarr movies that have been played recently.
 func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
-	// Use existing data from engine.data struct
-	if e.data.radarrItems == nil || e.data.radarrTags == nil {
-		log.Debug("No Radarr data available for removing recently played delete tags")
+	radarrItems, err := e.getRadarrItems(ctx, false)
+	if err != nil {
+		log.Errorf("Failed to get Radarr items for removing recently played delete tags: %v", err)
 		return
 	}
 
-	for _, movie := range e.data.radarrItems {
+	radarrTags, err := e.getRadarrTags(ctx, false)
+	if err != nil {
+		log.Errorf("Failed to get Radarr tags for removing recently played delete tags: %v", err)
+		return
+	}
+
+	for _, movie := range radarrItems {
 		select {
 		case <-ctx.Done():
 			log.Warn("Context cancelled, stopping removal of recently played Radarr delete tags")
@@ -257,7 +336,7 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
 		// Check if movie has any jellysweep-delete tags
 		var deleteTagIDs []int32
 		for _, tagID := range movie.GetTags() {
-			if tagName, exists := e.data.radarrTags[tagID]; exists {
+			if tagName, exists := radarrTags[tagID]; exists {
 				if strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 					strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
 					deleteTagIDs = append(deleteTagIDs, tagID)
@@ -347,13 +426,18 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
 
 // removeExpiredRadarrKeepTags removes jellysweep-keep-request and jellysweep-keep tags from Radarr movies that have expired.
 func (e *Engine) removeExpiredRadarrKeepTags(ctx context.Context) error {
-	if e.data.radarrItems == nil || e.data.radarrTags == nil {
-		log.Debug("No Radarr data available for removing expired keep tags")
-		return nil
+	radarrItems, err := e.getRadarrItems(ctx, false)
+	if err != nil {
+		return fmt.Errorf("failed to get Radarr items for removing expired keep tags: %w", err)
+	}
+
+	radarrTags, err := e.getRadarrTags(ctx, false)
+	if err != nil {
+		return fmt.Errorf("failed to get Radarr tags for removing expired keep tags: %w", err)
 	}
 
 	var expiredKeepTagIDs []int32
-	for tagID, tagName := range e.data.radarrTags {
+	for tagID, tagName := range radarrTags {
 		// Check for both jellysweep-keep-request- and jellysweep-keep- tags
 		if strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) || strings.HasPrefix(tagName, JellysweepKeepPrefix) {
 			// Parse the date from the tag name using the appropriate parser
@@ -374,7 +458,7 @@ func (e *Engine) removeExpiredRadarrKeepTags(ctx context.Context) error {
 		}
 	}
 
-	for _, movie := range e.data.radarrItems {
+	for _, movie := range radarrItems {
 		// get list of tags to keep
 		keepTagIDs := make([]int32, 0)
 		for _, tagID := range movie.GetTags() {
@@ -407,7 +491,7 @@ func (e *Engine) removeExpiredRadarrKeepTags(ctx context.Context) error {
 }
 
 // getRadarrMediaItemsMarkedForDeletion returns all Radarr movies that are marked for deletion.
-func (e *Engine) getRadarrMediaItemsMarkedForDeletion(ctx context.Context) ([]models.MediaItem, error) {
+func (e *Engine) getRadarrMediaItemsMarkedForDeletion(ctx context.Context, forceRefresh bool) ([]models.MediaItem, error) {
 	result := make([]models.MediaItem, 0)
 
 	if e.radarr == nil {
@@ -415,13 +499,13 @@ func (e *Engine) getRadarrMediaItemsMarkedForDeletion(ctx context.Context) ([]mo
 	}
 
 	// Get all movies from Radarr
-	radarrItems, err := e.getRadarrItems(ctx)
+	radarrItems, err := e.getRadarrItems(ctx, forceRefresh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get radarr items: %w", err)
 	}
 
 	// Get Radarr tags
-	radarrTags, err := e.getRadarrTags(ctx)
+	radarrTags, err := e.getRadarrTags(ctx, forceRefresh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -505,7 +589,7 @@ func (e *Engine) addRadarrKeepRequestTag(ctx context.Context, movieID int32, use
 	defer resp.Body.Close() //nolint: errcheck
 
 	// Get current tags
-	radarrTags, err := e.getRadarrTags(ctx)
+	radarrTags, err := e.getRadarrTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -547,12 +631,21 @@ func (e *Engine) addRadarrKeepRequestTag(ctx context.Context, movieID int32, use
 	}
 	defer resp.Body.Close() //nolint: errcheck
 
+	// refresh the cache in background
+	go func() {
+		if err := e.cache.RadarrItemsCache.Clear(context.Background()); err != nil {
+			log.Warnf("Failed to clear Radarr items cache after adding keep request tag: %v", err)
+		} else {
+			log.Debug("Cleared Radarr items cache after adding keep request tag")
+		}
+	}()
+
 	log.Infof("Added keep request tag %s to Radarr movie %s", keepRequestTag, movie.GetTitle())
 	return nil
 }
 
 // getRadarrKeepRequests returns all Radarr movies that have keep request tags.
-func (e *Engine) getRadarrKeepRequests(ctx context.Context) ([]models.KeepRequest, error) {
+func (e *Engine) getRadarrKeepRequests(ctx context.Context, forceRefresh bool) ([]models.KeepRequest, error) {
 	result := make([]models.KeepRequest, 0)
 
 	if e.radarr == nil {
@@ -560,13 +653,13 @@ func (e *Engine) getRadarrKeepRequests(ctx context.Context) ([]models.KeepReques
 	}
 
 	// Get all movies from Radarr
-	radarrItems, err := e.getRadarrItems(ctx)
+	radarrItems, err := e.getRadarrItems(ctx, forceRefresh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get radarr items: %w", err)
 	}
 
 	// Get Radarr tags
-	radarrTags, err := e.getRadarrTags(ctx)
+	radarrTags, err := e.getRadarrTags(ctx, forceRefresh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -652,6 +745,15 @@ func (e *Engine) acceptRadarrKeepRequest(ctx context.Context, movieID int32) err
 		return err
 	}
 
+	// Refresh the cache in background
+	go func() {
+		if err := e.cache.RadarrItemsCache.Clear(context.Background()); err != nil {
+			log.Warnf("Failed to clear Radarr items cache after accepting keep request: %v", err)
+		} else {
+			log.Debug("Cleared Radarr items cache after accepting keep request")
+		}
+	}()
+
 	// Send push notification if enabled and we have requester info
 	if e.webpush != nil && requester != "" {
 		if pushErr := e.webpush.SendKeepRequestNotification(ctx, requester, movieTitle, "Movie", true); pushErr != nil {
@@ -672,6 +774,15 @@ func (e *Engine) declineRadarrKeepRequest(ctx context.Context, movieID int32) er
 	if err := e.addRadarrDeleteForSureTag(ctx, movieID); err != nil {
 		return err
 	}
+
+	// Refresh the cache in background
+	go func() {
+		if err := e.cache.RadarrItemsCache.Clear(context.Background()); err != nil {
+			log.Warnf("Failed to clear Radarr items cache after declining keep request: %v", err)
+		} else {
+			log.Debug("Cleared Radarr items cache after declining keep request")
+		}
+	}()
 
 	// Send push notification if enabled and we have requester info
 	if e.webpush != nil && requester != "" {
@@ -696,7 +807,7 @@ func (e *Engine) removeRadarrKeepRequestAndDeleteTags(ctx context.Context, movie
 	defer resp.Body.Close() //nolint: errcheck
 
 	// Get current tags
-	radarrTags, err := e.getRadarrTags(ctx)
+	radarrTags, err := e.getRadarrTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -731,7 +842,7 @@ func (e *Engine) removeRadarrKeepRequestAndDeleteTags(ctx context.Context, movie
 	return nil
 }
 
-func (e *Engine) radarrItemKeepRequestAlreadyProcessed(movie *radarr.MovieResource, tags map[int32]string) bool {
+func (e *Engine) radarrItemKeepRequestAlreadyProcessed(movie *radarr.MovieResource, tags cache.TagMap) bool {
 	if movie == nil {
 		return false
 	}
@@ -761,7 +872,7 @@ func (e *Engine) addRadarrDeleteForSureTag(ctx context.Context, movieID int32) e
 	defer resp.Body.Close() //nolint: errcheck
 
 	// Get current tags
-	radarrTags, err := e.getRadarrTags(ctx)
+	radarrTags, err := e.getRadarrTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -836,10 +947,16 @@ func (e *Engine) addRadarrKeepTag(ctx context.Context, movieID int32) error {
 		return fmt.Errorf("failed to get tag ID: %w", err)
 	}
 
+	// Get current tags for filtering
+	radarrTags, err := e.getRadarrTags(ctx, false)
+	if err != nil {
+		return fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+
 	// Remove any existing jellysweep-delete tags before adding keep request tag
 	var newTags []int32
 	for _, existingTagID := range movie.GetTags() {
-		tagName := e.data.radarrTags[existingTagID]
+		tagName := radarrTags[existingTagID]
 		if !strings.HasPrefix(tagName, jellysweepTagPrefix) {
 			newTags = append(newTags, existingTagID)
 		}
@@ -876,7 +993,7 @@ func (e *Engine) resetRadarrTags(ctx context.Context, additionalTags []string) e
 	defer resp.Body.Close() //nolint: errcheck
 
 	// Get all tags to map tag IDs to names
-	tags, err := e.getRadarrTags(ctx)
+	tags, err := e.getRadarrTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get Radarr tags: %w", err)
 	}
@@ -986,7 +1103,7 @@ func (e *Engine) resetSingleRadarrTagsForKeep(ctx context.Context, movieID int32
 	defer resp.Body.Close() //nolint: errcheck
 
 	// Get all tags to map tag IDs to names
-	tags, err := e.getRadarrTags(ctx)
+	tags, err := e.getRadarrTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -1040,7 +1157,7 @@ func (e *Engine) resetSingleRadarrTagsForMustDelete(ctx context.Context, movieID
 	defer resp.Body.Close() //nolint: errcheck
 
 	// Get all tags to map tag IDs to names
-	tags, err := e.getRadarrTags(ctx)
+	tags, err := e.getRadarrTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -1108,7 +1225,7 @@ func (e *Engine) resetAllRadarrTagsAndAddIgnore(ctx context.Context, movieID int
 	}
 
 	// Get all tags to map tag IDs to names
-	tags, err := e.getRadarrTags(ctx)
+	tags, err := e.getRadarrTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -1166,7 +1283,7 @@ func (e *Engine) getRadarrKeepRequestInfo(ctx context.Context, movieID int32) (r
 	movieTitle = movie.GetTitle()
 
 	// Get current tags
-	radarrTags, err := e.getRadarrTags(ctx)
+	radarrTags, err := e.getRadarrTags(ctx, false)
 	if err != nil {
 		return "", movieTitle, fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -1215,10 +1332,16 @@ func (e *Engine) addRadarrKeepTagWithRequester(ctx context.Context, movieID int3
 		return fmt.Errorf("failed to get tag ID: %w", err)
 	}
 
+	// Get current tags for filtering
+	radarrTags, err := e.getRadarrTags(ctx, false)
+	if err != nil {
+		return fmt.Errorf("failed to get radarr tags: %w", err)
+	}
+
 	// Remove any existing jellysweep-delete tags before adding keep tag
 	var newTags []int32
 	for _, existingTagID := range movie.GetTags() {
-		tagName, exists := e.data.radarrTags[existingTagID]
+		tagName, exists := radarrTags[existingTagID]
 		if !exists || !strings.HasPrefix(tagName, jellysweepTagPrefix) {
 			newTags = append(newTags, existingTagID)
 		}

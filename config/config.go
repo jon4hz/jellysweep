@@ -8,12 +8,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+type CacheType string
+
+const (
+	CacheTypeMemory CacheType = "memory"
+	CacheTypeRedis  CacheType = "redis"
+)
+
 // Config holds the configuration for the JellySweep server and its dependencies.
 type Config struct {
 	// Listen is the address the JellySweep server will listen on.
 	Listen string `yaml:"listen" mapstructure:"listen"`
-	// CleanupInterval is the interval in hours for the cleanup job.
-	CleanupInterval int `yaml:"cleanup_interval" mapstructure:"cleanup_interval"`
+	// CleanupSchedule is the cron schedule for the cleanup job (e.g., "0 */12 * * *" for every 12 hours).
+	CleanupSchedule string `yaml:"cleanup_schedule" mapstructure:"cleanup_schedule"`
 	// Libraries is a map of libraries to their cleanup configurations.
 	Libraries map[string]*CleanupConfig `yaml:"libraries" mapstructure:"libraries"`
 	// DryRun indicates whether the cleanup job should run in dry-run mode.
@@ -37,6 +44,8 @@ type Config struct {
 	WebPush *WebPushConfig `yaml:"webpush" mapstructure:"webpush"`
 	// ServerURL is the base URL of the JellySweep server.
 	ServerURL string `yaml:"server_url" mapstructure:"server_url"`
+	// Cache holds the cache engine configuration.
+	Cache *CacheConfig `yaml:"cache" mapstructure:"cache"`
 
 	// Jellyseerr holds the configuration for the Jellyseerr server.
 	Jellyseerr *JellyseerrConfig `yaml:"jellyseerr" mapstructure:"jellyseerr"`
@@ -136,6 +145,7 @@ type WebPushConfig struct {
 	PrivateKey string `yaml:"private_key" mapstructure:"private_key"`
 }
 
+// CleanupConfig holds the configuration for the cleanup job.
 type CleanupConfig struct {
 	// Enabled indicates whether the cleanup job is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
@@ -147,6 +157,14 @@ type CleanupConfig struct {
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// CleanupDelay is the delay in days before a media item is deleted after being marked for deletion.
 	CleanupDelay int `yaml:"cleanup_delay" mapstructure:"cleanup_delay"`
+}
+
+// CacheConfig holds the configuration for the cache engine.
+type CacheConfig struct {
+	// Type is the type of cache engine to use (e.g., "memory", "redis").
+	Type CacheType `yaml:"type" mapstructure:"type"`
+	// RedisURL is the URL for the Redis cache if using Redis.
+	RedisURL string `yaml:"redis_url" mapstructure:"redis_url"`
 }
 
 // JellyseerrConfig holds the configuration for the Jellyseerr server.
@@ -255,9 +273,9 @@ func Load(path string) (*Config, error) {
 func setDefaults(v *viper.Viper) {
 	// JellySweep defaults
 	v.SetDefault("jellysweep.listen", "0.0.0.0:3002")
-	v.SetDefault("jellysweep.cleanup_interval", 12)
-	v.SetDefault("jellysweep.cleanup_mode", "all") // Default to cleaning up everything
-	v.SetDefault("jellysweep.keep_count", 1)       // Default to keeping 1 episode/season if mode is not "all"
+	v.SetDefault("jellysweep.cleanup_schedule", "0 */12 * * *") // Every 12 hours
+	v.SetDefault("jellysweep.cleanup_mode", "all")              // Default to cleaning up everything
+	v.SetDefault("jellysweep.keep_count", 1)                    // Default to keeping 1 episode/season if mode is not "all"
 	v.SetDefault("jellysweep.dry_run", false)
 	v.SetDefault("jellysweep.server_url", "http://localhost:3002")
 	v.SetDefault("jellysweep.session_max_age", 172800) // 48 hour
@@ -271,6 +289,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("jellysweep.auth.oidc.redirect_url", "")
 	v.SetDefault("jellysweep.auth.oidc.admin_group", "")
 	v.SetDefault("jellysweep.auth.jellyfin.enabled", true)
+
+	// Cache defaults
+	v.SetDefault("jellysweep.cache.enabled", true)
+	v.SetDefault("jellysweep.cache.type", CacheTypeMemory) // Default to in-memory
 
 	// Email defaults
 	v.SetDefault("jellysweep.email.enabled", false)
@@ -301,6 +323,16 @@ func validateConfig(c *Config) error {
 		return fmt.Errorf("missing jellysweep config")
 	}
 
+	// Validate cleanup schedule
+	if c.CleanupSchedule == "" {
+		return fmt.Errorf("cleanup schedule is required")
+	}
+	// Basic validation for cron format (5 fields)
+	cronFields := strings.Fields(c.CleanupSchedule)
+	if len(cronFields) != 5 {
+		return fmt.Errorf("cleanup schedule must be a valid cron expression with 5 fields (minute hour day month weekday)")
+	}
+
 	// Validate auth configuration
 	if c.Auth == nil {
 		return fmt.Errorf("missing auth config")
@@ -323,6 +355,19 @@ func validateConfig(c *Config) error {
 		}
 		if c.Auth.OIDC.AdminGroup == "" {
 			return fmt.Errorf("OIDC admin group is required when OIDC is enabled")
+		}
+	}
+
+	if c.Cache != nil {
+		if c.Cache.Type == "" {
+			return fmt.Errorf("cache type is required when cache is enabled")
+		}
+		if c.Cache.Type == CacheTypeRedis && c.Cache.RedisURL == "" {
+			return fmt.Errorf("Redis URL is required when Redis cache is enabled") //nolint:staticcheck
+		}
+	} else {
+		c.Cache = &CacheConfig{
+			Type: CacheTypeMemory, // Default to in-memory cache if not enabled
 		}
 	}
 
