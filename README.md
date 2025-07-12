@@ -41,6 +41,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
     - [Statistics Dashboard](#statistics-dashboard)
     - [Admin Panel - Keep Requests](#admin-panel---keep-requests)
     - [Admin Panel - Keep or Sweep](#admin-panel---keep-or-sweep)
+    - [Scheduler Panel](#scheduler-panel)
   - [🔧 Installation](#-installation)
     - [Prerequisites](#prerequisites)
     - [Quick Start](#quick-start)
@@ -76,6 +77,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 2. **Media Filtering**
    - Applies configurable age thresholds
+   - Applies configurable size thresholds
    - Respects custom exclude tags
    - Respects user keep requests
 
@@ -111,20 +113,29 @@ Both selective modes automatically unmonitor deleted episodes in Sonarr to preve
 ## 📸 Screenshots
 
 ### Dashboard Overview
-![Dashboard Overview](assets/screenshots/dashboard_overview.png)
+<img src="assets/screenshots/dashboard.png" alt="Dashboard Overview" width="75%">
+
 *Main dashboard showing media items scheduled for deletion with filtering and search capabilities*
 
 ### Statistics Dashboard
-![Dashboard Statistics](assets/screenshots/dashboard_stats.png)
+<img src="assets/screenshots/stats.png" alt="Dashboard Statistics" width="75%">
+
 *Visual analytics showing daily and cumulative storage cleanup over time*
 
 ### Admin Panel - Keep Requests
-![Admin Queue](assets/screenshots/admin_queue.png)
+<img src="assets/screenshots/request_queue.png" alt="Admin Queue" width="75%">
+
 *Admin interface for reviewing and approving user keep requests*
 
 ### Admin Panel - Keep or Sweep
-![Admin Keep or Sweep](assets/screenshots/admin_keep_or_sweep.png)
+<img src="assets/screenshots/keep_or_sweep.png" alt="Admin Keep or Sweep" width="75%">
+
 *Admin review interface for making final keep/delete decisions on media items*
+
+### Scheduler Panel
+<img src="assets/screenshots/scheduler.png" alt="Scheduler Panel" width="75%">
+
+*Control scheduler tasks and view cache statistics*
 
 ---
 
@@ -384,6 +395,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_LIBRARIES_DEFAULT_ENABLED` | `true` | Enable cleanup for default library |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_CONTENT_AGE_THRESHOLD` | `120` | Min age in days for content to be eligible |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_LAST_STREAM_THRESHOLD` | `90` | Min days since last stream for cleanup |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_CONTENT_SIZE_THRESHOLD` | `0` | Min size in bytes for content to be eligible (0 = no minimum) |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_CLEANUP_DELAY` | `30` | Days before deletion after marking |
 | **External Services** | | |
 | `JELLYSWEEP_JELLYSEERR_URL` | *(required)* | Jellyseerr server URL |
@@ -453,6 +465,7 @@ libraries:
     enabled: true
     content_age_threshold: 120    # Days since content was added
     last_stream_threshold: 90     # Days since last viewed
+    content_size_threshold: 0     # Min size in bytes (0 = no minimum)
     cleanup_delay: 30             # Grace period before deletion
     exclude_tags:
       - "jellysweep-exclude"
@@ -463,6 +476,7 @@ libraries:
     enabled: true
     content_age_threshold: 120
     last_stream_threshold: 90
+    content_size_threshold: 1073741824  # 1GB minimum
     cleanup_delay: 30
     exclude_tags:
       - "jellysweep-exclude"
@@ -473,6 +487,7 @@ libraries:
     enabled: true
     content_age_threshold: 120
     last_stream_threshold: 90
+    content_size_threshold: 2147483648  # 2GB minimum
     cleanup_delay: 30
     exclude_tags:
       - "jellysweep-exclude"
