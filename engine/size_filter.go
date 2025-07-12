@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/charmbracelet/log"
 	"github.com/dustin/go-humanize"
@@ -19,11 +18,7 @@ func safeUint64(value int64) uint64 {
 // filterContentSizeThreshold filters out media items that are smaller than the configured threshold.
 func (e *Engine) filterContentSizeThreshold(ctx context.Context) error {
 	filteredItems := make(map[string][]MediaItem, 0)
-
-	fmt.Println(len(e.data.mediaItems), "items to filter")
-
 	for lib, items := range e.data.mediaItems {
-		fmt.Println("Processing library:", lib, "with", len(items), "items")
 		for _, item := range items {
 			select {
 			case <-ctx.Done():
@@ -42,7 +37,6 @@ func (e *Engine) filterContentSizeThreshold(ctx context.Context) error {
 				log.Warnf("Unknown media type %s for item %s", item.MediaType, item.Title)
 				continue
 			}
-			fmt.Println(fileSize, "bytes for item:", item.Title)
 
 			// Check if the content size meets the configured threshold
 			libraryConfig := e.cfg.GetLibraryConfig(lib)
