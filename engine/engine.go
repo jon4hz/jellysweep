@@ -304,19 +304,13 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 	e.mergeMediaItems(ctx)
 	log.Info("Media items merged successfully")
 
-	// Filter out series that already meet the keep criteria
+	// Filter out series that already meet the keep criteria (if cleanup mode is set to keep episodes or seasons)
+	log.Info("Filtering series that already meet keep criteria")
 	e.filterSeriesAlreadyMeetingKeepCriteria()
 
-	// Populate requester information from Jellyseerr
-	log.Info("Populating requester information")
-
+	// Filter media items based on tags
+	log.Info("Filtering media items based on tags")
 	e.filterMediaTags()
-
-	log.Info("Checking for streaming history")
-	if err := e.filterLastStreamThreshold(ctx); err != nil {
-		log.Errorf("failed to filter last stream threshold: %v", err)
-		return
-	}
 
 	log.Info("Checking content age")
 	if err := e.filterContentAgeThreshold(ctx); err != nil {
@@ -324,7 +318,20 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		return
 	}
 
+	log.Info("Checking content size")
+	if err := e.filterContentSizeThreshold(ctx); err != nil {
+		log.Errorf("failed to filter content size threshold: %v", err)
+		return
+	}
+
+	log.Info("Checking for streaming history")
+	if err := e.filterLastStreamThreshold(ctx); err != nil {
+		log.Errorf("failed to filter last stream threshold: %v", err)
+		return
+	}
+
 	// Populate requester information from Jellyseerr
+	log.Info("Populating requester information")
 	e.populateRequesterInfo(ctx)
 
 	// Populate user notifications for email sending

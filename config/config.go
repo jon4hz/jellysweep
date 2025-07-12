@@ -153,6 +153,8 @@ type CleanupConfig struct {
 	ContentAgeThreshold int `yaml:"content_age_threshold" mapstructure:"content_age_threshold"`
 	// LastStreamThreshold is the minimum time in days since the last stream for content to be eligible for cleanup.
 	LastStreamThreshold int `yaml:"last_stream_threshold" mapstructure:"last_stream_threshold"`
+	// ContentSizeThreshold is the minimum size in bytes for content to be eligible for cleanup.
+	ContentSizeThreshold int64 `yaml:"content_size_threshold" mapstructure:"content_size_threshold"`
 	// ExcludeTags is a list of tags to exclude from deletion.
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// CleanupDelay is the delay in days before a media item is deleted after being marked for deletion.
@@ -315,6 +317,13 @@ func setDefaults(v *viper.Viper) {
 	// WebPush defaults
 	v.SetDefault("jellysweep.webpush.enabled", false)
 	v.SetDefault("jellysweep.webpush.ttl", 60)
+
+	// Library defaults
+	v.SetDefault("jellysweep.libraries.default.enabled", true)
+	v.SetDefault("jellysweep.libraries.default.content_age_threshold", 120)
+	v.SetDefault("jellysweep.libraries.default.last_stream_threshold", 90)
+	v.SetDefault("jellysweep.libraries.default.content_size_threshold", 0) // 0 = no minimum size filter
+	v.SetDefault("jellysweep.libraries.default.cleanup_delay", 30)
 }
 
 // validateConfig validates the configuration.
