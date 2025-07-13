@@ -366,13 +366,6 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 	}
 }
 
-type MediaType string
-
-const (
-	MediaTypeTV    MediaType = "tv"
-	MediaTypeMovie MediaType = "movie"
-)
-
 type MediaItem struct {
 	JellystatID    string
 	SeriesResource sonarr.SeriesResource
@@ -381,7 +374,7 @@ type MediaItem struct {
 	TmdbId         int32
 	Year           int32
 	Tags           []string
-	MediaType      MediaType
+	MediaType      models.MediaType
 	// User information for the person who requested this media
 	RequestedBy string    // User email or username
 	RequestDate time.Time // When the media was requested
@@ -433,7 +426,7 @@ func (e *Engine) mergeMediaItems(ctx context.Context) {
 						Year:           s.GetYear(),
 						Title:          item.Name,
 						Tags:           lo.Map(s.GetTags(), func(tag int32, _ int) string { return sonarrTags[tag] }),
-						MediaType:      MediaTypeTV,
+						MediaType:      models.MediaTypeTV,
 					})
 				}
 			})
@@ -455,7 +448,7 @@ func (e *Engine) mergeMediaItems(ctx context.Context) {
 						Title:         item.Name,
 						Year:          m.GetYear(),
 						Tags:          lo.Map(m.GetTags(), func(tag int32, _ int) string { return radarrTags[tag] }),
-						MediaType:     MediaTypeMovie,
+						MediaType:     models.MediaTypeMovie,
 					})
 				}
 			})
@@ -526,6 +519,34 @@ func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefres
 		if len(radarrItems) > 0 {
 			result["Movies"] = radarrItems
 		}
+	}
+
+	return result, nil
+}
+
+// GetMediaItemsMarkedForDeletionByType returns media items marked for deletion by type.
+func (e *Engine) GetMediaItemsMarkedForDeletionByType(ctx context.Context, mediaType models.MediaType, forceRefresh bool) ([]models.MediaItem, error) {
+	var result []models.MediaItem
+
+	switch mediaType {
+	case models.MediaTypeTV:
+		// Get Sonarr items marked for deletion
+		sonarrItems, err := e.getSonarrMediaItemsMarkedForDeletion(ctx, forceRefresh)
+		if err != nil {
+			log.Errorf("failed to get sonarr media items marked for deletion: %v", err)
+		} else {
+			result = append(result, sonarrItems...)
+		}
+	case models.MediaTypeMovie:
+		// Get Radarr items marked for deletion
+		radarrItems, err := e.getRadarrMediaItemsMarkedForDeletion(ctx, forceRefresh)
+		if err != nil {
+			log.Errorf("failed to get radarr media items marked for deletion: %v", err)
+		} else {
+			result = append(result, radarrItems...)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported media type: %s", mediaType)
 	}
 
 	return result, nil

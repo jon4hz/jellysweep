@@ -187,9 +187,9 @@ func getUniqueKeepRequestLibraries(requests []models.KeepRequest) []string {
 	return libraries
 }
 
-func getUniqueKeepRequestTypes(requests []models.KeepRequest) []string {
-	typeMap := make(map[string]bool)
-	var types []string
+func getUniqueKeepRequestTypes(requests []models.KeepRequest) []models.MediaType {
+	typeMap := make(map[models.MediaType]bool)
+	var types []models.MediaType
 
 	for _, request := range requests {
 		if request.Type != "" && !typeMap[request.Type] {
@@ -201,9 +201,9 @@ func getUniqueKeepRequestTypes(requests []models.KeepRequest) []string {
 	return types
 }
 
-func getUniqueMediaTypes(items []models.MediaItem) []string {
-	typeMap := make(map[string]bool)
-	var types []string
+func getUniqueMediaTypes(items []models.MediaItem) []models.MediaType {
+	typeMap := make(map[models.MediaType]bool)
+	var types []models.MediaType
 
 	for _, item := range items {
 		if item.Type != "" && !typeMap[item.Type] {

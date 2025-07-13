@@ -7,14 +7,15 @@ import (
 	"github.com/charmbracelet/log"
 	radarr "github.com/devopsarr/radarr-go/radarr"
 	sonarr "github.com/devopsarr/sonarr-go/sonarr"
+	"github.com/jon4hz/jellysweep/api/models"
 )
 
 // getMediaItemAddedDate returns the first date when media content was added/imported for a given media item.
 func (e *Engine) getMediaItemAddedDate(ctx context.Context, item MediaItem) (*time.Time, error) {
 	switch item.MediaType {
-	case MediaTypeMovie:
+	case models.MediaTypeMovie:
 		return e.getRadarrItemAddedDate(ctx, item.MovieResource.GetId())
-	case MediaTypeTV:
+	case models.MediaTypeTV:
 		return e.getSonarrItemAddedDate(ctx, item.SeriesResource.GetId())
 	default:
 		return nil, nil
