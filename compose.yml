@@ -15,7 +15,7 @@ services:
       JELLYSWEEP_DRY_RUN: "false"
       JELLYSWEEP_LOG_LEVEL: "info"
       JELLYSWEEP_LISTEN: "0.0.0.0:3002"
-      JELLYSWEEP_CLEANUP_INTERVAL: "12"
+      JELLYSWEEP_CLEANUP_SCHEDULE: "0 */12 * * *"
       JELLYSWEEP_CLEANUP_MODE: "keep_episodes"
       JELLYSWEEP_KEEP_COUNT: "5"
       JELLYSWEEP_SERVER_URL: "https://jellysweep.tarnished.ch"

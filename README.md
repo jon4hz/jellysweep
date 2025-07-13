@@ -345,7 +345,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 |---------------------|---------------|-------------|
 | **Jellysweep Server** | | |
 | `JELLYSWEEP_LISTEN` | `0.0.0.0:3002` | Address and port for the web interface |
-| `JELLYSWEEP_CLEANUP_INTERVAL` | `12` | Hours between automatic cleanup runs |
+| `JELLYSWEEP_CLEANUP_SCHEDULE` | `0 */12 * * *` | Cron schedule for cleanup runs |
 | `JELLYSWEEP_CLEANUP_MODE` | `all` | Cleanup mode: `all`, `keep_episodes`, or `keep_seasons` |
 | `JELLYSWEEP_KEEP_COUNT` | `5` | Number of episodes/seasons to keep (when using `keep_episodes` or `keep_seasons` mode) |
 | `JELLYSWEEP_DRY_RUN` | `false` | Run in dry-run mode (no actual deletions) |
@@ -419,7 +419,7 @@ Jellysweep uses a YAML configuration file with the following structure:
 ```yaml
 dry_run: false                   # Set to true for testing
 listen: "0.0.0.0:3002"           # Web interface address and port
-cleanup_interval: 12             # Hours between cleanup runs
+cleanup_schedule: "0 */12 * * *" # Every 12 hours
 cleanup_mode: "keep_seasons"     # Cleanup mode: "all", "keep_episodes", or "keep_seasons"
 keep_count: 1                    # Number of episodes/seasons to keep (when using keep_episodes or keep_seasons)
 session_key: "your-session-key"  # Random string for session encryption
