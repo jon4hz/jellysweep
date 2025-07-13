@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 // User represents a user in the system, including their authentication details and admin status.
 type User struct {
@@ -12,11 +14,18 @@ type User struct {
 	GravatarURL string // URL to the user's Gravatar image, empty if not available
 }
 
+type MediaType string
+
+const (
+	MediaTypeTV    MediaType = "tv"
+	MediaTypeMovie MediaType = "movie"
+)
+
 // MediaItem represents a media item for display in the UI and for deletion tracking.
 type MediaItem struct {
 	ID           string
 	Title        string
-	Type         string // "movie" or "tv"
+	Type         MediaType
 	Year         int32
 	Library      string
 	DeletionDate time.Time
@@ -34,7 +43,7 @@ type KeepRequest struct {
 	ID           string
 	MediaID      string
 	Title        string
-	Type         string // "movie" or "tv"
+	Type         MediaType
 	Year         int
 	Library      string
 	DeletionDate time.Time

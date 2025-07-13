@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 
+	"github.com/charmbracelet/log"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -79,7 +80,6 @@ func (s *Server) setupRoutes() error {
 		return fmt.Errorf("failed to create static FS sub: %w", err)
 	}
 	s.ginEngine.StaticFS("/static", http.FS(staticSub))
-	s.ginEngine.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// Setup routes depending on authentication status
 	if s.cfg.IsAuthenticationEnabled() {
@@ -151,11 +151,32 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI.POST("/scheduler/cache/clear", h.ClearSchedulerCache)
 }
 
+func (s *Server) setupPluginRoutes() error {
+	if s.cfg.APIKey == "" {
+		return fmt.Errorf("API key is required for plugin routes")
+	}
+	pluginAPI := s.ginEngine.Group("/plugin")
+
+	tokenAuth := auth.NewAPIKeyProvider(s.cfg.APIKey)
+	pluginAPI.Use(tokenAuth.RequireAuth())
+
+	h := handler.NewPlugin(s.engine)
+
+	pluginAPI.GET("/health", h.GetHealth)
+	pluginAPI.POST("/check", h.CheckMediaItem)
+
+	return nil
+}
+
 func (s *Server) Run() error {
 	s.ginEngine.Use(gin.Recovery())
+	s.ginEngine.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	if err := s.setupRoutes(); err != nil {
 		return fmt.Errorf("failed to setup routes: %w", err)
+	}
+	if err := s.setupPluginRoutes(); err != nil {
+		log.Warn("Plugin routes not enabled", "error", err)
 	}
 	s.setupAdminRoutes()
 

@@ -126,7 +126,7 @@ func (e *Engine) markSonarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 	clearCache := false
 	for lib, items := range e.data.mediaItems {
 		for _, item := range items {
-			if item.MediaType != MediaTypeTV {
+			if item.MediaType != models.MediaTypeTV {
 				continue // Only process TV series for Sonarr
 			}
 
@@ -382,7 +382,7 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) ([]MediaItem, error) {
 		// Add to deleted items list
 		deletedItems = append(deletedItems, MediaItem{
 			Title:     series.GetTitle(),
-			MediaType: MediaTypeTV,
+			MediaType: models.MediaTypeTV,
 			Year:      series.GetYear(),
 		})
 	}
@@ -415,7 +415,7 @@ func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria() {
 		skippedCount := 0
 
 		for _, item := range items {
-			if item.MediaType != MediaTypeTV {
+			if item.MediaType != models.MediaTypeTV {
 				// Keep non-TV items as-is
 				filteredItems = append(filteredItems, item)
 				continue

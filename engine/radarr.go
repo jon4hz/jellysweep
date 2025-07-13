@@ -124,7 +124,7 @@ func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 	for lib, items := range e.data.mediaItems {
 	movieLoop:
 		for _, item := range items {
-			if item.MediaType != MediaTypeMovie {
+			if item.MediaType != models.MediaTypeMovie {
 				continue // Only process movies for Radarr
 			}
 
@@ -302,7 +302,7 @@ func (e *Engine) deleteRadarrMedia(ctx context.Context) ([]MediaItem, error) {
 		// Add to deleted items list
 		deletedItems = append(deletedItems, MediaItem{
 			Title:     movie.GetTitle(),
-			MediaType: MediaTypeMovie,
+			MediaType: models.MediaTypeMovie,
 			Year:      movie.GetYear(),
 		})
 	}

@@ -32,6 +32,8 @@ type Config struct {
 	KeepCount int `yaml:"keep_count" mapstructure:"keep_count"`
 	// Auth holds the authentication configuration for the JellySweep server.
 	Auth *AuthConfig `yaml:"auth" mapstructure:"auth"`
+	// APIKey is the API key for the JellySweep server (used by the jellyfin plugin).
+	APIKey string `yaml:"api_key" mapstructure:"api_key"`
 	// SessionKey is the key used to encrypt session data.
 	SessionKey string `yaml:"session_key" mapstructure:"session_key"`
 	// SessionMaxAge is the maximum age of a session in seconds.

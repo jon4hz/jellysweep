@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/notify/email"
 	"github.com/jon4hz/jellysweep/notify/ntfy"
 )
@@ -97,7 +98,7 @@ func (e *Engine) sendNtfyDeletionSummary(ctx context.Context) error {
 			ntfyItems := make([]ntfy.MediaItem, 0, len(items))
 			for _, item := range items {
 				mediaType := "tv"
-				if item.MediaType == MediaTypeMovie {
+				if item.MediaType == models.MediaTypeMovie {
 					mediaType = "movie"
 				}
 
@@ -149,7 +150,7 @@ func (e *Engine) sendNtfyDeletionCompletedNotification(ctx context.Context, dele
 			ntfyItems := make([]ntfy.MediaItem, 0, len(items))
 			for _, item := range items {
 				mediaType := "tv"
-				if item.MediaType == MediaTypeMovie {
+				if item.MediaType == models.MediaTypeMovie {
 					mediaType = "movie"
 				}
 
