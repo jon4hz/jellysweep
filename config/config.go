@@ -59,6 +59,10 @@ type Config struct {
 	Jellystat *JellystatConfig `yaml:"jellystat" mapstructure:"jellystat"`
 	// Gravatar holds the configuration for Gravatar profile pictures.
 	Gravatar *GravatarConfig `yaml:"gravatar" mapstructure:"gravatar"`
+	// Jellyfin holds the configuration for the Jellyfin server.
+	Jellyfin *JellyfinConfig `yaml:"jellyfin" mapstructure:"jellyfin"`
+	// Streamystats holds the configuration for the Streamystats server.
+	Streamystats *StreamystatsConfig `yaml:"streamystats" mapstructure:"streamystats"`
 }
 
 // AuthConfig holds the authentication configuration for the JellySweep server.
@@ -66,7 +70,7 @@ type AuthConfig struct {
 	// OIDC holds the OpenID Connect configuration.
 	OIDC *OIDCConfig `yaml:"oidc" mapstructure:"oidc"`
 	// Jellyfin holds the Jellyfin authentication configuration.
-	Jellyfin *JellyfinConfig `yaml:"jellyfin" mapstructure:"jellyfin"`
+	Jellyfin *JellyfinAuthConfig `yaml:"jellyfin" mapstructure:"jellyfin"`
 }
 
 // OIDCConfig holds the OpenID Connect configuration for the JellySweep server.
@@ -87,12 +91,10 @@ type OIDCConfig struct {
 	AdminGroup string `yaml:"admin_group" mapstructure:"admin_group"`
 }
 
-// JellyfinConfig holds the Jellyfin authentication configuration for the JellySweep server.
-type JellyfinConfig struct {
+// JellyfinAuthConfig holds the Jellyfin authentication configuration for the JellySweep server.
+type JellyfinAuthConfig struct {
 	// Enabled indicates whether Jellyfin authentication is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
-	// URL is the Jellyfin server URL.
-	URL string `yaml:"url" mapstructure:"url"`
 }
 
 // EmailConfig holds the email notification configuration.
@@ -200,6 +202,24 @@ type JellystatConfig struct {
 	// URL is the base URL of the Jellystat server.
 	URL string `yaml:"url" mapstructure:"url"`
 	// APIKey is the API key for the Jellystat server.
+	APIKey string `yaml:"api_key" mapstructure:"api_key"`
+}
+
+// StreamystatsConfig holds the configuration for the Streamystats server.
+type StreamystatsConfig struct {
+	// URL is the base URL of the Streamystats server.
+	URL string `yaml:"url" mapstructure:"url"`
+	// Username is the username for the Streamystats server.
+	Username string `yaml:"username" mapstructure:"username"`
+	// Password is the password for the Streamystats server.
+	Password string `yaml:"password" mapstructure:"password"`
+}
+
+// JellyfinConfig holds the configuration for the Jellyfin server.
+type JellyfinConfig struct {
+	// URL is the base URL of the Jellyfin server.
+	URL string `yaml:"url" mapstructure:"url"`
+	// APIKey is the API key for the Jellyfin server.
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
 }
 
@@ -384,7 +404,7 @@ func validateConfig(c *Config) error {
 
 	if c.Auth.Jellyfin != nil && c.Auth.Jellyfin.Enabled {
 		authEnabled = true
-		if c.Auth.Jellyfin.URL == "" {
+		if c.Jellyfin.URL == "" {
 			return fmt.Errorf("Jellyfin URL is required when Jellyfin auth is enabled") //nolint:staticcheck
 		}
 	}

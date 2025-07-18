@@ -32,10 +32,15 @@ func (s *IntegrationTestSuite) SetupTest() {
 
 func (s *IntegrationTestSuite) TestMultiProvider_Integration_JellyfinOnly() {
 	// Test complete flow with Jellyfin-only configuration
-	cfg := &config.AuthConfig{
+	cfg := &config.Config{
 		Jellyfin: &config.JellyfinConfig{
-			Enabled: true,
-			URL:     "http://localhost:8096",
+			URL:    "http://localhost:8096",
+			APIKey: "test-api-key",
+		},
+		Auth: &config.AuthConfig{
+			Jellyfin: &config.JellyfinAuthConfig{
+				Enabled: true,
+			},
 		},
 	}
 
@@ -87,18 +92,19 @@ func (s *IntegrationTestSuite) TestMultiProvider_Integration_JellyfinOnly() {
 
 func (s *IntegrationTestSuite) TestMultiProvider_Integration_BothProviders() {
 	// Test configuration with both providers enabled
-	cfg := &config.AuthConfig{
-		OIDC: &config.OIDCConfig{
-			Enabled:      true,
-			Issuer:       "https://auth.mydomain.com", // Will fail but tests structure
-			ClientID:     "test-client-id",
-			ClientSecret: "test-client-secret",
-			RedirectURL:  "http://localhost:8080/callback",
-			AdminGroup:   "admin",
-		},
-		Jellyfin: &config.JellyfinConfig{
-			Enabled: true,
-			URL:     "http://localhost:8096",
+	cfg := &config.Config{
+		Auth: &config.AuthConfig{
+			OIDC: &config.OIDCConfig{
+				Enabled:      true,
+				Issuer:       "https://auth.mydomain.com", // Will fail but tests structure
+				ClientID:     "test-client-id",
+				ClientSecret: "test-client-secret",
+				RedirectURL:  "http://localhost:8080/callback",
+				AdminGroup:   "admin",
+			},
+			Jellyfin: &config.JellyfinAuthConfig{
+				Enabled: true,
+			},
 		},
 	}
 
@@ -119,10 +125,15 @@ func (s *IntegrationTestSuite) TestMultiProvider_Integration_BothProviders() {
 
 func (s *IntegrationTestSuite) TestAuthProvider_Interface() {
 	// Test that all providers implement the AuthProvider interface
-	cfg := &config.AuthConfig{
+	cfg := &config.Config{
 		Jellyfin: &config.JellyfinConfig{
-			Enabled: true,
-			URL:     "http://localhost:8096",
+			URL:    "http://localhost:8096",
+			APIKey: "test-api-key",
+		},
+		Auth: &config.AuthConfig{
+			Jellyfin: &config.JellyfinAuthConfig{
+				Enabled: true,
+			},
 		},
 	}
 
@@ -155,10 +166,15 @@ func (s *IntegrationTestSuite) TestAuthProvider_Interface() {
 
 func (s *IntegrationTestSuite) TestMiddleware_Chain() {
 	// Test middleware chaining works correctly
-	cfg := &config.AuthConfig{
+	cfg := &config.Config{
 		Jellyfin: &config.JellyfinConfig{
-			Enabled: true,
-			URL:     "http://localhost:8096",
+			URL:    "http://localhost:8096",
+			APIKey: "test-api-key",
+		},
+		Auth: &config.AuthConfig{
+			Jellyfin: &config.JellyfinAuthConfig{
+				Enabled: true,
+			},
 		},
 	}
 
@@ -252,7 +268,7 @@ func (s *IntegrationTestSuite) TestConfigValidation() {
 	// Test various configuration scenarios
 	testCases := []struct {
 		name        string
-		config      *config.AuthConfig
+		config      *config.Config
 		expectError bool
 		errorMsg    string
 	}{
@@ -264,27 +280,36 @@ func (s *IntegrationTestSuite) TestConfigValidation() {
 		},
 		{
 			name: "No providers enabled",
-			config: &config.AuthConfig{
-				OIDC:     &config.OIDCConfig{Enabled: false},
-				Jellyfin: &config.JellyfinConfig{Enabled: false},
+			config: &config.Config{
+				Auth: &config.AuthConfig{
+					OIDC:     &config.OIDCConfig{Enabled: false},
+					Jellyfin: &config.JellyfinAuthConfig{Enabled: false},
+				},
 			},
 			expectError: true,
 			errorMsg:    "no authentication provider is enabled",
 		},
 		{
 			name: "Only Jellyfin enabled",
-			config: &config.AuthConfig{
+			config: &config.Config{
 				Jellyfin: &config.JellyfinConfig{
-					Enabled: true,
-					URL:     "http://localhost:8096",
+					URL:    "http://localhost:8096",
+					APIKey: "test-api-key",
+				},
+				Auth: &config.AuthConfig{
+					Jellyfin: &config.JellyfinAuthConfig{
+						Enabled: true,
+					},
 				},
 			},
 			expectError: false,
 		},
 		{
 			name: "Jellyfin nil but OIDC disabled",
-			config: &config.AuthConfig{
-				OIDC: &config.OIDCConfig{Enabled: false},
+			config: &config.Config{
+				Auth: &config.AuthConfig{
+					OIDC: &config.OIDCConfig{Enabled: false},
+				},
 			},
 			expectError: true,
 			errorMsg:    "no authentication provider is enabled",

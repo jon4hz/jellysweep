@@ -61,6 +61,6 @@ func (ap *APIKeyProvider) GetAuthConfig() *config.AuthConfig {
 	return &config.AuthConfig{
 		// Return empty config with no providers enabled
 		OIDC:     &config.OIDCConfig{Enabled: false},
-		Jellyfin: &config.JellyfinConfig{Enabled: false},
+		Jellyfin: &config.JellyfinAuthConfig{Enabled: false},
 	}
 }

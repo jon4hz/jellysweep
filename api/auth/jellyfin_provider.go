@@ -13,14 +13,14 @@ import (
 
 type JellyfinProvider struct {
 	client      *jellyfin.Client
-	cfg         *config.JellyfinConfig
+	cfg         *config.JellyfinAuthConfig
 	gravatarCfg *config.GravatarConfig
 }
 
-func NewJellyfinProvider(cfg *config.JellyfinConfig, gravatarCfg *config.GravatarConfig) *JellyfinProvider {
+func NewJellyfinProvider(cfg *config.JellyfinConfig, authCfg *config.JellyfinAuthConfig, gravatarCfg *config.GravatarConfig) *JellyfinProvider {
 	return &JellyfinProvider{
 		client:      jellyfin.New(cfg),
-		cfg:         cfg,
+		cfg:         authCfg,
 		gravatarCfg: gravatarCfg,
 	}
 }
