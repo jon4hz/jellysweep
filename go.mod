@@ -5,6 +5,7 @@ go 1.24.4
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/a-h/templ v0.3.920
+	github.com/ccoveille/go-safecast v1.6.1
 	github.com/charmbracelet/log v0.4.2
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/devopsarr/radarr-go v1.2.0
@@ -23,6 +24,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/samber/lo v1.51.0
+	github.com/sj14/jellyfin-go v0.3.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.18.1
 	github.com/stretchr/testify v1.10.0
@@ -114,6 +116,7 @@ require (
 	golang.org/x/tools v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	gopkg.in/validator.v2 v2.0.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

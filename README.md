@@ -18,7 +18,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 ## ✨ Key Features
 
-- 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat of stats
+- 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat/Streamystats for stats
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
 - 🧹 **Flexible Cleanup Modes** - Choose between complete deletion, keeping first episodes, or preserving early seasons
 - 👥 **User Requests** - Built-in keep request system for your users
@@ -70,12 +70,14 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 ## 🚀 How It Works
 1. **Data Collection**
+   - Fetches media from Jellyfin
    - Fetches media from Sonarr & Radarr
-   - Retrieves viewing statistics from Jellystat
+   - Retrieves viewing statistics from Jellystat or Streamystats
    - Analyzes content history from Sonarr & Radarr
    - Maps media across libraries and services
 
 2. **Media Filtering**
+   - Applies configurable streaming history thresholds
    - Applies configurable age thresholds
    - Applies configurable size thresholds
    - Respects custom exclude tags
@@ -145,7 +147,7 @@ Both selective modes automatically unmonitor deleted episodes in Sonarr to preve
 - Access to your Jellyfin ecosystem including:
   - Sonarr
   - Radarr
-  - Jellystat
+  - Jellystat or Streamystats
   - Jellyseerr
 
 > [!TIP]
@@ -362,7 +364,6 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_AUTH_OIDC_ADMIN_GROUP` | *(required if OIDC enabled)* | Group with admin privileges |
 | **Jellyfin Authentication** | | |
 | `JELLYSWEEP_AUTH_JELLYFIN_ENABLED` | `true` | Enable Jellyfin authentication |
-| `JELLYSWEEP_AUTH_JELLYFIN_URL` | *(required if Jellyfin auth enabled)* | Jellyfin server URL |
 | **Profile Pictures** | | |
 | `JELLYSWEEP_GRAVATAR_ENABLED` | `false` | Enable Gravatar profile pictures |
 | `JELLYSWEEP_GRAVATAR_DEFAULT_IMAGE` | `robohash` | Default image if no Gravatar found |
@@ -404,13 +405,21 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_SONARR_API_KEY` | *(optional)* | Sonarr API key |
 | `JELLYSWEEP_RADARR_URL` | *(optional)* | Radarr server URL |
 | `JELLYSWEEP_RADARR_API_KEY` | *(optional)* | Radarr API key |
+| `JELLYSWEEP_JELLYFIN_URL` | *(required)* | Jellyfin server URL |
+| `JELLYSWEEP_JELLYFIN_API_KEY` | *(required)* | Jellyfin API key |
 | `JELLYSWEEP_JELLYSTAT_URL` | *(optional)* | Jellystat server URL |
 | `JELLYSWEEP_JELLYSTAT_API_KEY` | *(optional)* | Jellystat API key |
+| `JELLYSWEEP_STREAMYSTATS_URL` | *(optional)* | Streamystats server URL |
+| `JELLYSWEEP_STREAMYSTATS_SERVER_ID` | *(optional)* | Streamystats Jellyfin server ID |
 | **Cache Configuration** | | |
 | `JELLYSWEEP_CACHE_TYPE` | `memory` | Cache type: `memory` or `redis` |
 | `JELLYSWEEP_CACHE_REDIS_URL` | `localhost:6379` | Redis server URL (when using redis cache) |
 
-> **Note**: Either Sonarr or Radarr (or both) must be configured. If no authentication methods are enabled, the web interface will be accessible without authentication (recommended for development only).
+> [!TIP]
+> Either Sonarr or Radarr (or both) must be configured. Only one of Jellystat or Streamystats can be configured at a time.
+
+> [!WARNING]
+> If no authentication methods are enabled, the web interface will be accessible without authentication (recommended for development only).
 
 ### Configuration File
 
@@ -447,7 +456,11 @@ auth:
   # Jellyfin Authentication
   jellyfin:
     enabled: true                      # Default authentication method
-    url: "http://localhost:8096"       # Your Jellyfin server URL
+
+# Jellyfin server configuration
+jellyfin:
+  url: "http://localhost:8096"         # Your Jellyfin server URL
+  api_key: "your-jellyfin-api-key"     # Jellyfin API key
 
 # Profile Pictures (optional)
 gravatar:
@@ -540,6 +553,11 @@ radarr:
 jellystat:
   url: "http://localhost:3001"
   api_key: "your-jellystat-api-key"
+
+# Alternative to Jellystat (configure only one)
+streamystats:
+  url: "http://localhost:3001"
+  server_id: 1                         # Jellyfin server ID in Streamystats
 
 # Cache configuration (optional - improves performance for large libraries)
 cache:

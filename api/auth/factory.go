@@ -39,16 +39,16 @@ type MultiProvider struct {
 }
 
 // NewProvider creates a multi-provider that supports both OIDC and Jellyfin authentication.
-func NewProvider(ctx context.Context, cfg *config.AuthConfig, gravatarCfg *config.GravatarConfig) (AuthProvider, error) {
+func NewProvider(ctx context.Context, cfg *config.Config, gravatarCfg *config.GravatarConfig) (AuthProvider, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("auth config is required")
 	}
 
-	mp := &MultiProvider{cfg: cfg, gravatarCfg: gravatarCfg}
+	mp := &MultiProvider{cfg: cfg.Auth, gravatarCfg: gravatarCfg}
 
 	// Initialize OIDC provider if enabled
-	if cfg.OIDC != nil && cfg.OIDC.Enabled {
-		oidcProvider, err := NewOIDCProvider(ctx, cfg.OIDC, gravatarCfg)
+	if cfg.Auth.OIDC != nil && cfg.Auth.OIDC.Enabled {
+		oidcProvider, err := NewOIDCProvider(ctx, cfg.Auth.OIDC, gravatarCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create OIDC provider: %w", err)
 		}
@@ -56,8 +56,8 @@ func NewProvider(ctx context.Context, cfg *config.AuthConfig, gravatarCfg *confi
 	}
 
 	// Initialize Jellyfin provider if enabled
-	if cfg.Jellyfin != nil && cfg.Jellyfin.Enabled {
-		mp.jellyfinProvider = NewJellyfinProvider(cfg.Jellyfin, gravatarCfg)
+	if cfg.Jellyfin != nil && cfg.Auth.Jellyfin.Enabled {
+		mp.jellyfinProvider = NewJellyfinProvider(cfg.Jellyfin, cfg.Auth.Jellyfin, gravatarCfg)
 	}
 
 	// At least one provider must be enabled

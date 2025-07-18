@@ -1,26 +1,44 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
+
+	"github.com/charmbracelet/log"
+	jellyfin "github.com/sj14/jellyfin-go/api"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/gravatar"
-	"github.com/jon4hz/jellysweep/jellyfin"
+	"github.com/jon4hz/jellysweep/version"
 )
 
 type JellyfinProvider struct {
-	client      *jellyfin.Client
-	cfg         *config.JellyfinConfig
+	client      *jellyfin.APIClient
+	cfg         *config.JellyfinAuthConfig
 	gravatarCfg *config.GravatarConfig
 }
 
-func NewJellyfinProvider(cfg *config.JellyfinConfig, gravatarCfg *config.GravatarConfig) *JellyfinProvider {
+func NewJellyfinProvider(cfg *config.JellyfinConfig, authCfg *config.JellyfinAuthConfig, gravatarCfg *config.GravatarConfig) *JellyfinProvider {
+	clientConfig := jellyfin.NewConfiguration()
+	clientConfig.Servers = jellyfin.ServerConfigurations{
+		{
+			URL:         cfg.URL,
+			Description: "Jellyfin auth server",
+		},
+	}
+	clientConfig.UserAgent = fmt.Sprintf("JellySweep-Auth/%s", version.Version)
+	clientConfig.DefaultHeader = map[string]string{
+		"X-Emby-Authorization": fmt.Sprintf(
+			`MediaBrowser Client="JellySweep-Auth", Device="JellySweep", DeviceId="jellysweep-auth", Version="%s",`,
+			version.Version,
+		),
+	}
 	return &JellyfinProvider{
-		client:      jellyfin.New(cfg),
-		cfg:         cfg,
+		client:      jellyfin.NewAPIClient(clientConfig),
+		cfg:         authCfg,
 		gravatarCfg: gravatarCfg,
 	}
 }
@@ -35,21 +53,31 @@ func (p *JellyfinProvider) Login(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	authResp, err := p.client.AuthenticateByName(ctx, username, password)
+	auth := *jellyfin.NewAuthenticateUserByName()
+	auth.SetUsername(username)
+	auth.SetPw(password)
+	authResp, r, err := p.client.UserAPI.AuthenticateUserByName(ctx).AuthenticateUserByName(auth).Execute()
 	if err != nil {
+		if r != nil {
+			log.Error("Failed to authenticate user", "error", err, "status", r.StatusCode)
+		} else {
+			log.Error("Failed to authenticate user", "error", err)
+		}
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
+	defer r.Body.Close() //nolint:errcheck
 
 	// Save user info in session
 	session := sessions.Default(c)
-	session.Set("user_id", authResp.User.ID)
+	session.Set("user_id", authResp.GetUser().Id)
 	session.Set("user_email", "") // Jellyfin doesn't provide email in auth response
-	session.Set("user_name", authResp.User.Name)
-	session.Set("user_username", authResp.User.Name)
-	session.Set("user_is_admin", authResp.User.Policy.IsAdministrator)
+	session.Set("user_name", authResp.GetUser().Name.Get())
+	session.Set("user_username", authResp.GetUser().Name.Get())
+	session.Set("user_is_admin", authResp.GetUser().Policy.Get().IsAdministrator)
 
 	if err := session.Save(); err != nil {
+		log.Error("Failed to save session", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
 		return
 	}

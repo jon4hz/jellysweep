@@ -12,7 +12,7 @@ import (
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
-	"github.com/jon4hz/jellysweep/jellystat"
+	jellyfin "github.com/sj14/jellyfin-go/api"
 )
 
 func radarrAuthCtx(ctx context.Context, cfg *config.RadarrConfig) context.Context {
@@ -349,38 +349,38 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
 			continue
 		}
 
-		// Find the matching jellystat item and library for this movie from original unfiltered data
-		var matchingJellystatID string
+		// Find the matching jellyfin item and library for this movie from original unfiltered data
+		var matchingJellyfinID string
 		var libraryName string
 
-		// Search through all jellystat items to find matching movie
-		for _, jellystatItem := range e.data.jellystatItems {
-			if jellystatItem.Type == jellystat.ItemTypeMovie &&
-				jellystatItem.Name == movie.GetTitle() &&
-				jellystatItem.ProductionYear == movie.GetYear() {
-				matchingJellystatID = jellystatItem.ID
+		// Search through all jellyfin items to find matching movie
+		for _, jellyfinItem := range e.data.jellyfinItems {
+			if jellyfinItem.GetType() == jellyfin.BASEITEMKIND_MOVIE &&
+				jellyfinItem.GetName() == movie.GetTitle() &&
+				jellyfinItem.GetProductionYear() == movie.GetYear() {
+				matchingJellyfinID = jellyfinItem.GetId()
 				// Get library name from the library ID map
-				if libName := e.getLibraryNameByID(jellystatItem.ParentID); libName != "" {
+				if libName := e.getLibraryNameByID(jellyfinItem.ParentLibraryID); libName != "" {
 					libraryName = libName
 				}
 				break
 			}
 		}
 
-		if matchingJellystatID == "" || libraryName == "" {
-			log.Debugf("No matching Jellystat item or library found for Radarr movie: %s", movie.GetTitle())
+		if matchingJellyfinID == "" || libraryName == "" {
+			log.Debugf("No matching Jellyfin item or library found for Radarr movie: %s", movie.GetTitle())
 			continue
 		}
 
 		// Check when the movie was last played
-		lastPlayed, err := e.jellystat.GetLastPlayed(ctx, matchingJellystatID)
+		lastPlayed, err := e.getItemLastPlayed(ctx, matchingJellyfinID)
 		if err != nil {
 			log.Warnf("Failed to get last played time for movie %s: %v", movie.GetTitle(), err)
 			continue
 		}
 
 		// If the movie has been played recently, remove the delete tags
-		if lastPlayed != nil && lastPlayed.LastPlayed != nil {
+		if !lastPlayed.IsZero() {
 			// Get the library config to get the threshold
 			libraryConfig := e.cfg.GetLibraryConfig(libraryName)
 			if libraryConfig == nil {
@@ -388,7 +388,7 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
 				continue
 			}
 
-			timeSinceLastPlayed := time.Since(*lastPlayed.LastPlayed)
+			timeSinceLastPlayed := time.Since(lastPlayed)
 			thresholdDuration := time.Duration(libraryConfig.LastStreamThreshold) * 24 * time.Hour
 
 			if timeSinceLastPlayed < thresholdDuration {
@@ -402,7 +402,7 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
 
 				if e.cfg.DryRun {
 					log.Infof("Dry run: Would remove delete tags from recently played Radarr movie: %s (last played: %s)",
-						movie.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
+						movie.GetTitle(), lastPlayed.Format(time.RFC3339))
 					continue
 				}
 
@@ -418,7 +418,7 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
 				defer resp.Body.Close() //nolint: errcheck
 
 				log.Infof("Removed delete tags from recently played Radarr movie: %s (last played: %s)",
-					movie.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
+					movie.GetTitle(), lastPlayed.Format(time.RFC3339))
 			}
 		}
 	}
