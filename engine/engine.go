@@ -22,7 +22,9 @@ import (
 	"github.com/jon4hz/jellysweep/notify/ntfy"
 	"github.com/jon4hz/jellysweep/notify/webpush"
 	"github.com/jon4hz/jellysweep/scheduler"
+	"github.com/jon4hz/jellysweep/streamystats"
 	"github.com/samber/lo"
+	jellyfin "github.com/sj14/jellyfin-go/api"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -47,15 +49,17 @@ var ErrRequestAlreadyProcessed = errors.New("request already processed")
 // Engine is the main engine for JellySweep, managing interactions with sonarr, radarr, and other services.
 // It runs a cleanup job periodically to remove unwanted media.
 type Engine struct {
-	cfg        *config.Config
-	jellystat  *jellystat.Client
-	jellyseerr *jellyseerr.Client
-	sonarr     *sonarr.APIClient
-	radarr     *radarr.APIClient
-	email      *email.NotificationService
-	ntfy       *ntfy.Client
-	webpush    *webpush.Client
-	scheduler  *scheduler.Scheduler
+	cfg          *config.Config
+	jellyfin     *jellyfin.APIClient
+	jellystat    *jellystat.Client
+	streamystats *streamystats.Client
+	jellyseerr   *jellyseerr.Client
+	sonarr       *sonarr.APIClient
+	radarr       *radarr.APIClient
+	email        *email.NotificationService
+	ntfy         *ntfy.Client
+	webpush      *webpush.Client
+	scheduler    *scheduler.Scheduler
 
 	imageCache *cache.ImageCache
 	cache      *cache.EngineCache // Cache for engine-specific data
@@ -65,7 +69,7 @@ type Engine struct {
 
 // data contains any data collected during the cleanup process.
 type data struct {
-	jellystatItems []jellystat.LibraryItem
+	jellyfinItems []jellyfinItem
 
 	libraryIDMap map[string]string
 	mediaItems   map[string][]MediaItem
@@ -82,7 +86,19 @@ func New(cfg *config.Config) (*Engine, error) {
 		return nil, fmt.Errorf("failed to create scheduler: %w", err)
 	}
 
-	jellystatClient := jellystat.New(cfg.Jellystat)
+	var jellystatClient *jellystat.Client
+	if cfg.Jellystat != nil {
+		jellystatClient = jellystat.New(cfg.Jellystat)
+	}
+
+	var streamystatsClient *streamystats.Client
+	if cfg.Streamystats != nil {
+		streamystatsClient, err = streamystats.New(cfg.Streamystats, cfg.Jellyfin)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create StreamyStats client: %w", err)
+		}
+	}
+
 	var sonarrClient *sonarr.APIClient
 	if cfg.Sonarr != nil {
 		sonarrClient = newSonarrClient(cfg.Sonarr)
@@ -134,17 +150,20 @@ func New(cfg *config.Config) (*Engine, error) {
 	}
 
 	engine := &Engine{
-		cfg:        cfg,
-		jellystat:  jellystatClient,
-		jellyseerr: jellyseerrClient,
-		sonarr:     sonarrClient,
-		radarr:     radarrClient,
-		email:      emailService,
-		ntfy:       ntfyClient,
-		webpush:    webpushClient,
-		scheduler:  sched,
+		cfg:          cfg,
+		jellyfin:     newJellyfinClient(cfg.Jellyfin),
+		jellystat:    jellystatClient,
+		streamystats: streamystatsClient,
+		jellyseerr:   jellyseerrClient,
+		sonarr:       sonarrClient,
+		radarr:       radarrClient,
+		email:        emailService,
+		ntfy:         ntfyClient,
+		webpush:      webpushClient,
+		scheduler:    sched,
 		data: &data{
 			userNotifications: make(map[string][]MediaItem),
+			libraryIDMap:      make(map[string]string),
 		},
 		imageCache: cache.NewImageCache("./data/cache/images"),
 		cache:      engineCache,
@@ -214,7 +233,7 @@ func (e *Engine) setupJobs() error {
 }
 
 // runCleanupJob is the main cleanup job function.
-func (e *Engine) runCleanupJob(ctx context.Context) error {
+func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 	log.Info("Starting scheduled cleanup job")
 
 	// Clear all caches to ensure fresh data
@@ -222,12 +241,18 @@ func (e *Engine) runCleanupJob(ctx context.Context) error {
 
 	e.removeExpiredKeepTags(ctx)
 	e.cleanupOldTags(ctx)
-	e.markForDeletion(ctx)
+	if err = e.markForDeletion(ctx); err != nil {
+		log.Error("An error occurred while marking media for deletion")
+	}
 	e.removeRecentlyPlayedDeleteTags(ctx)
-	e.cleanupMedia(ctx)
+
+	// only delete media if there was no previous error
+	if err == nil {
+		e.cleanupMedia(ctx)
+	}
 
 	log.Info("Scheduled cleanup job completed")
-	return nil
+	return
 }
 
 // GetScheduler returns the scheduler instance for API access.
@@ -276,33 +301,12 @@ func (e *Engine) removeExpiredKeepTags(ctx context.Context) {
 	}
 }
 
-func (e *Engine) markForDeletion(ctx context.Context) {
-	if e.jellystat != nil {
-		jellystatItems, err := e.getJellystatItems(ctx)
-		if err != nil {
-			log.Errorf("failed to get jellystat items: %v", err)
-			return
-		}
-		e.data.jellystatItems = jellystatItems
+func (e *Engine) markForDeletion(ctx context.Context) error {
+	if err := e.gatherMediaItems(ctx); err != nil {
+		log.Errorf("failed to gather media items: %v", err)
+		return err
 	}
-	/* if e.radarr != nil {
-		radarrItems, err := e.getRadarrItems(ctx, true)
-		if err != nil {
-			log.Errorf("failed to get radarr delete candidates: %v", err)
-			return
-		}
-		e.data.radarrItems = radarrItems
-
-		radarrTags, err := e.getRadarrTags(ctx, true)
-		if err != nil {
-			log.Errorf("failed to get radarr tags: %v", err)
-			return
-		}
-		e.data.radarrTags = radarrTags
-	} */
-
-	e.mergeMediaItems(ctx)
-	log.Info("Media items merged successfully")
+	log.Info("Media items gathered successfully")
 
 	// Filter out series that already meet the keep criteria (if cleanup mode is set to keep episodes or seasons)
 	log.Info("Filtering series that already meet keep criteria")
@@ -315,19 +319,19 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 	log.Info("Checking content age")
 	if err := e.filterContentAgeThreshold(ctx); err != nil {
 		log.Errorf("failed to filter content age threshold: %v", err)
-		return
+		return err
 	}
 
 	log.Info("Checking content size")
 	if err := e.filterContentSizeThreshold(ctx); err != nil {
 		log.Errorf("failed to filter content size threshold: %v", err)
-		return
+		return err
 	}
 
 	log.Info("Checking for streaming history")
 	if err := e.filterLastStreamThreshold(ctx); err != nil {
 		log.Errorf("failed to filter last stream threshold: %v", err)
-		return
+		return err
 	}
 
 	// Populate requester information from Jellyseerr
@@ -349,11 +353,11 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 
 	if err := e.markSonarrMediaItemsForDeletion(ctx, e.cfg.DryRun); err != nil {
 		log.Errorf("failed to mark sonarr media items for deletion: %v", err)
-		return
+		return err
 	}
 	if err := e.markRadarrMediaItemsForDeletion(ctx, e.cfg.DryRun); err != nil {
 		log.Errorf("failed to mark radarr media items for deletion: %v", err)
-		return
+		return err
 	}
 
 	// Send email notifications before marking for deletion
@@ -364,10 +368,11 @@ func (e *Engine) markForDeletion(ctx context.Context) {
 		log.Errorf("failed to send ntfy deletion summary: %v", err)
 		// Don't return here, continue with the cleanup process
 	}
+	return nil
 }
 
 type MediaItem struct {
-	JellystatID    string
+	JellyfinID     string
 	SeriesResource sonarr.SeriesResource
 	MovieResource  radarr.MovieResource
 	Title          string
@@ -380,51 +385,59 @@ type MediaItem struct {
 	RequestDate time.Time // When the media was requested
 }
 
-// mergeMediaItems merges jellystat items and sonarr/radarr items and groups them by their library.
-func (e *Engine) mergeMediaItems(ctx context.Context) {
+// gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
+// It merges them into a single collection grouped by library.
+func (e *Engine) gatherMediaItems(ctx context.Context) error {
+	jellyfinItems, err := e.getJellyfinItems(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get jellyfin items: %w", err)
+	}
+	e.data.jellyfinItems = jellyfinItems
+
 	sonarrItems, err := e.getSonarrItems(ctx, true)
 	if err != nil {
-		log.Errorf("failed to get sonarr items: %v", err)
-		return
+		return fmt.Errorf("failed to get sonarr items: %w", err)
 	}
 
 	sonarrTags, err := e.getSonarrTags(ctx, true)
 	if err != nil {
-		log.Errorf("failed to get sonarr tags: %v", err)
-		return
+		return fmt.Errorf("failed to get sonarr tags: %w", err)
 	}
 
 	radarrItems, err := e.getRadarrItems(ctx, true)
 	if err != nil {
-		log.Errorf("failed to get radarr items: %v", err)
-		return
+		return fmt.Errorf("failed to get radarr items: %w", err)
 	}
 
 	radarrTags, err := e.getRadarrTags(ctx, true)
 	if err != nil {
-		log.Errorf("failed to get radarr tags: %v", err)
-		return
+		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
 
 	mediaItems := make(map[string][]MediaItem, 0)
-	for _, item := range e.data.jellystatItems {
-		libraryName := strings.ToLower(e.data.libraryIDMap[item.ParentID])
+	for _, item := range e.data.jellyfinItems {
+		libraryName := strings.ToLower(e.getLibraryNameByID(item.ParentLibraryID))
+		if libraryName == "" {
+			log.Error("Library name is empty for Jellyfin item, skipping", "item_id", item.GetId(), "item_name", item.GetName())
+			continue
+		}
 
 		// Handle TV Series (Sonarr)
-		if item.Type == jellystat.ItemTypeSeries {
+		if item.GetType() == jellyfin.BASEITEMKIND_SERIES {
 			lo.ForEach(sonarrItems, func(s sonarr.SeriesResource, _ int) {
-				if s.GetTitle() == item.Name && s.GetYear() == item.ProductionYear && !item.Archived {
+				if s.GetTitle() == item.GetName() && s.GetYear() == item.GetProductionYear() {
 					if s.GetTmdbId() == 0 {
 						log.Warnf("Sonarr series %s has no TMDB ID, skipping", s.GetTitle())
 						return
 					}
+					log.Debug("Merging Jellyfin item with Sonarr series", "jellyfin_id", item.GetId(), "sonarr_id", s.GetId(), "title", item.GetName(), "year", item.GetProductionYear())
 
 					mediaItems[libraryName] = append(mediaItems[libraryName], MediaItem{
-						JellystatID:    item.ID,
+						JellyfinID:     item.GetId(),
 						SeriesResource: s,
 						TmdbId:         s.GetTmdbId(),
 						Year:           s.GetYear(),
-						Title:          item.Name,
+						Title:          item.GetName(),
 						Tags:           lo.Map(s.GetTags(), func(tag int32, _ int) string { return sonarrTags[tag] }),
 						MediaType:      models.MediaTypeTV,
 					})
@@ -433,19 +446,21 @@ func (e *Engine) mergeMediaItems(ctx context.Context) {
 		}
 
 		// Handle Movies (Radarr)
-		if item.Type == jellystat.ItemTypeMovie {
+		if item.GetType() == jellyfin.BASEITEMKIND_MOVIE {
 			lo.ForEach(radarrItems, func(m radarr.MovieResource, _ int) {
-				if m.GetTitle() == item.Name && m.GetYear() == item.ProductionYear && !item.Archived {
+				if m.GetTitle() == item.GetName() && m.GetYear() == item.GetProductionYear() {
 					if m.GetTmdbId() == 0 {
 						log.Warnf("Radarr movie %s has no TMDB ID, skipping", m.GetTitle())
 						return
 					}
 
+					log.Debug("Merging Jellyfin item with Radarr movie", "jellyfin_id", item.GetId(), "radarr_id", m.GetId(), "title", item.GetName(), "year", item.GetProductionYear())
+
 					mediaItems[libraryName] = append(mediaItems[libraryName], MediaItem{
-						JellystatID:   item.ID,
+						JellyfinID:    item.GetId(),
 						MovieResource: m,
 						TmdbId:        m.GetTmdbId(),
-						Title:         item.Name,
+						Title:         item.GetName(),
 						Year:          m.GetYear(),
 						Tags:          lo.Map(m.GetTags(), func(tag int32, _ int) string { return radarrTags[tag] }),
 						MediaType:     models.MediaTypeMovie,
@@ -455,7 +470,29 @@ func (e *Engine) mergeMediaItems(ctx context.Context) {
 		}
 	}
 	e.data.mediaItems = mediaItems
-	log.Infof("Merged %d media items across %d libraries", len(e.data.jellystatItems), len(e.data.mediaItems))
+	log.Infof("Merged %d media items across %d libraries", len(e.data.jellyfinItems), len(e.data.mediaItems))
+
+	return nil
+}
+
+func (e *Engine) filterLastStreamThreshold(ctx context.Context) error {
+	if e.jellystat != nil {
+		return e.filterJellystatLastStreamThreshold(ctx)
+	}
+	if e.streamystats != nil {
+		return e.filterStreamystatsLastStreamThreshold(ctx)
+	}
+	return nil
+}
+
+func (e *Engine) getItemLastPlayed(ctx context.Context, itemID string) (time.Time, error) {
+	if e.jellystat != nil {
+		return e.getJellystatMediaItemLastStreamed(ctx, itemID)
+	}
+	if e.streamystats != nil {
+		return e.getStreamystatsMediaItemLastStreamed(ctx, itemID) // Reuse the same function for StreamyStats
+	}
+	return time.Time{}, fmt.Errorf("no stats provider available")
 }
 
 func (e *Engine) cleanupOldTags(ctx context.Context) {

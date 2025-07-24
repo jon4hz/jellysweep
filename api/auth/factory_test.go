@@ -39,12 +39,14 @@ func (s *FactoryTestSuite) TestNewProvider_NilConfig() {
 }
 
 func (s *FactoryTestSuite) TestNewProvider_NoProvidersEnabled() {
-	cfg := &config.AuthConfig{
-		OIDC: &config.OIDCConfig{
-			Enabled: false,
-		},
-		Jellyfin: &config.JellyfinConfig{
-			Enabled: false,
+	cfg := &config.Config{
+		Auth: &config.AuthConfig{
+			OIDC: &config.OIDCConfig{
+				Enabled: false,
+			},
+			Jellyfin: &config.JellyfinAuthConfig{
+				Enabled: false,
+			},
 		},
 	}
 
@@ -55,10 +57,15 @@ func (s *FactoryTestSuite) TestNewProvider_NoProvidersEnabled() {
 }
 
 func (s *FactoryTestSuite) TestNewProvider_OnlyJellyfinEnabled() {
-	cfg := &config.AuthConfig{
+	cfg := &config.Config{
 		Jellyfin: &config.JellyfinConfig{
-			Enabled: true,
-			URL:     "http://localhost:8096",
+			URL:    "http://localhost:8096",
+			APIKey: "test-api-key",
+		},
+		Auth: &config.AuthConfig{
+			Jellyfin: &config.JellyfinAuthConfig{
+				Enabled: true,
+			},
 		},
 	}
 
@@ -73,13 +80,15 @@ func (s *FactoryTestSuite) TestNewProvider_OnlyJellyfinEnabled() {
 }
 
 func (s *FactoryTestSuite) TestNewProvider_InvalidOIDCConfig() {
-	cfg := &config.AuthConfig{
-		OIDC: &config.OIDCConfig{
-			Enabled:      true,
-			Issuer:       "invalid-issuer",
-			ClientID:     "client-id",
-			ClientSecret: "client-secret",
-			RedirectURL:  "http://localhost/callback",
+	cfg := &config.Config{
+		Auth: &config.AuthConfig{
+			OIDC: &config.OIDCConfig{
+				Enabled:      true,
+				Issuer:       "invalid-issuer",
+				ClientID:     "client-id",
+				ClientSecret: "client-secret",
+				RedirectURL:  "http://localhost/callback",
+			},
 		},
 	}
 
@@ -90,10 +99,15 @@ func (s *FactoryTestSuite) TestNewProvider_InvalidOIDCConfig() {
 }
 
 func (s *FactoryTestSuite) TestMultiProvider_Login_JellyfinPost() {
-	cfg := &config.AuthConfig{
+	cfg := &config.Config{
 		Jellyfin: &config.JellyfinConfig{
-			Enabled: true,
-			URL:     "http://localhost:8096",
+			URL:    "http://localhost:8096",
+			APIKey: "test-api-key",
+		},
+		Auth: &config.AuthConfig{
+			Jellyfin: &config.JellyfinAuthConfig{
+				Enabled: true,
+			},
 		},
 	}
 

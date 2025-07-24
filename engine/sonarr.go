@@ -12,7 +12,7 @@ import (
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
-	"github.com/jon4hz/jellysweep/jellystat"
+	jellyfin "github.com/sj14/jellyfin-go/api"
 )
 
 func sonarrAuthCtx(ctx context.Context, cfg *config.SonarrConfig) context.Context {
@@ -644,14 +644,14 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 		var matchingJellystatID string
 		var libraryName string
 
-		// Search through all jellystat items to find matching series
-		for _, jellystatItem := range e.data.jellystatItems {
-			if jellystatItem.Type == jellystat.ItemTypeSeries &&
-				jellystatItem.Name == series.GetTitle() &&
-				jellystatItem.ProductionYear == series.GetYear() {
-				matchingJellystatID = jellystatItem.ID
+		// Search through all jellyfin items to find matching series
+		for _, jellyfinItem := range e.data.jellyfinItems {
+			if jellyfinItem.GetType() == jellyfin.BASEITEMKIND_SERIES &&
+				jellyfinItem.GetName() == series.GetTitle() &&
+				jellyfinItem.GetProductionYear() == series.GetYear() {
+				matchingJellystatID = jellyfinItem.GetId()
 				// Get library name from the library ID map
-				if libName := e.getLibraryNameByID(jellystatItem.ParentID); libName != "" {
+				if libName := e.getLibraryNameByID(jellyfinItem.ParentLibraryID); libName != "" {
 					libraryName = libName
 				}
 				break
@@ -664,14 +664,14 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 		}
 
 		// Check when the series was last played
-		lastPlayed, err := e.jellystat.GetLastPlayed(ctx, matchingJellystatID)
+		lastPlayed, err := e.getItemLastPlayed(ctx, matchingJellystatID)
 		if err != nil {
 			log.Warnf("Failed to get last played time for series %s: %v", series.GetTitle(), err)
 			continue
 		}
 
 		// If the series has been played recently, remove the delete tags
-		if lastPlayed != nil && lastPlayed.LastPlayed != nil {
+		if !lastPlayed.IsZero() {
 			// Get the library config to get the threshold
 			libraryConfig := e.cfg.GetLibraryConfig(libraryName)
 			if libraryConfig == nil {
@@ -679,7 +679,7 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 				continue
 			}
 
-			timeSinceLastPlayed := time.Since(*lastPlayed.LastPlayed)
+			timeSinceLastPlayed := time.Since(lastPlayed)
 			thresholdDuration := time.Duration(libraryConfig.LastStreamThreshold) * 24 * time.Hour
 
 			if timeSinceLastPlayed < thresholdDuration {
@@ -693,7 +693,7 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 
 				if e.cfg.DryRun {
 					log.Infof("Dry run: Would remove delete tags from recently played Sonarr series: %s (last played: %s)",
-						series.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
+						series.GetTitle(), lastPlayed.Format(time.RFC3339))
 					continue
 				}
 
@@ -709,7 +709,7 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 				clearCache = true
 
 				log.Infof("Removed delete tags from recently played Sonarr series: %s (last played: %s)",
-					series.GetTitle(), lastPlayed.LastPlayed.Format(time.RFC3339))
+					series.GetTitle(), lastPlayed.Format(time.RFC3339))
 			}
 		}
 	}

@@ -30,23 +30,29 @@ func (s *JellyfinProviderTestSuite) SetupTest() {
 	store := cookie.NewStore([]byte("test-secret"))
 	s.router.Use(sessions.Sessions("mysession", store))
 
-	cfg := &config.JellyfinConfig{
-		Enabled: true,
-		URL:     "http://localhost:8096",
+	jellyfinCfg := &config.JellyfinConfig{
+		URL:    "http://localhost:8096",
+		APIKey: "test-api-key",
 	}
-	s.provider = NewJellyfinProvider(cfg, nil)
+	authCfg := &config.JellyfinAuthConfig{
+		Enabled: true,
+	}
+	s.provider = NewJellyfinProvider(jellyfinCfg, authCfg, nil)
 }
 
 func (s *JellyfinProviderTestSuite) TestNewJellyfinProvider() {
-	cfg := &config.JellyfinConfig{
+	jellyfinCfg := &config.JellyfinConfig{
+		URL:    "http://localhost:8096",
+		APIKey: "test-api-key",
+	}
+	authCfg := &config.JellyfinAuthConfig{
 		Enabled: true,
-		URL:     "http://localhost:8096",
 	}
 
-	provider := NewJellyfinProvider(cfg, nil)
+	provider := NewJellyfinProvider(jellyfinCfg, authCfg, nil)
 
 	assert.NotNil(s.T(), provider)
-	assert.Equal(s.T(), cfg, provider.cfg)
+	assert.Equal(s.T(), authCfg, provider.cfg)
 	assert.NotNil(s.T(), provider.client)
 }
 
@@ -241,16 +247,19 @@ func (s *JellyfinProviderTestSuite) TestRequireAdmin_InvalidUser() {
 }
 
 func (s *JellyfinProviderTestSuite) TestGetAuthConfig() {
-	cfg := &config.JellyfinConfig{
-		Enabled: true,
-		URL:     "http://localhost:8096",
+	jellyfinCfg := &config.JellyfinConfig{
+		URL:    "http://localhost:8096",
+		APIKey: "test-api-key",
 	}
-	provider := NewJellyfinProvider(cfg, nil)
+	authCfg := &config.JellyfinAuthConfig{
+		Enabled: true,
+	}
+	provider := NewJellyfinProvider(jellyfinCfg, authCfg, nil)
 
 	authConfig := provider.GetAuthConfig()
 
 	assert.NotNil(s.T(), authConfig)
-	assert.Equal(s.T(), cfg, authConfig.Jellyfin)
+	assert.Equal(s.T(), authCfg, authConfig.Jellyfin)
 	assert.Nil(s.T(), authConfig.OIDC)
 }
 
