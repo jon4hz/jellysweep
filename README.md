@@ -150,6 +150,9 @@ Both selective modes automatically unmonitor deleted episodes in Sonarr to preve
   - Jellystat or Streamystats
   - Jellyseerr
 
+> [!WARNING]
+> Streamystats doesnt handle re-added content well. I recommend using Jellystat for now.
+
 > [!TIP]
 > For production deployment, see [PRODUCTION.md](PRODUCTION.md).
 
