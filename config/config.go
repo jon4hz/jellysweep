@@ -276,56 +276,49 @@ func Load(path string) (*Config, error) {
 // setDefaults sets default values for the configuration.
 func setDefaults(v *viper.Viper) {
 	// JellySweep defaults
-	v.SetDefault("jellysweep.listen", "0.0.0.0:3002")
-	v.SetDefault("jellysweep.cleanup_schedule", "0 */12 * * *") // Every 12 hours
-	v.SetDefault("jellysweep.cleanup_mode", "all")              // Default to cleaning up everything
-	v.SetDefault("jellysweep.keep_count", 1)                    // Default to keeping 1 episode/season if mode is not "all"
-	v.SetDefault("jellysweep.dry_run", false)
-	v.SetDefault("jellysweep.server_url", "http://localhost:3002")
-	v.SetDefault("jellysweep.session_max_age", 172800) // 48 hour
+	v.SetDefault("listen", "0.0.0.0:3002")
+	v.SetDefault("cleanup_schedule", "0 */12 * * *") // Every 12 hours
+	v.SetDefault("cleanup_mode", "all")              // Default to cleaning up everything
+	v.SetDefault("keep_count", 1)                    // Default to keeping 1 episode/season if mode is not "all"
+	v.SetDefault("dry_run", true)
+	v.SetDefault("server_url", "http://localhost:3002")
+	v.SetDefault("session_max_age", 172800) // 48 hour
 
 	// Auth defaults
-	v.SetDefault("jellysweep.auth.oidc.enabled", false)
-	v.SetDefault("jellysweep.auth.oidc.name", "OIDC")
-	v.SetDefault("jellysweep.auth.oidc.issuer", "")
-	v.SetDefault("jellysweep.auth.oidc.client_id", "")
-	v.SetDefault("jellysweep.auth.oidc.client_secret", "")
-	v.SetDefault("jellysweep.auth.oidc.redirect_url", "")
-	v.SetDefault("jellysweep.auth.oidc.admin_group", "")
-	v.SetDefault("jellysweep.auth.jellyfin.enabled", true)
+	v.SetDefault("auth.oidc.enabled", false)
+	v.SetDefault("auth.oidc.name", "OIDC")
+	v.SetDefault("auth.oidc.issuer", "")
+	v.SetDefault("auth.oidc.client_id", "")
+	v.SetDefault("auth.oidc.client_secret", "")
+	v.SetDefault("auth.oidc.redirect_url", "")
+	v.SetDefault("auth.oidc.admin_group", "")
+	v.SetDefault("auth.jellyfin.enabled", true)
 
 	// Cache defaults
-	v.SetDefault("jellysweep.cache.enabled", true)
-	v.SetDefault("jellysweep.cache.type", CacheTypeMemory) // Default to in-memory
+	v.SetDefault("cache.enabled", true)
+	v.SetDefault("cache.type", CacheTypeMemory) // Default to in-memory
 
 	// Email defaults
-	v.SetDefault("jellysweep.email.enabled", false)
-	v.SetDefault("jellysweep.email.smtp_port", 587)
-	v.SetDefault("jellysweep.email.from_name", "JellySweep")
-	v.SetDefault("jellysweep.email.use_tls", true)
-	v.SetDefault("jellysweep.email.use_ssl", false)
-	v.SetDefault("jellysweep.email.insecure_skip_verify", false)
+	v.SetDefault("email.enabled", false)
+	v.SetDefault("email.smtp_port", 587)
+	v.SetDefault("email.from_name", "JellySweep")
+	v.SetDefault("email.use_tls", true)
+	v.SetDefault("email.use_ssl", false)
+	v.SetDefault("email.insecure_skip_verify", false)
 
 	// Ntfy defaults
-	v.SetDefault("jellysweep.ntfy.enabled", false)
-	v.SetDefault("jellysweep.ntfy.server_url", "https://ntfy.sh")
+	v.SetDefault("ntfy.enabled", false)
+	v.SetDefault("ntfy.server_url", "https://ntfy.sh")
 
 	// Gravatar defaults
-	v.SetDefault("jellysweep.gravatar.enabled", false)
-	v.SetDefault("jellysweep.gravatar.default_image", "robohash")
-	v.SetDefault("jellysweep.gravatar.rating", "g")
-	v.SetDefault("jellysweep.gravatar.size", 80)
+	v.SetDefault("gravatar.enabled", false)
+	v.SetDefault("gravatar.default_image", "robohash")
+	v.SetDefault("gravatar.rating", "g")
+	v.SetDefault("gravatar.size", 80)
 
 	// WebPush defaults
-	v.SetDefault("jellysweep.webpush.enabled", false)
-	v.SetDefault("jellysweep.webpush.ttl", 60)
-
-	// Library defaults
-	v.SetDefault("jellysweep.libraries.default.enabled", true)
-	v.SetDefault("jellysweep.libraries.default.content_age_threshold", 120)
-	v.SetDefault("jellysweep.libraries.default.last_stream_threshold", 90)
-	v.SetDefault("jellysweep.libraries.default.content_size_threshold", 0) // 0 = no minimum size filter
-	v.SetDefault("jellysweep.libraries.default.cleanup_delay", 30)
+	v.SetDefault("webpush.enabled", false)
+	v.SetDefault("webpush.ttl", 60)
 }
 
 // validateConfig validates the configuration.
