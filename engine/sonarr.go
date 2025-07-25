@@ -138,40 +138,47 @@ func (e *Engine) markSonarrMediaItemsForDeletion(ctx context.Context, dryRun boo
 				}
 			}
 
-			libraryConfig := e.cfg.GetLibraryConfig(lib)
-			cleanupDelay := 1 // default
-			if libraryConfig != nil {
-				cleanupDelay = libraryConfig.CleanupDelay
-				if cleanupDelay <= 0 {
-					cleanupDelay = 1
-				}
-			}
-			deleteTagLabel := fmt.Sprintf("%s%s", jellysweepTagPrefix, time.Now().Add(time.Duration(cleanupDelay)*24*time.Hour).Format("2006-01-02"))
-
-			if dryRun {
-				log.Infof("Dry run: Would mark Sonarr series %s for deletion with tag %s", item.Title, deleteTagLabel)
+			// Generate deletion tags using the new abstracted function
+			deletionTags, err := e.GenerateDeletionTags(ctx, lib)
+			if err != nil {
+				log.Errorf("Failed to generate deletion tags for library %s: %v", lib, err)
 				continue
 			}
 
-			if err := e.ensureSonarrTagExists(ctx, deleteTagLabel); err != nil {
-				return err
+			if dryRun {
+				log.Infof("Dry run: Would mark Sonarr series %s for deletion with tags %v", item.Title, deletionTags)
+				continue
 			}
-			// Add the delete tag to the series
+
+			// Add all deletion tags to the series
 			series := item.SeriesResource
-			tagID, err := e.getSonarrTagIDByLabel(ctx, deleteTagLabel)
-			if err != nil {
-				return err
+			for _, deleteTagLabel := range deletionTags {
+				if err := e.ensureSonarrTagExists(ctx, deleteTagLabel); err != nil {
+					log.Errorf("Failed to ensure Sonarr tag exists: %v", err)
+					continue
+				}
+
+				tagID, err := e.getSonarrTagIDByLabel(ctx, deleteTagLabel)
+				if err != nil {
+					log.Errorf("Failed to get Sonarr tag ID: %v", err)
+					continue
+				}
+
+				// Check if tag is already present
+				tagExists := slices.Contains(series.GetTags(), tagID)
+				if !tagExists {
+					series.Tags = append(series.Tags, tagID)
+				}
 			}
-			series.Tags = append(series.Tags, tagID)
 			// Update the series in Sonarr
 			_, resp, err := e.sonarr.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, e.cfg.Sonarr), fmt.Sprintf("%d", series.GetId())).
 				SeriesResource(series).
 				Execute()
 			if err != nil {
-				return fmt.Errorf("failed to update Sonarr series %s with tag %s: %w", item.Title, deleteTagLabel, err)
+				return fmt.Errorf("failed to update Sonarr series %s with tags %v: %w", item.Title, deletionTags, err)
 			}
 			defer resp.Body.Close() //nolint: errcheck
-			log.Infof("Marked Sonarr series %s for deletion with tag %s", item.Title, deleteTagLabel)
+			log.Infof("Marked Sonarr series %s for deletion with tags %v", item.Title, deletionTags)
 			clearCache = true
 		}
 	}
@@ -234,8 +241,8 @@ func (e *Engine) cleanupSonarrTags(ctx context.Context) error {
 	}
 	defer resp.Body.Close() //nolint: errcheck
 	for _, tag := range tags {
-		if len(tag.SeriesIds) == 0 && (strings.HasPrefix(tag.GetLabel(), jellysweepTagPrefix) || strings.HasPrefix(tag.GetLabel(), jellysweepKeepRequestPrefix)) {
-			// If the tag is a jellysweep delete tag and has no series associated with it, delete it
+		if len(tag.SeriesIds) == 0 && (IsJellysweepTag(tag.GetLabel())) {
+			// If the tag is a jellysweep tag and has no series associated with it, delete it
 			if e.cfg.DryRun {
 				log.Infof("Dry run: Would delete Sonarr tag %s", tag.GetLabel())
 				continue
@@ -264,22 +271,20 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) ([]MediaItem, error) {
 		return deletedItems, fmt.Errorf("failed to get Sonarr tags: %w", err)
 	}
 
-	triggerTagIDs := e.triggerTagIDs(tags)
-	if len(triggerTagIDs) == 0 {
-		log.Info("No Sonarr tags found for deletion")
-		return deletedItems, nil
-	}
-
 	for _, series := range sonarrItems {
-		// Check if the series has any of the trigger tags
-		var shouldDelete bool
+		// Get the library name for this series
+		libraryName := "TV Shows" // Default fallback
+
+		// Get tag names for this series
+		var tagNames []string
 		for _, tagID := range series.GetTags() {
-			if slices.Contains(triggerTagIDs, tagID) {
-				shouldDelete = true
-				break
+			if tagName, exists := tags[tagID]; exists {
+				tagNames = append(tagNames, tagName)
 			}
 		}
-		if !shouldDelete {
+
+		// Check if the series should be deleted based on current disk usage
+		if !e.ShouldTriggerDeletionBasedOnDiskUsage(ctx, libraryName, tagNames) {
 			continue
 		}
 
@@ -628,7 +633,7 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 		var deleteTagIDs []int32
 		for _, tagID := range series.GetTags() {
 			if tagName, exists := tags[tagID]; exists {
-				if strings.HasPrefix(tagName, jellysweepTagPrefix) ||
+				if IsJellysweepDeleteTag(tagName) ||
 					strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
 					deleteTagIDs = append(deleteTagIDs, tagID)
 				}
@@ -748,10 +753,11 @@ func (e *Engine) getSonarrMediaItemsMarkedForDeletion(ctx context.Context, force
 	for _, series := range sonarrItems {
 		for _, tagID := range series.GetTags() {
 			tagName := sonarrTags[tagID]
-			if strings.HasPrefix(tagName, jellysweepTagPrefix) {
-				deletionDate, err := e.parseDeletionDateFromTag(tagName)
+			if IsJellysweepDeleteTag(tagName) {
+				// Parse the tag to get deletion date
+				tagInfo, err := ParseJellysweepTag(tagName)
 				if err != nil {
-					log.Warnf("failed to parse deletion date from tag %s: %v", tagName, err)
+					log.Warnf("failed to parse jellysweep tag %s: %v", tagName, err)
 					continue
 				}
 
@@ -794,7 +800,7 @@ func (e *Engine) getSonarrMediaItemsMarkedForDeletion(ctx context.Context, force
 					Type:         "tv",
 					Year:         series.GetYear(),
 					Library:      "TV Shows",
-					DeletionDate: deletionDate,
+					DeletionDate: tagInfo.DeletionDate,
 					PosterURL:    getCachedImageURL(imageURL),
 					CanRequest:   canRequest,
 					HasRequested: hasRequested,
@@ -915,15 +921,19 @@ func (e *Engine) getSonarrKeepRequests(ctx context.Context, forceRefresh bool) (
 					continue
 				}
 
-				// Get deletion date from delete tag (if exists)
-				var deletionDate time.Time
+				// Get deletion date from all delete tags
+				var allDeleteTags []string
 				for _, deletionTagID := range series.GetTags() {
 					deletionTagName := sonarrTags[deletionTagID]
-					if strings.HasPrefix(deletionTagName, jellysweepTagPrefix) {
-						if parsedDate, err := e.parseDeletionDateFromTag(deletionTagName); err == nil {
-							deletionDate = parsedDate
-							break
-						}
+					if IsJellysweepDeleteTag(deletionTagName) {
+						allDeleteTags = append(allDeleteTags, deletionTagName)
+					}
+				}
+
+				var deletionDate time.Time
+				if len(allDeleteTags) > 0 {
+					if parsedDate, err := e.parseDeletionDateFromTag(ctx, allDeleteTags, "TV Shows"); err == nil {
+						deletionDate = parsedDate
 					}
 				}
 
@@ -1109,15 +1119,8 @@ func (e *Engine) addSonarrDeleteForSureTag(ctx context.Context, seriesID int32) 
 		return ErrRequestAlreadyProcessed
 	}
 
-	// Remove keep request and delete tags
-	var newTags []int32
-	for _, tagID := range series.GetTags() {
-		tagName := sonarrTags[tagID]
-		if !strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) &&
-			!strings.HasPrefix(tagName, jellysweepTagPrefix) {
-			newTags = append(newTags, tagID)
-		}
-	}
+	// Remove keep request tags and other jellysweep tags, but preserve delete tags
+	newTags := FilterTagsForMustDelete(series.GetTags(), sonarrTags)
 
 	// Ensure the delete-for-sure tag exists
 	if err := e.ensureSonarrTagExists(ctx, JellysweepDeleteForSureTag); err != nil {
@@ -1130,8 +1133,10 @@ func (e *Engine) addSonarrDeleteForSureTag(ctx context.Context, seriesID int32) 
 		return fmt.Errorf("failed to get tag ID: %w", err)
 	}
 
-	// Add the tag to the series
-	newTags = append(newTags, tagID)
+	// Add the tag to the series if it's not already there
+	if !slices.Contains(newTags, tagID) {
+		newTags = append(newTags, tagID)
+	}
 	series.Tags = newTags
 
 	// Update the series
@@ -1335,10 +1340,7 @@ func (e *Engine) resetSingleSonarrTagsForKeep(ctx context.Context, seriesID int3
 
 	for _, tagID := range series.GetTags() {
 		tagName := tags[tagID]
-		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
-			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
-			strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
-			tagName == JellysweepDeleteForSureTag
+		isJellysweepTag := IsJellysweepTag(tagName)
 
 		if isJellysweepTag {
 			hasJellysweepTags = true
@@ -1388,10 +1390,8 @@ func (e *Engine) resetSingleSonarrTagsForMustDelete(ctx context.Context, seriesI
 
 	for _, tagID := range series.GetTags() {
 		tagName := tags[tagID]
-		isJellysweepDeleteTag := strings.HasPrefix(tagName, jellysweepTagPrefix) // jellysweep-delete-*
-		isOtherJellysweepTag := strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
-			strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
-			tagName == JellysweepDeleteForSureTag
+		isJellysweepDeleteTag := IsJellysweepDeleteTag(tagName)
+		isOtherJellysweepTag := IsJellysweepTag(tagName) && !isJellysweepDeleteTag
 
 		if isOtherJellysweepTag {
 			hasJellysweepTags = true
@@ -1454,12 +1454,7 @@ func (e *Engine) resetAllSonarrTagsAndAddIgnore(ctx context.Context, seriesID in
 
 	for _, tagID := range series.GetTags() {
 		tagName := tags[tagID]
-		isJellysweepTag := strings.HasPrefix(tagName, jellysweepTagPrefix) ||
-			strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
-			strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
-			tagName == JellysweepDeleteForSureTag ||
-			tagName == JellysweepKeepPrefix ||
-			tagName == JellysweepIgnoreTag
+		isJellysweepTag := IsJellysweepTag(tagName)
 
 		if isJellysweepTag {
 			log.Debugf("Removing jellysweep tag '%s' from Sonarr series: %s", tagName, series.GetTitle())

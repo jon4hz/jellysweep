@@ -28,14 +28,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const (
-	jellysweepTagPrefix         = "jellysweep-delete-"
-	jellysweepKeepRequestPrefix = "jellysweep-keep-request-"
-	JellysweepKeepPrefix        = "jellysweep-must-keep-"
-	JellysweepDeleteForSureTag  = "jellysweep-must-delete-for-sure"
-	JellysweepIgnoreTag         = "jellysweep-ignore"
-)
-
 // Cleanup mode constants.
 const (
 	CleanupModeAll          = "all"
@@ -71,8 +63,12 @@ type Engine struct {
 type data struct {
 	jellyfinItems []jellyfinItem
 
+	// library ID to name
 	libraryIDMap map[string]string
-	mediaItems   map[string][]MediaItem
+	// library name to library paths
+	libraryFoldersMap map[string][]string
+
+	mediaItems map[string][]MediaItem
 
 	// userNotifications tracks which users should be notified about which media items
 	userNotifications map[string][]MediaItem // key: user email, value: media items
@@ -164,6 +160,7 @@ func New(cfg *config.Config) (*Engine, error) {
 		data: &data{
 			userNotifications: make(map[string][]MediaItem),
 			libraryIDMap:      make(map[string]string),
+			libraryFoldersMap: make(map[string][]string),
 		},
 		imageCache: cache.NewImageCache("./data/cache/images"),
 		cache:      engineCache,

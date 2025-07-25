@@ -39,13 +39,33 @@ func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, error) {
 	}
 
 	// Check if we have items in the response
-	items := mediaFoldersResp.GetItems()
-	if len(items) == 0 {
+	mediaFolders := mediaFoldersResp.GetItems()
+	if len(mediaFolders) == 0 {
 		return nil, fmt.Errorf("no media folders found")
 	}
 
+	// fetch virtual folders (required for the thresholds based on disk usage)
+	virtualFolders, _, err := e.jellyfin.LibraryStructureAPI.GetVirtualFolders(ctx).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get virtual folders: %w", err)
+	}
+	if len(virtualFolders) == 0 {
+		log.Warn("No virtual folders found")
+	}
+
+	for _, folder := range virtualFolders {
+		log.Debug("Found virtual folder", "name", folder.GetName())
+		libraryName := folder.GetName()
+		libraryConfig := e.cfg.GetLibraryConfig(libraryName)
+		if libraryConfig == nil || !libraryConfig.Enabled {
+			log.Debug("Skipping virtual folder for disabled library", "library", libraryName)
+			continue
+		}
+		e.data.libraryFoldersMap[libraryName] = folder.GetLocations()
+	}
+
 	// Process each enabled library
-	for _, folder := range items {
+	for _, folder := range mediaFolders {
 		if folder.Id == nil || folder.GetName() == "" {
 			continue
 		}

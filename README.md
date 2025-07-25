@@ -7,7 +7,7 @@
 <img src="static/static/jellysweep.png" alt="Jellysweep Logo" width="20%">
 
 Jellysweep is a smart cleanup tool for your Jellyfin media server.
-It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests.
+It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests. With disk usage-aware cleanup thresholds, it can accelerate deletion when storage becomes critical while maintaining reasonable grace periods during normal operation.
 
 > [!CAUTION]
 > Always test with dry-run mode first!
@@ -20,6 +20,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 - 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat/Streamystats for stats
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
+- 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds checked during cleanup runs
 - 🧹 **Flexible Cleanup Modes** - Choose between complete deletion, keeping first episodes, or preserving early seasons
 - 👥 **User Requests** - Built-in keep request system for your users
 - 🔔 **Notifications** - Email users, ntfy alerts for admins, and web push notifications
@@ -36,6 +37,11 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [📋 Table of Contents](#-table-of-contents)
   - [🚀 How It Works](#-how-it-works)
   - [🧹 Cleanup Modes](#-cleanup-modes)
+  - [💾 Disk Usage-Based Cleanup](#-disk-usage-based-cleanup)
+    - [How It Works](#how-it-works)
+    - [Configuration Example](#configuration-example)
+    - [Behavior Examples](#behavior-examples)
+    - [Force Deletion Mode](#force-deletion-mode)
   - [📸 Screenshots](#-screenshots)
     - [Dashboard Overview](#dashboard-overview)
     - [Statistics Dashboard](#statistics-dashboard)
@@ -75,6 +81,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
    - Retrieves viewing statistics from Jellystat or Streamystats
    - Analyzes content history from Sonarr & Radarr
    - Maps media across libraries and services
+   - Monitors disk usage for each library during cleanup runs
 
 2. **Media Filtering**
    - Applies configurable streaming history thresholds
@@ -83,17 +90,26 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
    - Respects custom exclude tags
    - Respects user keep requests
 
-3. **Delayed Deletion**
+3. **Intelligent Deletion Timing**
+   - **Standard Mode**: Uses configured `cleanup_delay` for deletion timing
+   - **Disk Pressure Mode**: Accelerates deletion based on current disk usage
+   - **Dynamic Thresholds**: Multiple disk usage levels with different cleanup delays
+   - **Smart Tagging**: Creates multiple deletion tags for different scenarios
+   - **Adaptive Logic**: Chooses most restrictive applicable threshold
+
+4. **Delayed Deletion**
    - Marks media with dated deletion tags
    - Provides grace period for objections
    - Removes recently played content from deletion queue
    - Executes final cleanup after delay
+   - Supports force deletion for critical disk space situations
 
-4. **User Interaction**
+5. **User Interaction**
    - Users can request to keep specific media
    - Admins can approve/decline requests
    - Automatic cleanup of expired requests
    - Force deletion override for admins
+   - Keep requests are blocked for force-delete items
 
 ## 🧹 Cleanup Modes
 
@@ -109,6 +125,48 @@ Both selective modes automatically unmonitor deleted episodes in Sonarr to preve
 
 > [!TIP]
 > The selective modes in combination with [prefetcharr](https://github.com/p-hueber/prefetcharr) let you automatically scale your media collection on demand.
+
+## 💾 Disk Usage-Based Cleanup
+
+Jellysweep monitors disk usage and speeds up cleanup when you're running low on storage. When disk space is tight, it reduces the grace period for deletions while still giving you time to save anything important during normal operation.
+
+### How It Works
+
+- **Cleanup-time Monitoring**: Checks disk usage for each library path during scheduled cleanup runs
+- **Multi-tier Thresholds**: Configure multiple usage percentage levels with different cleanup delays
+- **Adaptive Tagging**: Creates both standard and disk usage-based deletion tags
+- **Smart Triggering**: Uses the most restrictive applicable threshold based on current usage
+
+> [!IMPORTANT]
+> For disk usage monitoring to work in Docker containers, Jellyfin library paths must be mounted at the same locations inside the Jellysweep container. For example, if Jellyfin has `/data/movies` mapped to `/movies`, Jellysweep also needs `/data/movies` mapped to `/movies` (not `/data` or any other path).
+
+### Configuration Example
+
+```yaml
+libraries:
+  "Movies":
+    cleanup_delay: 30  # Standard 30-day grace period
+    disk_usage_thresholds:
+      - usage_percent: 75.0      # When disk usage reaches 75%
+        max_cleanup_delay: 14    # Reduce grace period to 14 days
+      - usage_percent: 85.0      # When disk usage reaches 85%
+        max_cleanup_delay: 7     # Reduce grace period to 7 days
+      - usage_percent: 90.0      # When disk usage reaches 90%
+        max_cleanup_delay: 3     # Reduce grace period to 3 days
+```
+
+### Behavior Examples
+
+- **Normal Operation (80% usage)**: Media gets `jellysweep-delete-2025-08-25` (30-day delay)
+- **Moderate Pressure (87% usage)**: Deletion triggered by `jellysweep-delete-du85-2025-08-09` (14-day delay)
+- **High Pressure (93% usage)**: Deletion triggered by `jellysweep-delete-du90-2025-08-02` (7-day delay)
+- **Critical Pressure (97% usage)**: Deletion triggered by `jellysweep-delete-du95-2025-07-29` (3-day delay)
+
+### Force Deletion Mode
+
+The `jellysweep-must-delete-for-sure` tag uses the shortest configured delay across all thresholds:
+- Prevents users from submitting keep requests
+- Uses the most aggressive cleanup timing available
 
 ---
 
@@ -194,6 +252,10 @@ services:
     volumes:
       # - ./config.yml:/app/config.yml:ro use config or env vars
       - ./data:/app/data
+      # Mount Jellyfin library paths at the same locations for disk usage monitoring
+      # Example: if Jellyfin has /data/movies, mount it the same way here
+      # - /data/movies:/data/movies:ro
+      # - /data/tv:/data/tv:ro
     environment:
       # Override config values via environment variables if needed
       - JELLYSWEEP_DRY_RUN=false
@@ -424,6 +486,9 @@ All configuration options can be set via environment variables with the `JELLYSW
 > [!WARNING]
 > If no authentication methods are enabled, the web interface will be accessible without authentication (recommended for development only).
 
+> [!NOTE]
+> Complex configuration options like `disk_usage_thresholds`, `exclude_tags`, and library-specific overrides can only be configured via YAML configuration files, not environment variables. Disk usage is checked during scheduled cleanup runs, not continuously monitored.
+
 ### Configuration File
 
 Jellysweep uses a YAML configuration file with the following structure:
@@ -477,38 +542,48 @@ gravatar:
 
 # Library-specific settings
 libraries:
-  default:
-    enabled: true
-    content_age_threshold: 120    # Days since content was added
-    last_stream_threshold: 90     # Days since last viewed
-    content_size_threshold: 0     # Min size in bytes (0 = no minimum)
-    cleanup_delay: 30             # Grace period before deletion
-    exclude_tags:
-      - "jellysweep-exclude"
-      - "jellysweep-ignore"
-      - "do-not-delete"
 
   "Movies":
     enabled: true
     content_age_threshold: 120
     last_stream_threshold: 90
     content_size_threshold: 1073741824  # 1GB minimum
-    cleanup_delay: 30
+    cleanup_delay: 60
     exclude_tags:
       - "jellysweep-exclude"
       - "keep"
       - "favorites"
+    # Disk usage-based cleanup for movies
+    disk_usage_thresholds:
+      - usage_percent: 70.0       # When disk usage reaches 70%
+        max_cleanup_delay: 30     # Reduce grace period to 30 days
+      - usage_percent: 85.0       # When disk usage reaches 85%
+        max_cleanup_delay: 14      # Reduce grace period to 14 days
+      - usage_percent: 90.0       # When disk usage reaches 90%
+        max_cleanup_delay: 7      # Reduce grace period to 7 days
+      - usage_percent: 95.0       # When disk usage reaches 95%
+        max_cleanup_delay: 2      # Reduce grace period to 2 days
 
   "TV Shows":
     enabled: true
     content_age_threshold: 120
     last_stream_threshold: 90
     content_size_threshold: 2147483648  # 2GB minimum
-    cleanup_delay: 30
+    cleanup_delay: 60
     exclude_tags:
       - "jellysweep-exclude"
       - "ongoing"
       - "keep"
+    # Disk usage-based cleanup for TV shows
+    disk_usage_thresholds:
+      - usage_percent: 70.0
+        max_cleanup_delay: 30
+      - usage_percent: 85.0
+        max_cleanup_delay: 14
+      - usage_percent: 90.0
+        max_cleanup_delay: 7
+      - usage_percent: 95.0
+        max_cleanup_delay: 2
 
 # Email notifications for users about upcoming deletions
 email:
@@ -576,10 +651,12 @@ cache:
 Jellysweep uses the tagging feature from sonarr and radarr to track media state:
 
 ### Automatic Tags
-- `jellysweep-delete-YYYY-MM-DD` - Media marked for deletion on date
+- `jellysweep-delete-YYYY-MM-DD` - Media marked for deletion on date (standard cleanup delay)
+- `jellysweep-delete-du90-YYYY-MM-DD` - Media marked for deletion when disk usage ≥90% (example)
+- `jellysweep-delete-du95-YYYY-MM-DD` - Media marked for deletion when disk usage ≥95% (example)
 - `jellysweep-keep-request-YYYY-MM-DD` - User requested to keep (expires)
 - `jellysweep-must-keep-YYYY-MM-DD` - Admin approved keep (expires)
-- `jellysweep-must-delete-for-sure` - Admin forced deletion
+- `jellysweep-must-delete-for-sure` - Admin forced deletion (prevents keep requests)
 - `jellysweep-ignore` - Media will never be marked for deletion
 
 ### Custom Tags
