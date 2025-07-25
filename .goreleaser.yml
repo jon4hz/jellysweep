@@ -143,19 +143,22 @@ changelog:
       - Merge branch
       - go mod tidy
   groups:
-    - title: Dependency updates
-      regexp: "^.*\\(deps\\)*:+.*$"
-      order: 300
-    - title: "New Features"
+    - title: "💥 Breaking Changes"
+      regexp: "^.*[(\\w)]*!:+.*$"
+      order: 50
+    - title: "🚀 New Features"
       regexp: "^.*feat[(\\w)]*:+.*$"
       order: 100
-    - title: "Bug fixes"
+    - title: "🐛 Bug fixes"
       regexp: "^.*fix[(\\w)]*:+.*$"
       order: 200
-    - title: "Documentation updates"
+    - title: "📦 Dependency updates"
+      regexp: "^.*\\(deps\\)*:+.*$"
+      order: 300
+    - title: "📚 Documentation updates"
       regexp: "^.*docs[(\\w)]*:+.*$"
       order: 400
-    - title: Other work
+    - title: "🔧 Other work"
       order: 9999
 
 dockers:

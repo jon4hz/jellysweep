@@ -163,6 +163,16 @@ type CleanupConfig struct {
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// CleanupDelay is the delay in days before a media item is deleted after being marked for deletion.
 	CleanupDelay int `yaml:"cleanup_delay" mapstructure:"cleanup_delay"`
+	// DiskUsageThresholds is a list of disk usage thresholds for cleanup.
+	DiskUsageThresholds []DiskUsageThreshold `yaml:"disk_usage_thresholds" mapstructure:"disk_usage_thresholds"`
+}
+
+// DiskUsageThreshold holds the disk usage thresholds for cleanup.
+type DiskUsageThreshold struct {
+	// UsagePercent is the disk usage percentage threshold.
+	UsagePercent float64 `yaml:"usage_percent" mapstructure:"usage_percent"`
+	// MaxCleanupDelay is the cleanup delay in days when this threshold is reached.
+	MaxCleanupDelay int `yaml:"max_cleanup_delay" mapstructure:"max_cleanup_delay"`
 }
 
 // CacheConfig holds the configuration for the cache engine.
