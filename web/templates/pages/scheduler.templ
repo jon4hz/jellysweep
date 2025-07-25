@@ -404,7 +404,7 @@ templ SchedulerScript() {
 
 		async function clearCache() {
 			try {
-				const response = await fetch('/api/admin/scheduler/cache/clear', {
+				const response = await fetch('/admin/api/scheduler/cache/clear', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
