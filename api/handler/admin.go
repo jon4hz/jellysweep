@@ -9,6 +9,7 @@ import (
 	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
+	"golang.org/x/sync/errgroup"
 )
 
 type AdminHandler struct {
@@ -279,20 +280,56 @@ func (h *AdminHandler) GetSchedulerCacheStats(c *gin.Context) {
 
 // ClearSchedulerCache clears the engine cache.
 func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
-	if engineCache := h.engine.GetEngineCache(); engineCache != nil {
-		// Clear each cache in the engine cache
+	engineCache := h.engine.GetEngineCache()
+	if engineCache == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Cache cleared successfully",
+		})
+		return
+	}
+
+	// Use error group to clear all caches concurrently and collect any errors
+	var g errgroup.Group
+	g.Go(func() error {
 		if err := engineCache.SonarrItemsCache.Clear(c.Request.Context()); err != nil {
 			log.Error("Failed to clear Sonarr items cache", "error", err)
+			return err
 		}
+		return nil
+	})
+
+	g.Go(func() error {
 		if err := engineCache.SonarrTagsCache.Clear(c.Request.Context()); err != nil {
 			log.Error("Failed to clear Sonarr tags cache", "error", err)
+			return err
 		}
+		return nil
+	})
+
+	g.Go(func() error {
 		if err := engineCache.RadarrItemsCache.Clear(c.Request.Context()); err != nil {
 			log.Error("Failed to clear Radarr items cache", "error", err)
+			return err
 		}
+		return nil
+	})
+
+	g.Go(func() error {
 		if err := engineCache.RadarrTagsCache.Clear(c.Request.Context()); err != nil {
 			log.Error("Failed to clear Radarr tags cache", "error", err)
+			return err
 		}
+		return nil
+	})
+
+	// Wait for all cache clearing operations to complete
+	if err := g.Wait(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to clear one or more caches",
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
