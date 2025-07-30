@@ -311,7 +311,7 @@ func (e *Engine) ShouldTriggerDeletionBasedOnDiskUsage(ctx context.Context, libr
 		}
 
 		// For regular delete tags, check if they're expired and no more restrictive threshold applies
-		if strings.HasPrefix(tagName, jellysweepTagPrefix) && tagInfo.IsExpired {
+		if strings.HasPrefix(tagName, jellysweepTagPrefix) && !strings.HasPrefix(tagName, jellysweepDiskUsageTagPrefix) && tagInfo.IsExpired {
 			if applicableThreshold == nil {
 				// No disk pressure, use regular expiration
 				log.Debugf("Item should be deleted due to expired regular tag %s (no disk pressure)", tagName)
