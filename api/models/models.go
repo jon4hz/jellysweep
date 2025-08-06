@@ -48,7 +48,6 @@ type KeepRequest struct {
 	Library      string
 	DeletionDate time.Time
 	PosterURL    string
-	RequestedBy  string
 	RequestDate  time.Time
 	ExpiryDate   time.Time
 }

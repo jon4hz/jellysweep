@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -88,6 +89,8 @@ func (c *Client) Subscribe(userID string, subscription *Subscription) error {
 		return fmt.Errorf("webpush notifications are disabled")
 	}
 
+	userID = strings.ToLower(userID)
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -112,6 +115,8 @@ func (c *Client) Subscribe(userID string, subscription *Subscription) error {
 
 // Unsubscribe removes a push subscription for a user.
 func (c *Client) Unsubscribe(userID string) error {
+	userID = strings.ToLower(userID)
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -122,6 +127,8 @@ func (c *Client) Unsubscribe(userID string) error {
 
 // UnsubscribeByID removes a specific push subscription by ID for a user.
 func (c *Client) UnsubscribeByID(userID, subscriptionID string) error {
+	userID = strings.ToLower(userID)
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -140,6 +147,8 @@ func (c *Client) UnsubscribeByID(userID, subscriptionID string) error {
 
 // UnsubscribeByEndpoint removes a subscription by endpoint for a user.
 func (c *Client) UnsubscribeByEndpoint(userID, endpoint string) error {
+	userID = strings.ToLower(userID)
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -166,6 +175,8 @@ func (c *Client) SendNotification(ctx context.Context, userID string, payload *N
 	if !c.config.Enabled {
 		return fmt.Errorf("webpush notifications are disabled")
 	}
+
+	userID = strings.ToLower(userID)
 
 	c.mu.RLock()
 	userSubscriptions, exists := c.subscriptions[userID]
@@ -261,6 +272,8 @@ func (c *Client) SendNotification(ctx context.Context, userID string, payload *N
 
 // SendKeepRequestNotification sends a notification about a keep request decision.
 func (c *Client) SendKeepRequestNotification(ctx context.Context, userID, mediaTitle, mediaType string, approved bool) error {
+	userID = strings.ToLower(userID)
+
 	var title, body string
 	var icon string
 
@@ -299,6 +312,8 @@ func (c *Client) SendKeepRequestNotification(ctx context.Context, userID, mediaT
 
 // GetSubscriptions returns all subscriptions for a user.
 func (c *Client) GetSubscriptions(userID string) ([]*Subscription, bool) {
+	userID = strings.ToLower(userID)
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -317,6 +332,8 @@ func (c *Client) GetSubscriptions(userID string) ([]*Subscription, bool) {
 
 // GetSubscription returns a specific subscription by ID for a user.
 func (c *Client) GetSubscription(userID, subscriptionID string) (*Subscription, bool) {
+	userID = strings.ToLower(userID)
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -406,6 +423,8 @@ func (c *Client) GetSubscriptionCount() int {
 
 // GetUserSubscriptionCount returns the number of active subscriptions for a specific user.
 func (c *Client) GetUserSubscriptionCount(userID string) int {
+	userID = strings.ToLower(userID)
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -438,6 +457,8 @@ func (c *Client) CleanupExpiredSubscriptions(maxAge time.Duration) {
 
 // TestNotification sends a test notification to verify the setup.
 func (c *Client) TestNotification(ctx context.Context, userID string) error {
+	userID = strings.ToLower(userID)
+
 	payload := &NotificationPayload{
 		Title: "🧹 JellySweep Test",
 		Body:  "Push notifications are working correctly!",

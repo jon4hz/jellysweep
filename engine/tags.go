@@ -551,13 +551,16 @@ func (e *Engine) parseKeepTagWithRequester(tagName string) (time.Time, string, e
 // Format: jellysweep-must-keep-YYYY-MM-DD-requester.
 func (e *Engine) createKeepTagWithRequester(date time.Time, requester string) string {
 	dateStr := date.Format("2006-01-02")
+	var tagLabel string
 	if requester != "" {
 		// Sanitize requester to avoid issues with special characters
 		sanitizedRequester := strings.ReplaceAll(requester, "-", "_")
 		sanitizedRequester = strings.ReplaceAll(sanitizedRequester, " ", "_")
-		return fmt.Sprintf("%s%s-%s", JellysweepKeepPrefix, dateStr, sanitizedRequester)
+		tagLabel = fmt.Sprintf("%s%s-%s", JellysweepKeepPrefix, dateStr, sanitizedRequester)
+	} else {
+		tagLabel = fmt.Sprintf("%s%s", JellysweepKeepPrefix, dateStr)
 	}
-	return fmt.Sprintf("%s%s", JellysweepKeepPrefix, dateStr)
+	return strings.ToLower(tagLabel)
 }
 
 // parseKeepRequestTagWithRequester extracts the date and requester from a jellysweep-keep-request tag.
@@ -597,13 +600,16 @@ func (e *Engine) parseKeepRequestTagWithRequester(tagName string) (date time.Tim
 // Format: jellysweep-keep-request-YYYY-MM-DD-requester.
 func (e *Engine) createKeepRequestTagWithRequester(date time.Time, requester string) string {
 	dateStr := date.Format("2006-01-02")
+	var tagLabel string
 	if requester != "" {
 		// Sanitize requester to avoid issues with special characters
 		sanitizedRequester := strings.ReplaceAll(requester, "-", "_")
 		sanitizedRequester = strings.ReplaceAll(sanitizedRequester, " ", "_")
-		return fmt.Sprintf("%s%s-%s", jellysweepKeepRequestPrefix, dateStr, sanitizedRequester)
+		tagLabel = fmt.Sprintf("%s%s-%s", jellysweepKeepRequestPrefix, dateStr, sanitizedRequester)
+	} else {
+		tagLabel = fmt.Sprintf("%s%s", jellysweepKeepRequestPrefix, dateStr)
 	}
-	return fmt.Sprintf("%s%s", jellysweepKeepRequestPrefix, dateStr)
+	return strings.ToLower(tagLabel)
 }
 
 // FilterTagsForMustDelete filters tags to preserve jellysweep-delete tags while removing other jellysweep tags.
