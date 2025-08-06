@@ -379,7 +379,7 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) ([]MediaItem, error) {
 			// Only remove tags if the series still exists (not for complete series deletion)
 			err := e.cleanupSonarrTagsAfterDelete(ctx, series)
 			if err != nil {
-				log.Warnf("Failed to remove jellysweep-delete tags from series %s: %v", series.GetTitle(), err)
+				log.Warnf("Failed to cleanup jellysweep tags from series %s: %v", series.GetTitle(), err)
 				// Continue execution - deletion succeeded, tag removal is not critical
 			}
 		}
