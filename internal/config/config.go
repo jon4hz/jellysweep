@@ -58,6 +58,12 @@ type Config struct {
 	ServerURL string `yaml:"server_url" mapstructure:"server_url"`
 	// Cache holds the cache engine configuration.
 	Cache *CacheConfig `yaml:"cache" mapstructure:"cache"`
+	// EnableLeavingCollections controls whether "Leaving Soon" collections are created in Jellyfin.
+	EnableLeavingCollections bool `yaml:"enable_leaving_collections" mapstructure:"enable_leaving_collections"`
+	// Name of the "Leaving Movies" collection in Jellyfin.
+	LeavingCollectionsMovieName string `yaml:"leaving_collections_movie_name" mapstructure:"leaving_collections_movie_name"`
+	// Name of the "Leaving TV Shows" collection in Jellyfin.
+	LeavingCollectionsTVName string `yaml:"leaving_collections_tv_name" mapstructure:"leaving_collections_tv_name"`
 
 	// Jellyseerr holds the configuration for the Jellyseerr server.
 	Jellyseerr *JellyseerrConfig `yaml:"jellyseerr" mapstructure:"jellyseerr"`
@@ -393,6 +399,11 @@ func setDefaults(v *viper.Viper) {
 	// Cache defaults
 	v.SetDefault("cache.type", CacheTypeMemory) // Default to in-memory
 	v.SetDefault("cache.redis_url", "")
+
+	// Leaving collections default
+	v.SetDefault("enable_leaving_collections", false) // Disabled by default
+	v.SetDefault("leaving_collections_movie_name", "Leaving Movies")
+	v.SetDefault("leaving_collections_tv_name", "Leaving TV Shows")
 
 	// Email defaults
 	v.SetDefault("email.enabled", false)

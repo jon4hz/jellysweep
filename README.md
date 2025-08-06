@@ -11,7 +11,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 It also supports user requests to keep specific content.
 
 > [!CAUTION]
-> Always test with dry-run mode first! And review the logs to see what jellysweep would've marked for deletion!
+> Always test with dry-run mode first! And review the logs/dashboard to see what jellysweep would've marked for deletion!
 
 
 ---
@@ -22,6 +22,7 @@ It also supports user requests to keep specific content.
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
 - 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds
 - 🧹 **Flexible Cleanup Modes** - Choose how much of TV Series should be deleted
+- 📂 **Leaving Collections** - Automatically creates Jellyfin collections showing all media scheduled for deletion
 - 👥 **User Requests** - Built-in keep request system for your users
 - 🔔 **Notifications** - Send notifications to users and admins
 - 📱 **Progressive Web App (PWA)** - Install as an app on mobile and desktop

@@ -329,3 +329,79 @@ func (c *Client) GetSeasons(ctx context.Context, seriesID string) ([]jellyfin.Ba
 	log.Info("Retrieved all seasons for series", "seriesID", seriesID, "total", len(allSeasons))
 	return allSeasons, nil
 }
+
+// FindCollectionByName searches for a collection by name and returns its ID.
+func (c *Client) FindCollectionByName(ctx context.Context, name string) (string, error) {
+	// Get all collections
+	result, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+		IncludeItemTypes([]jellyfin.BaseItemKind{jellyfin.BASEITEMKIND_BOX_SET}).
+		Recursive(false).
+		Execute()
+	if err != nil {
+		return "", fmt.Errorf("failed to get collections: %w", err)
+	}
+
+	// Search for collection by name
+	items := result.GetItems()
+	for _, item := range items {
+		if item.GetName() == name {
+			return item.GetId(), nil
+		}
+	}
+
+	return "", nil // Collection not found
+}
+
+// GetCollectionItems returns a map of item IDs currently in the collection.
+func (c *Client) GetCollectionItems(ctx context.Context, collectionID string) (map[string]bool, error) {
+	// Get items in the collection
+	result, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+		ParentId(collectionID).
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get collection items: %w", err)
+	}
+
+	// Create a set of current item IDs
+	currentItems := make(map[string]bool)
+	items := result.GetItems()
+	for _, item := range items {
+		currentItems[item.GetId()] = true
+	}
+
+	return currentItems, nil
+}
+
+// CreateCollection creates a new collection with the given name and item IDs.
+func (c *Client) CreateCollection(ctx context.Context, name string, itemIDs []string) error {
+	_, _, err := c.jellyfin.CollectionAPI.CreateCollection(ctx).
+		Name(name).
+		Ids(itemIDs).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to create collection %s: %w", name, err)
+	}
+	return nil
+}
+
+// AddItemsToCollection adds items to an existing collection.
+func (c *Client) AddItemsToCollection(ctx context.Context, collectionID string, itemIDs []string) error {
+	_, err := c.jellyfin.CollectionAPI.AddToCollection(ctx, collectionID).
+		Ids(itemIDs).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to add items to collection %s: %w", collectionID, err)
+	}
+	return nil
+}
+
+// RemoveItemsFromCollection removes items from an existing collection.
+func (c *Client) RemoveItemsFromCollection(ctx context.Context, collectionID string, itemIDs []string) error {
+	_, err := c.jellyfin.CollectionAPI.RemoveFromCollection(ctx, collectionID).
+		Ids(itemIDs).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to remove items from collection %s: %w", collectionID, err)
+	}
+	return nil
+}

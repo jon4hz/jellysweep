@@ -232,6 +232,12 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 		}
 	}
 
+	if err := e.createJellyfinLeavingCollections(ctx); err != nil {
+		log.Error("An error occurred while creating Jellyfin leaving collections")
+	}
+
+	e.removeItemsFromLeavingCollections(ctx)
+
 	log.Info("Scheduled cleanup job completed")
 	return err
 }
