@@ -152,8 +152,12 @@ func ShouldTriggerDeletion(tagNames []string) bool {
 			continue
 		}
 
-		// Skip JellysweepDeleteForSureTag - it doesn't trigger immediate deletion
+		// Skip JellysweepDeleteForSureTag
 		if tagName == JellysweepDeleteForSureTag {
+			continue
+		}
+
+		if strings.HasPrefix(tagName, jellysweepDiskUsageTagPrefix) {
 			continue
 		}
 
@@ -233,22 +237,13 @@ func (e *Engine) ShouldTriggerDeletionBasedOnDiskUsage(ctx context.Context, libr
 		}
 	}
 
-	// Check if JellysweepDeleteForSureTag is present - if so, use special logic
-	hasDeleteForSureTag := false
-	for _, tagName := range tagNames {
-		if tagName == JellysweepDeleteForSureTag {
-			hasDeleteForSureTag = true
-			break
-		}
-	}
-
 	// Check each tag to see if it should trigger deletion
 	for _, tagName := range tagNames {
 		if !IsJellysweepDeleteTag(tagName) {
 			continue
 		}
 
-		// Skip JellysweepDeleteForSureTag - it will be handled specially below
+		// Skip JellysweepDeleteForSureTag
 		if tagName == JellysweepDeleteForSureTag {
 			continue
 		}
@@ -257,47 +252,6 @@ func (e *Engine) ShouldTriggerDeletionBasedOnDiskUsage(ctx context.Context, libr
 		tagInfo, err := ParseJellysweepTag(tagName)
 		if err != nil {
 			log.Warnf("Failed to parse jellysweep tag %s: %v", tagName, err)
-			continue
-		}
-
-		// If JellysweepDeleteForSureTag is present, check if this tag would be overdue with smallest delay
-		if hasDeleteForSureTag {
-			// Find the smallest delay from disk usage thresholds or use default cleanup delay
-			smallestPossibleDelay := libraryConfig.CleanupDelay
-			if smallestPossibleDelay <= 0 {
-				smallestPossibleDelay = 1
-			}
-
-			// Check if any disk usage threshold has a smaller delay
-			for _, threshold := range libraryConfig.DiskUsageThresholds {
-				if threshold.MaxCleanupDelay < smallestPossibleDelay {
-					smallestPossibleDelay = threshold.MaxCleanupDelay
-				}
-			}
-
-			// Calculate when this tag would expire with the smallest delay
-			// The tag was created with the original delay, so we adjust backwards
-			originalDelay := libraryConfig.CleanupDelay
-			if strings.HasPrefix(tagName, jellysweepDiskUsageTagPrefix) {
-				// For disk usage tags, find the matching threshold
-				for _, threshold := range libraryConfig.DiskUsageThresholds {
-					if threshold.UsagePercent == tagInfo.DiskUsage {
-						originalDelay = threshold.MaxCleanupDelay
-						break
-					}
-				}
-			}
-
-			if originalDelay > smallestPossibleDelay {
-				adjustedDeletion := tagInfo.DeletionDate.Add(-time.Duration(originalDelay-smallestPossibleDelay) * 24 * time.Hour)
-				if time.Now().After(adjustedDeletion) {
-					log.Debugf("Item should be deleted due to JellysweepDeleteForSureTag with smallest delay (%d days) being overdue based on tag %s", smallestPossibleDelay, tagName)
-					return true
-				}
-			} else if tagInfo.IsExpired {
-				log.Debugf("Item should be deleted due to JellysweepDeleteForSureTag and expired tag %s", tagName)
-				return true
-			}
 			continue
 		}
 
