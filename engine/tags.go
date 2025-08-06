@@ -186,7 +186,7 @@ func getLibraryDiskUsage(ctx context.Context, path string) (float64, error) {
 // should trigger deletion.
 func (e *Engine) ShouldTriggerDeletionBasedOnDiskUsage(ctx context.Context, libraryName string, tagNames []string) bool {
 	libraryConfig := e.cfg.GetLibraryConfig(libraryName)
-	if libraryConfig == nil {
+	if libraryConfig == nil || len(libraryConfig.DiskUsageThresholds) == 0 {
 		// If no config, fall back to basic expired tag check
 		return ShouldTriggerDeletion(tagNames)
 	}
@@ -338,7 +338,7 @@ func (e *Engine) parseDeletionDateFromTag(ctx context.Context, tagNames []string
 
 	// Get library paths for disk usage calculation
 	libraryPaths, exists := e.data.libraryFoldersMap[libraryName]
-	if !exists || len(libraryPaths) == 0 {
+	if !exists || len(libraryPaths) == 0 || len(libraryConfig.DiskUsageThresholds) == 0 {
 		// No library paths available, use default cleanup delay
 		cleanupDelay := libraryConfig.CleanupDelay
 		if cleanupDelay <= 0 {
