@@ -683,7 +683,7 @@ func (e *Engine) getRadarrKeepRequests(ctx context.Context, forceRefresh bool) (
 					continue
 				}
 				// Parse expiry date and requester from tag
-				expiryDate, requester, err := e.parseKeepRequestTagWithRequester(tagName)
+				expiryDate, _, err := e.parseKeepRequestTagWithRequester(tagName)
 				if err != nil {
 					log.Warnf("failed to parse keep request tag %s: %v", tagName, err)
 					continue
@@ -722,7 +722,6 @@ func (e *Engine) getRadarrKeepRequests(ctx context.Context, forceRefresh bool) (
 					Library:      "Movies",
 					DeletionDate: deletionDate,
 					PosterURL:    getCachedImageURL(imageURL),
-					RequestedBy:  requester,
 					RequestDate:  time.Now(), // Would need to store separately
 					ExpiryDate:   expiryDate,
 				}
