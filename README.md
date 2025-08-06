@@ -22,6 +22,7 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
 - 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds checked during cleanup runs
 - 🧹 **Flexible Cleanup Modes** - Choose between complete deletion, keeping first episodes, or preserving early seasons
+- 📂 **Leaving Collections** - Automatically creates Jellyfin collections showing all media scheduled for deletion
 - 👥 **User Requests** - Built-in keep request system for your users
 - 🔔 **Notifications** - Email users, ntfy alerts for admins, and web push notifications
 - 📱 **Progressive Web App (PWA)** - Install as an app on mobile and desktop
