@@ -377,9 +377,9 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) ([]MediaItem, error) {
 		// Remove jellysweep-delete tags from the series after successful deletion
 		if cleanupMode != CleanupModeAll {
 			// Only remove tags if the series still exists (not for complete series deletion)
-			err := e.removeSonarrDeleteTags(ctx, series)
+			err := e.cleanupSonarrTagsAfterDelete(ctx, series)
 			if err != nil {
-				log.Warnf("Failed to remove jellysweep-delete tags from series %s: %v", series.GetTitle(), err)
+				log.Warnf("Failed to cleanup jellysweep tags from series %s: %v", series.GetTitle(), err)
 				// Continue execution - deletion succeeded, tag removal is not critical
 			}
 		}
@@ -1851,8 +1851,8 @@ func episodeAlreadyAired(episode sonarr.EpisodeResource, now time.Time) bool {
 	return !episode.GetAirDateUtc().IsZero() && episode.GetAirDateUtc().Before(now)
 }
 
-// removeSonarrDeleteTags removes jellysweep-delete- and jellysweep-must-delete- tags from a Sonarr series.
-func (e *Engine) removeSonarrDeleteTags(ctx context.Context, series sonarr.SeriesResource) error {
+// cleanupSonarrTagsAfterDelete removes jellysweep-delete-, jellysweep-must-delete- and jellysweep-keep-request- tags from a Sonarr series.
+func (e *Engine) cleanupSonarrTagsAfterDelete(ctx context.Context, series sonarr.SeriesResource) error {
 	if series.GetTags() == nil || len(series.GetTags()) == 0 {
 		return nil // No tags to remove
 	}
@@ -1862,14 +1862,14 @@ func (e *Engine) removeSonarrDeleteTags(ctx context.Context, series sonarr.Serie
 		return fmt.Errorf("failed to get Sonarr tags: %w", err)
 	}
 
-	// Find tags to keep (all tags except jellysweep-delete- and jellysweep-must-delete-)
+	// Find tags to keep (all tags except jellysweep-delete-, jellysweep-must-delete- and jellysweep-keep-request-)
 	var tagsToKeep []int32
 	var removedTagNames []string
 
 	for _, tagID := range series.GetTags() {
 		if tagName, exists := tags[tagID]; exists {
-			if strings.HasPrefix(tagName, jellysweepTagPrefix) || tagName == JellysweepDeleteForSureTag {
-				// This is a jellysweep-delete- or jellysweep-must-delete-for-sure tag, don't keep it
+			if strings.HasPrefix(tagName, jellysweepTagPrefix) || tagName == JellysweepDeleteForSureTag || strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
+				// This is a jellysweep-delete- or jellysweep-must-delete-for-sure or jellysweep-keep-request- tag, don't keep it
 				removedTagNames = append(removedTagNames, tagName)
 			} else {
 				// Keep all other tags
