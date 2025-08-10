@@ -293,6 +293,9 @@ func Load(path string) (*Config, error) {
 		log.Debug("Environment variables with JELLYSWEEP_ prefix will override config file values")
 	}
 
+	// Sanitize config values
+	sanitizeConfig(&c)
+
 	// Validate required configs
 	if err := validateConfig(&c); err != nil {
 		return nil, err
@@ -478,6 +481,47 @@ func validateConfig(c *Config) error {
 	}
 
 	return nil
+}
+
+// sanitizeConfig sanitizes the configuration values.
+func sanitizeConfig(c *Config) {
+	if c == nil {
+		return
+	}
+
+	c.Listen = urlSanitize(c.Listen)
+
+	if c.Jellyfin != nil {
+		c.Jellyfin.URL = urlSanitize(c.Jellyfin.URL)
+	}
+
+	if c.Jellyseerr != nil {
+		c.Jellyseerr.URL = urlSanitize(c.Jellyseerr.URL)
+	}
+
+	if c.Sonarr != nil {
+		c.Sonarr.URL = urlSanitize(c.Sonarr.URL)
+	}
+
+	if c.Radarr != nil {
+		c.Radarr.URL = urlSanitize(c.Radarr.URL)
+	}
+
+	if c.Jellystat != nil {
+		c.Jellystat.URL = urlSanitize(c.Jellystat.URL)
+	}
+
+	if c.Streamystats != nil {
+		c.Streamystats.URL = urlSanitize(c.Streamystats.URL)
+	}
+
+	if c.ServerURL != "" {
+		c.ServerURL = urlSanitize(c.ServerURL)
+	}
+}
+
+func urlSanitize(url string) string {
+	return strings.TrimSuffix(strings.TrimSpace(url), "/")
 }
 
 // GetLibraryConfig returns the cleanup configuration for a specific library.
