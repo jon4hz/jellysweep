@@ -16,8 +16,8 @@ import (
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Start the JellySweep server",
-	Long:  `Start the JellySweep server to handle media management requests and automatic deletions.`,
+	Short: "Start the Jellysweep server",
+	Long:  `Start the Jellysweep server to handle media management requests and automatic deletions.`,
 	Example: `jellysweep serve --config config.yml
 jellysweep serve -c /path/to/config.yml --log-level debug
 `,

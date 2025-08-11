@@ -38,7 +38,7 @@ const (
 // ErrRequestAlreadyProcessed indicates that a keep request has already been processed.
 var ErrRequestAlreadyProcessed = errors.New("request already processed")
 
-// Engine is the main engine for JellySweep, managing interactions with sonarr, radarr, and other services.
+// Engine is the main engine for Jellysweep, managing interactions with sonarr, radarr, and other services.
 // It runs a cleanup job periodically to remove unwanted media.
 type Engine struct {
 	cfg          *config.Config

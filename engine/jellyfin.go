@@ -20,7 +20,7 @@ func newJellyfinClient(cfg *config.JellyfinConfig) *jellyfin.APIClient {
 		},
 	}
 	clientConfig.DefaultHeader = map[string]string{"Authorization": fmt.Sprintf(`MediaBrowser Token="%s"`, cfg.APIKey)}
-	clientConfig.UserAgent = fmt.Sprintf("JellySweep/%s", version.Version)
+	clientConfig.UserAgent = fmt.Sprintf("Jellysweep/%s", version.Version)
 	return jellyfin.NewAPIClient(clientConfig)
 }
 

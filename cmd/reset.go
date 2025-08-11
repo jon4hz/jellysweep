@@ -15,7 +15,7 @@ var resetCmdFlags struct {
 var resetCmd = &cobra.Command{
 	Use:   "reset",
 	Short: "Reset all tags in sonarr and radarr",
-	Long:  `This command resets all jellysweep tags in Sonarr and Radarr, removing any custom tags that were added by JellySweep.`,
+	Long:  `This command resets all jellysweep tags in Sonarr and Radarr, removing any custom tags that were added by Jellysweep.`,
 	Run:   reset,
 }
 

@@ -1,4 +1,4 @@
-# JellySweep Development Guide
+# Jellysweep Development Guide
 
 ## Build/Test Commands
 - `make build` - Build all assets (templ, CSS, JS)

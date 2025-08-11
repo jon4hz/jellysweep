@@ -302,7 +302,7 @@ func (c *Client) SendKeepRequestNotification(ctx context.Context, userID, mediaT
 		Actions: []NotificationAction{
 			{
 				Action: "open_app",
-				Title:  "Open JellySweep",
+				Title:  "Open Jellysweep",
 			},
 		},
 	}
@@ -460,7 +460,7 @@ func (c *Client) TestNotification(ctx context.Context, userID string) error {
 	userID = strings.ToLower(userID)
 
 	payload := &NotificationPayload{
-		Title: "🧹 JellySweep Test",
+		Title: "🧹 Jellysweep Test",
 		Body:  "Push notifications are working correctly!",
 		Icon:  "/static/icons/icon-192x192.png",
 		Badge: "/static/icons/icon-192x192.png",
