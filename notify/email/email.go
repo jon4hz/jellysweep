@@ -32,7 +32,7 @@ type UserNotification struct {
 	UserName      string
 	MediaItems    []MediaItem
 	CleanupDate   time.Time
-	JellySweepURL string
+	JellysweepURL string
 	DryRun        bool
 }
 
