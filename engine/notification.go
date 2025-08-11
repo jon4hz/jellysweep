@@ -63,7 +63,7 @@ func (e *Engine) sendEmailNotifications() {
 			MediaItems:    emailMediaItems,
 			CleanupDate:   cleanupDate,
 			DryRun:        e.cfg.DryRun,
-			JellySweepURL: e.cfg.ServerURL,
+			JellysweepURL: e.cfg.ServerURL,
 		}
 
 		if err := e.email.SendCleanupNotification(notification); err != nil {
