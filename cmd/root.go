@@ -22,8 +22,8 @@ func init() {
 
 var rootCmd = &cobra.Command{
 	Use:   "jellysweep",
-	Short: "JellySweep is a tool to manage media libraries with automatic deletion and user requests",
-	Long:  `JellySweep helps you manage your media libraries by automatically deleting items that are no longer wanted, while allowing users to request to keep certain items.`,
+	Short: "Jellysweep is a tool to manage media libraries with automatic deletion and user requests",
+	Long:  `Jellysweep helps you manage your media libraries by automatically deleting items that are no longer wanted, while allowing users to request to keep certain items.`,
 	Example: `jellysweep serve --config config.yml
   jellysweep serve -c /path/to/config.yml --log-level debug
   jellysweep serve --log-level info  # searches for config in default locations`,

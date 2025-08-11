@@ -29,10 +29,10 @@ func NewJellyfinProvider(cfg *config.JellyfinConfig, authCfg *config.JellyfinAut
 			Description: "Jellyfin auth server",
 		},
 	}
-	clientConfig.UserAgent = fmt.Sprintf("JellySweep-Auth/%s", version.Version)
+	clientConfig.UserAgent = fmt.Sprintf("Jellysweep-Auth/%s", version.Version)
 	clientConfig.DefaultHeader = map[string]string{
 		"X-Emby-Authorization": fmt.Sprintf(
-			`MediaBrowser Client="JellySweep-Auth", Device="JellySweep", DeviceId="jellysweep-auth", Version="%s",`,
+			`MediaBrowser Client="Jellysweep-Auth", Device="Jellysweep", DeviceId="jellysweep-auth", Version="%s",`,
 			version.Version,
 		),
 	}

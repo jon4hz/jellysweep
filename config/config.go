@@ -15,9 +15,9 @@ const (
 	CacheTypeRedis  CacheType = "redis"
 )
 
-// Config holds the configuration for the JellySweep server and its dependencies.
+// Config holds the configuration for the Jellysweep server and its dependencies.
 type Config struct {
-	// Listen is the address the JellySweep server will listen on.
+	// Listen is the address the Jellysweep server will listen on.
 	Listen string `yaml:"listen" mapstructure:"listen"`
 	// CleanupSchedule is the cron schedule for the cleanup job (e.g., "0 */12 * * *" for every 12 hours).
 	CleanupSchedule string `yaml:"cleanup_schedule" mapstructure:"cleanup_schedule"`
@@ -30,9 +30,9 @@ type Config struct {
 	CleanupMode string `yaml:"cleanup_mode" mapstructure:"cleanup_mode"`
 	// KeepCount specifies how many episodes or seasons to keep when using "keep_episodes" or "keep_seasons" mode
 	KeepCount int `yaml:"keep_count" mapstructure:"keep_count"`
-	// Auth holds the authentication configuration for the JellySweep server.
+	// Auth holds the authentication configuration for the Jellysweep server.
 	Auth *AuthConfig `yaml:"auth" mapstructure:"auth"`
-	// APIKey is the API key for the JellySweep server (used by the jellyfin plugin).
+	// APIKey is the API key for the Jellysweep server (used by the jellyfin plugin).
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
 	// SessionKey is the key used to encrypt session data.
 	SessionKey string `yaml:"session_key" mapstructure:"session_key"`
@@ -44,7 +44,7 @@ type Config struct {
 	Ntfy *NtfyConfig `yaml:"ntfy" mapstructure:"ntfy"`
 	// WebPush holds the webpush notification configuration.
 	WebPush *WebPushConfig `yaml:"webpush" mapstructure:"webpush"`
-	// ServerURL is the base URL of the JellySweep server.
+	// ServerURL is the base URL of the Jellysweep server.
 	ServerURL string `yaml:"server_url" mapstructure:"server_url"`
 	// Cache holds the cache engine configuration.
 	Cache *CacheConfig `yaml:"cache" mapstructure:"cache"`
@@ -65,7 +65,7 @@ type Config struct {
 	Streamystats *StreamystatsConfig `yaml:"streamystats" mapstructure:"streamystats"`
 }
 
-// AuthConfig holds the authentication configuration for the JellySweep server.
+// AuthConfig holds the authentication configuration for the Jellysweep server.
 type AuthConfig struct {
 	// OIDC holds the OpenID Connect configuration.
 	OIDC *OIDCConfig `yaml:"oidc" mapstructure:"oidc"`
@@ -73,7 +73,7 @@ type AuthConfig struct {
 	Jellyfin *JellyfinAuthConfig `yaml:"jellyfin" mapstructure:"jellyfin"`
 }
 
-// OIDCConfig holds the OpenID Connect configuration for the JellySweep server.
+// OIDCConfig holds the OpenID Connect configuration for the Jellysweep server.
 type OIDCConfig struct {
 	// Enabled indicates whether OIDC authentication is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
@@ -91,7 +91,7 @@ type OIDCConfig struct {
 	AdminGroup string `yaml:"admin_group" mapstructure:"admin_group"`
 }
 
-// JellyfinAuthConfig holds the Jellyfin authentication configuration for the JellySweep server.
+// JellyfinAuthConfig holds the Jellyfin authentication configuration for the Jellysweep server.
 type JellyfinAuthConfig struct {
 	// Enabled indicates whether Jellyfin authentication is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
@@ -306,7 +306,7 @@ func Load(path string) (*Config, error) {
 
 // setDefaults sets default values for the configuration.
 func setDefaults(v *viper.Viper) {
-	// JellySweep defaults
+	// Jellysweep defaults
 	v.SetDefault("listen", "0.0.0.0:3002")
 	v.SetDefault("cleanup_schedule", "0 */12 * * *") // Every 12 hours
 	v.SetDefault("cleanup_mode", "all")              // Default to cleaning up everything
@@ -332,7 +332,7 @@ func setDefaults(v *viper.Viper) {
 	// Email defaults
 	v.SetDefault("email.enabled", false)
 	v.SetDefault("email.smtp_port", 587)
-	v.SetDefault("email.from_name", "JellySweep")
+	v.SetDefault("email.from_name", "Jellysweep")
 	v.SetDefault("email.use_tls", true)
 	v.SetDefault("email.use_ssl", false)
 	v.SetDefault("email.insecure_skip_verify", false)
@@ -424,7 +424,7 @@ func validateConfig(c *Config) error {
 	}
 
 	if !authEnabled {
-		log.Warn("No authentication methods enabled, JellySweep will run without authentication")
+		log.Warn("No authentication methods enabled, Jellysweep will run without authentication")
 	}
 	// Validate external services
 	if c.Jellyseerr == nil {

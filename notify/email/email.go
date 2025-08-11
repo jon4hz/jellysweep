@@ -55,7 +55,7 @@ func (n *NotificationService) SendCleanupNotification(notification UserNotificat
 		return nil
 	}
 
-	subject := fmt.Sprintf("[JellySweep] Media Cleanup Notification - %d items affected", len(notification.MediaItems))
+	subject := fmt.Sprintf("[Jellysweep] Media Cleanup Notification - %d items affected", len(notification.MediaItems))
 
 	// In dry run mode, only log what would be sent
 	if notification.DryRun {
@@ -137,7 +137,7 @@ func (n *NotificationService) sendEmail(to, subject, body string) error {
 	// Set sender
 	fromName := n.config.FromName
 	if fromName == "" {
-		fromName = "JellySweep"
+		fromName = "Jellysweep"
 	}
 	email.SetFrom(fmt.Sprintf("%s <%s>", fromName, n.config.FromEmail))
 
