@@ -503,11 +503,6 @@ session_key: "your-session-key"  # Random string for session encryption
 session_max_age: 172800          # Session max age in seconds (48 hours)
 server_url: "http://localhost:3002"
 
-# Cache configuration (optional)
-cache:
-  type: "memory"                 # Cache type: "memory" or "redis"
-  redis_url: "localhost:6379"    # Redis server URL (when using redis cache)
-
 # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
 # Warning: No authentication is only recommended for development environments
 auth:
