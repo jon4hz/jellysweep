@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/jellyseerr"
 	"github.com/jon4hz/jellysweep/jellystat"
 	"github.com/jon4hz/jellysweep/notify/email"
@@ -52,6 +54,7 @@ type Engine struct {
 	ntfy         *ntfy.Client
 	webpush      *webpush.Client
 	scheduler    *scheduler.Scheduler
+	db           database.DatabaseInterface
 
 	imageCache *cache.ImageCache
 	cache      *cache.EngineCache // Cache for engine-specific data
@@ -72,6 +75,9 @@ type data struct {
 
 	// userNotifications tracks which users should be notified about which media items
 	userNotifications map[string][]MediaItem // key: user email, value: media items
+
+	// Current cleanup run state
+	currentCleanupRun *database.CleanupRun
 }
 
 // New creates a new Engine instance.
@@ -145,6 +151,12 @@ func New(cfg *config.Config) (*Engine, error) {
 		return nil, fmt.Errorf("failed to create engine cache: %w", err)
 	}
 
+	// Initialize database
+	db, err := database.New("./data/jellysweep.db")
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize database: %w", err)
+	}
+
 	engine := &Engine{
 		cfg:          cfg,
 		jellyfin:     newJellyfinClient(cfg.Jellyfin),
@@ -157,6 +169,7 @@ func New(cfg *config.Config) (*Engine, error) {
 		ntfy:         ntfyClient,
 		webpush:      webpushClient,
 		scheduler:    sched,
+		db:           db,
 		data: &data{
 			userNotifications: make(map[string][]MediaItem),
 			libraryIDMap:      make(map[string]string),
@@ -190,6 +203,11 @@ func (e *Engine) Run(ctx context.Context) error {
 
 // Close stops the engine and cleans up resources.
 func (e *Engine) Close() error {
+	if e.db != nil {
+		if err := e.db.Close(); err != nil {
+			log.Errorf("failed to close database: %v", err)
+		}
+	}
 	return e.scheduler.Stop()
 }
 
@@ -233,23 +251,264 @@ func (e *Engine) setupJobs() error {
 func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 	log.Info("Starting scheduled cleanup job")
 
+	// Check if there's already an active cleanup run
+	activeRun, err := e.db.GetActiveCleanupRun(ctx)
+	if err != nil {
+		log.Errorf("failed to check for active cleanup run: %v", err)
+		return err
+	}
+
+	var cleanupRun *database.CleanupRun
+	if activeRun != nil {
+		log.Info("Resuming existing cleanup run", "runID", activeRun.ID, "step", activeRun.Step)
+		cleanupRun = activeRun
+	} else {
+		// Start new cleanup run
+		cleanupRun, err = e.db.StartCleanupRun(ctx)
+		if err != nil {
+			log.Errorf("failed to start cleanup run: %v", err)
+			return err
+		}
+		log.Info("Started new cleanup run", "runID", cleanupRun.ID)
+	}
+
+	// Store current cleanup run in data
+	e.data.currentCleanupRun = cleanupRun
+
 	// Clear all caches to ensure fresh data
 	e.cache.ClearAll(ctx)
 
+	// Execute cleanup steps based on current state
+	defer func() {
+		// Complete the cleanup run
+		status := database.CleanupRunStatusCompleted
+		var errorMessage *string
+		if err != nil {
+			status = database.CleanupRunStatusFailed
+			errMsg := err.Error()
+			errorMessage = &errMsg
+		}
+
+		if completeErr := e.db.CompleteCleanupRun(ctx, cleanupRun.ID, status, errorMessage); completeErr != nil {
+			log.Errorf("failed to complete cleanup run: %v", completeErr)
+		}
+
+		if err == nil {
+			log.Info("Scheduled cleanup job completed successfully", "runID", cleanupRun.ID)
+		} else {
+			log.Error("Scheduled cleanup job failed", "runID", cleanupRun.ID, "error", err)
+		}
+	}()
+
+	// Execute cleanup steps in order, but skip already completed ones
+	steps := []struct {
+		step database.CleanupRunStep
+		fn   func(context.Context) error
+	}{
+		{database.CleanupRunStepRemoveExpiredKeepTags, e.removeExpiredKeepTagsWithTracking},
+		{database.CleanupRunStepCleanupOldTags, e.cleanupOldTagsWithTracking},
+		{database.CleanupRunStepMarkForDeletion, e.markForDeletionWithTracking},
+		{database.CleanupRunStepRemoveRecentlyPlayed, e.removeRecentlyPlayedDeleteTagsWithTracking},
+		{database.CleanupRunStepCleanupMedia, e.cleanupMediaWithTracking},
+	}
+
+	for _, stepInfo := range steps {
+		// Skip if we're past this step already
+		if e.shouldSkipStep(cleanupRun.Step, stepInfo.step) {
+			log.Debug("Skipping already completed step", "step", stepInfo.step)
+			continue
+		}
+
+		// Update current step
+		if err = e.db.UpdateCleanupRunStep(ctx, cleanupRun.ID, stepInfo.step); err != nil {
+			log.Errorf("failed to update cleanup run step: %v", err)
+			return err
+		}
+
+		// Start step tracking
+		if err = e.db.StartCleanupStep(ctx, cleanupRun.ID, stepInfo.step); err != nil {
+			log.Errorf("failed to start cleanup step tracking: %v", err)
+			// Don't fail the whole process for tracking issues
+		}
+
+		log.Info("Executing cleanup step", "step", stepInfo.step)
+
+		// Execute the step
+		stepErr := stepInfo.fn(ctx)
+
+		// Complete step tracking
+		stepStatus := database.CleanupRunStatusCompleted
+		var stepErrorMessage *string
+		itemsProcessed := 0 // TODO: Track items processed per step
+
+		if stepErr != nil {
+			stepStatus = database.CleanupRunStatusFailed
+			errMsg := stepErr.Error()
+			stepErrorMessage = &errMsg
+		}
+
+		if completeStepErr := e.db.CompleteCleanupStep(ctx, cleanupRun.ID, stepInfo.step, stepStatus, stepErrorMessage, itemsProcessed); completeStepErr != nil {
+			log.Errorf("failed to complete cleanup step tracking: %v", completeStepErr)
+		}
+
+		// If step failed, return error
+		if stepErr != nil {
+			log.Errorf("cleanup step %s failed: %v", stepInfo.step, stepErr)
+			return stepErr
+		}
+
+		log.Info("Completed cleanup step", "step", stepInfo.step)
+	}
+
+	return nil
+}
+
+// shouldSkipStep determines if a step should be skipped based on current progress.
+func (e *Engine) shouldSkipStep(currentStep, targetStep database.CleanupRunStep) bool {
+	stepOrder := map[database.CleanupRunStep]int{
+		database.CleanupRunStepStarting:              0,
+		database.CleanupRunStepRemoveExpiredKeepTags: 1,
+		database.CleanupRunStepCleanupOldTags:        2,
+		database.CleanupRunStepMarkForDeletion:       3,
+		database.CleanupRunStepRemoveRecentlyPlayed:  4,
+		database.CleanupRunStepCleanupMedia:          5,
+		database.CleanupRunStepCompleted:             6,
+	}
+
+	currentOrder := stepOrder[currentStep]
+	targetOrder := stepOrder[targetStep]
+
+	return currentOrder > targetOrder
+}
+
+// Tracking wrapper functions.
+func (e *Engine) removeExpiredKeepTagsWithTracking(ctx context.Context) error {
 	e.removeExpiredKeepTags(ctx)
+	return nil
+}
+
+func (e *Engine) cleanupOldTagsWithTracking(ctx context.Context) error {
 	e.cleanupOldTags(ctx)
-	if err = e.markForDeletion(ctx); err != nil {
-		log.Error("An error occurred while marking media for deletion")
+	return nil
+}
+
+func (e *Engine) markForDeletionWithTracking(ctx context.Context) error {
+	err := e.markForDeletion(ctx)
+
+	// Record media items marked for deletion
+	if e.data.currentCleanupRun != nil && e.data.mediaItems != nil {
+		var mediaItems []database.CleanupMediaItem
+
+		for library, items := range e.data.mediaItems {
+			for _, item := range items {
+				// Convert tags to JSON
+				var tagsJSON *string
+				if len(item.Tags) > 0 {
+					if jsonStr := stringSliceToJSON(item.Tags); jsonStr != nil {
+						tagsJSON = jsonStr
+					}
+				}
+
+				dbItem := database.CleanupMediaItem{
+					CleanupRunID:    e.data.currentCleanupRun.ID,
+					JellyfinID:      item.JellyfinID,
+					MediaID:         getMediaID(item),
+					Title:           item.Title,
+					MediaType:       string(item.MediaType),
+					Year:            lo.ToPtr(int(item.Year)),
+					Library:         &library,
+					TmdbID:          &item.TmdbId,
+					FileSize:        getFileSize(item),
+					RequestedBy:     lo.ToPtr(item.RequestedBy),
+					RequestDate:     lo.ToPtr(item.RequestDate),
+					Action:          database.MediaActionMarkedForDeletion,
+					ActionTimestamp: time.Now(),
+					DeletionDate:    getDeletionDate(item),
+					Tags:            tagsJSON,
+				}
+
+				mediaItems = append(mediaItems, dbItem)
+			}
+		}
+
+		if len(mediaItems) > 0 {
+			if recordErr := e.db.RecordMediaActions(ctx, e.data.currentCleanupRun.ID, mediaItems); recordErr != nil {
+				log.Errorf("failed to record media actions: %v", recordErr)
+				// Don't fail the whole process for recording issues
+			} else {
+				log.Infof("recorded %d media items marked for deletion", len(mediaItems))
+			}
+		}
 	}
+
+	return err
+}
+
+func (e *Engine) removeRecentlyPlayedDeleteTagsWithTracking(ctx context.Context) error {
 	e.removeRecentlyPlayedDeleteTags(ctx)
+	return nil
+}
 
-	// only delete media if there was no previous error
-	if err == nil {
-		e.cleanupMedia(ctx)
+func (e *Engine) cleanupMediaWithTracking(ctx context.Context) error {
+	// Store the media items before cleanup to know what gets deleted
+	markedItems := make(map[string][]MediaItem)
+	if e.data.mediaItems != nil {
+		// Make a copy of the marked items
+		for lib, items := range e.data.mediaItems {
+			markedItems[lib] = make([]MediaItem, len(items))
+			copy(markedItems[lib], items)
+		}
 	}
 
-	log.Info("Scheduled cleanup job completed")
-	return
+	e.cleanupMedia(ctx)
+
+	// Record deleted items
+	if e.data.currentCleanupRun != nil && len(markedItems) > 0 {
+		var deletedItems []database.CleanupMediaItem
+
+		for library, items := range markedItems {
+			for _, item := range items {
+				// Convert tags to JSON
+				var tagsJSON *string
+				if len(item.Tags) > 0 {
+					if jsonStr := stringSliceToJSON(item.Tags); jsonStr != nil {
+						tagsJSON = jsonStr
+					}
+				}
+
+				dbItem := database.CleanupMediaItem{
+					CleanupRunID:    e.data.currentCleanupRun.ID,
+					JellyfinID:      item.JellyfinID,
+					MediaID:         getMediaID(item),
+					Title:           item.Title,
+					MediaType:       string(item.MediaType),
+					Year:            lo.ToPtr(int(item.Year)),
+					Library:         &library,
+					TmdbID:          &item.TmdbId,
+					FileSize:        getFileSize(item),
+					RequestedBy:     &item.RequestedBy,
+					RequestDate:     &item.RequestDate,
+					Action:          database.MediaActionDeleted,
+					ActionTimestamp: time.Now(),
+					DeletionDate:    getDeletionDate(item),
+					Tags:            tagsJSON,
+				}
+
+				deletedItems = append(deletedItems, dbItem)
+			}
+		}
+
+		if len(deletedItems) > 0 {
+			if recordErr := e.db.RecordMediaActions(ctx, e.data.currentCleanupRun.ID, deletedItems); recordErr != nil {
+				log.Errorf("failed to record deleted media actions: %v", recordErr)
+				// Don't fail the whole process for recording issues
+			} else {
+				log.Infof("recorded %d media items as deleted", len(deletedItems))
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetScheduler returns the scheduler instance for API access.
@@ -265,6 +524,11 @@ func (e *Engine) GetImageCache() *cache.ImageCache {
 // GetEngineCache returns the engine cache instance.
 func (e *Engine) GetEngineCache() *cache.EngineCache {
 	return e.cache
+}
+
+// GetDatabase returns the database interface.
+func (e *Engine) GetDatabase() database.DatabaseInterface {
+	return e.db
 }
 
 // removeRecentlyPlayedDeleteTags removes jellysweep-delete tags from media that has been played recently.
@@ -853,4 +1117,45 @@ func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName stri
 	}
 
 	return fmt.Errorf("unsupported media ID format: %s", mediaID)
+}
+
+// Helper functions for database operations.
+func stringSliceToJSON(slice []string) *string {
+	if len(slice) == 0 {
+		return nil
+	}
+
+	jsonBytes, err := json.Marshal(slice)
+	if err != nil {
+		return nil
+	}
+
+	jsonStr := string(jsonBytes)
+	return &jsonStr
+}
+
+func getMediaID(item MediaItem) string {
+	if item.MediaType == models.MediaTypeTV && item.SeriesResource.Id != nil {
+		return fmt.Sprintf("sonarr-%d", *item.SeriesResource.Id)
+	}
+	if item.MediaType == models.MediaTypeMovie && item.MovieResource.Id != nil {
+		return fmt.Sprintf("radarr-%d", *item.MovieResource.Id)
+	}
+	return ""
+}
+
+func getFileSize(item MediaItem) int64 {
+	if item.MediaType == models.MediaTypeTV {
+		return getSeriesFileSize(item.SeriesResource)
+	}
+	if item.MediaType == models.MediaTypeMovie {
+		return item.MovieResource.GetSizeOnDisk()
+	}
+	return 0
+}
+
+func getDeletionDate(item MediaItem) *time.Time {
+	// This would need to be extracted from the tags or calculated
+	// For now, return nil - this could be enhanced later
+	return nil
 }
