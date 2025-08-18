@@ -46,6 +46,8 @@ func NewSQLiteDB(dbPath string) (*SQLiteDB, error) {
 func (s *SQLiteDB) Migrate() error {
 	goose.SetBaseFS(embedMigrations)
 
+	goose.SetLogger(log.Default().WithPrefix("goose"))
+
 	if err := goose.SetDialect("sqlite3"); err != nil {
 		return fmt.Errorf("failed to set goose dialect: %w", err)
 	}
@@ -194,7 +196,12 @@ func (s *SQLiteDB) GetCleanupRunHistory(ctx context.Context, limit, offset int) 
 			COUNT(CASE WHEN cmi.action = 'ignored' THEN 1 END) as ignored,
 			COUNT(CASE WHEN cmi.action = 'unmarked' THEN 1 END) as unmarked,
 			COALESCE(SUM(cmi.file_size), 0) as total_size,
-			COALESCE(SUM(CASE WHEN cmi.action = 'deleted' AND cmi.deletion_date IS NOT NULL THEN cmi.file_size ELSE 0 END), 0) as deleted_size
+			COALESCE(SUM(CASE WHEN cmi.action = 'deleted' AND cmi.deletion_date IS NOT NULL THEN cmi.file_size ELSE 0 END), 0) as deleted_size,
+			CASE
+				WHEN cr.completed_at IS NOT NULL THEN
+					printf('%.0f minutes', (julianday(cr.completed_at) - julianday(cr.started_at)) * 24 * 60)
+				ELSE NULL
+			END as duration
 		FROM cleanup_runs cr
 		LEFT JOIN cleanup_media_items cmi ON cr.id = cmi.cleanup_run_id
 		GROUP BY cr.id
@@ -217,18 +224,10 @@ func (s *SQLiteDB) GetCleanupRunHistory(ctx context.Context, limit, offset int) 
 			&summary.ErrorMessage, &summary.Step, &summary.CreatedAt, &summary.UpdatedAt,
 			&summary.TotalItems, &summary.MarkedForDeletion, &summary.Deleted,
 			&summary.Kept, &summary.Ignored, &summary.Unmarked,
-			&summary.TotalSize, &summary.DeletedSize,
+			&summary.TotalSize, &summary.DeletedSize, &summary.Duration,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan cleanup run summary: %w", err)
-		}
-
-		// Calculate duration in Go
-		if summary.CompletedAt != nil {
-			duration := summary.CompletedAt.Sub(summary.StartedAt)
-			durationMinutes := duration.Minutes()
-			formatted := fmt.Sprintf("%.0f minutes", durationMinutes)
-			summary.Duration = &formatted
 		}
 
 		summaries = append(summaries, summary)

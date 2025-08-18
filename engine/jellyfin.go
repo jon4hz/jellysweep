@@ -29,25 +29,28 @@ type jellyfinItem struct {
 	ParentLibraryID string `json:"parentLibraryId,omitempty"`
 }
 
-func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, error) {
+// getJellyfinItems returns items plus library ID->name and name->folders maps.
+func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, map[string]string, map[string][]string, error) {
 	var allItems []jellyfinItem
+	libraryIDMap := make(map[string]string)
+	libraryFoldersMap := make(map[string][]string)
 
 	// First, get all media folders (libraries)
 	mediaFoldersResp, _, err := e.jellyfin.LibraryAPI.GetMediaFolders(ctx).Execute()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get media folders: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get media folders: %w", err)
 	}
 
 	// Check if we have items in the response
 	mediaFolders := mediaFoldersResp.GetItems()
 	if len(mediaFolders) == 0 {
-		return nil, fmt.Errorf("no media folders found")
+		return nil, nil, nil, fmt.Errorf("no media folders found")
 	}
 
 	// fetch virtual folders (required for the thresholds based on disk usage)
 	virtualFolders, _, err := e.jellyfin.LibraryStructureAPI.GetVirtualFolders(ctx).Execute()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get virtual folders: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get virtual folders: %w", err)
 	}
 	if len(virtualFolders) == 0 {
 		log.Warn("No virtual folders found")
@@ -61,7 +64,7 @@ func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, error) {
 			log.Debug("Skipping virtual folder for disabled library", "library", libraryName)
 			continue
 		}
-		e.data.libraryFoldersMap[libraryName] = folder.GetLocations()
+		libraryFoldersMap[libraryName] = folder.GetLocations()
 	}
 
 	// Process each enabled library
@@ -80,7 +83,7 @@ func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, error) {
 			continue
 		}
 
-		e.data.libraryIDMap[libraryID] = libraryName
+		libraryIDMap[libraryID] = libraryName
 		log.Debug("Added library to ID map", "library", libraryName, "id", libraryID)
 
 		log.Info("Processing library", "library", libraryName, "id", libraryID)
@@ -104,11 +107,20 @@ func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, error) {
 		}
 	}
 
-	return allItems, nil
+	return allItems, libraryIDMap, libraryFoldersMap, nil
 }
 
-func (e *Engine) getLibraryNameByID(libraryID string) string {
-	if name, exists := e.data.libraryIDMap[libraryID]; exists {
+// getLibraryMaps fetches maps of library IDs and folders on demand.
+func (e *Engine) getLibraryMaps(ctx context.Context) (map[string][]string, error) {
+	_, _, foldersMap, err := e.getJellyfinItems(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return foldersMap, nil
+}
+
+func getLibraryNameByID(libraryIDMap map[string]string, libraryID string) string {
+	if name, exists := libraryIDMap[libraryID]; exists {
 		return name
 	}
 	log.Warn("Library ID not found in library ID map", "library", libraryID)

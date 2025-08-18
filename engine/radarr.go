@@ -115,13 +115,13 @@ func (e *Engine) getRadarrTags(ctx context.Context, forceRefresh bool) (cache.Ta
 	return tagMap, nil
 }
 
-func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, dryRun bool) error {
+func (e *Engine) markRadarrMediaItemsForDeletion(ctx context.Context, mediaItems map[string][]MediaItem, dryRun bool) error {
 	tags, err := e.getRadarrTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get Radarr tags: %w", err)
 	}
 	clearCache := false
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 	movieLoop:
 		for _, item := range items {
 			if item.MediaType != models.MediaTypeMovie {
@@ -314,7 +314,7 @@ func (e *Engine) deleteRadarrMedia(ctx context.Context) ([]MediaItem, error) {
 }
 
 // removeRecentlyPlayedRadarrDeleteTags removes jellysweep-delete tags from Radarr movies that have been played recently.
-func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
+func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context, jellyfinItems []jellyfinItem, libraryIDMap map[string]string) {
 	radarrItems, err := e.getRadarrItems(ctx, false)
 	if err != nil {
 		log.Errorf("Failed to get Radarr items for removing recently played delete tags: %v", err)
@@ -352,18 +352,18 @@ func (e *Engine) removeRecentlyPlayedRadarrDeleteTags(ctx context.Context) {
 			continue
 		}
 
-		// Find the matching jellyfin item and library for this movie from original unfiltered data
+		// Find the matching jellyfin item and library for this movie from passed jellyfin data
 		var matchingJellyfinID string
 		var libraryName string
 
 		// Search through all jellyfin items to find matching movie
-		for _, jellyfinItem := range e.data.jellyfinItems {
+		for _, jellyfinItem := range jellyfinItems {
 			if jellyfinItem.GetType() == jellyfin.BASEITEMKIND_MOVIE &&
 				jellyfinItem.GetName() == movie.GetTitle() &&
 				jellyfinItem.GetProductionYear() == movie.GetYear() {
 				matchingJellyfinID = jellyfinItem.GetId()
 				// Get library name from the library ID map
-				if libName := e.getLibraryNameByID(jellyfinItem.ParentLibraryID); libName != "" {
+				if libName := getLibraryNameByID(libraryIDMap, jellyfinItem.ParentLibraryID); libName != "" {
 					libraryName = libName
 				}
 				break

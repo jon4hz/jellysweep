@@ -21,9 +21,9 @@ func (e *Engine) getStreamystatsMediaItemLastStreamed(ctx context.Context, jelly
 }
 
 // filterStreamystatsLastStreamThreshold filters out media items that have been streamed within the configured threshold.
-func (e *Engine) filterStreamystatsLastStreamThreshold(ctx context.Context) error {
+func (e *Engine) filterStreamystatsLastStreamThreshold(ctx context.Context, mediaItems map[string][]MediaItem) (map[string][]MediaItem, error) {
 	filteredItems := make(map[string][]MediaItem, 0)
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 		for _, item := range items {
 			lastStreamed, err := e.getStreamystatsMediaItemLastStreamed(ctx, item.JellyfinID)
 			if err != nil {
@@ -33,7 +33,7 @@ func (e *Engine) filterStreamystatsLastStreamThreshold(ctx context.Context) erro
 					continue
 				}
 				log.Error("Failed to get last streamed time for item", "item", item.JellyfinID, "error", err)
-				return err
+				return nil, err
 			}
 			if lastStreamed.IsZero() {
 				filteredItems[lib] = append(filteredItems[lib], item) // No last streamed time, mark for deletion
@@ -48,6 +48,5 @@ func (e *Engine) filterStreamystatsLastStreamThreshold(ctx context.Context) erro
 			log.Debugf("Excluding item %s due to recent stream: %s", item.Title, lastStreamed.Format(time.RFC3339))
 		}
 	}
-	e.data.mediaItems = filteredItems
-	return nil
+	return filteredItems, nil
 }
