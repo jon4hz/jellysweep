@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 	"golang.org/x/sync/errgroup"
@@ -338,8 +339,8 @@ func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
 	})
 }
 
-// SchedulerPanel shows the scheduler management panel.
-func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
+// EnginePanel shows the engine management panel with scheduler, cache, and database features.
+func (h *AdminHandler) EnginePanel(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
 	// Get scheduler jobs
@@ -351,8 +352,33 @@ func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
 		cacheStats = engineCache.GetStats()
 	}
 
+	// Get database stats
+	var dbStats *database.CleanupStats
+	var cleanupHistory []database.CleanupRunSummary
+	var activeRun *database.CleanupRun
+
+	if db := h.engine.GetDatabase(); db != nil {
+		if stats, err := db.GetCleanupStats(c.Request.Context(), nil); err != nil {
+			log.Error("Failed to get database stats", "error", err)
+		} else {
+			dbStats = stats
+		}
+
+		if history, err := db.GetCleanupRunHistory(c.Request.Context(), 10, 0); err != nil {
+			log.Error("Failed to get cleanup history", "error", err)
+		} else {
+			cleanupHistory = history
+		}
+
+		if run, err := db.GetActiveCleanupRun(c.Request.Context()); err != nil {
+			log.Error("Failed to get active cleanup run", "error", err)
+		} else {
+			activeRun = run
+		}
+	}
+
 	c.Header("Content-Type", "text/html")
-	if err := pages.SchedulerPanel(user, jobs, cacheStats).Render(c.Request.Context(), c.Writer); err != nil {
-		log.Error("Failed to render scheduler panel", "error", err)
+	if err := pages.EnginePanel(user, jobs, cacheStats, dbStats, cleanupHistory, activeRun).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Error("Failed to render engine panel", "error", err)
 	}
 }

@@ -123,13 +123,15 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
 	h := handler.NewAdmin(s.engine)
+	dbHandler := handler.NewDatabaseHandler(s.engine.GetDatabase())
 
 	// Admin panel page
 	adminGroup.GET("", h.AdminPanel)
 	adminGroup.GET("/", h.AdminPanel)
 
-	// Scheduler panel page
-	adminGroup.GET("/scheduler", h.SchedulerPanel)
+	// Engine panel page (formerly scheduler)
+	adminGroup.GET("/engine", h.EnginePanel)
+	adminGroup.GET("/scheduler", h.EnginePanel) // Backward compatibility
 
 	// Admin API routes
 	adminAPI := adminGroup.Group("/api")
@@ -142,13 +144,28 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI.GET("/keep-requests", h.GetKeepRequests)
 	adminAPI.GET("/media", h.GetAdminMediaItems)
 
-	// Scheduler management endpoints
+	// Engine management endpoints (renamed from scheduler)
+	adminAPI.GET("/engine/jobs", h.GetSchedulerJobs)
+	adminAPI.POST("/engine/jobs/:id/run", h.RunSchedulerJob)
+	adminAPI.POST("/engine/jobs/:id/enable", h.EnableSchedulerJob)
+	adminAPI.POST("/engine/jobs/:id/disable", h.DisableSchedulerJob)
+	adminAPI.GET("/engine/cache/stats", h.GetSchedulerCacheStats)
+	adminAPI.POST("/engine/cache/clear", h.ClearSchedulerCache)
+
+	// Backward compatibility - scheduler endpoints
 	adminAPI.GET("/scheduler/jobs", h.GetSchedulerJobs)
 	adminAPI.POST("/scheduler/jobs/:id/run", h.RunSchedulerJob)
 	adminAPI.POST("/scheduler/jobs/:id/enable", h.EnableSchedulerJob)
 	adminAPI.POST("/scheduler/jobs/:id/disable", h.DisableSchedulerJob)
 	adminAPI.GET("/scheduler/cache/stats", h.GetSchedulerCacheStats)
 	adminAPI.POST("/scheduler/cache/clear", h.ClearSchedulerCache)
+
+	// Database/cleanup history endpoints
+	adminAPI.GET("/cleanup/history", dbHandler.GetCleanupHistory)
+	adminAPI.GET("/cleanup/runs/:id", dbHandler.GetCleanupRun)
+	adminAPI.GET("/cleanup/stats", dbHandler.GetCleanupStats)
+	adminAPI.GET("/cleanup/active", dbHandler.GetActiveCleanupRun)
+	adminAPI.GET("/media/:media_id/history", dbHandler.GetMediaHistory)
 }
 
 func (s *Server) setupPluginRoutes() error {
