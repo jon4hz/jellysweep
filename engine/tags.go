@@ -196,7 +196,12 @@ func (e *Engine) ShouldTriggerDeletionBasedOnDiskUsage(ctx context.Context, libr
 	}
 
 	// Get library paths for disk usage calculation
-	libraryPaths, exists := e.data.libraryFoldersMap[libraryName]
+	foldersMap, err := e.getLibraryMaps(ctx)
+	if err != nil {
+		log.Warnf("Failed to fetch library maps: %v", err)
+		return ShouldTriggerDeletion(tagNames)
+	}
+	libraryPaths, exists := foldersMap[libraryName]
 	if !exists || len(libraryPaths) == 0 {
 		log.Warnf("No library paths found for %s, using basic tag expiration check", libraryName)
 		return ShouldTriggerDeletion(tagNames)
@@ -291,7 +296,11 @@ func (e *Engine) parseDeletionDateFromTag(ctx context.Context, tagNames []string
 	}
 
 	// Get library paths for disk usage calculation
-	libraryPaths, exists := e.data.libraryFoldersMap[libraryName]
+	foldersMap, err := e.getLibraryMaps(ctx)
+	if err != nil {
+		log.Warnf("Failed to fetch library maps: %v", err)
+	}
+	libraryPaths, exists := foldersMap[libraryName]
 	if !exists || len(libraryPaths) == 0 || len(libraryConfig.DiskUsageThresholds) == 0 {
 		// No library paths available, use default cleanup delay
 		cleanupDelay := libraryConfig.CleanupDelay
@@ -407,9 +416,9 @@ func (e *Engine) parseDeletionDateFromTag(ctx context.Context, tagNames []string
 	return deletionDate, nil
 }
 
-func (e *Engine) filterMediaTags() {
+func (e *Engine) filterMediaTags(mediaItems map[string][]MediaItem) map[string][]MediaItem {
 	filteredItems := make(map[string][]MediaItem, 0)
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 		for _, item := range items {
 			// Check if the item has any tags that are not in the exclude list
 			hasExcludedTag := false
@@ -464,7 +473,7 @@ func (e *Engine) filterMediaTags() {
 			}
 		}
 	}
-	e.data.mediaItems = filteredItems
+	return filteredItems
 }
 
 // parseKeepTagWithRequester extracts the date and requester from a jellysweep-must-keep tag.

@@ -118,13 +118,13 @@ func (e *Engine) getSonarrTags(ctx context.Context, forceRefresh bool) (cache.Ta
 	return tagMap, nil
 }
 
-func (e *Engine) markSonarrMediaItemsForDeletion(ctx context.Context, dryRun bool) error {
+func (e *Engine) markSonarrMediaItemsForDeletion(ctx context.Context, mediaItems map[string][]MediaItem, dryRun bool) error {
 	tags, err := e.getSonarrTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get Sonarr tags: %w", err)
 	}
 	clearCache := false
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 		for _, item := range items {
 			if item.MediaType != models.MediaTypeTV {
 				continue // Only process TV series for Sonarr
@@ -404,18 +404,18 @@ func (e *Engine) deleteSonarrMedia(ctx context.Context) ([]MediaItem, error) {
 }
 
 // filterSeriesAlreadyMeetingKeepCriteria filters out series that already meet the keep criteria.
-func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria() {
+func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria(mediaItems map[string][]MediaItem) map[string][]MediaItem {
 	cleanupMode := e.cfg.GetCleanupMode()
 	keepCount := e.cfg.GetKeepCount()
 
 	// If cleanup mode is "all", no filtering needed
 	if cleanupMode == CleanupModeAll {
-		return
+		return mediaItems
 	}
 
 	totalSkippedCount := 0
 
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 		var filteredItems []MediaItem
 		skippedCount := 0
 
@@ -436,7 +436,7 @@ func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria() {
 		}
 
 		// Update the media items for this library
-		e.data.mediaItems[lib] = filteredItems
+		mediaItems[lib] = filteredItems
 
 		if skippedCount > 0 {
 			log.Infof("Filtered out %d series from library %s that already meet keep criteria", skippedCount, lib)
@@ -446,6 +446,7 @@ func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria() {
 	if totalSkippedCount > 0 {
 		log.Infof("Total filtered out: %d series that already meet keep criteria", totalSkippedCount)
 	}
+	return mediaItems
 }
 
 // shouldSkipSeriesForDeletion checks if a series already meets the keep criteria and should not be marked for deletion.
@@ -616,7 +617,7 @@ func (e *Engine) removeExpiredSonarrKeepTags(ctx context.Context) error {
 }
 
 // removeRecentlyPlayedSonarrDeleteTags removes jellysweep-delete tags from Sonarr series that have been played recently.
-func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error {
+func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context, jellyfinItems []jellyfinItem, libraryIDMap map[string]string) error {
 	sonarrItems, err := e.getSonarrItems(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get Sonarr items: %w", err)
@@ -645,18 +646,18 @@ func (e *Engine) removeRecentlyPlayedSonarrDeleteTags(ctx context.Context) error
 			continue
 		}
 
-		// Find the matching jellystat item and library for this series from original unfiltered data
+		// Find the matching jellystat item and library for this series from passed jellyfin data
 		var matchingJellystatID string
 		var libraryName string
 
 		// Search through all jellyfin items to find matching series
-		for _, jellyfinItem := range e.data.jellyfinItems {
+		for _, jellyfinItem := range jellyfinItems {
 			if jellyfinItem.GetType() == jellyfin.BASEITEMKIND_SERIES &&
 				jellyfinItem.GetName() == series.GetTitle() &&
 				jellyfinItem.GetProductionYear() == series.GetYear() {
 				matchingJellystatID = jellyfinItem.GetId()
 				// Get library name from the library ID map
-				if libName := e.getLibraryNameByID(jellyfinItem.ParentLibraryID); libName != "" {
+				if libName := getLibraryNameByID(libraryIDMap, jellyfinItem.ParentLibraryID); libName != "" {
 					libraryName = libName
 				}
 				break

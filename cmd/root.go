@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"context"
 	"io"
 	"os"
 
+	"github.com/charmbracelet/fang"
 	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 )
@@ -75,5 +77,5 @@ func logToFile() {
 }
 
 func Execute() error {
-	return rootCmd.Execute()
+	return fang.Execute(context.Background(), rootCmd)
 }

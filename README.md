@@ -25,7 +25,8 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 - 👥 **User Requests** - Built-in keep request system for your users
 - 🔔 **Notifications** - Email users, ntfy alerts for admins, and web push notifications
 - 📱 **Progressive Web App (PWA)** - Install as an app on mobile and desktop
-- ⚡ **Stateless Design** - No database required, clean runs every time
+- ⚡ **Persistent State** - SQLite database tracks cleanup history and enables resumable operations
+- 📊 **Cleanup Analytics** - Complete audit trail of all media actions and run history
 - 🌐 **Web Interface** - Modern UI for monitoring and management
 - 📊 **Statistics Dashboard** - Visual charts showing cleanup progress and storage freed
 

@@ -149,14 +149,14 @@ func (e *Engine) getRadarrItemAddedDate(ctx context.Context, movieID int32) (*ti
 }
 
 // filterContentAgeThreshold filters out media items that have been added within the configured threshold.
-func (e *Engine) filterContentAgeThreshold(ctx context.Context) error {
+func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems map[string][]MediaItem) (map[string][]MediaItem, error) {
 	filteredItems := make(map[string][]MediaItem, 0)
 
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 		for _, item := range items {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil, ctx.Err()
 			default:
 			}
 
@@ -198,7 +198,5 @@ func (e *Engine) filterContentAgeThreshold(ctx context.Context) error {
 		}
 	}
 
-	e.data.mediaItems = filteredItems
-
-	return nil
+	return filteredItems, nil
 }

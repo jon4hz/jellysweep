@@ -2,22 +2,24 @@ package pages
 
 import (
 	"fmt"
+	"github.com/dustin/go-humanize"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/scheduler"
 	"github.com/jon4hz/jellysweep/web/templates"
 	"sort"
 )
 
-templ SchedulerPanel(user *models.User, jobs map[string]*scheduler.JobInfo, cacheStats []*cache.Stats) {
-	@templates.Layout("Scheduler", user) {
+templ EnginePanel(user *models.User, jobs map[string]*scheduler.JobInfo, cacheStats []*cache.Stats, dbStats *database.CleanupStats, cleanupHistory []database.CleanupRunSummary, activeRun *database.CleanupRun) {
+	@templates.Layout("Engine", user) {
 		<div class="space-y-6">
 			<!-- Header -->
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 class="text-3xl font-bold text-gray-100">Scheduler Management</h1>
+					<h1 class="text-3xl font-bold text-gray-100">Engine Management</h1>
 					<p class="mt-1 text-sm text-gray-400">
-						Manage scheduled jobs and cache
+						Manage scheduled jobs, cache, and database operations
 					</p>
 				</div>
 				<div class="mt-4 sm:mt-0 flex space-x-3">
@@ -55,18 +57,280 @@ templ SchedulerPanel(user *models.User, jobs map[string]*scheduler.JobInfo, cach
 					}
 				</div>
 			</div>
+			<!-- Database Stats Section -->
+			@DatabaseStatsCard(dbStats, activeRun)
 			<!-- Cache Stats -->
 			@CacheStatsCard(cacheStats)
 			<!-- Jobs List -->
 			@JobsCard(jobs)
+			<!-- Cleanup History -->
+			@CleanupHistoryCard(cleanupHistory)
 		</div>
 		<!-- Include shared utility scripts -->
 		@templates.ToastScript()
 		@templates.ButtonLoadingUtils()
 		@templates.ApiUtils()
 		@templates.SmoothNavigationUtils()
-		<!-- Include scheduler-specific scripts -->
-		@SchedulerScript()
+		<!-- Include engine-specific scripts -->
+		@EngineScript()
+	}
+}
+
+templ DatabaseStatsCard(dbStats *database.CleanupStats, activeRun *database.CleanupRun) {
+	<div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+		<div class="flex items-center justify-between mb-4">
+			<h2 class="text-xl font-semibold text-gray-100">Database & Cleanup Status</h2>
+			<div class="flex items-center space-x-2">
+				if activeRun != nil {
+					<div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+					<span class="text-sm text-blue-400">Cleanup Running</span>
+				} else {
+					<div class="w-2 h-2 bg-green-500 rounded-full"></div>
+					<span class="text-sm text-gray-400">Ready</span>
+				}
+			</div>
+		</div>
+		<!-- Active Run Status -->
+		if activeRun != nil {
+			<div class="bg-blue-900/20 border border-blue-700 rounded-lg p-4 mb-6">
+				<h3 class="text-lg font-medium text-blue-200 mb-2">Active Cleanup Run</h3>
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+					<div>
+						<p class="text-sm text-gray-400">Run ID</p>
+						<p class="text-lg font-semibold text-blue-200">{ fmt.Sprintf("#%d", activeRun.ID) }</p>
+					</div>
+					<div>
+						<p class="text-sm text-gray-400">Started At</p>
+						<p class="text-lg font-semibold text-blue-200">{ activeRun.StartedAt.Format("15:04:05") }</p>
+					</div>
+					<div>
+						<p class="text-sm text-gray-400">Current Step</p>
+						<p class="text-lg font-semibold text-blue-200">{ formatCleanupStep(string(activeRun.Step)) }</p>
+					</div>
+				</div>
+			</div>
+		}
+		<!-- Database Statistics -->
+		if dbStats != nil {
+			@DatabaseStatsEnabled(dbStats)
+		} else {
+			@DatabaseStatsError()
+		}
+	</div>
+}
+
+templ DatabaseStatsEnabled(dbStats *database.CleanupStats) {
+	<!-- Summary Stats -->
+	<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+		<div class="text-center">
+			<div class="flex items-center justify-center mb-2">
+				<svg class="w-6 h-6 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+				</svg>
+				<p class="text-3xl font-bold text-blue-400">
+					{ fmt.Sprintf("%d", dbStats.TotalRuns) }
+				</p>
+			</div>
+			<p class="text-sm text-gray-400">Total Runs</p>
+		</div>
+		<div class="text-center">
+			<div class="flex items-center justify-center mb-2">
+				<svg class="w-6 h-6 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+				</svg>
+				<p class="text-3xl font-bold text-green-400">
+					{ fmt.Sprintf("%d", dbStats.SuccessfulRuns) }
+				</p>
+			</div>
+			<p class="text-sm text-gray-400">Successful</p>
+		</div>
+		<div class="text-center">
+			<div class="flex items-center justify-center mb-2">
+				<svg class="w-6 h-6 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+				</svg>
+				<p class="text-3xl font-bold text-red-400">
+					{ fmt.Sprintf("%d", dbStats.TotalItemsDeleted) }
+				</p>
+			</div>
+			<p class="text-sm text-gray-400">Items Deleted</p>
+		</div>
+		<div class="text-center">
+			<div class="flex items-center justify-center mb-2">
+				<svg class="w-6 h-6 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+				</svg>
+				<p class="text-3xl font-bold text-yellow-400">
+					{ formatBytes(dbStats.TotalSizeDeleted) }
+				</p>
+			</div>
+			<p class="text-sm text-gray-400">Space Freed</p>
+		</div>
+	</div>
+	<!-- Additional Stats Row -->
+	if dbStats.AverageRunDuration != nil || dbStats.LastSuccessfulRun != nil {
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 pt-4 border-t border-gray-700">
+			if dbStats.AverageRunDuration != nil {
+				<div class="text-center">
+					<p class="text-sm text-gray-400">Average Run Duration</p>
+					<p class="text-lg font-semibold text-gray-200">{ *dbStats.AverageRunDuration }</p>
+				</div>
+			}
+			if dbStats.LastSuccessfulRun != nil {
+				<div class="text-center">
+					<p class="text-sm text-gray-400">Last Successful Run</p>
+					<p class="text-lg font-semibold text-gray-200">{ dbStats.LastSuccessfulRun.Format("2006-01-02 15:04") }</p>
+				</div>
+			}
+		</div>
+	}
+}
+
+templ DatabaseStatsError() {
+	<div class="text-center py-8">
+		<div class="mx-auto w-16 h-16 bg-red-900 rounded-full flex items-center justify-center mb-4">
+			<svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+			</svg>
+		</div>
+		<h3 class="text-lg font-semibold text-red-300 mb-2">Database Error</h3>
+		<p class="text-gray-400">
+			Unable to retrieve database statistics. The database may be unavailable.
+		</p>
+	</div>
+}
+
+templ CleanupHistoryCard(cleanupHistory []database.CleanupRunSummary) {
+	<div class="bg-gray-800 rounded-lg border border-gray-700">
+		<div class="p-6 border-b border-gray-700">
+			<h2 class="text-xl font-semibold text-gray-100">Recent Cleanup History</h2>
+			<p class="text-sm text-gray-400 mt-1">
+				Latest cleanup runs and their results
+			</p>
+		</div>
+		<div class="p-0">
+			if len(cleanupHistory) == 0 {
+				@CleanupHistoryEmptyState()
+			} else {
+				@CleanupHistoryTable(cleanupHistory)
+			}
+		</div>
+	</div>
+}
+
+templ CleanupHistoryEmptyState() {
+	<div class="text-center py-12">
+		<div class="mx-auto w-24 h-24 bg-gray-900 rounded-full flex items-center justify-center mb-6">
+			<svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+			</svg>
+		</div>
+		<h3 class="text-xl font-semibold text-gray-300 mb-2">No cleanup history</h3>
+		<p class="text-gray-500">
+			No cleanup runs have been recorded yet. History will appear here after the first cleanup job runs.
+		</p>
+	</div>
+}
+
+templ CleanupHistoryTable(cleanupHistory []database.CleanupRunSummary) {
+	<div class="overflow-x-auto">
+		<table class="w-full">
+			<thead class="bg-gray-900">
+				<tr>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Run ID</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Started</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Duration</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Items</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Deleted</th>
+					<th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Size Freed</th>
+				</tr>
+			</thead>
+			<tbody class="divide-y divide-gray-700">
+				for _, run := range cleanupHistory {
+					@CleanupHistoryRow(run)
+				}
+			</tbody>
+		</table>
+	</div>
+}
+
+templ CleanupHistoryRow(run database.CleanupRunSummary) {
+	<tr class="hover:bg-gray-750">
+		<td class="px-6 py-4 whitespace-nowrap">
+			<div class="text-sm font-medium text-gray-100">
+				{ fmt.Sprintf("#%d", run.ID) }
+			</div>
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap">
+			@CleanupRunStatusBadge(run.Status)
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap">
+			<div class="text-sm text-gray-300">
+				{ run.StartedAt.Format("2006-01-02 15:04") }
+			</div>
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap">
+			<div class="text-sm text-gray-300">
+				if run.Duration != nil {
+					{ *run.Duration }
+				} else {
+					<span class="text-gray-500">-</span>
+				}
+			</div>
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap">
+			<div class="text-sm text-gray-300">
+				{ fmt.Sprintf("%d", run.TotalItems) }
+			</div>
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap">
+			<div class="text-sm text-green-400">
+				{ fmt.Sprintf("%d", run.Deleted) }
+			</div>
+		</td>
+		<td class="px-6 py-4 whitespace-nowrap">
+			<div class="text-sm text-purple-400">
+				{ formatBytes(run.DeletedSize) }
+			</div>
+		</td>
+	</tr>
+}
+
+templ CleanupRunStatusBadge(status database.CleanupRunStatus) {
+	switch status {
+		case database.CleanupRunStatusRunning:
+			<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
+				<svg class="w-3 h-3 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+				</svg>
+				Running
+			</span>
+		case database.CleanupRunStatusCompleted:
+			<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200">
+				<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+				</svg>
+				Completed
+			</span>
+		case database.CleanupRunStatusFailed:
+			<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900 text-red-200">
+				<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+				</svg>
+				Failed
+			</span>
+		case database.CleanupRunStatusCancelled:
+			<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
+				<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+				</svg>
+				Cancelled
+			</span>
+		default:
+			<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-gray-200">
+				Unknown
+			</span>
 	}
 }
 
@@ -293,7 +557,7 @@ func sortJobsByName(jobs map[string]*scheduler.JobInfo) []*scheduler.JobInfo {
 	return jobList
 }
 
-templ SchedulerScript() {
+templ EngineScript() {
 	<script>
 		document.addEventListener('DOMContentLoaded', function() {
 			// Refresh jobs handler
@@ -337,7 +601,7 @@ templ SchedulerScript() {
 
 		async function runJob(jobId) {
 			try {
-				const response = await fetch(`/admin/api/scheduler/jobs/${jobId}/run`, {
+				const response = await fetch(`/admin/api/engine/jobs/${jobId}/run`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -360,7 +624,7 @@ templ SchedulerScript() {
 
 		async function enableJob(jobId) {
 			try {
-				const response = await fetch(`/admin/api/scheduler/jobs/${jobId}/enable`, {
+				const response = await fetch(`/admin/api/engine/jobs/${jobId}/enable`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -382,7 +646,7 @@ templ SchedulerScript() {
 
 		async function disableJob(jobId) {
 			try {
-				const response = await fetch(`/admin/api/scheduler/jobs/${jobId}/disable`, {
+				const response = await fetch(`/admin/api/engine/jobs/${jobId}/disable`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -404,7 +668,7 @@ templ SchedulerScript() {
 
 		async function clearCache() {
 			try {
-				const response = await fetch('/admin/api/scheduler/cache/clear', {
+				const response = await fetch('/admin/api/engine/cache/clear', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -633,4 +897,30 @@ templ CacheStatsDisabled() {
 			</div>
 		</div>
 	</div>
+}
+
+// Helper functions for database display
+func formatCleanupStep(step string) string {
+	switch step {
+	case "starting":
+		return "Starting"
+	case "remove_expired_keep_tags":
+		return "Remove Expired Keep Tags"
+	case "cleanup_old_tags":
+		return "Cleanup Old Tags"
+	case "mark_for_deletion":
+		return "Mark for Deletion"
+	case "remove_recently_played":
+		return "Remove Recently Played"
+	case "cleanup_media":
+		return "Cleanup Media"
+	case "completed":
+		return "Completed"
+	default:
+		return step
+	}
+}
+
+func formatBytes(bytes int64) string {
+	return humanize.Bytes(uint64(bytes))
 }

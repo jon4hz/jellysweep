@@ -17,13 +17,13 @@ func safeUint64(value int64) uint64 {
 }
 
 // filterContentSizeThreshold filters out media items that are smaller than the configured threshold.
-func (e *Engine) filterContentSizeThreshold(ctx context.Context) error {
+func (e *Engine) filterContentSizeThreshold(ctx context.Context, mediaItems map[string][]MediaItem) (map[string][]MediaItem, error) {
 	filteredItems := make(map[string][]MediaItem)
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 		for _, item := range items {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil, ctx.Err()
 			default:
 			}
 
@@ -62,7 +62,5 @@ func (e *Engine) filterContentSizeThreshold(ctx context.Context) error {
 		}
 	}
 
-	e.data.mediaItems = filteredItems
-
-	return nil
+	return filteredItems, nil
 }

@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
   packages: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   build-pr-image:
