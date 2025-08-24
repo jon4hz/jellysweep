@@ -37,13 +37,9 @@ func TestNew(t *testing.T) {
 		},
 	}
 
-	jellyfinCfg := &config.JellyfinConfig{
-		APIKey: "test-api-key",
-	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := New(tt.cfg, jellyfinCfg)
+			client, err := New(tt.cfg, "test-api-key")
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Nil(t, client)
@@ -129,11 +125,7 @@ func TestClient_GetItemDetails(t *testing.T) {
 				ServerID: tt.serverID,
 			}
 
-			jellyfinCfg := &config.JellyfinConfig{
-				APIKey: tt.apiKey,
-			}
-
-			client, err := New(cfg, jellyfinCfg)
+			client, err := New(cfg, tt.apiKey)
 			require.NoError(t, err)
 
 			item, err := client.GetItemDetails(context.Background(), tt.itemID)
