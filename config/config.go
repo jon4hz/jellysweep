@@ -15,6 +15,14 @@ const (
 	CacheTypeRedis  CacheType = "redis"
 )
 
+type CleanupMode string
+
+const (
+	CleanupModeAll          CleanupMode = "all"
+	CleanupModeKeepEpisodes CleanupMode = "keep_episodes"
+	CleanupModeKeepSeasons  CleanupMode = "keep_seasons"
+)
+
 // Config holds the configuration for the Jellysweep server and its dependencies.
 type Config struct {
 	// Listen is the address the Jellysweep server will listen on.
@@ -27,7 +35,7 @@ type Config struct {
 	DryRun bool `yaml:"dry_run" mapstructure:"dry_run"`
 	// CleanupMode specifies how to clean up TV series. Options: "all", "keep_episodes", "keep_seasons"
 	// See engine.CleanupMode* constants for valid values.
-	CleanupMode string `yaml:"cleanup_mode" mapstructure:"cleanup_mode"`
+	CleanupMode CleanupMode `yaml:"cleanup_mode" mapstructure:"cleanup_mode"`
 	// KeepCount specifies how many episodes or seasons to keep when using "keep_episodes" or "keep_seasons" mode
 	KeepCount int `yaml:"keep_count" mapstructure:"keep_count"`
 	// Auth holds the authentication configuration for the Jellysweep server.
@@ -565,7 +573,7 @@ func (c *Config) IsAuthenticationEnabled() bool {
 }
 
 // GetCleanupMode returns the cleanup mode with proper defaults.
-func (c *Config) GetCleanupMode() string {
+func (c *Config) GetCleanupMode() CleanupMode {
 	if c == nil || c.CleanupMode == "" {
 		return "all" // Default mode
 	}
