@@ -28,7 +28,7 @@ require (
 	github.com/sj14/jellyfin-go v0.3.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.18.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.16.0
