@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/engine/arr"
 	"github.com/jon4hz/jellysweep/notify/email"
 	"github.com/jon4hz/jellysweep/notify/ntfy"
 )
@@ -127,7 +128,7 @@ func (e *Engine) sendNtfyDeletionSummary(ctx context.Context) error {
 }
 
 // sendNtfyDeletionCompletedNotification sends a notification summary of media that was actually deleted.
-func (e *Engine) sendNtfyDeletionCompletedNotification(ctx context.Context, deletedItems map[string][]MediaItem) error {
+func (e *Engine) sendNtfyDeletionCompletedNotification(ctx context.Context, deletedItems map[string][]arr.MediaItem) error {
 	if e.ntfy == nil {
 		log.Debug("Ntfy service not configured, skipping deletion completed notification")
 		return nil

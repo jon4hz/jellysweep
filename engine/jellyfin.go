@@ -7,6 +7,7 @@ import (
 	"github.com/ccoveille/go-safecast"
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/engine/arr"
 	"github.com/jon4hz/jellysweep/version"
 	jellyfin "github.com/sj14/jellyfin-go/api"
 )
@@ -24,13 +25,8 @@ func newJellyfinClient(cfg *config.JellyfinConfig) *jellyfin.APIClient {
 	return jellyfin.NewAPIClient(clientConfig)
 }
 
-type jellyfinItem struct {
-	jellyfin.BaseItemDto
-	ParentLibraryID string `json:"parentLibraryId,omitempty"`
-}
-
-func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, error) {
-	var allItems []jellyfinItem
+func (e *Engine) getJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, error) {
+	var allItems []arr.JellyfinItem
 
 	// First, get all media folders (libraries)
 	mediaFoldersResp, _, err := e.jellyfin.LibraryAPI.GetMediaFolders(ctx).Execute()
@@ -80,8 +76,8 @@ func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, error) {
 			continue
 		}
 
-		e.data.libraryIDMap[libraryID] = libraryName
-		log.Debug("Added library to ID map", "library", libraryName, "id", libraryID)
+		e.libraryCache.SetLibraryMapping(libraryID, libraryName)
+		log.Debug("Added library to cache", "library", libraryName, "id", libraryID)
 
 		log.Info("Processing library", "library", libraryName, "id", libraryID)
 
@@ -96,7 +92,7 @@ func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, error) {
 		// As a workaround, wrap the jellyfin item dto so it contains the library ID jellysweep expects.
 		for _, item := range libraryItems {
 			// Wrap the item to include the parent library ID
-			wrappedItem := jellyfinItem{
+			wrappedItem := arr.JellyfinItem{
 				BaseItemDto:     item,
 				ParentLibraryID: libraryID,
 			}
@@ -105,14 +101,6 @@ func (e *Engine) getJellyfinItems(ctx context.Context) ([]jellyfinItem, error) {
 	}
 
 	return allItems, nil
-}
-
-func (e *Engine) getLibraryNameByID(libraryID string) string {
-	if name, exists := e.data.libraryIDMap[libraryID]; exists {
-		return name
-	}
-	log.Warn("Library ID not found in library ID map", "library", libraryID)
-	return ""
 }
 
 func (e *Engine) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, libraryName string) ([]jellyfin.BaseItemDto, error) {
@@ -187,3 +175,18 @@ func (e *Engine) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 	log.Info("Retrieved all items from library", "library", libraryName, "total", len(allItems))
 	return allItems, nil
 }
+
+/* func (e *Engine) jellyfinIDFromArrID(ctx context.Context, arrID string) (string, error) {
+	// Implement the logic to retrieve the Jellyfin ID from the array ID
+	return "", nil
+} */
+
+/* func (e *Engine) deleteJellyfinItem(ctx context.Context, itemID string) error {
+	_, err := e.jellyfin.LibraryAPI.DeleteItem(ctx, itemID).Execute()
+	if err != nil {
+		log.Error("Failed to delete Jellyfin item", "item", itemID, "error", err)
+		return err
+	}
+	return nil
+}
+*/
