@@ -248,6 +248,12 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 		e.cleanupMedia(ctx)
 	}
 
+	if err := e.createJellyfinLeavingLibrary(ctx); err != nil {
+		log.Error("An error occurred while creating Jellyfin leaving library")
+	}
+
+	e.removeItemsFromLeavingLibraries(ctx)
+
 	log.Info("Scheduled cleanup job completed")
 	return
 }
