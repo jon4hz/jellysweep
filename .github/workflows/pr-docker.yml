@@ -49,7 +49,7 @@ jobs:
 
       - name: Comment PR with image info
         if: github.event.action == 'opened'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
