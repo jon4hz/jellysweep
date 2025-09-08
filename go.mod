@@ -18,7 +18,7 @@ require (
 	github.com/gin-contrib/gzip v1.2.3
 	github.com/gin-contrib/sessions v1.0.4
 	github.com/gin-gonic/gin v1.10.1
-	github.com/go-co-op/gocron/v2 v2.16.4
+	github.com/go-co-op/gocron/v2 v2.16.5
 	github.com/google/uuid v1.6.0
 	github.com/mergestat/timediff v0.0.4
 	github.com/patrickmn/go-cache v2.1.0+incompatible
