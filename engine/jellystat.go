@@ -2,27 +2,29 @@ package engine
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/charmbracelet/log"
-	"github.com/jon4hz/jellysweep/engine/arr"
-	"github.com/jon4hz/jellysweep/streamystats"
 )
 
-// filterLastStreamThreshold filters out media items that have been streamed within the configured threshold.
-func (e *Engine) filterLastStreamThreshold(ctx context.Context) error {
-	filteredItems := make(map[string][]arr.MediaItem, 0)
+func (e *Engine) getJellystatMediaItemLastStreamed(ctx context.Context, jellyfinID string) (time.Time, error) {
+	lastPlayed, err := e.jellystat.GetLastPlayed(ctx, jellyfinID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if lastPlayed == nil || lastPlayed.LastPlayed == nil {
+		return time.Time{}, nil // No playback history found
+	}
+	return *lastPlayed.LastPlayed, nil
+}
+
+// filterJellystatLastStreamThreshold filters out media items that have been streamed within the configured threshold.
+func (e *Engine) filterJellystatLastStreamThreshold(ctx context.Context) error {
+	filteredItems := make(map[string][]MediaItem, 0)
 	for lib, items := range e.data.mediaItems {
 		for _, item := range items {
-			lastStreamed, err := e.stats.GetItemLastPlayed(ctx, item.JellyfinID)
+			lastStreamed, err := e.getJellystatMediaItemLastStreamed(ctx, item.JellyfinID)
 			if err != nil {
-				if errors.Is(err, streamystats.ErrItemNotFound) {
-					log.Warn("Item not found in StreamyStats", "item", item.JellyfinID)
-					// filteredItems[lib] = append(filteredItems[lib], item) // Item not found, mark for deletion
-					continue
-				}
-				log.Error("Failed to get last streamed time for item", "item", item.JellyfinID, "error", err)
 				return err
 			}
 			if lastStreamed.IsZero() {
