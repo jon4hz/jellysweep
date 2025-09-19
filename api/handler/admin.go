@@ -8,7 +8,6 @@ import (
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/engine"
-	"github.com/jon4hz/jellysweep/tags"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 	"golang.org/x/sync/errgroup"
 )
@@ -101,7 +100,7 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
 	mediaID := c.Param("id")
 
-	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, tags.JellysweepKeepPrefix)
+	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.JellysweepKeepPrefix)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -120,7 +119,7 @@ func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
 func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
 	mediaID := c.Param("id")
 
-	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, tags.JellysweepDeleteForSureTag)
+	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.JellysweepDeleteForSureTag)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -139,7 +138,7 @@ func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
 func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 	mediaID := c.Param("id")
 
-	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, tags.JellysweepIgnoreTag)
+	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, engine.JellysweepIgnoreTag)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

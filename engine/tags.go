@@ -1,8 +1,9 @@
-package tags
+package engine
 
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -14,8 +15,8 @@ import (
 // Tag type constants for jellysweep tagging system.
 const (
 	// Tag prefixes for different types of jellysweep tags.
-	JellysweepTagPrefix         = "jellysweep-delete-"
-	JellysweepKeepRequestPrefix = "jellysweep-keep-request-"
+	jellysweepTagPrefix         = "jellysweep-delete-"
+	jellysweepKeepRequestPrefix = "jellysweep-keep-request-"
 	JellysweepKeepPrefix        = "jellysweep-must-keep-"
 
 	// Special tags.
@@ -72,11 +73,11 @@ func ParseJellysweepTag(tagName string) (*TagInfo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse date from tag %s: %v", tagName, err)
 		}
-	} else if strings.HasPrefix(tagName, JellysweepTagPrefix) {
+	} else if strings.HasPrefix(tagName, jellysweepTagPrefix) {
 		// Handle regular jellysweep-delete tags
-		info.Prefix = JellysweepTagPrefix
+		info.Prefix = jellysweepTagPrefix
 
-		dateStr := strings.TrimPrefix(tagName, JellysweepTagPrefix)
+		dateStr := strings.TrimPrefix(tagName, jellysweepTagPrefix)
 		var err error
 		info.DeletionDate, err = time.Parse("2006-01-02", dateStr)
 		if err != nil {
@@ -92,8 +93,8 @@ func ParseJellysweepTag(tagName string) (*TagInfo, error) {
 
 // IsJellysweepTag checks if a tag is a jellysweep tag.
 func IsJellysweepTag(tagName string) bool {
-	return strings.HasPrefix(tagName, JellysweepTagPrefix) ||
-		strings.HasPrefix(tagName, JellysweepKeepRequestPrefix) ||
+	return strings.HasPrefix(tagName, jellysweepTagPrefix) ||
+		strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) ||
 		strings.HasPrefix(tagName, JellysweepKeepPrefix) ||
 		strings.HasPrefix(tagName, jellysweepDiskUsageTagPrefix) ||
 		tagName == JellysweepDeleteForSureTag ||
@@ -102,15 +103,15 @@ func IsJellysweepTag(tagName string) bool {
 
 // IsJellysweepDeleteTag checks if a tag is a jellysweep delete tag (including disk usage tags).
 func IsJellysweepDeleteTag(tagName string) bool {
-	return strings.HasPrefix(tagName, JellysweepTagPrefix) ||
+	return strings.HasPrefix(tagName, jellysweepTagPrefix) ||
 		strings.HasPrefix(tagName, jellysweepDiskUsageTagPrefix) ||
 		tagName == JellysweepDeleteForSureTag
 }
 
 // GenerateDeletionTags creates deletion tags based on library configuration and disk usage.
 // It returns all applicable tags that should be added to the media item.
-func GenerateDeletionTags(ctx context.Context, cfg *config.Config, libraryName string, libraryFoldersMap map[string][]string) ([]string, error) {
-	libraryConfig := cfg.GetLibraryConfig(libraryName)
+func (e *Engine) GenerateDeletionTags(ctx context.Context, libraryName string) ([]string, error) {
+	libraryConfig := e.cfg.GetLibraryConfig(libraryName)
 	if libraryConfig == nil {
 		return nil, fmt.Errorf("no configuration found for library: %s", libraryName)
 	}
@@ -123,7 +124,7 @@ func GenerateDeletionTags(ctx context.Context, cfg *config.Config, libraryName s
 		cleanupDelay = 1
 	}
 	deletionDate := time.Now().Add(time.Duration(cleanupDelay) * 24 * time.Hour)
-	defaultTag := fmt.Sprintf("%s%s", JellysweepTagPrefix, deletionDate.Format("2006-01-02"))
+	defaultTag := fmt.Sprintf("%s%s", jellysweepTagPrefix, deletionDate.Format("2006-01-02"))
 	tags = append(tags, defaultTag)
 
 	// Add disk usage threshold tags if configured
@@ -187,15 +188,15 @@ func getLibraryDiskUsage(ctx context.Context, path string) (float64, error) {
 // ShouldTriggerDeletionBasedOnDiskUsage checks if a media item should be deleted based on current disk usage.
 // It checks the current disk usage against the library's thresholds and determines if any of the item's tags
 // should trigger deletion.
-func ShouldTriggerDeletionBasedOnDiskUsage(ctx context.Context, cfg *config.Config, libraryName string, tagNames []string, libraryFoldersMap map[string][]string) bool {
-	libraryConfig := cfg.GetLibraryConfig(libraryName)
+func (e *Engine) ShouldTriggerDeletionBasedOnDiskUsage(ctx context.Context, libraryName string, tagNames []string) bool {
+	libraryConfig := e.cfg.GetLibraryConfig(libraryName)
 	if libraryConfig == nil || len(libraryConfig.DiskUsageThresholds) == 0 {
 		// If no config, fall back to basic expired tag check
 		return ShouldTriggerDeletion(tagNames)
 	}
 
 	// Get library paths for disk usage calculation
-	libraryPaths, exists := libraryFoldersMap[libraryName]
+	libraryPaths, exists := e.data.libraryFoldersMap[libraryName]
 	if !exists || len(libraryPaths) == 0 {
 		log.Warnf("No library paths found for %s, using basic tag expiration check", libraryName)
 		return ShouldTriggerDeletion(tagNames)
@@ -264,7 +265,7 @@ func ShouldTriggerDeletionBasedOnDiskUsage(ctx context.Context, cfg *config.Conf
 		}
 
 		// For regular delete tags, check if they're expired and no more restrictive threshold applies
-		if strings.HasPrefix(tagName, JellysweepTagPrefix) && !strings.HasPrefix(tagName, jellysweepDiskUsageTagPrefix) && tagInfo.IsExpired {
+		if strings.HasPrefix(tagName, jellysweepTagPrefix) && !strings.HasPrefix(tagName, jellysweepDiskUsageTagPrefix) && tagInfo.IsExpired {
 			if applicableThreshold == nil {
 				// No disk pressure, use regular expiration
 				log.Debugf("Item should be deleted due to expired regular tag %s (no disk pressure)", tagName)
@@ -280,17 +281,17 @@ func ShouldTriggerDeletionBasedOnDiskUsage(ctx context.Context, cfg *config.Conf
 	return false
 }
 
-// ParseDeletionDateFromTag calculates the earliest deletion date based on current disk usage and all delete tags.
+// parseDeletionDateFromTag calculates the earliest deletion date based on current disk usage and all delete tags.
 // This method checks all jellysweep delete tags on the media item and returns the earliest applicable deletion date
 // based on current disk usage thresholds.
-func ParseDeletionDateFromTag(ctx context.Context, cfg *config.Config, tagNames []string, libraryName string, libraryFoldersMap map[string][]string) (time.Time, error) {
-	libraryConfig := cfg.GetLibraryConfig(libraryName)
+func (e *Engine) parseDeletionDateFromTag(ctx context.Context, tagNames []string, libraryName string) (time.Time, error) {
+	libraryConfig := e.cfg.GetLibraryConfig(libraryName)
 	if libraryConfig == nil {
 		return time.Time{}, fmt.Errorf("no configuration found for library: %s", libraryName)
 	}
 
 	// Get library paths for disk usage calculation
-	libraryPaths, exists := libraryFoldersMap[libraryName]
+	libraryPaths, exists := e.data.libraryFoldersMap[libraryName]
 	if !exists || len(libraryPaths) == 0 || len(libraryConfig.DiskUsageThresholds) == 0 {
 		// No library paths available, use default cleanup delay
 		cleanupDelay := libraryConfig.CleanupDelay
@@ -371,7 +372,7 @@ func ParseDeletionDateFromTag(ctx context.Context, cfg *config.Config, tagNames 
 					break
 				}
 			}
-		} else if strings.HasPrefix(tagName, JellysweepTagPrefix) {
+		} else if strings.HasPrefix(tagName, jellysweepTagPrefix) {
 			// Regular delete tags are always applicable
 			applicableDelay = libraryConfig.CleanupDelay
 			if applicableDelay <= 0 {
@@ -406,9 +407,69 @@ func ParseDeletionDateFromTag(ctx context.Context, cfg *config.Config, tagNames 
 	return deletionDate, nil
 }
 
-// ParseKeepTagWithRequester extracts the date and requester from a jellysweep-must-keep tag.
+func (e *Engine) filterMediaTags() {
+	filteredItems := make(map[string][]MediaItem, 0)
+	for lib, items := range e.data.mediaItems {
+		for _, item := range items {
+			// Check if the item has any tags that are not in the exclude list
+			hasExcludedTag := false
+			for _, tagName := range item.Tags {
+				if tagName == JellysweepIgnoreTag {
+					log.Debugf("Ignoring item %s due to jellysweep-ignore tag", item.Title)
+					hasExcludedTag = true
+					break
+				}
+				// Check if the tag is in the exclude list
+				libraryConfig := e.cfg.GetLibraryConfig(lib)
+				if libraryConfig != nil {
+					if slices.Contains(libraryConfig.ExcludeTags, tagName) {
+						hasExcludedTag = true
+						log.Debugf("Excluding item %s due to tag: %s", item.Title, tagName)
+						break
+					}
+				}
+				// Check for jellysweep-must-keep- tags
+				if strings.HasPrefix(tagName, JellysweepKeepPrefix) {
+					// Parse the date and requester from the keep tag
+					keepDate, _, err := e.parseKeepTagWithRequester(tagName)
+					if err != nil {
+						log.Warnf("Failed to parse keep tag %s: %v", tagName, err)
+						continue
+					}
+					if time.Now().Before(keepDate) {
+						log.Debugf("Item %s has active keep tag: %s", item.Title, tagName)
+						hasExcludedTag = true
+						break
+					} else {
+						log.Debugf("Item %s has expired keep tag: %s", item.Title, tagName)
+					}
+				}
+				// Check for jellysweep-must-delete-for-sure tags
+				if tagName == JellysweepDeleteForSureTag {
+					// This tag indicates the item should be deleted regardless of other tags
+					log.Debugf("Item %s has must-delete-for-sure tag: %s", item.Title, tagName)
+					hasExcludedTag = true
+					break
+				}
+				// Check for existing jellysweep-delete- tags (including disk usage tags)
+				if IsJellysweepDeleteTag(tagName) {
+					// This tag indicates the item is already marked for deletion
+					log.Debugf("Item %s already marked for deletion with tag: %s", item.Title, tagName)
+					hasExcludedTag = true
+					break
+				}
+			}
+			if !hasExcludedTag {
+				filteredItems[lib] = append(filteredItems[lib], item)
+			}
+		}
+	}
+	e.data.mediaItems = filteredItems
+}
+
+// parseKeepTagWithRequester extracts the date and requester from a jellysweep-must-keep tag.
 // Format: jellysweep-must-keep-YYYY-MM-DD-requester.
-func ParseKeepTagWithRequester(tagName string) (time.Time, string, error) {
+func (e *Engine) parseKeepTagWithRequester(tagName string) (time.Time, string, error) { //nolint:unparam
 	if !strings.HasPrefix(tagName, JellysweepKeepPrefix) {
 		return time.Time{}, "", fmt.Errorf("not a keep tag")
 	}
@@ -440,9 +501,9 @@ func ParseKeepTagWithRequester(tagName string) (time.Time, string, error) {
 	return date, requester, nil
 }
 
-// CreateKeepTagWithRequester creates a jellysweep-must-keep tag with requester information.
+// createKeepTagWithRequester creates a jellysweep-must-keep tag with requester information.
 // Format: jellysweep-must-keep-YYYY-MM-DD-requester.
-func CreateKeepTagWithRequester(date time.Time, requester string) string {
+func (e *Engine) createKeepTagWithRequester(date time.Time, requester string) string {
 	dateStr := date.Format("2006-01-02")
 	var tagLabel string
 	if requester != "" {
@@ -456,15 +517,15 @@ func CreateKeepTagWithRequester(date time.Time, requester string) string {
 	return strings.ToLower(tagLabel)
 }
 
-// ParseKeepRequestTagWithRequester extracts the date and requester from a jellysweep-keep-request tag.
+// parseKeepRequestTagWithRequester extracts the date and requester from a jellysweep-keep-request tag.
 // Format: jellysweep-keep-request-YYYY-MM-DD-requester.
-func ParseKeepRequestTagWithRequester(tagName string) (date time.Time, requester string, err error) {
-	if !strings.HasPrefix(tagName, JellysweepKeepRequestPrefix) {
+func (e *Engine) parseKeepRequestTagWithRequester(tagName string) (date time.Time, requester string, err error) {
+	if !strings.HasPrefix(tagName, jellysweepKeepRequestPrefix) {
 		return time.Time{}, "", fmt.Errorf("not a keep request tag")
 	}
 
 	// Remove the prefix
-	tagContent := strings.TrimPrefix(tagName, JellysweepKeepRequestPrefix)
+	tagContent := strings.TrimPrefix(tagName, jellysweepKeepRequestPrefix)
 
 	// Split by dash to separate date and requester
 	parts := strings.Split(tagContent, "-")
@@ -489,18 +550,18 @@ func ParseKeepRequestTagWithRequester(tagName string) (date time.Time, requester
 	return date, requester, nil
 }
 
-// CreateKeepRequestTagWithRequester creates a jellysweep-keep-request tag with requester information.
+// createKeepRequestTagWithRequester creates a jellysweep-keep-request tag with requester information.
 // Format: jellysweep-keep-request-YYYY-MM-DD-requester.
-func CreateKeepRequestTagWithRequester(date time.Time, requester string) string {
+func (e *Engine) createKeepRequestTagWithRequester(date time.Time, requester string) string {
 	dateStr := date.Format("2006-01-02")
 	var tagLabel string
 	if requester != "" {
 		// Sanitize requester to avoid issues with special characters
 		sanitizedRequester := strings.ReplaceAll(requester, "-", "_")
 		sanitizedRequester = strings.ReplaceAll(sanitizedRequester, " ", "_")
-		tagLabel = fmt.Sprintf("%s%s-%s", JellysweepKeepRequestPrefix, dateStr, sanitizedRequester)
+		tagLabel = fmt.Sprintf("%s%s-%s", jellysweepKeepRequestPrefix, dateStr, sanitizedRequester)
 	} else {
-		tagLabel = fmt.Sprintf("%s%s", JellysweepKeepRequestPrefix, dateStr)
+		tagLabel = fmt.Sprintf("%s%s", jellysweepKeepRequestPrefix, dateStr)
 	}
 	return strings.ToLower(tagLabel)
 }

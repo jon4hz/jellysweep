@@ -5,7 +5,8 @@ _devel/
 .ansible/
 .vscode/
 config.yml
-/data
+jellysweep
+/data/cache/
 jellysweep.log
 /dist/
 completions/
