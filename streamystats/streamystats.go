@@ -33,7 +33,7 @@ func (ct *CustomTime) UnmarshalJSON(data []byte) error {
 	}
 
 	// Parse with the expected format
-	t, err := time.Parse("2006-01-02 15:04:05.999-07", str)
+	t, err := time.Parse(time.RFC3339Nano, str)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (ct CustomTime) MarshalJSON() ([]byte, error) {
 	if ct.IsZero() {
 		return []byte("null"), nil
 	}
-	return []byte(`"` + ct.Format("2006-01-02 15:04:05.999-07") + `"`), nil
+	return []byte(`"` + ct.Format(time.RFC3339Nano) + `"`), nil
 }
 
 type ItemDetails struct {
