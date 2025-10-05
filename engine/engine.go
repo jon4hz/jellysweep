@@ -53,8 +53,6 @@ type Engine struct {
 
 // data contains any data collected during the cleanup process.
 type data struct {
-	jellyfinItems []arr.JellyfinItem
-
 	// library name to library paths
 	libraryFoldersMap map[string][]string
 
@@ -90,7 +88,7 @@ func New(cfg *config.Config) (*Engine, error) {
 	}
 
 	// Create Jellyfin client
-	jellyfinClient := jellyfin.New(cfg)
+	jellyfinClient := jellyfin.New(cfg, engineCache.JellyfinItemsCache)
 
 	var sonarrClient arr.Arrer
 	if cfg.Sonarr != nil {
@@ -263,14 +261,20 @@ func (e *Engine) GetEngineCache() *cache.EngineCache {
 func (e *Engine) removeRecentlyPlayedDeleteTags(ctx context.Context) {
 	log.Info("Checking for recently played media with pending delete tags")
 
+	jellyfinItems, _, err := e.jellyfin.GetJellyfinItems(ctx, false)
+	if err != nil {
+		log.Error("Failed to get jellyfin items from cache", "error", err)
+		return
+	}
+
 	if e.sonarr != nil {
-		if err := e.sonarr.RemoveRecentlyPlayedDeleteTags(ctx, e.data.jellyfinItems); err != nil {
+		if err := e.sonarr.RemoveRecentlyPlayedDeleteTags(ctx, jellyfinItems); err != nil {
 			log.Error("Failed to remove recently played Sonarr delete tags", "error", err)
 		}
 	}
 
 	if e.radarr != nil {
-		if err := e.radarr.RemoveRecentlyPlayedDeleteTags(ctx, e.data.jellyfinItems); err != nil {
+		if err := e.radarr.RemoveRecentlyPlayedDeleteTags(ctx, jellyfinItems); err != nil {
 			log.Error("Failed to remove recently played Radarr delete tags", "error", err)
 		}
 	}
@@ -361,11 +365,10 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 // gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
 // It merges them into a single collection grouped by library.
 func (e *Engine) gatherMediaItems(ctx context.Context) error {
-	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx)
+	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx, true)
 	if err != nil {
 		return fmt.Errorf("failed to get jellyfin items: %w", err)
 	}
-	e.data.jellyfinItems = jellyfinItems
 	e.data.libraryFoldersMap = libraryFoldersMap
 
 	var sonarrItems map[string][]arr.MediaItem
@@ -394,7 +397,7 @@ func (e *Engine) gatherMediaItems(ctx context.Context) error {
 	}
 
 	e.data.mediaItems = mediaItems
-	log.Infof("Merged %d media items across %d libraries", len(e.data.jellyfinItems), len(e.data.mediaItems))
+	log.Infof("Merged %d media items across %d libraries", len(e.data.mediaItems), len(e.data.mediaItems))
 
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ccoveille/go-safecast"
 	"github.com/charmbracelet/log"
+	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/engine/arr"
 	"github.com/jon4hz/jellysweep/version"
@@ -14,15 +15,17 @@ import (
 
 // Client provides a high-level interface for interacting with Jellyfin.
 type Client struct {
-	jellyfin *jellyfin.APIClient
-	cfg      *config.Config
+	jellyfin   *jellyfin.APIClient
+	cfg        *config.Config
+	itemsCache *cache.PrefixedCache[cache.JellyfinItemsData]
 }
 
-// New creates a new Jellyfin client with the given configuration.
-func New(cfg *config.Config) *Client {
+// New creates a new Jellyfin client with the given configuration and cache.
+func New(cfg *config.Config, itemsCache *cache.PrefixedCache[cache.JellyfinItemsData]) *Client {
 	return &Client{
-		jellyfin: newJellyfinClient(cfg.Jellyfin),
-		cfg:      cfg,
+		jellyfin:   newJellyfinClient(cfg.Jellyfin),
+		cfg:        cfg,
+		itemsCache: itemsCache,
 	}
 }
 
@@ -42,7 +45,57 @@ func newJellyfinClient(cfg *config.JellyfinConfig) *jellyfin.APIClient {
 
 // GetJellyfinItems retrieves all media items from enabled Jellyfin libraries.
 // It returns JellyfinItem objects that include the library name for easier processing.
-func (c *Client) GetJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, map[string][]string, error) {
+func (c *Client) GetJellyfinItems(ctx context.Context, forceRefresh bool) ([]arr.JellyfinItem, map[string][]string, error) {
+	if forceRefresh {
+		if err := c.itemsCache.Clear(ctx); err != nil {
+			log.Debug("Failed to clear jellyfin items cache, fetching from API", "error", err)
+		}
+	}
+
+	cachedData, err := c.itemsCache.Get(ctx, "all")
+	if err != nil {
+		log.Debug("Failed to get Jellyfin items from cache, fetching from API", "error", err)
+	}
+	if len(cachedData.Items) != 0 && !forceRefresh {
+		// Convert cached JellyfinItems to arr.JellyfinItems
+		arrItems := make([]arr.JellyfinItem, len(cachedData.Items))
+		for i, item := range cachedData.Items {
+			arrItems[i] = arr.JellyfinItem{
+				BaseItemDto:       item.BaseItemDto,
+				ParentLibraryName: item.ParentLibraryName,
+			}
+		}
+		return arrItems, cachedData.LibraryFoldersMap, nil
+	}
+
+	allItems, libraryFoldersMap, err := c.fetchJellyfinItems(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Convert to cache format and store
+	cacheItems := make([]cache.JellyfinItem, len(allItems))
+	for i, item := range allItems {
+		cacheItems[i] = cache.JellyfinItem{
+			BaseItemDto:       item.BaseItemDto,
+			ParentLibraryName: item.ParentLibraryName,
+		}
+	}
+
+	cacheData := cache.JellyfinItemsData{
+		Items:             cacheItems,
+		LibraryFoldersMap: libraryFoldersMap,
+	}
+
+	if err := c.itemsCache.Set(ctx, "all", cacheData); err != nil {
+		log.Warnf("Failed to cache Jellyfin items: %v", err)
+	}
+
+	return allItems, libraryFoldersMap, nil
+}
+
+// fetchJellyfinItems fetches items from the Jellyfin API (extracted from original GetJellyfinItems).
+func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, map[string][]string, error) {
 	var allItems []arr.JellyfinItem
 	libraryFoldersMap := make(map[string][]string)
 
