@@ -324,6 +324,14 @@ func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
 		return nil
 	})
 
+	g.Go(func() error {
+		if err := engineCache.LibraryCache.Clear(c.Request.Context()); err != nil {
+			log.Error("Failed to clear Library cache", "error", err)
+			return err
+		}
+		return nil
+	})
+
 	// Wait for all cache clearing operations to complete
 	if err := g.Wait(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

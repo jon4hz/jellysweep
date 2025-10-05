@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/log"
-	"github.com/eko/gocache/lib/v4/store"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
@@ -95,13 +93,12 @@ func New(cfg *config.Config) (*Engine, error) {
 	// Create Jellyfin client first for library cache
 	jellyfinClient := newJellyfinClient(cfg.Jellyfin)
 
-	// Create library cache for library ID/name resolution (replaces libraryIDMap)
-	libraryCache := cache.NewLibraryCache(cfg.Cache, store.WithExpiration(24*time.Hour))
+	// Library cache is now part of engine cache
 
 	var sonarrClient arr.Arrer
 	if cfg.Sonarr != nil {
 		rawSonarrClient := newSonarrClient(cfg.Sonarr)
-		sonarrClient = sonarrImpl.NewSonarr(rawSonarrClient, cfg, statsClient, engineCache.SonarrItemsCache, engineCache.SonarrTagsCache, libraryCache)
+		sonarrClient = sonarrImpl.NewSonarr(rawSonarrClient, cfg, statsClient, engineCache.SonarrItemsCache, engineCache.SonarrTagsCache, engineCache.LibraryCache)
 	} else {
 		log.Warn("Sonarr configuration is missing, some features will be disabled")
 	}
@@ -109,7 +106,7 @@ func New(cfg *config.Config) (*Engine, error) {
 	var radarrClient arr.Arrer
 	if cfg.Radarr != nil {
 		rawRadarrClient := newRadarrClient(cfg.Radarr)
-		radarrClient = radarrImpl.NewRadarr(rawRadarrClient, cfg, statsClient, engineCache.RadarrItemsCache, engineCache.RadarrTagsCache, libraryCache)
+		radarrClient = radarrImpl.NewRadarr(rawRadarrClient, cfg, statsClient, engineCache.RadarrItemsCache, engineCache.RadarrTagsCache, engineCache.LibraryCache)
 	} else {
 		log.Warn("Radarr configuration is missing, some features will be disabled")
 	}
@@ -156,7 +153,7 @@ func New(cfg *config.Config) (*Engine, error) {
 		ntfy:         ntfyClient,
 		webpush:      webpushClient,
 		scheduler:    sched,
-		libraryCache: libraryCache,
+		libraryCache: engineCache.LibraryCache,
 		data: &data{
 			userNotifications: make(map[string][]arr.MediaItem),
 			libraryFoldersMap: make(map[string][]string),

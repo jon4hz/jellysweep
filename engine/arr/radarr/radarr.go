@@ -79,7 +79,7 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem,
 
 	mediaItems := make(map[string][]arr.MediaItem)
 	for _, jf := range jellyfinItems {
-		libraryName := r.libraryResolver.GetLibraryNameByID(jf.GetPath())
+		libraryName := r.libraryResolver.GetLibraryNameByID(jf.ParentLibraryID)
 		libraryName = strings.ToLower(libraryName)
 		if libraryName == "" {
 			log.Error("Library name is empty for Jellyfin item, skipping", "item_id", jf.GetId(), "item_name", jf.GetName())

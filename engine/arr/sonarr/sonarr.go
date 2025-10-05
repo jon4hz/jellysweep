@@ -83,10 +83,6 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem,
 			log.Error("Library name is empty for Jellyfin item, skipping", "item_id", jf.GetId(), "item_name", jf.GetName())
 			continue
 		}
-		if libraryName == "" {
-			log.Error("Library name is empty for Jellyfin item, skipping", "item_id", jf.GetId(), "item_name", jf.GetName())
-			continue
-		}
 		if jf.GetType() != jellyfin.BASEITEMKIND_SERIES {
 			continue
 		}

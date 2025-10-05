@@ -53,3 +53,8 @@ func (lc *LibraryCache) SetLibraryMapping(id, name string) {
 		log.Warn("Failed to set library name in cache", "library_id", id, "error", err)
 	}
 }
+
+// Clear clears all library cache entries.
+func (lc *LibraryCache) Clear(ctx context.Context) error {
+	return lc.cache.Clear(ctx)
+}
