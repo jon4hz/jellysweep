@@ -15,6 +15,7 @@ import (
 	"github.com/jon4hz/jellysweep/engine/arr"
 	radarrImpl "github.com/jon4hz/jellysweep/engine/arr/radarr"
 	sonarrImpl "github.com/jon4hz/jellysweep/engine/arr/sonarr"
+	"github.com/jon4hz/jellysweep/engine/jellyfin"
 	"github.com/jon4hz/jellysweep/engine/stats"
 	"github.com/jon4hz/jellysweep/engine/stats/jellystat"
 	"github.com/jon4hz/jellysweep/engine/stats/streamystats"
@@ -24,7 +25,6 @@ import (
 	"github.com/jon4hz/jellysweep/notify/webpush"
 	"github.com/jon4hz/jellysweep/scheduler"
 	"github.com/jon4hz/jellysweep/tags"
-	jellyfin "github.com/sj14/jellyfin-go/api"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -34,17 +34,16 @@ var ErrRequestAlreadyProcessed = errors.New("request already processed")
 // Engine is the main engine for Jellysweep, managing interactions with sonarr, radarr, and other services.
 // It runs a cleanup job periodically to remove unwanted media.
 type Engine struct {
-	cfg          *config.Config
-	jellyfin     *jellyfin.APIClient
-	stats        stats.Statser
-	jellyseerr   *jellyseerr.Client
-	sonarr       arr.Arrer
-	radarr       arr.Arrer
-	email        *email.NotificationService
-	ntfy         *ntfy.Client
-	webpush      *webpush.Client
-	scheduler    *scheduler.Scheduler
-	libraryCache cache.LibraryResolver
+	cfg        *config.Config
+	jellyfin   *jellyfin.Client
+	stats      stats.Statser
+	jellyseerr *jellyseerr.Client
+	sonarr     arr.Arrer
+	radarr     arr.Arrer
+	email      *email.NotificationService
+	ntfy       *ntfy.Client
+	webpush    *webpush.Client
+	scheduler  *scheduler.Scheduler
 
 	imageCache *cache.ImageCache
 	cache      *cache.EngineCache // Cache for engine-specific data
@@ -90,15 +89,13 @@ func New(cfg *config.Config) (*Engine, error) {
 		return nil, fmt.Errorf("failed to create engine cache: %w", err)
 	}
 
-	// Create Jellyfin client first for library cache
-	jellyfinClient := newJellyfinClient(cfg.Jellyfin)
-
-	// Library cache is now part of engine cache
+	// Create Jellyfin client
+	jellyfinClient := jellyfin.New(cfg)
 
 	var sonarrClient arr.Arrer
 	if cfg.Sonarr != nil {
 		rawSonarrClient := newSonarrClient(cfg.Sonarr)
-		sonarrClient = sonarrImpl.NewSonarr(rawSonarrClient, cfg, statsClient, engineCache.SonarrItemsCache, engineCache.SonarrTagsCache, engineCache.LibraryCache)
+		sonarrClient = sonarrImpl.NewSonarr(rawSonarrClient, cfg, statsClient, engineCache.SonarrItemsCache, engineCache.SonarrTagsCache)
 	} else {
 		log.Warn("Sonarr configuration is missing, some features will be disabled")
 	}
@@ -106,7 +103,7 @@ func New(cfg *config.Config) (*Engine, error) {
 	var radarrClient arr.Arrer
 	if cfg.Radarr != nil {
 		rawRadarrClient := newRadarrClient(cfg.Radarr)
-		radarrClient = radarrImpl.NewRadarr(rawRadarrClient, cfg, statsClient, engineCache.RadarrItemsCache, engineCache.RadarrTagsCache, engineCache.LibraryCache)
+		radarrClient = radarrImpl.NewRadarr(rawRadarrClient, cfg, statsClient, engineCache.RadarrItemsCache, engineCache.RadarrTagsCache)
 	} else {
 		log.Warn("Radarr configuration is missing, some features will be disabled")
 	}
@@ -143,17 +140,16 @@ func New(cfg *config.Config) (*Engine, error) {
 	}
 
 	engine := &Engine{
-		cfg:          cfg,
-		jellyfin:     jellyfinClient,
-		stats:        statsClient,
-		jellyseerr:   jellyseerrClient,
-		sonarr:       sonarrClient,
-		radarr:       radarrClient,
-		email:        emailService,
-		ntfy:         ntfyClient,
-		webpush:      webpushClient,
-		scheduler:    sched,
-		libraryCache: engineCache.LibraryCache,
+		cfg:        cfg,
+		jellyfin:   jellyfinClient,
+		stats:      statsClient,
+		jellyseerr: jellyseerrClient,
+		sonarr:     sonarrClient,
+		radarr:     radarrClient,
+		email:      emailService,
+		ntfy:       ntfyClient,
+		webpush:    webpushClient,
+		scheduler:  sched,
 		data: &data{
 			userNotifications: make(map[string][]arr.MediaItem),
 			libraryFoldersMap: make(map[string][]string),
@@ -365,11 +361,12 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 // gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
 // It merges them into a single collection grouped by library.
 func (e *Engine) gatherMediaItems(ctx context.Context) error {
-	jellyfinItems, err := e.getJellyfinItems(ctx)
+	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get jellyfin items: %w", err)
 	}
 	e.data.jellyfinItems = jellyfinItems
+	e.data.libraryFoldersMap = libraryFoldersMap
 
 	var sonarrItems map[string][]arr.MediaItem
 	if e.sonarr != nil {

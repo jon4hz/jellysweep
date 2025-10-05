@@ -22,13 +22,11 @@ import (
 var _ arr.Arrer = (*Radarr)(nil)
 
 type Radarr struct {
-	client *radarrAPI.APIClient
-
-	cfg             *config.Config
-	stats           stats.Statser
-	itemsCache      *cache.PrefixedCache[[]radarrAPI.MovieResource]
-	tagsCache       *cache.PrefixedCache[cache.TagMap]
-	libraryResolver cache.LibraryResolver
+	client     *radarrAPI.APIClient
+	cfg        *config.Config
+	stats      stats.Statser
+	itemsCache *cache.PrefixedCache[[]radarrAPI.MovieResource]
+	tagsCache  *cache.PrefixedCache[cache.TagMap]
 }
 
 func radarrAuthCtx(ctx context.Context, cfg *config.RadarrConfig) context.Context {
@@ -47,14 +45,13 @@ func radarrAuthCtx(ctx context.Context, cfg *config.RadarrConfig) context.Contex
 	)
 }
 
-func NewRadarr(client *radarrAPI.APIClient, cfg *config.Config, stats stats.Statser, itemsCache *cache.PrefixedCache[[]radarrAPI.MovieResource], tagsCache *cache.PrefixedCache[cache.TagMap], libraryResolver cache.LibraryResolver) *Radarr {
+func NewRadarr(client *radarrAPI.APIClient, cfg *config.Config, stats stats.Statser, itemsCache *cache.PrefixedCache[[]radarrAPI.MovieResource], tagsCache *cache.PrefixedCache[cache.TagMap]) *Radarr {
 	return &Radarr{
-		client:          client,
-		cfg:             cfg,
-		stats:           stats,
-		itemsCache:      itemsCache,
-		tagsCache:       tagsCache,
-		libraryResolver: libraryResolver,
+		client:     client,
+		cfg:        cfg,
+		stats:      stats,
+		itemsCache: itemsCache,
+		tagsCache:  tagsCache,
 	}
 }
 
@@ -79,8 +76,7 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem,
 
 	mediaItems := make(map[string][]arr.MediaItem)
 	for _, jf := range jellyfinItems {
-		libraryName := r.libraryResolver.GetLibraryNameByID(jf.ParentLibraryID)
-		libraryName = strings.ToLower(libraryName)
+		libraryName := strings.ToLower(jf.ParentLibraryName)
 		if libraryName == "" {
 			log.Error("Library name is empty for Jellyfin item, skipping", "item_id", jf.GetId(), "item_name", jf.GetName())
 			continue
@@ -497,8 +493,8 @@ func (r *Radarr) RemoveRecentlyPlayedDeleteTags(ctx context.Context, jellyfinIte
 				jellyfinItem.GetName() == movie.GetTitle() &&
 				jellyfinItem.GetProductionYear() == movie.GetYear() {
 				matchingJellystatID = jellyfinItem.GetId()
-				// Get library name from the library resolver
-				if libName := r.libraryResolver.GetLibraryNameByID(jellyfinItem.ParentLibraryID); libName != "" {
+				// Get library name directly from jellyfin item
+				if libName := jellyfinItem.ParentLibraryName; libName != "" {
 					libraryName = libName
 				}
 				break

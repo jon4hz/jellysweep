@@ -66,7 +66,7 @@ type Arrer interface {
 
 type JellyfinItem struct {
 	jellyfin.BaseItemDto
-	ParentLibraryID string `json:"parentLibraryId,omitempty"`
+	ParentLibraryName string `json:"parentLibraryName,omitempty"`
 }
 
 type KeepRequestResponse struct {

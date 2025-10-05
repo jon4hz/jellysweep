@@ -26,7 +26,6 @@ type EngineCache struct {
 	SonarrTagsCache  *PrefixedCache[TagMap]
 	RadarrItemsCache *PrefixedCache[[]radarr.MovieResource]
 	RadarrTagsCache  *PrefixedCache[TagMap]
-	LibraryCache     *LibraryCache
 }
 
 func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
@@ -51,7 +50,6 @@ func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
 			cfg.Type,
 			RadarrTagsCachePrefix,
 		),
-		LibraryCache: NewLibraryCache(cfg),
 	}, nil
 }
 
@@ -61,7 +59,6 @@ func (e *EngineCache) ClearAll(ctx context.Context) {
 		e.SonarrTagsCache.Clear(ctx),
 		e.RadarrItemsCache.Clear(ctx),
 		e.RadarrTagsCache.Clear(ctx),
-		e.LibraryCache.Clear(ctx),
 	}
 	for _, err := range errs {
 		if err != nil {
@@ -103,10 +100,6 @@ func (e *EngineCache) GetStats() []*Stats {
 		{
 			Stats:     e.RadarrTagsCache.GetStats(),
 			CacheName: "radarr-tags",
-		},
-		{
-			Stats:     e.LibraryCache.cache.GetStats(),
-			CacheName: "library",
 		},
 	}
 }

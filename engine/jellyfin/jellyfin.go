@@ -1,4 +1,4 @@
-package engine
+package jellyfin
 
 import (
 	"context"
@@ -12,6 +12,21 @@ import (
 	jellyfin "github.com/sj14/jellyfin-go/api"
 )
 
+// Client provides a high-level interface for interacting with Jellyfin.
+type Client struct {
+	jellyfin *jellyfin.APIClient
+	cfg      *config.Config
+}
+
+// New creates a new Jellyfin client with the given configuration.
+func New(cfg *config.Config) *Client {
+	return &Client{
+		jellyfin: newJellyfinClient(cfg.Jellyfin),
+		cfg:      cfg,
+	}
+}
+
+// newJellyfinClient creates a new low-level Jellyfin API client.
 func newJellyfinClient(cfg *config.JellyfinConfig) *jellyfin.APIClient {
 	clientConfig := jellyfin.NewConfiguration()
 	clientConfig.Servers = jellyfin.ServerConfigurations{
@@ -25,39 +40,43 @@ func newJellyfinClient(cfg *config.JellyfinConfig) *jellyfin.APIClient {
 	return jellyfin.NewAPIClient(clientConfig)
 }
 
-func (e *Engine) getJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, error) {
+// GetJellyfinItems retrieves all media items from enabled Jellyfin libraries.
+// It returns JellyfinItem objects that include the library name for easier processing.
+func (c *Client) GetJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, map[string][]string, error) {
 	var allItems []arr.JellyfinItem
+	libraryFoldersMap := make(map[string][]string)
 
 	// First, get all media folders (libraries)
-	mediaFoldersResp, _, err := e.jellyfin.LibraryAPI.GetMediaFolders(ctx).Execute()
+	mediaFoldersResp, _, err := c.jellyfin.LibraryAPI.GetMediaFolders(ctx).Execute()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get media folders: %w", err)
+		return nil, nil, fmt.Errorf("failed to get media folders: %w", err)
 	}
 
 	// Check if we have items in the response
 	mediaFolders := mediaFoldersResp.GetItems()
 	if len(mediaFolders) == 0 {
-		return nil, fmt.Errorf("no media folders found")
+		return nil, nil, fmt.Errorf("no media folders found")
 	}
 
 	// fetch virtual folders (required for the thresholds based on disk usage)
-	virtualFolders, _, err := e.jellyfin.LibraryStructureAPI.GetVirtualFolders(ctx).Execute()
+	virtualFolders, _, err := c.jellyfin.LibraryStructureAPI.GetVirtualFolders(ctx).Execute()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get virtual folders: %w", err)
+		return nil, nil, fmt.Errorf("failed to get virtual folders: %w", err)
 	}
 	if len(virtualFolders) == 0 {
 		log.Warn("No virtual folders found")
 	}
 
+	// Build library folders map
 	for _, folder := range virtualFolders {
 		log.Debug("Found virtual folder", "name", folder.GetName())
 		libraryName := folder.GetName()
-		libraryConfig := e.cfg.GetLibraryConfig(libraryName)
+		libraryConfig := c.cfg.GetLibraryConfig(libraryName)
 		if libraryConfig == nil || !libraryConfig.Enabled {
 			log.Debug("Skipping virtual folder for disabled library", "library", libraryName)
 			continue
 		}
-		e.data.libraryFoldersMap[libraryName] = folder.GetLocations()
+		libraryFoldersMap[libraryName] = folder.GetLocations()
 	}
 
 	// Process each enabled library
@@ -70,40 +89,36 @@ func (e *Engine) getJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, erro
 		libraryID := folder.GetId()
 
 		// Check if this library is enabled in the configuration
-		libraryConfig := e.cfg.GetLibraryConfig(libraryName)
+		libraryConfig := c.cfg.GetLibraryConfig(libraryName)
 		if libraryConfig == nil || !libraryConfig.Enabled {
 			log.Debug("Skipping disabled library", "library", libraryName)
 			continue
 		}
 
-		e.libraryCache.SetLibraryMapping(libraryID, libraryName)
-		log.Debug("Added library to cache", "library", libraryName, "id", libraryID)
-
 		log.Info("Processing library", "library", libraryName, "id", libraryID)
 
 		// Get all items from this library
-		libraryItems, err := e.getJellyfinItemsFromLibrary(ctx, libraryID, libraryName)
+		libraryItems, err := c.getJellyfinItemsFromLibrary(ctx, libraryID, libraryName)
 		if err != nil {
 			log.Error("Failed to get items from library", "library", libraryName, "error", err)
 			continue
 		}
 
-		// For some reason, the parentID returned from Jellyfin items dont match the library ID.
-		// As a workaround, wrap the jellyfin item dto so it contains the library ID jellysweep expects.
+		// Wrap the jellyfin item dto to include the library name instead of ID
 		for _, item := range libraryItems {
-			// Wrap the item to include the parent library ID
 			wrappedItem := arr.JellyfinItem{
-				BaseItemDto:     item,
-				ParentLibraryID: libraryID,
+				BaseItemDto:       item,
+				ParentLibraryName: libraryName, // Store library name directly
 			}
 			allItems = append(allItems, wrappedItem)
 		}
 	}
 
-	return allItems, nil
+	return allItems, libraryFoldersMap, nil
 }
 
-func (e *Engine) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, libraryName string) ([]jellyfin.BaseItemDto, error) {
+// getJellyfinItemsFromLibrary retrieves all items from a specific Jellyfin library.
+func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, libraryName string) ([]jellyfin.BaseItemDto, error) {
 	log.Debug("Getting items from library", "library", libraryName, "id", libraryID)
 
 	var allItems []jellyfin.BaseItemDto
@@ -114,7 +129,7 @@ func (e *Engine) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 
 	for {
 		// Get items from this library
-		itemsResp, _, err := e.jellyfin.ItemsAPI.GetItems(ctx).
+		itemsResp, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
 			ParentId(libraryID).
 			Recursive(true).
 			StartIndex(startIndex).
@@ -175,18 +190,3 @@ func (e *Engine) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 	log.Info("Retrieved all items from library", "library", libraryName, "total", len(allItems))
 	return allItems, nil
 }
-
-/* func (e *Engine) jellyfinIDFromArrID(ctx context.Context, arrID string) (string, error) {
-	// Implement the logic to retrieve the Jellyfin ID from the array ID
-	return "", nil
-} */
-
-/* func (e *Engine) deleteJellyfinItem(ctx context.Context, itemID string) error {
-	_, err := e.jellyfin.LibraryAPI.DeleteItem(ctx, itemID).Execute()
-	if err != nil {
-		log.Error("Failed to delete Jellyfin item", "item", itemID, "error", err)
-		return err
-	}
-	return nil
-}
-*/

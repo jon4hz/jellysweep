@@ -22,12 +22,11 @@ import (
 var _ arr.Arrer = (*Sonarr)(nil)
 
 type Sonarr struct {
-	client          *sonarrAPI.APIClient
-	cfg             *config.Config
-	stats           stats.Statser
-	itemsCache      *cache.PrefixedCache[[]sonarrAPI.SeriesResource]
-	tagsCache       *cache.PrefixedCache[cache.TagMap]
-	libraryResolver cache.LibraryResolver
+	client     *sonarrAPI.APIClient
+	stats      stats.Statser
+	cfg        *config.Config
+	itemsCache *cache.PrefixedCache[[]sonarrAPI.SeriesResource]
+	tagsCache  *cache.PrefixedCache[cache.TagMap]
 }
 
 func sonarrAuthCtx(ctx context.Context, cfg *config.SonarrConfig) context.Context {
@@ -46,14 +45,13 @@ func sonarrAuthCtx(ctx context.Context, cfg *config.SonarrConfig) context.Contex
 	)
 }
 
-func NewSonarr(client *sonarrAPI.APIClient, cfg *config.Config, stats stats.Statser, itemsCache *cache.PrefixedCache[[]sonarrAPI.SeriesResource], tagsCache *cache.PrefixedCache[cache.TagMap], libraryResolver cache.LibraryResolver) *Sonarr {
+func NewSonarr(client *sonarrAPI.APIClient, cfg *config.Config, stats stats.Statser, itemsCache *cache.PrefixedCache[[]sonarrAPI.SeriesResource], tagsCache *cache.PrefixedCache[cache.TagMap]) *Sonarr {
 	return &Sonarr{
-		client:          client,
-		cfg:             cfg,
-		stats:           stats,
-		itemsCache:      itemsCache,
-		tagsCache:       tagsCache,
-		libraryResolver: libraryResolver,
+		client:     client,
+		cfg:        cfg,
+		stats:      stats,
+		itemsCache: itemsCache,
+		tagsCache:  tagsCache,
 	}
 }
 
@@ -77,8 +75,7 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem,
 
 	mediaItems := make(map[string][]arr.MediaItem, 0)
 	for _, jf := range jellyfinItems {
-		libraryName := s.libraryResolver.GetLibraryNameByID(jf.ParentLibraryID)
-		libraryName = strings.ToLower(libraryName)
+		libraryName := strings.ToLower(jf.ParentLibraryName)
 		if libraryName == "" {
 			log.Error("Library name is empty for Jellyfin item, skipping", "item_id", jf.GetId(), "item_name", jf.GetName())
 			continue
@@ -436,8 +433,8 @@ func (s *Sonarr) RemoveRecentlyPlayedDeleteTags(ctx context.Context, jellyfinIte
 				jellyfinItem.GetName() == series.GetTitle() &&
 				jellyfinItem.GetProductionYear() == series.GetYear() {
 				matchingJellystatID = jellyfinItem.GetId()
-				// Get library name from the library resolver
-				if libName := s.libraryResolver.GetLibraryNameByID(jellyfinItem.ParentLibraryID); libName != "" {
+				// Get library name directly from jellyfin item
+				if libName := jellyfinItem.ParentLibraryName; libName != "" {
 					libraryName = libName
 				}
 				break
