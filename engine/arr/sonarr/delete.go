@@ -29,7 +29,7 @@ func (s *Sonarr) DeleteMedia(ctx context.Context, libraryFoldersMap map[string][
 	}
 
 	for _, series := range sonarrItems {
-		libraryName := "TV Shows" // TODO: Implement library name retrieval
+		libraryName := "TV Shows" // TODO: dont hardcode library name
 
 		// Get tag names for this series
 		var tagNames []string

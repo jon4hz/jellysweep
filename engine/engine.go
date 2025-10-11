@@ -469,7 +469,9 @@ func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefres
 			log.Errorf("failed to get sonarr media items marked for deletion: %v", err)
 		} else {
 			if len(sonarrItems) > 0 {
-				result["TV Shows"] = sonarrItems
+				for _, item := range sonarrItems {
+					result[item.Library] = append(result[item.Library], item)
+				}
 			}
 		}
 	}
@@ -481,7 +483,9 @@ func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefres
 			log.Errorf("failed to get radarr media items marked for deletion: %v", err)
 		} else {
 			if len(radarrItems) > 0 {
-				result["Movies"] = radarrItems
+				for _, item := range radarrItems {
+					result[item.Library] = append(result[item.Library], item)
+				}
 			}
 		}
 	}

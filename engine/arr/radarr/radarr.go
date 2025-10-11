@@ -328,7 +328,7 @@ func (r *Radarr) DeleteMedia(ctx context.Context, libraryFoldersMap map[string][
 	}
 
 	for _, movie := range movies {
-		libraryName := "Movies" // TODO: Implement library name retrieval
+		libraryName := "Movies" // TODO: dont hardcode library name
 
 		var tagNames []string
 		for _, tagID := range movie.GetTags() {
