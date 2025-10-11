@@ -9,6 +9,7 @@ ENV CI="1"
 
 EXPOSE 3002/tcp
 
-ENTRYPOINT [ "/usr/local/bin/jellysweep", "serve" ]
+ENTRYPOINT [ "/usr/local/bin/jellysweep"]
+CMD [ "serve" ]
 
 COPY jellysweep /usr/local/bin/jellysweep
