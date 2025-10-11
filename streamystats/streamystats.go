@@ -12,27 +12,27 @@ import (
 )
 
 type Client struct {
-	cfg         *config.StreamystatsConfig
-	jellyfinCfg *config.JellyfinConfig
-	httpClient  *http.Client
-	baseURL     *url.URL
+	cfg        *config.StreamystatsConfig
+	apiKey     string
+	httpClient *http.Client
+	baseURL    *url.URL
 }
 
 type ItemDetails struct {
 	LastWatched time.Time `json:"lastWatched"`
 }
 
-func New(cfg *config.StreamystatsConfig, jellyfinCfg *config.JellyfinConfig) (*Client, error) {
+func New(cfg *config.StreamystatsConfig, apiKey string) (*Client, error) {
 	baseURL, err := url.Parse(cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid streamystats URL: %w", err)
 	}
 
 	return &Client{
-		cfg:         cfg,
-		jellyfinCfg: jellyfinCfg,
-		baseURL:     baseURL,
-		httpClient:  &http.Client{},
+		cfg:        cfg,
+		apiKey:     apiKey,
+		baseURL:    baseURL,
+		httpClient: &http.Client{},
 	}, nil
 }
 
@@ -46,7 +46,7 @@ func (c *Client) GetItemDetails(ctx context.Context, itemID string) (*ItemDetail
 		return nil, fmt.Errorf("failed to create item details request: %w", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.jellyfinCfg.APIKey))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

@@ -9,27 +9,47 @@ import (
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/codec"
 	"github.com/jon4hz/jellysweep/config"
+	jellyfin "github.com/sj14/jellyfin-go/api"
 )
 
 type TagMap map[int32]string
 
+// JellyfinItem represents a Jellyfin media item with its library context.
+type JellyfinItem struct {
+	jellyfin.BaseItemDto
+	ParentLibraryName string `json:"parentLibraryName,omitempty"`
+}
+
+// JellyfinItemsData contains cached Jellyfin items and library folder mappings.
+type JellyfinItemsData struct {
+	Items             []JellyfinItem      `json:"items"`
+	LibraryFoldersMap map[string][]string `json:"libraryFoldersMap"`
+}
+
 // Cache key prefixes.
 const (
-	SonarrItemsCachePrefix = "sonarr-items-"
-	SonarrTagsCachePrefix  = "sonarr-tags-"
-	RadarrItemsCachePrefix = "radarr-items-"
-	RadarrTagsCachePrefix  = "radarr-tags-"
+	JellyfinItemsCachePrefix = "jellyfin-items-"
+	SonarrItemsCachePrefix   = "sonarr-items-"
+	SonarrTagsCachePrefix    = "sonarr-tags-"
+	RadarrItemsCachePrefix   = "radarr-items-"
+	RadarrTagsCachePrefix    = "radarr-tags-"
 )
 
 type EngineCache struct {
-	SonarrItemsCache *PrefixedCache[[]sonarr.SeriesResource]
-	SonarrTagsCache  *PrefixedCache[TagMap]
-	RadarrItemsCache *PrefixedCache[[]radarr.MovieResource]
-	RadarrTagsCache  *PrefixedCache[TagMap]
+	JellyfinItemsCache *PrefixedCache[JellyfinItemsData]
+	SonarrItemsCache   *PrefixedCache[[]sonarr.SeriesResource]
+	SonarrTagsCache    *PrefixedCache[TagMap]
+	RadarrItemsCache   *PrefixedCache[[]radarr.MovieResource]
+	RadarrTagsCache    *PrefixedCache[TagMap]
 }
 
 func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
 	return &EngineCache{
+		JellyfinItemsCache: NewPrefixedCache[JellyfinItemsData](
+			newCacheInstanceByType(cfg),
+			cfg.Type,
+			JellyfinItemsCachePrefix,
+		),
 		SonarrItemsCache: NewPrefixedCache[[]sonarr.SeriesResource](
 			newCacheInstanceByType(cfg),
 			cfg.Type,
@@ -55,6 +75,7 @@ func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
 
 func (e *EngineCache) ClearAll(ctx context.Context) {
 	errs := []error{
+		e.JellyfinItemsCache.Clear(ctx),
 		e.SonarrItemsCache.Clear(ctx),
 		e.SonarrTagsCache.Clear(ctx),
 		e.RadarrItemsCache.Clear(ctx),
@@ -85,6 +106,10 @@ type Stats struct {
 
 func (e *EngineCache) GetStats() []*Stats {
 	return []*Stats{
+		{
+			Stats:     e.JellyfinItemsCache.GetStats(),
+			CacheName: "jellyfin-items",
+		},
 		{
 			Stats:     e.SonarrItemsCache.GetStats(),
 			CacheName: "sonarr-items",
