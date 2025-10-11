@@ -7,11 +7,10 @@
 <img src="static/static/jellysweep.png" alt="Jellysweep Logo" width="20%">
 
 Jellysweep is a smart cleanup tool for your Jellyfin media server.
-It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests. With disk usage-aware cleanup thresholds, it can accelerate deletion when storage becomes critical while maintaining reasonable grace periods during normal operation.
+It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests.
 
 > [!CAUTION]
-> Always test with dry-run mode first!
-> Jellysweep is powerful - configure it correctly!
+> Always test with dry-run mode first! And review the logs to see what jellysweep would've marked for deletion!
 
 
 ---
@@ -20,14 +19,12 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
 
 - 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat/Streamystats for stats
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
-- 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds checked during cleanup runs
-- 🧹 **Flexible Cleanup Modes** - Choose between complete deletion, keeping first episodes, or preserving early seasons
+- 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds
+- 🧹 **Flexible Cleanup Modes** - Choose how much of TV Series should be deleted
 - 👥 **User Requests** - Built-in keep request system for your users
-- 🔔 **Notifications** - Email users, ntfy alerts for admins, and web push notifications
+- 🔔 **Notifications** - Send notifications to users and admins
 - 📱 **Progressive Web App (PWA)** - Install as an app on mobile and desktop
-- ⚡ **Stateless Design** - No database required, clean runs every time
-- 🌐 **Web Interface** - Modern UI for monitoring and management
-- 📊 **Statistics Dashboard** - Visual charts showing cleanup progress and storage freed
+- 🌐 **Web Interface** - UI to interact with jellysweep
 
 
 ## 📋 Table of Contents
@@ -633,15 +630,8 @@ go run . serve --log-level debug
 
 **Pre-commit Hooks**
 
-This project uses pre-commit hooks to ensure code quality and consistency. The hooks automatically run before each commit and include:
-
-- **Code Formatting**: Removes trailing whitespace, fixes end-of-file issues
-- **Validation**: Checks YAML/JSON syntax, detects merge conflicts
-- **Security**: Scans for hardcoded secrets and credentials using Gitleaks
-- **Go Quality**: Runs `go fmt`, `go mod tidy`, and `golangci-lint`
-- **Build Verification**: Ensures the project builds successfully with `make build`
-
-The hooks are configured in `.pre-commit-config.yaml` and will automatically prevent commits that don't pass all checks.
+This project uses pre-commit hooks to ensure code quality and consistency.
+If you want to contribute, please install the pre-commit package and run `pre-commit install` in the project root.
 
 ---
 
