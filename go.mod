@@ -8,7 +8,7 @@ require (
 	github.com/ccoveille/go-safecast v1.6.1
 	github.com/charmbracelet/log v0.4.2
 	github.com/coreos/go-oidc/v3 v3.15.0
-	github.com/devopsarr/radarr-go v1.2.0
+	github.com/devopsarr/radarr-go v1.2.1
 	github.com/devopsarr/sonarr-go v1.1.0
 	github.com/disintegration/imaging v1.6.2
 	github.com/dustin/go-humanize v1.0.1

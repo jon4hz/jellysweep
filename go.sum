@@ -49,8 +49,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/devopsarr/radarr-go v1.2.0 h1:ffP+iDMbM5N9moXN0BZRAgBbBNvywdpQsgA+hl+HCeg=
-github.com/devopsarr/radarr-go v1.2.0/go.mod h1:e39qfD0vJOaSc4BzelF6/bkyZQsYtqLuVtEGVM8mDJo=
+github.com/devopsarr/radarr-go v1.2.1 h1:96pwxuR75Ks1W01su4dwhUpjBUpAb3Zy9EVswqLwHpA=
+github.com/devopsarr/radarr-go v1.2.1/go.mod h1:uydTUSf+2zHNKCGq3U9ooHAlElHIOhDA+2J7nje1bHE=
 github.com/devopsarr/sonarr-go v1.1.0 h1:R36Lve/gL1EIN5i6VMSg7oT6Kfpf6ReCxL+zAAY1J3E=
 github.com/devopsarr/sonarr-go v1.1.0/go.mod h1:jArmSulMGIBz0w/ZiEu/Ow9/oyVz/aTOiFDvSLdk6xM=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
