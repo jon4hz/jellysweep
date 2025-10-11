@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/coreos/go-oidc/v3 v3.15.0
 	github.com/devopsarr/radarr-go v1.2.1
-	github.com/devopsarr/sonarr-go v1.1.0
+	github.com/devopsarr/sonarr-go v1.1.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/eko/gocache/lib/v4 v4.2.1
