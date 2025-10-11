@@ -32,10 +32,11 @@ func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria() {
 			}
 
 			if e.shouldSkipSeriesForDeletion(item.SeriesResource, cleanupMode, keepCount) {
-				log.Infof("Filtered out series %s - already meets keep criteria (%s: %d)", item.Title, cleanupMode, keepCount)
+				log.Debugf("Excluded series %s - already meets keep criteria (%s: %d)", item.Title, cleanupMode, keepCount)
 				skippedCount++
 				totalSkippedCount++
 			} else {
+				log.Debugf("Included series for deletion %s", item.Title)
 				filteredItems = append(filteredItems, item)
 			}
 		}
