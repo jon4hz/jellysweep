@@ -84,13 +84,13 @@ func TestClient_GetItemDetails(t *testing.T) {
 
 				w.Header().Set("Content-Type", "application/json")
 				item := ItemDetails{
-					LastWatched: CustomTime{lastWatchedTime},
+					LastWatched: lastWatchedTime,
 				}
 				json.NewEncoder(w).Encode(item)
 			},
 			wantErr: false,
 			expectedItem: &ItemDetails{
-				LastWatched: CustomTime{lastWatchedTime},
+				LastWatched: lastWatchedTime,
 			},
 		},
 		{
@@ -143,53 +143,6 @@ func TestClient_GetItemDetails(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedItem, item)
-			}
-		})
-	}
-}
-
-func TestCustomTime_UnmarshalJSON(t *testing.T) {
-	tests := []struct {
-		name        string
-		jsonData    string
-		expectError bool
-		expectedStr string
-	}{
-		{
-			name:        "valid time format",
-			jsonData:    `"2025-07-24 11:39:07.635+00"`,
-			expectError: false,
-			expectedStr: "2025-07-24 11:39:07.635 +0000 UTC",
-		},
-		{
-			name:        "null value",
-			jsonData:    `null`,
-			expectError: false,
-			expectedStr: "0001-01-01 00:00:00 +0000 UTC",
-		},
-		{
-			name:        "empty string",
-			jsonData:    `""`,
-			expectError: false,
-			expectedStr: "0001-01-01 00:00:00 +0000 UTC",
-		},
-		{
-			name:        "invalid format",
-			jsonData:    `"2025-07-24T11:39:07Z"`,
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var ct CustomTime
-			err := json.Unmarshal([]byte(tt.jsonData), &ct)
-
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedStr, ct.String())
 			}
 		})
 	}

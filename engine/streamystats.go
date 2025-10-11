@@ -17,7 +17,7 @@ func (e *Engine) getStreamystatsMediaItemLastStreamed(ctx context.Context, jelly
 	if lastWatched == nil || lastWatched.LastWatched.IsZero() {
 		return time.Time{}, nil // No playback history found
 	}
-	return lastWatched.LastWatched.Time, nil
+	return lastWatched.LastWatched, nil
 }
 
 // filterStreamystatsLastStreamThreshold filters out media items that have been streamed within the configured threshold.

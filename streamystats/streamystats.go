@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/jon4hz/jellysweep/config"
@@ -19,40 +18,8 @@ type Client struct {
 	baseURL     *url.URL
 }
 
-// CustomTime wraps time.Time to handle custom JSON unmarshaling.
-type CustomTime struct {
-	time.Time
-}
-
-// UnmarshalJSON implements json.Unmarshaler for CustomTime.
-func (ct *CustomTime) UnmarshalJSON(data []byte) error {
-	// Remove quotes from JSON string
-	str := strings.Trim(string(data), `"`)
-	if str == "null" || str == "" {
-		return nil
-	}
-
-	// Parse with the expected format
-	t, err := time.Parse(time.RFC3339Nano, str)
-	if err != nil {
-		return err
-	}
-
-	// Convert to UTC to ensure consistent timezone handling
-	ct.Time = t.UTC()
-	return nil
-}
-
-// MarshalJSON implements json.Marshaler for CustomTime.
-func (ct CustomTime) MarshalJSON() ([]byte, error) {
-	if ct.IsZero() {
-		return []byte("null"), nil
-	}
-	return []byte(`"` + ct.Format(time.RFC3339Nano) + `"`), nil
-}
-
 type ItemDetails struct {
-	LastWatched CustomTime `json:"lastWatched"`
+	LastWatched time.Time `json:"lastWatched"`
 }
 
 func New(cfg *config.StreamystatsConfig, jellyfinCfg *config.JellyfinConfig) (*Client, error) {
