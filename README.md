@@ -41,7 +41,6 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
     - [How It Works](#how-it-works)
     - [Configuration Example](#configuration-example)
     - [Behavior Examples](#behavior-examples)
-    - [Force Deletion Mode](#force-deletion-mode)
   - [📸 Screenshots](#-screenshots)
     - [Dashboard Overview](#dashboard-overview)
     - [Statistics Dashboard](#statistics-dashboard)
@@ -50,9 +49,8 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
     - [Scheduler Panel](#scheduler-panel)
   - [🔧 Installation](#-installation)
     - [Prerequisites](#prerequisites)
-    - [Quick Start](#quick-start)
     - [Docker Compose](#docker-compose)
-    - [Production Docker Compose with Redis Cache](#production-docker-compose-with-redis-cache)
+    - [Docker Compose with Valkey Cache](#docker-compose-with-valkey-cache)
   - [🔐 Authentication](#-authentication)
     - [OIDC/SSO Authentication](#oidcsso-authentication)
     - [Jellyfin Authentication](#jellyfin-authentication)
@@ -64,52 +62,18 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [🏷️ Tag System](#️-tag-system)
     - [Automatic Tags](#automatic-tags)
     - [Custom Tags](#custom-tags)
-  - [🚀 Performance \& Caching](#-performance--caching)
-    - [Cache Types](#cache-types)
-    - [Cache Benefits](#cache-benefits)
-    - [When to Use Redis Cache](#when-to-use-redis-cache)
-    - [Cache Configuration](#cache-configuration)
   - [🔧 Commands](#-commands)
   - [🤝 Contributing](#-contributing)
     - [Development Setup](#development-setup)
   - [📄 License](#-license)
 
 ## 🚀 How It Works
-1. **Data Collection**
-   - Fetches media from Jellyfin
-   - Fetches media from Sonarr & Radarr
-   - Retrieves viewing statistics from Jellystat or Streamystats
-   - Analyzes content history from Sonarr & Radarr
-   - Maps media across libraries and services
-   - Monitors disk usage for each library during cleanup runs
 
-2. **Media Filtering**
-   - Applies configurable streaming history thresholds
-   - Applies configurable age thresholds
-   - Applies configurable size thresholds
-   - Respects custom exclude tags
-   - Respects user keep requests
-
-3. **Intelligent Deletion Timing**
-   - **Standard Mode**: Uses configured `cleanup_delay` for deletion timing
-   - **Disk Pressure Mode**: Accelerates deletion based on current disk usage
-   - **Dynamic Thresholds**: Multiple disk usage levels with different cleanup delays
-   - **Smart Tagging**: Creates multiple deletion tags for different scenarios
-   - **Adaptive Logic**: Chooses most restrictive applicable threshold
-
-4. **Delayed Deletion**
-   - Marks media with dated deletion tags
-   - Provides grace period for objections
-   - Removes recently played content from deletion queue
-   - Executes final cleanup after delay
-   - Supports force deletion for critical disk space situations
-
-5. **User Interaction**
-   - Users can request to keep specific media
-   - Admins can approve/decline requests
-   - Automatic cleanup of expired requests
-   - Force deletion override for admins
-   - Keep requests are blocked for force-delete items
+Jellysweep looks up your entire media library in jellyfin, sonarr and radarr. Based on different user-defined filers, it then decides which
+media items are no longer needed and marks them for deletion by adding special tags in sonarr/radarr.
+Your users can then request to keep specific items via the web interface. Admins can review and approve/decline these requests.
+Users will receive an email notification, if content that they requested (in jellyseer) is marked for deletion.
+After a configurable grace period, the media items are then deleted. There is als an option to speed up the deletion process when disk space is running low.
 
 ## 🧹 Cleanup Modes
 
@@ -138,7 +102,7 @@ Jellysweep monitors disk usage and speeds up cleanup when you're running low on 
 - **Smart Triggering**: Uses the most restrictive applicable threshold based on current usage
 
 > [!IMPORTANT]
-> For disk usage monitoring to work in Docker containers, Jellyfin library paths must be mounted at the same locations inside the Jellysweep container. For example, if Jellyfin has `/data/movies` mapped to `/movies`, Jellysweep also needs `/data/movies` mapped to `/movies` (not `/data` or any other path).
+> For disk usage monitoring to work in Docker containers, Jellyfin library paths must be mounted at the same locations inside the Jellysweep container. For example, if Jellyfin has `/data/movies` mapped to `/movies`, Jellysweep also needs `/data/movies` mapped to `/movies`
 
 ### Configuration Example
 
@@ -157,16 +121,12 @@ libraries:
 
 ### Behavior Examples
 
+Let's say today is 2025-07-26:
+
 - **Normal Operation (80% usage)**: Media gets `jellysweep-delete-2025-08-25` (30-day delay)
 - **Moderate Pressure (87% usage)**: Deletion triggered by `jellysweep-delete-du85-2025-08-09` (14-day delay)
 - **High Pressure (93% usage)**: Deletion triggered by `jellysweep-delete-du90-2025-08-02` (7-day delay)
 - **Critical Pressure (97% usage)**: Deletion triggered by `jellysweep-delete-du95-2025-07-29` (3-day delay)
-
-### Force Deletion Mode
-
-The `jellysweep-must-delete-for-sure` tag uses the shortest configured delay across all thresholds:
-- Prevents users from submitting keep requests
-- Uses the most aggressive cleanup timing available
 
 ---
 
@@ -211,32 +171,6 @@ The `jellysweep-must-delete-for-sure` tag uses the shortest configured delay acr
 > [!WARNING]
 > Streamystats doesnt handle re-added content well. I recommend using Jellystat for now.
 
-> [!TIP]
-> For production deployment, see [PRODUCTION.md](PRODUCTION.md).
-
-### Quick Start
-
-1. **Download & Build**
-   ```bash
-   git clone https://github.com/yourusername/jellysweep.git
-   cd jellysweep
-   go build -o jellysweep .
-   ```
-
-2. **Configuration**
-   ```bash
-   cp config.example.yml config.yml
-   # Edit config.yml with your service URLs and API keys
-   ```
-
-3. **Run**
-   ```bash
-   # Start the service
-   ./jellysweep serve
-
-   # Reset all tags (cleanup command)
-   ./jellysweep reset
-   ```
 
 ### Docker Compose
 
@@ -247,26 +181,27 @@ services:
   jellysweep:
     image: ghcr.io/jon4hz/jellysweep:latest
     container_name: jellysweep
+    restart: unless-stopped
     ports:
       - "3002:3002"
     volumes:
-      # - ./config.yml:/app/config.yml:ro use config or env vars
+      - ./config.yml:/app/config.yml:ro # use config file or env vars
       - ./data:/app/data
       # Mount Jellyfin library paths at the same locations for disk usage monitoring
       # Example: if Jellyfin has /data/movies, mount it the same way here
       # - /data/movies:/data/movies:ro
       # - /data/tv:/data/tv:ro
     environment:
-      # Override config values via environment variables if needed
+      # You can also override config options with env vars
       - JELLYSWEEP_DRY_RUN=false
       - JELLYSWEEP_LISTEN=0.0.0.0:3002
-    restart: unless-stopped
-    networks:
-      jellyfin-network:
+```
 
-networks:
-  jellyfin-network:
-    external: true  # Assumes you have a shared network with your Jellyfin stack
+You can either supply the configuration via a `config.yml` file or use environment variables. Your choice!
+If you want to use the config file, make sure to create it before starting the container.
+
+```bash
+vim ./config.yml  # or use emacs if you're one of those people.
 ```
 
 Then run:
@@ -282,9 +217,9 @@ docker compose logs -f jellysweep
 docker compose exec jellysweep ./jellysweep reset
 ```
 
-### Production Docker Compose with Redis Cache
+### Docker Compose with Valkey Cache
 
-For production deployments with Redis caching, you can use Valkey (Redis-compatible) for better performance and shared cache across multiple instances:
+You can also configure valkey as caching backend:
 
 ```yaml
 services:
@@ -294,7 +229,7 @@ services:
     ports:
       - "3002:3002"
     volumes:
-      - ./config.yml:/app/config.yml:ro
+      - ./config.yml:/app/config.yml:ro # create config file before starting the container!
       - ./data:/app/data
     environment:
       # Cache configuration
@@ -303,6 +238,7 @@ services:
       # Other configuration
       - JELLYSWEEP_DRY_RUN=false
       - JELLYSWEEP_LISTEN=0.0.0.0:3002
+      # ... add you config here or use the config file!
     restart: unless-stopped
     depends_on:
       - valkey
@@ -310,31 +246,11 @@ services:
       - jellyfin-network
 
   valkey:
-    image: valkey/valkey:7-alpine
+    image: valkey/valkey:8-alpine
     container_name: jellysweep-valkey
-    command: >
-      valkey-server
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
-    volumes:
-      - valkey_data:/data
     restart: unless-stopped
-    networks:
-      - jellyfin-network
 
-volumes:
-  valkey_data:
-
-networks:
-  jellyfin-network:
-    external: true  # Assumes you have a shared network with your Jellyfin stack
 ```
-
-**Benefits of Redis Cache:**
-- **Persistence**: Cache survives application restarts
-- **Performance**: Faster data retrieval for frequently accessed items
-- **Scalability**: Shared cache across multiple Jellysweep instances
-- **Memory Management**: Configurable memory limits and eviction policies
 
 ---
 
@@ -345,8 +261,8 @@ Jellysweep supports multiple authentication methods to secure your web interface
 ### OIDC/SSO Authentication
 
 - **Tested Providers**: Authentik
-- **Group-based Admin Access**: Read admin groups from `group` claim.
-- **Single Sign-On**: Users authenticate once and access Jellysweep seamlessly
+
+Make sure to add a `group` claim to your OIDC token containing the group name specified in `admin_group` for admin access.
 
 **Configuration:**
 ```yaml
@@ -363,11 +279,7 @@ auth:
 
 ### Jellyfin Authentication
 
-- **Direct Integration**: Leverages your existing Jellyfin user database
-- **Admin Detection**: Jellyfin administrators automatically get admin access in Jellysweep
-- **No Additional Setup**: Works out of the box with your Jellyfin instance
-- **Form-based Login**: Traditional username/password login form
-- **Admin Access**: All Jellyfin admins will have access to the admin panel
+Use your jellyfin server as authentication provider. All jellyfin admins will get admin access in jellysweep as well.
 
 **Configuration:**
 ```yaml
@@ -381,12 +293,20 @@ auth:
 
 ## 🔔 Web Push Notifications
 
+Users can subscribe to web push notifications to get notified when their keep requests get approved or declined.
+Web push notifications must be explicitly enabled by every user.
+This works on every device that supports PWAs (Progressive Web Apps).
+
 ### Setup Requirements
 
 **Generate VAPID Keys**:
 ```bash
 # Generate VAPID keys using the built-in command
-./jellysweep generate-vapid-keys
+jellysweep generate-vapid-keys
+
+# or using docker
+docker run --rm ghcr.io/jon4hz/jellysweep:latest generate-vapid-keys
+
 ```
 
 **Configuration:**
@@ -484,10 +404,12 @@ All configuration options can be set via environment variables with the `JELLYSW
 > Either Sonarr or Radarr (or both) must be configured. Only one of Jellystat or Streamystats can be configured at a time.
 
 > [!WARNING]
-> If no authentication methods are enabled, the web interface will be accessible without authentication (recommended for development only).
+> If no authentication methods are enabled, the web interface will be accessible without authentication.
+> Make sure to configure at least one authentication method.
 
 > [!NOTE]
-> Complex configuration options like `disk_usage_thresholds`, `exclude_tags`, and library-specific overrides can only be configured via YAML configuration files, not environment variables. Disk usage is checked during scheduled cleanup runs, not continuously monitored.
+> Some complex library configuration options are not supported by environment variables. In that case, the library configuration must be done via the YAML configuration file. These options are: `disk_usage_thresholds`, `exclude_tags`
+.
 
 ### Configuration File
 
@@ -504,7 +426,6 @@ session_max_age: 172800          # Session max age in seconds (48 hours)
 server_url: "http://localhost:3002"
 
 # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
-# Warning: No authentication is only recommended for development environments
 auth:
   # OpenID Connect (OIDC) Authentication
   oidc:
@@ -590,7 +511,7 @@ email:
   from_email: "jellysweep@example.com"
   from_name: "Jellysweep"
   use_tls: true              # Use STARTTLS
-  use_ssl: false             # Use implicit SSL/TLS
+  use_ssl: false             # Use SSL/TLS
   insecure_skip_verify: false
 
 # Ntfy notifications for admins about keep requests and deletions
@@ -607,7 +528,7 @@ ntfy:
 webpush:
   enabled: false
   vapid_email: "your-email@example.com"  # Contact email for VAPID keys
-  public_key: ""                         # VAPID public key (generate with: ./jellysweep generate-vapid-keys)
+  public_key: ""                         # VAPID public key
   private_key: ""                        # VAPID private key
 
 # External service integrations
@@ -646,11 +567,11 @@ cache:
 Jellysweep uses the tagging feature from sonarr and radarr to track media state:
 
 ### Automatic Tags
-- `jellysweep-delete-YYYY-MM-DD` - Media marked for deletion on date (standard cleanup delay)
+- `jellysweep-delete-YYYY-MM-DD` - Media marked for deletion on date
 - `jellysweep-delete-du90-YYYY-MM-DD` - Media marked for deletion when disk usage ≥90% (example)
 - `jellysweep-delete-du95-YYYY-MM-DD` - Media marked for deletion when disk usage ≥95% (example)
-- `jellysweep-keep-request-YYYY-MM-DD` - User requested to keep (expires)
-- `jellysweep-must-keep-YYYY-MM-DD` - Admin approved keep (expires)
+- `jellysweep-keep-request-YYYY-MM-DD` - User requested to keep
+- `jellysweep-must-keep-YYYY-MM-DD` - Admin approved keep
 - `jellysweep-must-delete-for-sure` - Admin forced deletion (prevents keep requests)
 - `jellysweep-ignore` - Media will never be marked for deletion
 
@@ -660,70 +581,23 @@ Configure custom tags in your Sonarr/Radarr to:
 
 ---
 
-## 🚀 Performance & Caching
-
-Jellysweep includes an intelligent caching system to improve performance, especially for large media libraries:
-
-### Cache Types
-
-- **Memory Cache** (default): Fast in-memory caching, data lost on restart
-- **Redis Cache**: Persistent caching with configurable memory limits and eviction policies
-
-### Cache Benefits
-
-- **Faster Library Scans**: Cached Sonarr/Radarr API responses reduce scan times
-- **Reduced API Load**: Minimizes requests to external services
-- **Improved Responsiveness**: Web interface loads faster with cached data
-- **Smart Invalidation**: Cache is automatically cleared when data changes
-
-### When to Use Redis Cache
-
-Consider Redis cache for:
-- **Large Libraries**: >1000 movies or TV series
-- **Multiple Instances**: Shared cache across Jellysweep instances
-- **Production Deployments**: Persistent cache across restarts
-- **Resource Optimization**: Better memory management and limits
-
-### Cache Configuration
-
-```yaml
-cache:
-  enabled: true                  # Enable caching system
-  type: "redis"                  # Use Redis for production
-  redis_url: "localhost:6379"    # Redis server URL
-```
-
-**Cache Options:**
-- **Type**: Choose between `memory` (default) or `redis`
-- **Redis URL**: Simple address format `host:port` (no authentication support yet)
-- **Automatic TTL**: Cache expiration is handled by the scheduler, not configurable
-
-**Recommended Setup:**
-- **Development**: Use `memory` cache for simplicity
-- **Production**: Use `redis` cache for persistence and better performance
-
----
-
 ## 🔧 Commands
 
 ```bash
 # Start the main service
-./jellysweep
+jellysweep serve
 
 # Start with specific configuration file
-./jellysweep --config /path/to/config.yml
+jellysweep serve --config /path/to/config.yml
 
 # Reset all Jellysweep tags
-./jellysweep reset
+jellysweep reset
 
 # Generate VAPID keys for web push notifications
-./jellysweep generate-vapid-keys
+jellysweep generate-vapid-keys
 
-# Run with custom log level
-./jellysweep --log-level debug
-
-# Combine configuration file and log level
-./jellysweep --config config.yml --log-level warn
+# Full command help
+jellysweep --help
 ```
 
 ---
@@ -744,22 +618,17 @@ go mod download
 pip install pre-commit
 pre-commit install
 
-go run . serve --log-level debug
-
-# build npm dependencies
-npm run build
-
-# build templ pages
-go tool templ generate
-
 # lint
 golangci-lint run
 
 # run tests
 go test -v ./...
 
-# run pre-commit checks manually (optional)
-pre-commit run --all-files
+# build dependencies and generate templ code
+make build
+
+# run the service with debug logging
+go run . serve --log-level debug
 ```
 
 **Pre-commit Hooks**
