@@ -31,5 +31,5 @@ func (s *streamystatsClient) GetItemLastPlayed(ctx context.Context, jellyfinID s
 	if lastWatched == nil || lastWatched.LastWatched.IsZero() {
 		return time.Time{}, nil // No playback history found
 	}
-	return lastWatched.LastWatched.Time, nil
+	return lastWatched.LastWatched, nil
 }
