@@ -239,7 +239,7 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 	}
 
 	log.Info("Scheduled cleanup job completed")
-	return
+	return err
 }
 
 // GetScheduler returns the scheduler instance for API access.
