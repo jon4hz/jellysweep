@@ -37,7 +37,7 @@ func (s *JellyfinProviderTestSuite) SetupTest() {
 	authCfg := &config.JellyfinAuthConfig{
 		Enabled: true,
 	}
-	s.provider = NewJellyfinProvider(jellyfinCfg, authCfg, nil)
+	s.provider = NewJellyfinProvider(jellyfinCfg, &MockDB{}, authCfg, nil)
 }
 
 func (s *JellyfinProviderTestSuite) TestNewJellyfinProvider() {
@@ -49,7 +49,7 @@ func (s *JellyfinProviderTestSuite) TestNewJellyfinProvider() {
 		Enabled: true,
 	}
 
-	provider := NewJellyfinProvider(jellyfinCfg, authCfg, nil)
+	provider := NewJellyfinProvider(jellyfinCfg, &MockDB{}, authCfg, nil)
 
 	assert.NotNil(s.T(), provider)
 	assert.Equal(s.T(), authCfg, provider.cfg)
@@ -144,7 +144,7 @@ func (s *JellyfinProviderTestSuite) TestRequireAuth_WithValidSession() {
 	// First, create a route to set up the session
 	router.POST("/setup-session", func(c *gin.Context) {
 		session := sessions.Default(c)
-		session.Set("user_id", "test-user-id")
+		session.Set("user_id", uint(10))
 		session.Set("user_email", "test@example.com")
 		session.Set("user_name", "Test User")
 		session.Set("user_username", "testuser")
@@ -156,7 +156,7 @@ func (s *JellyfinProviderTestSuite) TestRequireAuth_WithValidSession() {
 	// Then create the protected route
 	router.GET("/protected", s.provider.RequireAuth(), func(c *gin.Context) {
 		user := c.MustGet("user").(*models.User)
-		c.JSON(http.StatusOK, gin.H{"user_id": user.Sub})
+		c.JSON(http.StatusOK, gin.H{"user_id": user.ID})
 	})
 
 	// First request to set up session
@@ -176,7 +176,7 @@ func (s *JellyfinProviderTestSuite) TestRequireAuth_WithValidSession() {
 	router.ServeHTTP(w2, req2)
 
 	assert.Equal(s.T(), http.StatusOK, w2.Code)
-	assert.Contains(s.T(), w2.Body.String(), "test-user-id")
+	assert.Contains(s.T(), w2.Body.String(), "10")
 }
 
 func (s *JellyfinProviderTestSuite) TestRequireAdmin_NotAdmin() {
@@ -191,7 +191,6 @@ func (s *JellyfinProviderTestSuite) TestRequireAdmin_NotAdmin() {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Set("user", &models.User{
-		Sub:     "test-user",
 		IsAdmin: false,
 	})
 
@@ -214,7 +213,6 @@ func (s *JellyfinProviderTestSuite) TestRequireAdmin_IsAdmin() {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Set("user", &models.User{
-		Sub:     "admin-user",
 		IsAdmin: true,
 	})
 
@@ -254,7 +252,7 @@ func (s *JellyfinProviderTestSuite) TestGetAuthConfig() {
 	authCfg := &config.JellyfinAuthConfig{
 		Enabled: true,
 	}
-	provider := NewJellyfinProvider(jellyfinCfg, authCfg, nil)
+	provider := NewJellyfinProvider(jellyfinCfg, &MockDB{}, authCfg, nil)
 
 	authConfig := provider.GetAuthConfig()
 

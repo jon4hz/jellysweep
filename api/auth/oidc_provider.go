@@ -9,11 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/gravatar"
 	"golang.org/x/oauth2"
 )
 
 type OIDCProvider struct {
+	db          database.DB
 	provider    *oidc.Provider
 	verifier    *oidc.IDTokenVerifier
 	config      *oauth2.Config
@@ -21,10 +23,11 @@ type OIDCProvider struct {
 	gravatarCfg *config.GravatarConfig
 }
 
-func NewOIDCProvider(ctx context.Context, cfg *config.OIDCConfig, gravatarCfg *config.GravatarConfig) (*OIDCProvider, error) {
+func NewOIDCProvider(ctx context.Context, cfg *config.OIDCConfig, gravatarCfg *config.GravatarConfig, db database.DB) (*OIDCProvider, error) {
 	p := OIDCProvider{
 		cfg:         cfg,
 		gravatarCfg: gravatarCfg,
+		db:          db,
 	}
 	var err error
 	p.provider, err = oidc.NewProvider(ctx, cfg.Issuer)
@@ -55,7 +58,7 @@ func (p *OIDCProvider) RequireAuth() gin.HandlerFunc {
 		}
 		// create user model from session data
 		user := &models.User{
-			Sub:      userID.(string),
+			ID:       userID.(uint),
 			Email:    getSessionString(session, "user_email"),
 			Name:     getSessionString(session, "user_name"),
 			Username: getSessionString(session, "user_username"),

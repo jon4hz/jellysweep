@@ -11,17 +11,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/gravatar"
 	"github.com/jon4hz/jellysweep/version"
 )
 
 type JellyfinProvider struct {
+	db          database.DB
 	client      *jellyfin.APIClient
 	cfg         *config.JellyfinAuthConfig
 	gravatarCfg *config.GravatarConfig
 }
 
-func NewJellyfinProvider(cfg *config.JellyfinConfig, authCfg *config.JellyfinAuthConfig, gravatarCfg *config.GravatarConfig) *JellyfinProvider {
+func NewJellyfinProvider(cfg *config.JellyfinConfig, db database.DB, authCfg *config.JellyfinAuthConfig, gravatarCfg *config.GravatarConfig) *JellyfinProvider {
 	clientConfig := jellyfin.NewConfiguration()
 	clientConfig.Servers = jellyfin.ServerConfigurations{
 		{
@@ -37,6 +39,7 @@ func NewJellyfinProvider(cfg *config.JellyfinConfig, authCfg *config.JellyfinAut
 		),
 	}
 	return &JellyfinProvider{
+		db:          db,
 		client:      jellyfin.NewAPIClient(clientConfig),
 		cfg:         authCfg,
 		gravatarCfg: gravatarCfg,
@@ -68,13 +71,28 @@ func (p *JellyfinProvider) Login(c *gin.Context) {
 	}
 	defer r.Body.Close() //nolint:errcheck
 
+	jellyfinUsername := authResp.GetUser().Name.Get()
+	if jellyfinUsername == nil || *jellyfinUsername == "" {
+		log.Error("Jellyfin user has no username")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user information"})
+		return
+	}
+
 	// Save user info in session
 	session := sessions.Default(c)
 	session.Set("user_id", authResp.GetUser().Id)
 	session.Set("user_email", "") // Jellyfin doesn't provide email in auth response
-	session.Set("user_name", authResp.GetUser().Name.Get())
-	session.Set("user_username", authResp.GetUser().Name.Get())
-	session.Set("user_is_admin", authResp.GetUser().Policy.Get().IsAdministrator)
+	session.Set("user_name", *jellyfinUsername)
+	session.Set("user_username", *jellyfinUsername)
+	session.Set("user_is_admin", *authResp.GetUser().Policy.Get().IsAdministrator)
+
+	// Get or create user in database
+	user, err := p.db.GetOrCreateUser(c.Request.Context(), *jellyfinUsername)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+		return
+	}
+	session.Set("user_id", user.ID)
 
 	if err := session.Save(); err != nil {
 		log.Error("Failed to save session", "error", err)
@@ -102,7 +120,7 @@ func (p *JellyfinProvider) RequireAuth() gin.HandlerFunc {
 
 		// create user model from session data
 		user := &models.User{
-			Sub:      userID.(string),
+			ID:       userID.(uint), // Jellyfin user ID is an integer
 			Email:    getSessionString(session, "user_email"),
 			Name:     getSessionString(session, "user_name"),
 			Username: getSessionString(session, "user_username"),

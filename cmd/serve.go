@@ -49,7 +49,7 @@ func startServer(cmd *cobra.Command, _ []string) {
 		log.Fatalf("failed to create engine: %v", err)
 	}
 
-	server, err := api.New(ctx, cfg, engine, log.GetLevel() == log.DebugLevel)
+	server, err := api.New(ctx, cfg, db, engine, log.GetLevel() == log.DebugLevel)
 	if err != nil {
 		log.Fatalf("failed to create API server: %v", err)
 	}

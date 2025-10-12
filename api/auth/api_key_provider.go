@@ -40,9 +40,8 @@ func (ap *APIKeyProvider) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("user_id", "api_key")
+		c.Set("user_id", uint(0))
 		c.Set("user", &models.User{
-			Sub:      "api_key",
 			Name:     "api_key",
 			Username: "api_key",
 			IsAdmin:  true,

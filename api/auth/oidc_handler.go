@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -50,23 +51,25 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 
 	// Save user ID in session
 	session := sessions.Default(c)
-	session.Set("user_id", claims.Sub)
-	session.Set("user_email", claims.Email)
+	session.Set("user_email", claims.Email) // required for gravatar
 	session.Set("user_name", claims.Name)
 	session.Set("user_username", claims.PreferredUsername)
 
-	var isAdmin bool
-	for _, group := range claims.Groups {
-		if group == p.cfg.AdminGroup {
-			isAdmin = true
-			break
-		}
-	}
+	isAdmin := slices.Contains(claims.Groups, p.cfg.AdminGroup)
 	session.Set("user_is_admin", isAdmin)
+
+	// Get or create user in database
+	user, err := p.db.GetOrCreateUser(c.Request.Context(), claims.PreferredUsername)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+		return
+	}
+	session.Set("user_id", user.ID)
 
 	if err := session.Save(); err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
 		return
 	}
+
 	c.Redirect(http.StatusFound, "/")
 }

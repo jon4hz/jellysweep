@@ -15,6 +15,7 @@ import (
 	"github.com/jon4hz/jellysweep/api/auth"
 	"github.com/jon4hz/jellysweep/api/handler"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/static"
 )
@@ -26,7 +27,7 @@ type Server struct {
 	authProvider auth.AuthProvider
 }
 
-func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) (*Server, error) {
+func New(ctx context.Context, cfg *config.Config, db database.DB, e *engine.Engine, debug bool) (*Server, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is required")
 	}
@@ -36,7 +37,7 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 
 	// Only initialize auth provider if authentication is enabled
 	if cfg.IsAuthenticationEnabled() {
-		authProvider, err = auth.NewProvider(ctx, cfg, cfg.Gravatar)
+		authProvider, err = auth.NewProvider(ctx, cfg, cfg.Gravatar, db)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create auth provider: %w", err)
 		}

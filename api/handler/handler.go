@@ -103,8 +103,8 @@ func (h *Handler) Home(c *gin.Context) {
 
 func (h *Handler) Login(c *gin.Context) {
 	session := sessions.Default(c)
-	sessionID := session.Get("user_id")
-	isLoggedIn := sessionID != nil && sessionID != ""
+	userID := session.Get("user_id")
+	isLoggedIn := userID != nil && userID != ""
 	if isLoggedIn {
 		c.Redirect(http.StatusFound, "/")
 		return

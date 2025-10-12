@@ -31,9 +31,8 @@ func (np *NoOpProvider) Callback(c *gin.Context) {
 func (np *NoOpProvider) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Set a default user
-		c.Set("user_id", "anonymous")
+		c.Set("user_id", uint(0))
 		c.Set("user", &models.User{
-			Sub:      "anonymous",
 			Name:     "Anonymous User",
 			Username: "anonymous",
 			IsAdmin:  true, // Grant admin rights since there's no auth

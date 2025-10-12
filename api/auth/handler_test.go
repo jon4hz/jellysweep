@@ -162,18 +162,16 @@ func (s *HandlerTestSuite) TestOIDCCallback_SessionHandling() {
 			Email             string   `json:"email"`
 			Name              string   `json:"name"`
 			PreferredUsername string   `json:"preferred_username"`
-			Sub               string   `json:"sub"`
 			Groups            []string `json:"groups"`
 		}{
 			Email:             "test@example.com",
 			Name:              "Test User",
 			PreferredUsername: "testuser",
-			Sub:               "test-sub-123",
 			Groups:            []string{"admin", "users"},
 		}
 
 		// Save user ID in session (simulating callback logic)
-		session.Set("user_id", claims.Sub)
+		session.Set("user_id", 10)
 		session.Set("user_email", claims.Email)
 		session.Set("user_name", claims.Name)
 		session.Set("user_username", claims.PreferredUsername)
@@ -195,7 +193,7 @@ func (s *HandlerTestSuite) TestOIDCCallback_SessionHandling() {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"user_id":  claims.Sub,
+			"user_id":  10,
 			"is_admin": isAdmin,
 			"groups":   claims.Groups,
 		})
@@ -207,7 +205,7 @@ func (s *HandlerTestSuite) TestOIDCCallback_SessionHandling() {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(s.T(), http.StatusOK, w.Code)
-	assert.Contains(s.T(), w.Body.String(), "test-sub-123")
+	assert.Contains(s.T(), w.Body.String(), "10")   // user_id
 	assert.Contains(s.T(), w.Body.String(), "true") // is_admin should be true
 }
 
