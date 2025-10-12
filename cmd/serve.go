@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/api"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/spf13/cobra"
 )
@@ -33,6 +34,12 @@ func startServer(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
+
+	db, err := database.New(cfg.Database.Path)
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
+	_ = db
 
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()

@@ -40,6 +40,8 @@ type Config struct {
 	KeepCount int `yaml:"keep_count" mapstructure:"keep_count"`
 	// Auth holds the authentication configuration for the Jellysweep server.
 	Auth *AuthConfig `yaml:"auth" mapstructure:"auth"`
+	// Database holds the database configuration.
+	Database *DatabaseConfig `yaml:"database" mapstructure:"database"`
 	// APIKey is the API key for the Jellysweep server (used by the jellyfin plugin).
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
 	// SessionKey is the key used to encrypt session data.
@@ -103,6 +105,12 @@ type OIDCConfig struct {
 type JellyfinAuthConfig struct {
 	// Enabled indicates whether Jellyfin authentication is enabled.
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+}
+
+// DatabaseConfig holds the database configuration.
+type DatabaseConfig struct {
+	// Path is the path to the database file.
+	Path string `yaml:"path" mapstructure:"path"`
 }
 
 // EmailConfig holds the email notification configuration.
@@ -257,7 +265,7 @@ type GravatarConfig struct {
 // If path is empty, it will use default search paths for config files.
 // If no config file is found, it will generate a default one in the current directory.
 func Load(path string) (*Config, error) {
-	v := viper.New()
+	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 
 	// Set default values
 	setDefaults(v)
@@ -332,6 +340,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.oidc.redirect_url", "")
 	v.SetDefault("auth.oidc.admin_group", "")
 	v.SetDefault("auth.jellyfin.enabled", true)
+
+	// Database defaults
+	v.SetDefault("database.path", "./data/")
 
 	// Cache defaults
 	v.SetDefault("cache.enabled", true)
