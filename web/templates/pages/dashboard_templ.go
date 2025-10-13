@@ -11,6 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/web/templates"
 	"github.com/jon4hz/jellysweep/web/templates/components"
 	"strings"
@@ -85,7 +86,7 @@ func getSeasonTooltip(keepCount int) string {
 	return b.String()
 }
 
-func Dashboard(user *models.User, mediaItems []models.MediaItem) templ.Component {
+func Dashboard(user *models.User, mediaItems []database.Media) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -114,7 +115,7 @@ func Dashboard(user *models.User, mediaItems []models.MediaItem) templ.Component
 	})
 }
 
-func DashboardWithPendingRequests(user *models.User, mediaItems []models.MediaItem, pendingRequestsCount int) templ.Component {
+func DashboardWithPendingRequests(user *models.User, mediaItems []database.Media, pendingRequestsCount int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -186,7 +187,7 @@ func DashboardWithPendingRequests(user *models.User, mediaItems []models.MediaIt
 	})
 }
 
-func DashboardContent(user *models.User, mediaItems []models.MediaItem) templ.Component {
+func DashboardContent(user *models.User, mediaItems []database.Media) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -224,7 +225,7 @@ func DashboardContent(user *models.User, mediaItems []models.MediaItem) templ.Co
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(len(mediaItems))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 113, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/dashboard.templ`, Line: 114, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -300,7 +301,7 @@ func DashboardContent(user *models.User, mediaItems []models.MediaItem) templ.Co
 }
 
 // DashboardTabs creates the tab interface for the dashboard
-func DashboardTabs(mediaItems []models.MediaItem) templ.Component {
+func DashboardTabs(mediaItems []database.Media) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -654,7 +655,7 @@ func dashboardScripts() templ.ComponentScript {
 	}
 }
 
-func OverviewTab(mediaItems []models.MediaItem) templ.Component {
+func OverviewTab(mediaItems []database.Media) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

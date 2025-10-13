@@ -1,7 +1,9 @@
 package components
 
-import "github.com/jon4hz/jellysweep/api/models"
-import "fmt"
+import (
+	"fmt"
+	"github.com/jon4hz/jellysweep/database"
+)
 
 // MediaGridConfig holds configuration for the media grid
 type MediaGridConfig struct {
@@ -32,7 +34,7 @@ func DefaultMediaGridConfig() MediaGridConfig {
 }
 
 // MediaGrid is a generic, reusable media grid component
-templ MediaGrid(mediaItems []models.MediaItem, config MediaGridConfig, customContent templ.Component) {
+templ MediaGrid(mediaItems []database.Media, config MediaGridConfig, customContent templ.Component) {
 	<div id={ config.ContainerID } class="space-y-4">
 		<!-- Loading State -->
 		<div id={ config.ContainerID + "-grid-loading" } class="hidden">
@@ -90,14 +92,14 @@ templ MediaGrid(mediaItems []models.MediaItem, config MediaGridConfig, customCon
 }
 
 // GetUniqueLibraries extracts unique library names from media items
-func GetUniqueLibraries(items []models.MediaItem) []string {
+func GetUniqueLibraries(items []database.Media) []string {
 	libraryMap := make(map[string]bool)
 	var libraries []string
 
 	for _, item := range items {
-		if item.Library != "" && !libraryMap[item.Library] {
-			libraryMap[item.Library] = true
-			libraries = append(libraries, item.Library)
+		if item.LibraryName != "" && !libraryMap[item.LibraryName] {
+			libraryMap[item.LibraryName] = true
+			libraries = append(libraries, item.LibraryName)
 		}
 	}
 

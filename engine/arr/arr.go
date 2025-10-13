@@ -34,11 +34,9 @@ type Arrer interface {
 	GetTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error)
 	GetTagIDByLabel(ctx context.Context, label string) (int32, error)
 	EnsureTagExists(ctx context.Context, deleteTagLabel string) error
-	CleanupTags(ctx context.Context) error
-	DeleteMedia(ctx context.Context, libraryFoldersMap map[string][]string) ([]MediaItem, error)
+	DeleteMedia(ctx context.Context, arrID int32, title string) error
 	RemoveExpiredKeepTags(ctx context.Context) error
 	RemoveRecentlyPlayedDeleteTags(ctx context.Context, jellyfinItems []JellyfinItem) error
-	GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefresh bool) ([]models.MediaItem, error)
 
 	// Keep-request workflow
 	AddKeepRequest(ctx context.Context, id int32, username string) (string, string, error)

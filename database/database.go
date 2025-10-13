@@ -19,6 +19,7 @@ type DB interface {
 type MediaDB interface {
 	CreateMediaItems(ctx context.Context, items []Media) error
 	GetMediaItems(ctx context.Context) ([]Media, error)
+	GetMediaItemsByMediaType(ctx context.Context, mediaType MediaType) ([]Media, error)
 }
 
 // UserDB defines the interface for user-related database operations.

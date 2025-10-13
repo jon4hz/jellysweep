@@ -210,31 +210,6 @@ func (s *Sonarr) EnsureTagExists(ctx context.Context, deleteTagLabel string) err
 	return nil
 }
 
-func (s *Sonarr) CleanupTags(ctx context.Context) error {
-	tagsList, resp, err := s.client.TagDetailsAPI.ListTagDetail(sonarrAuthCtx(ctx, s.cfg.Sonarr)).
-		Execute()
-	if err != nil {
-		return fmt.Errorf("failed to list Sonarr tags: %w", err)
-	}
-	defer resp.Body.Close() //nolint: errcheck
-
-	for _, tag := range tagsList {
-		if len(tag.SeriesIds) == 0 && tags.IsJellysweepTag(tag.GetLabel()) {
-			if s.cfg.DryRun {
-				log.Infof("Dry run: Would delete Sonarr tag %s", tag.GetLabel())
-				continue
-			}
-			resp, err := s.client.TagAPI.DeleteTag(sonarrAuthCtx(ctx, s.cfg.Sonarr), tag.GetId()).Execute()
-			if err != nil {
-				return fmt.Errorf("failed to delete Sonarr tag %s: %w", tag.GetLabel(), err)
-			}
-			defer resp.Body.Close() //nolint: errcheck
-			log.Infof("Deleted Sonarr tag: %s", tag.GetLabel())
-		}
-	}
-	return nil
-}
-
 func (s *Sonarr) RemoveExpiredKeepTags(ctx context.Context) error {
 	tagMap, err := s.GetTags(ctx, false)
 	if err != nil {
@@ -429,86 +404,6 @@ func (s *Sonarr) RemoveRecentlyPlayedDeleteTags(ctx context.Context, jellyfinIte
 		}
 	}
 	return nil
-}
-
-// GetMediaItemsMarkedForDeletion returns Sonarr series that have jellysweep-delete tags.
-func (s *Sonarr) GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefresh bool) ([]models.MediaItem, error) {
-	items, err := s.getItems(ctx, false)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sonarr items: %w", err)
-	}
-
-	tagMap, err := s.GetTags(ctx, forceRefresh)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sonarr tags: %w", err)
-	}
-
-	result := make([]models.MediaItem, 0)
-	for _, series := range items {
-		for _, tagID := range series.GetTags() {
-			tagName := tagMap[tagID]
-			if tags.IsJellysweepDeleteTag(tagName) {
-				// Parse the tag to get deletion date
-				tagInfo, err := tags.ParseJellysweepTag(tagName)
-				if err != nil {
-					log.Warnf("failed to parse jellysweep tag %s: %v", tagName, err)
-					continue
-				}
-
-				imageURL := ""
-				for _, image := range series.GetImages() {
-					if image.GetCoverType() == sonarrAPI.MEDIACOVERTYPES_POSTER {
-						imageURL = image.GetRemoteUrl()
-						break // Use the first poster image found
-					}
-				}
-
-				// Check if series has keep request, keep tags, or delete-for-sure tags
-				canRequest := true
-				hasRequested := false
-				mustDelete := false
-				for _, tagID := range series.GetTags() {
-					tagName := tagMap[tagID]
-					if strings.HasPrefix(tagName, tags.JellysweepKeepRequestPrefix) {
-						hasRequested = true
-						canRequest = false
-					} else if strings.HasPrefix(tagName, tags.JellysweepKeepPrefix) {
-						// If it has an active keep tag, it shouldn't be requestable
-						keepDate, _, err := tags.ParseKeepTagWithRequester(tagName)
-						if err == nil && time.Now().Before(keepDate) {
-							canRequest = false // Don't allow requests for items with active keep tags
-						}
-					} else if tagName == tags.JellysweepDeleteForSureTag {
-						canRequest = false // Don't allow requests but still show the media
-						mustDelete = true  // This series is marked for deletion for sure
-					}
-				}
-
-				// Get the global cleanup configuration
-				cleanupMode := s.cfg.GetCleanupMode()
-				keepCount := s.cfg.GetKeepCount()
-
-				result = append(result, models.MediaItem{
-					ID:           fmt.Sprintf("sonarr-%d", series.GetId()),
-					Title:        series.GetTitle(),
-					Type:         "tv",
-					Year:         series.GetYear(),
-					Library:      "TV Shows",
-					DeletionDate: tagInfo.DeletionDate,
-					PosterURL:    arr.GetCachedImageURL(imageURL),
-					CanRequest:   canRequest,
-					HasRequested: hasRequested,
-					MustDelete:   mustDelete,
-					FileSize:     GetSeriesFileSize(series),
-					CleanupMode:  cleanupMode,
-					KeepCount:    keepCount,
-				})
-				break // Only add once per series, even if multiple deletion tags
-			}
-		}
-	}
-
-	return result, nil
 }
 
 // AddKeepRequest adds a keep-request tag with 90 days expiry and requester.

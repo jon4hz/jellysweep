@@ -45,6 +45,6 @@ func (p *DefaultDelete) Apply(media *database.Media) error {
 }
 
 // ShouldTriggerDeletion returns whether the media should be deleted based on the default delete date.
-func (p *DefaultDelete) ShouldTriggerDeletion(_ context.Context, media *database.Media) (bool, error) {
+func (p *DefaultDelete) ShouldTriggerDeletion(_ context.Context, media database.Media) (bool, error) {
 	return time.Now().After(media.DefaultDeleteAt), nil
 }

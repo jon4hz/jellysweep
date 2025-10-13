@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	radarrAPI "github.com/devopsarr/radarr-go/radarr"
+	sonarrAPI "github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
@@ -234,7 +236,6 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 	e.cache.ClearAll(ctx)
 
 	e.removeExpiredKeepTags(ctx)
-	e.cleanupOldTags(ctx)
 	if err = e.markForDeletion(ctx); err != nil {
 		log.Error("An error occurred while marking media for deletion")
 	}
@@ -242,7 +243,10 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 
 	// only delete media if there was no previous error
 	if err == nil {
-		e.cleanupMedia(ctx)
+		if err := e.cleanupMedia(ctx); err != nil {
+			log.Error("An error occurred while deleting media")
+			return err
+		}
 	}
 
 	log.Info("Scheduled cleanup job completed")
@@ -452,15 +456,29 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems mediaItemsMap) error {
 				dbItem.ArrID = item.SeriesResource.GetId()
 				dbItem.Title = item.SeriesResource.GetTitle()
 				dbItem.Year = item.SeriesResource.GetYear()
+				dbItem.FileSize = item.SeriesResource.Statistics.GetSizeOnDisk()
 				dbItem.TvdbId = lo.ToPtr(item.SeriesResource.GetTvdbId())
 				dbItem.TmdbId = lo.ToPtr(item.SeriesResource.GetTmdbId())
+
+				for _, img := range item.SeriesResource.GetImages() {
+					if img.GetCoverType() == sonarrAPI.MEDIACOVERTYPES_POSTER {
+						dbItem.PosterURL = img.GetRemoteUrl()
+					}
+				}
 
 			case models.MediaTypeMovie:
 				dbItem.MediaType = database.MediaTypeMovie
 				dbItem.ArrID = item.MovieResource.GetId()
 				dbItem.Title = item.MovieResource.GetTitle()
 				dbItem.Year = item.MovieResource.GetYear()
+				dbItem.FileSize = item.MovieResource.Statistics.GetSizeOnDisk()
 				dbItem.TmdbId = lo.ToPtr(item.MovieResource.GetTmdbId())
+
+				for _, img := range item.MovieResource.GetImages() {
+					if img.GetCoverType() == radarrAPI.MEDIACOVERTYPES_POSTER {
+						dbItem.PosterURL = img.GetRemoteUrl()
+					}
+				}
 
 			default:
 				return fmt.Errorf("unsupported media type: %s", item.MediaType)
@@ -482,34 +500,59 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems mediaItemsMap) error {
 	return nil
 }
 
-func (e *Engine) cleanupOldTags(ctx context.Context) {
-	if e.sonarr != nil {
-		if err := e.sonarr.CleanupTags(ctx); err != nil {
-			log.Errorf("failed to clean up Sonarr tags: %v", err)
-		}
-	}
-	if e.radarr != nil {
-		if err := e.radarr.CleanupTags(ctx); err != nil {
-			log.Errorf("failed to clean up Radarr tags: %v", err)
-		}
-	}
-}
-
-func (e *Engine) cleanupMedia(ctx context.Context) {
+func (e *Engine) cleanupMedia(ctx context.Context) error {
 	deletedItems := make(mediaItemsMap)
 
-	if e.sonarr != nil {
-		if sonarrDeleted, err := e.sonarr.DeleteMedia(ctx, e.data.libraryFoldersMap); err != nil {
-			log.Errorf("failed to delete Sonarr media: %v", err)
-		} else if len(sonarrDeleted) > 0 {
-			deletedItems["TV Shows"] = sonarrDeleted
-		}
+	mediaItems, err := e.db.GetMediaItems(ctx)
+	if err != nil {
+		log.Errorf("failed to get media items from database: %v", err)
+		return err
 	}
-	if e.radarr != nil {
-		if radarrDeleted, err := e.radarr.DeleteMedia(ctx, e.data.libraryFoldersMap); err != nil {
-			log.Errorf("failed to delete Radarr media: %v", err)
-		} else if len(radarrDeleted) > 0 {
-			deletedItems["Movies"] = radarrDeleted
+
+	for _, item := range mediaItems {
+		// since the deletion policies were already set during the scaning phase, we can just use the existing policy engine.
+		if ok, err := e.policy.ShouldTriggerDeletion(ctx, item); err != nil {
+			log.Errorf("failed to check deletion policy for media item %s: %v", item.Title, err)
+			continue
+		} else if !ok {
+			log.Infof("Skipping deletion for media item %s, no policies triggered", item.Title)
+			continue
+		}
+
+		switch item.MediaType {
+		case database.MediaTypeTV:
+			if e.sonarr == nil {
+				log.Warnf("Sonarr client not configured, cannot delete TV show %s", item.Title)
+				continue
+			}
+			if err := e.sonarr.DeleteMedia(ctx, item.ArrID, item.Title); err != nil {
+				log.Errorf("failed to delete Sonarr media %s: %v", item.Title, err)
+				continue
+			}
+			deletedItems["TV Shows"] = append(deletedItems["TV Shows"], arr.MediaItem{
+				Title:     item.Title,
+				Year:      item.Year,
+				MediaType: models.MediaTypeTV,
+			})
+
+		case database.MediaTypeMovie:
+			if e.radarr == nil {
+				log.Warnf("Radarr client not configured, cannot delete movie %s", item.Title)
+				continue
+			}
+			if err := e.radarr.DeleteMedia(ctx, item.ArrID, item.Title); err != nil {
+				log.Errorf("failed to delete Radarr media %s: %v", item.Title, err)
+				continue
+			}
+			deletedItems["Movies"] = append(deletedItems["Movies"], arr.MediaItem{
+				Title:     item.Title,
+				Year:      item.Year,
+				MediaType: models.MediaTypeMovie,
+			})
+
+		default:
+			log.Errorf("unsupported media type for deletion: %s", item.MediaType)
+			continue
 		}
 	}
 
@@ -519,73 +562,18 @@ func (e *Engine) cleanupMedia(ctx context.Context) {
 			log.Errorf("failed to send deletion completed notification: %v", err)
 		}
 	}
+
+	return nil
 }
 
 // GetMediaItemsMarkedForDeletion returns all media items that are marked for deletion.
-func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefresh bool) (map[string][]models.MediaItem, error) {
-	result := make(map[string][]models.MediaItem)
-
-	// Get Sonarr items marked for deletion
-	if e.sonarr != nil {
-		sonarrItems, err := e.sonarr.GetMediaItemsMarkedForDeletion(ctx, forceRefresh)
-		if err != nil {
-			log.Errorf("failed to get sonarr media items marked for deletion: %v", err)
-		} else {
-			if len(sonarrItems) > 0 {
-				for _, item := range sonarrItems {
-					result[item.Library] = append(result[item.Library], item)
-				}
-			}
-		}
-	}
-
-	// Get Radarr items marked for deletion
-	if e.radarr != nil {
-		radarrItems, err := e.radarr.GetMediaItemsMarkedForDeletion(ctx, forceRefresh)
-		if err != nil {
-			log.Errorf("failed to get radarr media items marked for deletion: %v", err)
-		} else {
-			if len(radarrItems) > 0 {
-				for _, item := range radarrItems {
-					result[item.Library] = append(result[item.Library], item)
-				}
-			}
-		}
-	}
-
-	return result, nil
+func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context) ([]database.Media, error) {
+	return e.db.GetMediaItems(ctx)
 }
 
 // GetMediaItemsMarkedForDeletionByType returns media items marked for deletion by type.
-func (e *Engine) GetMediaItemsMarkedForDeletionByType(ctx context.Context, mediaType models.MediaType, forceRefresh bool) ([]models.MediaItem, error) {
-	var result []models.MediaItem
-
-	switch mediaType {
-	case models.MediaTypeTV:
-		// Get Sonarr items marked for deletion
-		if e.sonarr != nil {
-			sonarrItems, err := e.sonarr.GetMediaItemsMarkedForDeletion(ctx, forceRefresh)
-			if err != nil {
-				log.Errorf("failed to get sonarr media items marked for deletion: %v", err)
-			} else {
-				result = append(result, sonarrItems...)
-			}
-		}
-	case models.MediaTypeMovie:
-		// Get Radarr items marked for deletion
-		if e.radarr != nil {
-			radarrItems, err := e.radarr.GetMediaItemsMarkedForDeletion(ctx, forceRefresh)
-			if err != nil {
-				log.Errorf("failed to get radarr media items marked for deletion: %v", err)
-			} else {
-				result = append(result, radarrItems...)
-			}
-		}
-	default:
-		return nil, fmt.Errorf("unsupported media type: %s", mediaType)
-	}
-
-	return result, nil
+func (e *Engine) GetMediaItemsMarkedForDeletionByType(ctx context.Context, mediaType database.MediaType) ([]database.Media, error) {
+	return e.db.GetMediaItemsByMediaType(ctx, mediaType)
 }
 
 // RequestKeepMedia adds a keep request tag to the specified media item.

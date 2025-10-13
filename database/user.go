@@ -15,6 +15,7 @@ type User struct {
 	gorm.Model
 	Username     string `gorm:"uniqueIndex;not null"`
 	UserSettings UserSettings
+	Requests     []Request `gorm:"constraint:OnDelete:SET NULL;"`
 }
 
 func (c *Client) CreateUser(ctx context.Context, username string) (*User, error) {

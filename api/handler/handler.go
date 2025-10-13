@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 )
@@ -19,13 +20,6 @@ const (
 	PragmaNoCache       = "no-cache"
 	RefreshParamTrue    = "true"
 )
-
-// CacheManager interface for managing user-specific caches.
-type CacheManager interface {
-	Get(userID string) (map[string][]models.MediaItem, bool)
-	Set(userID string, data map[string][]models.MediaItem)
-	Clear(userID string)
-}
 
 type Handler struct {
 	engine     *engine.Engine
@@ -50,33 +44,27 @@ func (h *Handler) Home(c *gin.Context) {
 		cacheControl == CacheControlMaxAge0 ||
 		pragma == PragmaNoCache
 
-	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	mediaItems, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
 	if err != nil {
 		// Log error and fall back to empty data
 		c.Header("Content-Type", "text/html")
 		if user.IsAdmin {
 			// Try to get pending requests for admin even on error
 			if keepRequests, keepErr := h.engine.GetKeepRequests(c.Request.Context(), forceRefresh); keepErr == nil {
-				if err := pages.DashboardWithPendingRequests(user, []models.MediaItem{}, len(keepRequests)).Render(c.Request.Context(), c.Writer); err != nil {
+				if err := pages.DashboardWithPendingRequests(user, []database.Media{}, len(keepRequests)).Render(c.Request.Context(), c.Writer); err != nil {
 					log.Error("Failed to render dashboard with pending requests", "error", err)
 				}
 			} else {
-				if err := pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer); err != nil {
+				if err := pages.Dashboard(user, []database.Media{}).Render(c.Request.Context(), c.Writer); err != nil {
 					log.Error("Failed to render dashboard", "error", err)
 				}
 			}
 		} else {
-			if err := pages.Dashboard(user, []models.MediaItem{}).Render(c.Request.Context(), c.Writer); err != nil {
+			if err := pages.Dashboard(user, []database.Media{}).Render(c.Request.Context(), c.Writer); err != nil {
 				log.Error("Failed to render dashboard", "error", err)
 			}
 		}
 		return
-	}
-
-	// Convert to flat list for the dashboard
-	var mediaItems []models.MediaItem
-	for _, libraryItems := range mediaItemsMap {
-		mediaItems = append(mediaItems, libraryItems...)
 	}
 
 	c.Header("Content-Type", "text/html")
@@ -176,27 +164,13 @@ func (h *Handler) Me(c *gin.Context) {
 
 // GetMediaItems returns the current user's media items as JSON.
 func (h *Handler) GetMediaItems(c *gin.Context) {
-	// Check if this is a forced refresh
-	cacheControl := c.GetHeader("Cache-Control")
-	pragma := c.GetHeader("Pragma")
-	forceRefresh := c.Query("refresh") == RefreshParamTrue ||
-		cacheControl == CacheControlNoCache ||
-		cacheControl == CacheControlMaxAge0 ||
-		pragma == PragmaNoCache
-
-	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	mediaItems, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to get media items",
 		})
 		return
-	}
-
-	// Convert to flat list for the dashboard
-	var mediaItems []models.MediaItem
-	for _, libraryItems := range mediaItemsMap {
-		mediaItems = append(mediaItems, libraryItems...)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

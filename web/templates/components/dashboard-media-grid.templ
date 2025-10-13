@@ -1,9 +1,9 @@
 package components
 
-import "github.com/jon4hz/jellysweep/api/models"
+import "github.com/jon4hz/jellysweep/database"
 
 // DashboardMediaGrid creates a media grid specifically for the dashboard
-templ DashboardMediaGrid(mediaItems []models.MediaItem, pageSize int) {
+templ DashboardMediaGrid(mediaItems []database.Media, pageSize int) {
 	@MediaGrid(mediaItems, MediaGridConfig{
 		ContainerID:    "media-grid-container",
 		GridID:         "media-grid",
@@ -18,7 +18,7 @@ templ DashboardMediaGrid(mediaItems []models.MediaItem, pageSize int) {
 }
 
 // DashboardFilters creates the filter interface for the dashboard
-templ DashboardFilters(mediaItems []models.MediaItem) {
+templ DashboardFilters(mediaItems []database.Media) {
 	<div class="card-no-hover p-4 sm:p-6 mb-6">
 		<div class="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
 			<div class="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">

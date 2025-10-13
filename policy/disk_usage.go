@@ -53,7 +53,7 @@ func (p *DiskUsageDelete) Apply(media *database.Media) error {
 }
 
 // ShouldTriggerDeletion checks if any disk usage policy thresholds are exceeded.
-func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media *database.Media) (bool, error) {
+func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media database.Media) (bool, error) {
 	if len(media.DiskUsageDeletePolicies) == 0 {
 		return false, nil
 	}
@@ -80,7 +80,7 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media *data
 	}
 
 	if diskUsageError != nil && currentDiskUsage == 0 {
-		log.Warnf("Could not determine disk usage for library %s, using basic tag expiration check", media.LibraryName)
+		log.Warnf("Could not determine disk usage for library %s", media.LibraryName)
 		// abort but dont return an error
 		return false, nil
 	}

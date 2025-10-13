@@ -41,16 +41,10 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 		return
 	}
 
-	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	mediaItems, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
 		return
-	}
-
-	// Flatten the map to a slice
-	var mediaItems []models.MediaItem
-	for _, libraryItems := range mediaItemsMap {
-		mediaItems = append(mediaItems, libraryItems...)
 	}
 
 	c.Header("Content-Type", "text/html")
@@ -173,27 +167,13 @@ func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 
 // GetAdminMediaItems returns media items for admin with caching support.
 func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
-	// Check if this is a forced refresh
-	cacheControl := c.GetHeader("Cache-Control")
-	pragma := c.GetHeader("Pragma")
-	forceRefresh := c.Query("refresh") == RefreshParamTrue ||
-		cacheControl == CacheControlNoCache ||
-		cacheControl == CacheControlMaxAge0 ||
-		pragma == PragmaNoCache
-
-	mediaItemsMap, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context(), forceRefresh)
+	mediaItems, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to get media items",
 		})
 		return
-	}
-
-	// Convert to flat list
-	var mediaItems []models.MediaItem
-	for _, libraryItems := range mediaItemsMap {
-		mediaItems = append(mediaItems, libraryItems...)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

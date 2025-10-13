@@ -2,11 +2,12 @@ package pages
 
 import (
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/web/templates"
 	"github.com/jon4hz/jellysweep/web/templates/components"
 )
 
-templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems []models.MediaItem) {
+templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems []database.Media) {
 	@templates.LayoutWithPendingRequests("Admin Panel", user, len(keepRequests)) {
 		<div class="space-y-6">
 			<!-- Header -->
@@ -64,7 +65,7 @@ templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItem
 	}
 }
 
-templ AdminTabs(keepRequests []models.KeepRequest, mediaItems []models.MediaItem) {
+templ AdminTabs(keepRequests []models.KeepRequest, mediaItems []database.Media) {
 	@components.TabContainer("admin-tabs") {
 		@components.TabButton("approval-queue", "Approval Queue", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`, true)
 		@components.TabButton("keep-sweep", "Keep or Sweep", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path></svg>`, false)
@@ -89,7 +90,7 @@ templ ApprovalQueueTab(keepRequests []models.KeepRequest) {
 	}
 }
 
-templ KeepSweepTab(mediaItems []models.MediaItem) {
+templ KeepSweepTab(mediaItems []database.Media) {
 	if len(mediaItems) == 0 {
 		@KeepSweepEmptyState()
 	} else {

@@ -211,89 +211,22 @@ func (r *Radarr) EnsureTagExists(ctx context.Context, label string) error {
 	return nil
 }
 
-func (r *Radarr) CleanupTags(ctx context.Context) error {
-	tagsList, resp, err := r.client.TagDetailsAPI.ListTagDetail(radarrAuthCtx(ctx, r.cfg.Radarr)).Execute()
+func (r *Radarr) DeleteMedia(ctx context.Context, movieID int32, title string) error {
+	if r.cfg.DryRun {
+		log.Infof("Dry run: Would delete Radarr movie %s", title)
+		return nil
+	}
+
+	resp, err := r.client.MovieAPI.DeleteMovie(radarrAuthCtx(ctx, r.cfg.Radarr), movieID).
+		DeleteFiles(true).
+		Execute()
 	if err != nil {
-		return fmt.Errorf("failed to list Radarr tags: %w", err)
+		return fmt.Errorf("failed to delete Radarr movie %s: %w", title, err)
 	}
 	defer resp.Body.Close() //nolint: errcheck
 
-	for _, t := range tagsList {
-		if len(t.MovieIds) == 0 && tags.IsJellysweepTag(t.GetLabel()) {
-			if r.cfg.DryRun {
-				log.Infof("Dry run: Would delete Radarr tag %s", t.GetLabel())
-				continue
-			}
-			resp, err := r.client.TagAPI.DeleteTag(radarrAuthCtx(ctx, r.cfg.Radarr), t.GetId()).Execute()
-			if err != nil {
-				return fmt.Errorf("failed to delete Radarr tag %s: %w", t.GetLabel(), err)
-			}
-			defer resp.Body.Close() //nolint: errcheck
-			log.Infof("Deleted Radarr tag: %s", t.GetLabel())
-		}
-	}
+	log.Infof("Deleted Radarr movie %s", title)
 	return nil
-}
-
-func (r *Radarr) DeleteMedia(ctx context.Context, libraryFoldersMap map[string][]string) ([]arr.MediaItem, error) {
-	deleted := make([]arr.MediaItem, 0)
-
-	tagMap, err := r.GetTags(ctx, false)
-	if err != nil {
-		return deleted, fmt.Errorf("failed to get radarr tags: %w", err)
-	}
-
-	movies, err := r.getItems(ctx, false)
-	if err != nil {
-		return deleted, fmt.Errorf("failed to get radarr items: %w", err)
-	}
-
-	for _, movie := range movies {
-		libraryName := "Movies" // TODO: dont hardcode library name
-
-		var tagNames []string
-		for _, tagID := range movie.GetTags() {
-			if name, ok := tagMap[tagID]; ok {
-				tagNames = append(tagNames, name)
-			}
-		}
-
-		if !tags.ShouldTriggerDeletionBasedOnDiskUsage(ctx, r.cfg, libraryName, tagNames, libraryFoldersMap) {
-			continue
-		}
-
-		if r.cfg.DryRun {
-			log.Infof("Dry run: Would delete Radarr movie %s", movie.GetTitle())
-			continue
-		}
-
-		resp, err := r.client.MovieAPI.DeleteMovie(radarrAuthCtx(ctx, r.cfg.Radarr), movie.GetId()).
-			DeleteFiles(true).
-			Execute()
-		if err != nil {
-			return deleted, fmt.Errorf("failed to delete Radarr movie %s: %w", movie.GetTitle(), err)
-		}
-		defer resp.Body.Close() //nolint: errcheck
-
-		log.Infof("Deleted Radarr movie %s", movie.GetTitle())
-
-		deleted = append(deleted, arr.MediaItem{
-			Title:       movie.GetTitle(),
-			LibraryName: libraryName,
-			MediaType:   models.MediaTypeMovie,
-			Year:        movie.GetYear(),
-		})
-	}
-
-	if len(deleted) > 0 {
-		if err := r.itemsCache.Clear(ctx); err != nil {
-			log.Warnf("Failed to clear Radarr items cache after deletion: %v", err)
-		} else {
-			log.Debug("Cleared Radarr items cache after deletion")
-		}
-	}
-
-	return deleted, nil
 }
 
 func (r *Radarr) RemoveExpiredKeepTags(ctx context.Context) error {
@@ -486,76 +419,6 @@ func (r *Radarr) RemoveRecentlyPlayedDeleteTags(ctx context.Context, jellyfinIte
 		}
 	}
 	return nil
-}
-
-func (r *Radarr) GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefresh bool) ([]models.MediaItem, error) {
-	movies, err := r.getItems(ctx, forceRefresh)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get radarr items: %w", err)
-	}
-
-	tagMap, err := r.GetTags(ctx, forceRefresh)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get radarr tags: %w", err)
-	}
-
-	result := make([]models.MediaItem, 0)
-	for _, m := range movies {
-		for _, tagID := range m.GetTags() {
-			name := tagMap[tagID]
-			if tags.IsJellysweepDeleteTag(name) {
-				info, err := tags.ParseJellysweepTag(name)
-				if err != nil {
-					log.Warnf("failed to parse jellysweep tag %s: %v", name, err)
-					continue
-				}
-
-				imageURL := ""
-				for _, img := range m.GetImages() {
-					if img.GetCoverType() == radarrAPI.MEDIACOVERTYPES_POSTER {
-						imageURL = img.GetRemoteUrl()
-						break
-					}
-				}
-
-				canRequest := true
-				hasRequested := false
-				mustDelete := false
-				for _, tid := range m.GetTags() {
-					tn := tagMap[tid]
-					if strings.HasPrefix(tn, tags.JellysweepKeepRequestPrefix) {
-						hasRequested = true
-						canRequest = false
-					} else if strings.HasPrefix(tn, tags.JellysweepKeepPrefix) {
-						if keepDate, _, err := tags.ParseKeepTagWithRequester(tn); err == nil && time.Now().Before(keepDate) {
-							canRequest = false
-						}
-					} else if tn == tags.JellysweepDeleteForSureTag {
-						canRequest = false
-						mustDelete = true
-					}
-				}
-
-				result = append(result, models.MediaItem{
-					ID:           fmt.Sprintf("radarr-%d", m.GetId()),
-					Title:        m.GetTitle(),
-					Type:         "movie",
-					Year:         m.GetYear(),
-					Library:      "Movies",
-					DeletionDate: info.DeletionDate,
-					PosterURL:    arr.GetCachedImageURL(imageURL),
-					CanRequest:   canRequest,
-					HasRequested: hasRequested,
-					MustDelete:   mustDelete,
-					FileSize:     m.GetSizeOnDisk(),
-					CleanupMode:  config.CleanupModeAll,
-					KeepCount:    1,
-				})
-				break
-			}
-		}
-	}
-	return result, nil
 }
 
 func (r *Radarr) AddKeepRequest(ctx context.Context, id int32, username string) (string, string, error) {

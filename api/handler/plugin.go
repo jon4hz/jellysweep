@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 )
 
@@ -29,9 +29,9 @@ func (h *PluginHandler) GetHealth(c *gin.Context) {
 
 // CheckMediaItemRequest represents the request structure for checking a media item.
 type CheckMediaItemRequest struct {
-	Name           string           `json:"name"`
-	ProductionYear int              `json:"production_year"`
-	MediaType      models.MediaType `json:"media_type"`
+	Name           string             `json:"name"`
+	ProductionYear int                `json:"production_year"`
+	MediaType      database.MediaType `json:"media_type"`
 }
 
 // CheckMediaItemResponse represents the response structure for checking a media item.
@@ -48,13 +48,13 @@ func (h *PluginHandler) CheckMediaItem(c *gin.Context) {
 	}
 
 	// Validate media type
-	if request.MediaType != models.MediaTypeMovie && request.MediaType != models.MediaTypeTV {
+	if request.MediaType != database.MediaTypeMovie && request.MediaType != database.MediaTypeTV {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Media type must be 'movie' or 'tv'"})
 		return
 	}
 
 	// Get all media items marked for deletion
-	markedItems, err := h.engine.GetMediaItemsMarkedForDeletionByType(c, request.MediaType, false)
+	markedItems, err := h.engine.GetMediaItemsMarkedForDeletionByType(c, request.MediaType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve marked media items"})
 		return
@@ -63,7 +63,7 @@ func (h *PluginHandler) CheckMediaItem(c *gin.Context) {
 	// Search through all libraries for a matching item
 	for _, item := range markedItems {
 		// Match by type first
-		if item.Type != request.MediaType {
+		if item.MediaType != request.MediaType {
 			continue
 		}
 
@@ -79,7 +79,7 @@ func (h *PluginHandler) CheckMediaItem(c *gin.Context) {
 
 		// Found a match - return the deletion date
 		response := CheckMediaItemResponse{
-			DeletionDate: item.DeletionDate,
+			DeletionDate: item.DefaultDeleteAt,
 		}
 		c.JSON(http.StatusOK, response)
 		return

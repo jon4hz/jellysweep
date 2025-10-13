@@ -28,22 +28,37 @@ type DiskUsageDeletePolicy struct {
 	DeleteDate time.Time `gorm:"not null"` // Date when media should be deleted if threshold is exceeded
 }
 
+// DeletDBDeleteReasoneReason represents the reason why a media item was deleted from the database.
+type DBDeleteReason string
+
+const (
+	// DBDeleteReasonDefault indicates the media was actually deleted in Jellyfin.
+	DBDeleteReasonDefault DBDeleteReason = "default"
+	// DBDeleteReasonStreamed indicates the media was deleted in the database only because it was streamed.
+	DBDeleteReasonStreamed DBDeleteReason = "streamed"
+)
+
 // Media represents a media item in the database.
 type Media struct {
 	gorm.Model
-	JellyfinID              string `gorm:"not null;uniqueIndex:idx_arr"`
-	LibraryName             string
-	ArrID                   int32 `gorm:"not null;uniqueIndex:idx_arr"` // Sonarr or Radarr ID
-	Title                   string
-	TmdbId                  *int32
-	TvdbId                  *int32
-	Year                    int32
-	MediaType               MediaType `gorm:"not null;uniqueIndex:idx_arr"`
-	RequestedBy             string
-	DefaultDeleteAt         time.Time `gorm:"index;uniqueIndex:idx_arr"`
-	ProtectedUntil          *time.Time
-	Unkeepable              bool
+	JellyfinID      string `gorm:"not null;uniqueIndex:idx_media_arr"`
+	LibraryName     string
+	ArrID           int32 `gorm:"not null;uniqueIndex:idx_media_arr"` // Sonarr or Radarr ID
+	Title           string
+	TmdbId          *int32
+	TvdbId          *int32
+	Year            int32
+	FileSize        int64
+	PosterURL       string
+	MediaType       MediaType `gorm:"not null;uniqueIndex:idx_media_arr"`
+	RequestedBy     string
+	DefaultDeleteAt time.Time `gorm:"not null;index;uniqueIndex:idx_media_arr"`
+	ProtectedUntil  *time.Time
+	Unkeepable      bool
+	// Reason why this item was deleted from the database.
+	DBDeleteReason          DBDeleteReason
 	DiskUsageDeletePolicies []DiskUsageDeletePolicy `gorm:"constraint:OnDelete:CASCADE;"`
+	Request                 Request                 `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 func (c *Client) CreateMediaItems(ctx context.Context, mediaItems []Media) error {
@@ -62,9 +77,19 @@ func (c *Client) CreateMediaItems(ctx context.Context, mediaItems []Media) error
 
 func (c *Client) GetMediaItems(ctx context.Context) ([]Media, error) {
 	var mediaItems []Media
-	result := c.db.WithContext(ctx).Find(&mediaItems)
+	result := c.db.WithContext(ctx).Preload("DiskUsageDeletePolicies").Preload("Request").Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		log.Error("failed to get media items", "error", result.Error)
+		return nil, result.Error
+	}
+	return mediaItems, nil
+}
+
+func (c *Client) GetMediaItemsByMediaType(ctx context.Context, mediaType MediaType) ([]Media, error) {
+	var mediaItems []Media
+	result := c.db.WithContext(ctx).Where("media_type = ?", mediaType).Find(&mediaItems)
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		log.Error("failed to get media items by type", "error", result.Error)
 		return nil, result.Error
 	}
 	return mediaItems, nil

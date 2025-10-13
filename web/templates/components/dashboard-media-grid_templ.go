@@ -8,10 +8,10 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/jon4hz/jellysweep/api/models"
+import "github.com/jon4hz/jellysweep/database"
 
 // DashboardMediaGrid creates a media grid specifically for the dashboard
-func DashboardMediaGrid(mediaItems []models.MediaItem, pageSize int) templ.Component {
+func DashboardMediaGrid(mediaItems []database.Media, pageSize int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -51,7 +51,7 @@ func DashboardMediaGrid(mediaItems []models.MediaItem, pageSize int) templ.Compo
 }
 
 // DashboardFilters creates the filter interface for the dashboard
-func DashboardFilters(mediaItems []models.MediaItem) templ.Component {
+func DashboardFilters(mediaItems []database.Media) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

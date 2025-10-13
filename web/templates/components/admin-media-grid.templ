@@ -1,7 +1,10 @@
 package components
 
-import "github.com/jon4hz/jellysweep/api/models"
-import "fmt"
+import (
+	"fmt"
+	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/database"
+)
 
 // AdminKeepRequestGrid creates a media grid specifically for keep requests in admin panel
 templ AdminKeepRequestGrid(keepRequests []models.KeepRequest) {
@@ -106,7 +109,7 @@ templ AdminKeepRequestFilters(keepRequests []models.KeepRequest) {
 }
 
 // AdminMediaGrid creates a media grid for keep/sweep decisions in admin panel
-templ AdminMediaGrid(mediaItems []models.MediaItem) {
+templ AdminMediaGrid(mediaItems []database.Media) {
 	@MediaGrid(mediaItems, MediaGridConfig{
 		ContainerID:    "keep-sweep-container",
 		GridID:         "keep-sweep-grid",
@@ -121,7 +124,7 @@ templ AdminMediaGrid(mediaItems []models.MediaItem) {
 }
 
 // AdminMediaFilters creates the filter interface for keep/sweep media
-templ AdminMediaFilters(mediaItems []models.MediaItem) {
+templ AdminMediaFilters(mediaItems []database.Media) {
 	<div class="card-no-hover p-4 sm:p-6 mb-6">
 		<div class="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
 			<div class="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
@@ -201,43 +204,18 @@ func getUniqueKeepRequestTypes(requests []models.KeepRequest) []models.MediaType
 	return types
 }
 
-func getUniqueMediaTypes(items []models.MediaItem) []models.MediaType {
-	typeMap := make(map[models.MediaType]bool)
-	var types []models.MediaType
+func getUniqueMediaTypes(items []database.Media) []database.MediaType {
+	typeMap := make(map[database.MediaType]bool)
+	var types []database.MediaType
 
 	for _, item := range items {
-		if item.Type != "" && !typeMap[item.Type] {
-			typeMap[item.Type] = true
-			types = append(types, item.Type)
+		if item.MediaType != "" && !typeMap[item.MediaType] {
+			typeMap[item.MediaType] = true
+			types = append(types, item.MediaType)
 		}
 	}
 
 	return types
-}
-
-// Convert KeepRequest to MediaItem for compatibility with MediaGrid
-func convertKeepRequestsToMediaItems(requests []models.KeepRequest) []models.MediaItem {
-	items := make([]models.MediaItem, len(requests))
-
-	for i, request := range requests {
-		items[i] = models.MediaItem{
-			ID:           request.MediaID,
-			Title:        request.Title,
-			Type:         request.Type,
-			Year:         int32(request.Year),
-			Library:      request.Library,
-			PosterURL:    request.PosterURL,
-			DeletionDate: request.DeletionDate,
-			FileSize:     0,     // KeepRequest doesn't have file size
-			HasRequested: true,  // By definition, all keep requests have been requested
-			CanRequest:   false, // Already requested
-			MustDelete:   false, // Keep requests are for keeping
-			CleanupMode:  "",
-			KeepCount:    0,
-		}
-	}
-
-	return items
 }
 
 script AdminKeepRequestGridScript() {
