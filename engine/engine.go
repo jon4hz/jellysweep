@@ -12,6 +12,7 @@ import (
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine/arr"
 	radarrImpl "github.com/jon4hz/jellysweep/engine/arr/radarr"
 	sonarrImpl "github.com/jon4hz/jellysweep/engine/arr/sonarr"
@@ -23,10 +24,14 @@ import (
 	"github.com/jon4hz/jellysweep/notify/email"
 	"github.com/jon4hz/jellysweep/notify/ntfy"
 	"github.com/jon4hz/jellysweep/notify/webpush"
+	"github.com/jon4hz/jellysweep/policy"
 	"github.com/jon4hz/jellysweep/scheduler"
 	"github.com/jon4hz/jellysweep/tags"
+	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
+
+type mediaItemsMap map[string][]arr.MediaItem
 
 // ErrRequestAlreadyProcessed indicates that a keep request has already been processed.
 var ErrRequestAlreadyProcessed = errors.New("request already processed")
@@ -35,6 +40,8 @@ var ErrRequestAlreadyProcessed = errors.New("request already processed")
 // It runs a cleanup job periodically to remove unwanted media.
 type Engine struct {
 	cfg        *config.Config
+	db         database.DB
+	policy     *policy.Engine
 	jellyfin   *jellyfin.Client
 	stats      stats.Statser
 	jellyseerr *jellyseerr.Client
@@ -56,14 +63,12 @@ type data struct {
 	// library name to library paths
 	libraryFoldersMap map[string][]string
 
-	mediaItems map[string][]arr.MediaItem
-
 	// userNotifications tracks which users should be notified about which media items
 	userNotifications map[string][]arr.MediaItem // key: user email, value: media items
 }
 
 // New creates a new Engine instance.
-func New(cfg *config.Config) (*Engine, error) {
+func New(cfg *config.Config, db database.DB) (*Engine, error) {
 	// Create scheduler first
 	sched, err := scheduler.New()
 	if err != nil {
@@ -139,6 +144,8 @@ func New(cfg *config.Config) (*Engine, error) {
 
 	engine := &Engine{
 		cfg:        cfg,
+		db:         db,
+		policy:     policy.NewEngine(),
 		jellyfin:   jellyfinClient,
 		stats:      statsClient,
 		jellyseerr: jellyseerrClient,
@@ -149,7 +156,7 @@ func New(cfg *config.Config) (*Engine, error) {
 		webpush:    webpushClient,
 		scheduler:  sched,
 		data: &data{
-			userNotifications: make(map[string][]arr.MediaItem),
+			userNotifications: make(mediaItemsMap),
 			libraryFoldersMap: make(map[string][]string),
 		},
 		imageCache: cache.NewImageCache("./data/cache/images"),
@@ -297,48 +304,60 @@ func (e *Engine) removeExpiredKeepTags(ctx context.Context) {
 }
 
 func (e *Engine) markForDeletion(ctx context.Context) error {
-	if err := e.gatherMediaItems(ctx); err != nil {
+	mediaItems, err := e.gatherMediaItems(ctx)
+	if err != nil {
 		log.Errorf("failed to gather media items: %v", err)
 		return err
 	}
 	log.Info("Media items gathered successfully")
 
+	// Filter out items that are already marked for deletion in the database
+	log.Info("Filtering out items already marked for deletion in the database")
+	mediaItems, err = e.filterAlreadyMarkedForDeletion(mediaItems)
+	if err != nil {
+		log.Errorf("failed to filter already marked for deletion: %v", err)
+		return err
+	}
+
 	// Filter out series that already meet the keep criteria (if cleanup mode is set to keep episodes or seasons)
 	log.Info("Filtering series that already meet keep criteria")
-	e.filterSeriesAlreadyMeetingKeepCriteria()
+	mediaItems = e.filterSeriesAlreadyMeetingKeepCriteria(mediaItems)
 
 	// Filter media items based on tags
 	log.Info("Filtering media items based on tags")
-	e.filterMediaTags()
+	mediaItems = e.filterMediaTags(mediaItems)
 
 	log.Info("Checking content age")
-	if err := e.filterContentAgeThreshold(ctx); err != nil {
+	mediaItems, err = e.filterContentAgeThreshold(ctx, mediaItems)
+	if err != nil {
 		log.Errorf("failed to filter content age threshold: %v", err)
 		return err
 	}
 
 	log.Info("Checking content size")
-	if err := e.filterContentSizeThreshold(ctx); err != nil {
+	mediaItems, err = e.filterContentSizeThreshold(ctx, mediaItems)
+	if err != nil {
 		log.Errorf("failed to filter content size threshold: %v", err)
 		return err
 	}
 
 	log.Info("Checking for streaming history")
-	if err := e.filterLastStreamThreshold(ctx); err != nil {
+	mediaItems, err = e.filterLastStreamThreshold(ctx, mediaItems)
+	if err != nil {
 		log.Errorf("failed to filter last stream threshold: %v", err)
 		return err
 	}
 
 	// Populate requester information from Jellyseerr
 	log.Info("Populating requester information")
-	e.populateRequesterInfo(ctx)
+	mediaItems = e.populateRequesterInfo(ctx, mediaItems)
 
 	// Populate user notifications for email sending
 	if e.data.userNotifications == nil {
-		e.data.userNotifications = make(map[string][]arr.MediaItem)
+		e.data.userNotifications = make(mediaItemsMap)
 	}
 
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 		for _, item := range items {
 			e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
 			log.Info("Marking media item for deletion", "name", item.Title, "library", lib)
@@ -346,16 +365,23 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 	}
 	log.Info("Media items filtered successfully")
 
-	if err := e.markMediaItemsForDeletion(ctx); err != nil {
-		log.Errorf("failed to mark media items for deletion: %v", err)
-		return err
+	if len(mediaItems) == 0 {
+		log.Info("No media items marked for deletion after filtering")
+		return nil
 	}
 
+	// save items to database
+	if err := e.saveMediaItemsToDatabase(mediaItems); err != nil {
+		log.Errorf("failed to save media items to database: %v", err)
+		return err
+	}
+	log.Info("Media items saved to database successfully")
+
 	// Send email notifications before marking for deletion
-	e.sendEmailNotifications()
+	e.sendEmailNotifications(mediaItems)
 
 	// Send ntfy deletion summary notification
-	if err := e.sendNtfyDeletionSummary(ctx); err != nil {
+	if err := e.sendNtfyDeletionSummary(ctx, mediaItems); err != nil {
 		log.Errorf("failed to send ntfy deletion summary: %v", err)
 		// Don't return here, continue with the cleanup process
 	}
@@ -364,56 +390,93 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 
 // gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
 // It merges them into a single collection grouped by library.
-func (e *Engine) gatherMediaItems(ctx context.Context) error {
+func (e *Engine) gatherMediaItems(ctx context.Context) (mediaItemsMap, error) {
 	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx, true)
 	if err != nil {
-		return fmt.Errorf("failed to get jellyfin items: %w", err)
+		return nil, fmt.Errorf("failed to get jellyfin items: %w", err)
 	}
 	e.data.libraryFoldersMap = libraryFoldersMap
 
-	var sonarrItems map[string][]arr.MediaItem
+	var sonarrItems mediaItemsMap
 	if e.sonarr != nil {
 		sonarrItems, err = e.sonarr.GetItems(ctx, jellyfinItems, true)
 		if err != nil {
-			return fmt.Errorf("failed to get sonarr items: %w", err)
+			return nil, fmt.Errorf("failed to get sonarr items: %w", err)
 		}
 	}
 
-	var radarrItems map[string][]arr.MediaItem
+	var radarrItems mediaItemsMap
 	if e.radarr != nil {
 		radarrItems, err = e.radarr.GetItems(ctx, jellyfinItems, true)
 		if err != nil {
-			return fmt.Errorf("failed to get radarr items: %w", err)
+			return nil, fmt.Errorf("failed to get radarr items: %w", err)
 		}
 	}
 
 	// Merge all media items
-	mediaItems := make(map[string][]arr.MediaItem)
+	mediaItems := make(mediaItemsMap)
+	totalCount := 0
 	for lib, items := range sonarrItems {
 		mediaItems[lib] = append(mediaItems[lib], items...)
+		totalCount += len(items)
 	}
 	for lib, items := range radarrItems {
 		mediaItems[lib] = append(mediaItems[lib], items...)
+		totalCount += len(items)
 	}
 
-	e.data.mediaItems = mediaItems
-	log.Infof("Merged %d media items across %d libraries", len(e.data.mediaItems), len(e.data.mediaItems))
+	log.Infof("Merged %d media items across %d libraries", totalCount, len(mediaItems))
 
-	return nil
+	// Set deletion policies with freshly gathered library folders map
+	e.policy.SetPolicies(
+		policy.NewDefaultDelete(e.cfg),
+		policy.NewDiskUsageDelete(e.cfg, libraryFoldersMap),
+	)
+
+	return mediaItems, nil
 }
 
-// markMediaItemsForDeletion marks media items for deletion using the Arrer interface.
-func (e *Engine) markMediaItemsForDeletion(ctx context.Context) error {
-	if e.sonarr != nil {
-		if err := e.sonarr.MarkItemForDeletion(ctx, e.data.mediaItems, e.data.libraryFoldersMap); err != nil {
-			return fmt.Errorf("failed to mark Sonarr items for deletion: %w", err)
+func (e *Engine) saveMediaItemsToDatabase(mediaItems mediaItemsMap) error {
+	dbMediaItems := make([]database.Media, 0)
+	for _, items := range mediaItems {
+		for _, item := range items {
+			dbItem := database.Media{
+				JellyfinID:  item.JellyfinID,
+				LibraryName: item.LibraryName,
+				RequestedBy: item.RequestedBy,
+			}
+
+			switch item.MediaType {
+			case models.MediaTypeTV:
+				dbItem.MediaType = database.MediaTypeTV
+				dbItem.ArrID = item.SeriesResource.GetId()
+				dbItem.Title = item.SeriesResource.GetTitle()
+				dbItem.Year = item.SeriesResource.GetYear()
+				dbItem.TvdbId = lo.ToPtr(item.SeriesResource.GetTvdbId())
+				dbItem.TmdbId = lo.ToPtr(item.SeriesResource.GetTmdbId())
+
+			case models.MediaTypeMovie:
+				dbItem.MediaType = database.MediaTypeMovie
+				dbItem.ArrID = item.MovieResource.GetId()
+				dbItem.Title = item.MovieResource.GetTitle()
+				dbItem.Year = item.MovieResource.GetYear()
+				dbItem.TmdbId = lo.ToPtr(item.MovieResource.GetTmdbId())
+
+			default:
+				return fmt.Errorf("unsupported media type: %s", item.MediaType)
+			}
+
+			if err := e.policy.ApplyAll(&dbItem); err != nil {
+				log.Errorf("failed to apply policies to media item %s: %v", dbItem.Title, err)
+				continue
+			}
+
+			dbMediaItems = append(dbMediaItems, dbItem)
 		}
 	}
 
-	if e.radarr != nil {
-		if err := e.radarr.MarkItemForDeletion(ctx, e.data.mediaItems, e.data.libraryFoldersMap); err != nil {
-			return fmt.Errorf("failed to mark Radarr items for deletion: %w", err)
-		}
+	if err := e.db.CreateMediaItems(context.Background(), dbMediaItems); err != nil {
+		return fmt.Errorf("failed to create media items to database: %w", err)
 	}
 
 	return nil
@@ -433,7 +496,7 @@ func (e *Engine) cleanupOldTags(ctx context.Context) {
 }
 
 func (e *Engine) cleanupMedia(ctx context.Context) {
-	deletedItems := make(map[string][]arr.MediaItem)
+	deletedItems := make(mediaItemsMap)
 
 	if e.sonarr != nil {
 		if sonarrDeleted, err := e.sonarr.DeleteMedia(ctx, e.data.libraryFoldersMap); err != nil {

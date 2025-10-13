@@ -17,13 +17,13 @@ import (
 )
 
 type JellyfinProvider struct {
-	db          database.DB
+	db          database.UserDB
 	client      *jellyfin.APIClient
 	cfg         *config.JellyfinAuthConfig
 	gravatarCfg *config.GravatarConfig
 }
 
-func NewJellyfinProvider(cfg *config.JellyfinConfig, db database.DB, authCfg *config.JellyfinAuthConfig, gravatarCfg *config.GravatarConfig) *JellyfinProvider {
+func NewJellyfinProvider(cfg *config.JellyfinConfig, db database.UserDB, authCfg *config.JellyfinAuthConfig, gravatarCfg *config.GravatarConfig) *JellyfinProvider {
 	clientConfig := jellyfin.NewConfiguration()
 	clientConfig.Servers = jellyfin.ServerConfigurations{
 		{

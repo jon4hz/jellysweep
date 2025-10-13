@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/dustin/go-humanize"
 	"github.com/jon4hz/jellysweep/api/models"
-	"github.com/jon4hz/jellysweep/engine/arr"
 	"github.com/jon4hz/jellysweep/engine/arr/sonarr"
 )
 
@@ -19,13 +18,13 @@ func safeUint64(value int64) uint64 {
 }
 
 // filterContentSizeThreshold filters out media items that are smaller than the configured threshold.
-func (e *Engine) filterContentSizeThreshold(ctx context.Context) error {
-	filteredItems := make(map[string][]arr.MediaItem)
-	for lib, items := range e.data.mediaItems {
+func (e *Engine) filterContentSizeThreshold(ctx context.Context, mediaItems mediaItemsMap) (mediaItemsMap, error) {
+	filteredItems := make(mediaItemsMap)
+	for lib, items := range mediaItems {
 		for _, item := range items {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil, ctx.Err()
 			default:
 			}
 
@@ -64,7 +63,5 @@ func (e *Engine) filterContentSizeThreshold(ctx context.Context) error {
 		}
 	}
 
-	e.data.mediaItems = filteredItems
-
-	return nil
+	return filteredItems, nil
 }

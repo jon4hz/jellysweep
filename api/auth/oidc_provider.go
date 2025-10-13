@@ -15,7 +15,7 @@ import (
 )
 
 type OIDCProvider struct {
-	db          database.DB
+	db          database.UserDB
 	provider    *oidc.Provider
 	verifier    *oidc.IDTokenVerifier
 	config      *oauth2.Config
@@ -23,7 +23,7 @@ type OIDCProvider struct {
 	gravatarCfg *config.GravatarConfig
 }
 
-func NewOIDCProvider(ctx context.Context, cfg *config.OIDCConfig, gravatarCfg *config.GravatarConfig, db database.DB) (*OIDCProvider, error) {
+func NewOIDCProvider(ctx context.Context, cfg *config.OIDCConfig, gravatarCfg *config.GravatarConfig, db database.UserDB) (*OIDCProvider, error) {
 	p := OIDCProvider{
 		cfg:         cfg,
 		gravatarCfg: gravatarCfg,

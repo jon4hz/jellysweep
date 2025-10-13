@@ -32,7 +32,6 @@ type MediaItem struct {
 type Arrer interface {
 	GetItems(ctx context.Context, jellyfinItems []JellyfinItem, forceRefresh bool) (map[string][]MediaItem, error)
 	GetTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error)
-	MarkItemForDeletion(ctx context.Context, mediaItems map[string][]MediaItem, libraryFoldersMap map[string][]string) error
 	GetTagIDByLabel(ctx context.Context, label string) (int32, error)
 	EnsureTagExists(ctx context.Context, deleteTagLabel string) error
 	CleanupTags(ctx context.Context) error

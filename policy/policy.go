@@ -2,6 +2,7 @@ package policy
 
 import (
 	"context"
+	"time"
 
 	"github.com/jon4hz/jellysweep/database"
 )
@@ -42,6 +43,10 @@ func (e *Engine) ApplyAll(media *database.Media) error {
 // ShouldTriggerDeletion checks if any policy indicates that the media should be deleted.
 // All policies will be checked until one returns true.
 func (e *Engine) ShouldTriggerDeletion(ctx context.Context, media *database.Media) (bool, error) {
+	if !media.ProtectedUntil.IsZero() && media.ProtectedUntil.Before(time.Now()) {
+		// If the media is protected until a certain date, do not delete it
+		return false, nil
+	}
 	for _, policy := range e.policies {
 		trigger, err := policy.ShouldTriggerDeletion(ctx, media)
 		if err != nil {

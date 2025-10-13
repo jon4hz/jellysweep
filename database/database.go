@@ -11,6 +11,18 @@ import (
 
 // DB defines the interface for database operations.
 type DB interface {
+	UserDB
+	MediaDB
+}
+
+// MediaDB defines the interface for media-related database operations.
+type MediaDB interface {
+	CreateMediaItems(ctx context.Context, items []Media) error
+	GetMediaItems(ctx context.Context) ([]Media, error)
+}
+
+// UserDB defines the interface for user-related database operations.
+type UserDB interface {
 	CreateUser(ctx context.Context, username string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	GetOrCreateUser(ctx context.Context, username string) (*User, error)

@@ -9,18 +9,18 @@ import (
 )
 
 // filterSeriesAlreadyMeetingKeepCriteria filters out series that already meet the keep criteria.
-func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria() {
+func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria(mediaItems mediaItemsMap) mediaItemsMap {
 	cleanupMode := e.cfg.GetCleanupMode()
 	keepCount := e.cfg.GetKeepCount()
 
 	// If cleanup mode is "all", no filtering needed
 	if cleanupMode == config.CleanupModeAll {
-		return
+		return mediaItems
 	}
 
 	totalSkippedCount := 0
 
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 		var filteredItems []arr.MediaItem
 		skippedCount := 0
 
@@ -42,7 +42,7 @@ func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria() {
 		}
 
 		// Update the media items for this library
-		e.data.mediaItems[lib] = filteredItems
+		mediaItems[lib] = filteredItems
 
 		if skippedCount > 0 {
 			log.Infof("Filtered out %d series from library %s that already meet keep criteria", skippedCount, lib)
@@ -52,6 +52,8 @@ func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria() {
 	if totalSkippedCount > 0 {
 		log.Infof("Total filtered out: %d series that already meet keep criteria", totalSkippedCount)
 	}
+
+	return mediaItems
 }
 
 // shouldSkipSeriesForDeletion checks if a series already meets the keep criteria and should not be marked for deletion.

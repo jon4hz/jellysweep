@@ -89,7 +89,6 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem,
 		if !ok {
 			continue
 		}
-
 		mediaItems[libraryName] = append(mediaItems[libraryName], arr.MediaItem{
 			JellyfinID:     jf.GetId(),
 			LibraryName:    libraryName,
@@ -164,81 +163,6 @@ func (s *Sonarr) GetTags(ctx context.Context, forceRefresh bool) (cache.TagMap, 
 	}
 
 	return tagMap, nil
-}
-
-func (s *Sonarr) MarkItemForDeletion(ctx context.Context, mediaItems map[string][]arr.MediaItem, libraryFoldersMap map[string][]string) error {
-	tagMap, err := s.GetTags(ctx, false)
-	if err != nil {
-		return fmt.Errorf("failed to get Sonarr tags: %w", err)
-	}
-
-	clearCache := false
-	for lib, items := range mediaItems {
-		for _, item := range items {
-			if item.MediaType != models.MediaTypeTV {
-				continue // Only process TV series for Sonarr
-			}
-
-			// check if series has already a jellysweep delete tag, or keep tag
-			for _, tagID := range item.SeriesResource.GetTags() {
-				tagName := tagMap[tagID]
-				if strings.HasPrefix(tagName, tags.JellysweepKeepPrefix) {
-					log.Debugf("Sonarr series %s has expired keep tag %s", item.Title, tagName)
-				}
-			}
-
-			// Generate deletion tags using the new abstracted function
-			deletionTags, err := tags.GenerateDeletionTags(ctx, s.cfg, lib, libraryFoldersMap)
-			if err != nil {
-				log.Errorf("Failed to generate deletion tags for library %s: %v", lib, err)
-				continue
-			}
-
-			if s.cfg.DryRun {
-				log.Infof("Dry run: Would mark Sonarr series %s for deletion with tags %v", item.Title, deletionTags)
-				continue
-			}
-
-			// Add all deletion tags to the series
-			series := item.SeriesResource
-			for _, deleteTagLabel := range deletionTags {
-				if err := s.EnsureTagExists(ctx, deleteTagLabel); err != nil {
-					log.Errorf("Failed to ensure Sonarr tag exists: %v", err)
-					continue
-				}
-
-				tagID, err := s.GetTagIDByLabel(ctx, deleteTagLabel)
-				if err != nil {
-					log.Errorf("Failed to get Sonarr tag ID: %v", err)
-					continue
-				}
-
-				// Check if tag is already present
-				tagExists := slices.Contains(series.GetTags(), tagID)
-				if !tagExists {
-					series.Tags = append(series.Tags, tagID)
-				}
-			}
-			// Update the series in Sonarr
-			_, resp, err := s.client.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), fmt.Sprintf("%d", series.GetId())).
-				SeriesResource(series).
-				Execute()
-			if err != nil {
-				return fmt.Errorf("failed to update Sonarr series %s with tags %v: %w", item.Title, deletionTags, err)
-			}
-			defer resp.Body.Close() //nolint: errcheck
-			log.Infof("Marked Sonarr series %s for deletion with tags %v", item.Title, deletionTags)
-			clearCache = true
-		}
-	}
-	if clearCache {
-		if err := s.itemsCache.Clear(ctx); err != nil {
-			log.Warnf("Failed to clear Sonarr items cache after marking for deletion: %v", err)
-		} else {
-			log.Debug("Cleared Sonarr items cache after marking for deletion")
-		}
-	}
-	return nil
 }
 
 func (s *Sonarr) GetTagIDByLabel(ctx context.Context, label string) (int32, error) {

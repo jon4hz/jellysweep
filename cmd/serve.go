@@ -39,12 +39,11 @@ func startServer(cmd *cobra.Command, _ []string) {
 	if err != nil {
 		log.Fatalf("failed to initialize database: %v", err)
 	}
-	_ = db
 
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
-	engine, err := engine.New(cfg)
+	engine, err := engine.New(cfg, db)
 	if err != nil {
 		log.Fatalf("failed to create engine: %v", err)
 	}

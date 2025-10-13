@@ -8,15 +8,15 @@ import (
 )
 
 // populateRequesterInfo populates the RequestedBy and RequestDate fields for media items using Jellyseerr data.
-func (e *Engine) populateRequesterInfo(ctx context.Context) {
+func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems mediaItemsMap) mediaItemsMap {
 	if e.jellyseerr == nil {
 		log.Debug("Jellyseerr client not available, skipping requester info population")
-		return
+		return mediaItems
 	}
 
 	const concurrencyLimit = 10
 
-	for lib, items := range e.data.mediaItems {
+	for lib, items := range mediaItems {
 		// Create errgroup with concurrency limit
 		g, ctx := errgroup.WithContext(ctx)
 		g.SetLimit(concurrencyLimit)
@@ -49,6 +49,8 @@ func (e *Engine) populateRequesterInfo(ctx context.Context) {
 		}
 
 		// Update the items in the map
-		e.data.mediaItems[lib] = items
+		mediaItems[lib] = items
 	}
+
+	return mediaItems
 }

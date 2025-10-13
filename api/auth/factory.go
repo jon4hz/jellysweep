@@ -33,7 +33,7 @@ type AuthProvider interface {
 
 // MultiProvider wraps multiple auth providers.
 type MultiProvider struct {
-	db               database.DB
+	db               database.UserDB
 	oidcProvider     *OIDCProvider
 	jellyfinProvider *JellyfinProvider
 	cfg              *config.AuthConfig
@@ -41,7 +41,7 @@ type MultiProvider struct {
 }
 
 // NewProvider creates a multi-provider that supports both OIDC and Jellyfin authentication.
-func NewProvider(ctx context.Context, cfg *config.Config, gravatarCfg *config.GravatarConfig, db database.DB) (AuthProvider, error) {
+func NewProvider(ctx context.Context, cfg *config.Config, gravatarCfg *config.GravatarConfig, db database.UserDB) (AuthProvider, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("auth config is required")
 	}

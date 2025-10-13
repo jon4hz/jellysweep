@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
-	"github.com/jon4hz/jellysweep/engine/arr"
 	"github.com/jon4hz/jellysweep/tags"
 )
 
-func (e *Engine) filterMediaTags() {
-	filteredItems := make(map[string][]arr.MediaItem, 0)
-	for lib, items := range e.data.mediaItems {
+func (e *Engine) filterMediaTags(mediaItems mediaItemsMap) mediaItemsMap {
+	filteredItems := make(mediaItemsMap, 0)
+	for lib, items := range mediaItems {
 		for _, item := range items {
 			// Check if the item has any tags that are not in the exclude list
 			hasExcludedTag := false
@@ -55,17 +54,17 @@ func (e *Engine) filterMediaTags() {
 					break
 				}
 				// Check for existing jellysweep-delete- tags (including disk usage tags)
-				if tags.IsJellysweepDeleteTag(tagName) {
+				/* if tags.IsJellysweepDeleteTag(tagName) {
 					// This tag indicates the item is already marked for deletion
 					log.Debugf("Item %s already marked for deletion with tag: %s", item.Title, tagName)
 					hasExcludedTag = true
 					break
-				}
+				} */
 			}
 			if !hasExcludedTag {
 				filteredItems[lib] = append(filteredItems[lib], item)
 			}
 		}
 	}
-	e.data.mediaItems = filteredItems
+	return filteredItems
 }
