@@ -23,7 +23,7 @@ require (
 	github.com/mergestat/timediff v0.0.4
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.14.0
-	github.com/samber/lo v1.51.0
+	github.com/samber/lo v1.52.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sj14/jellyfin-go v0.3.3
 	github.com/spf13/cobra v1.10.1
