@@ -75,6 +75,16 @@ func (c *Client) CreateMediaItems(ctx context.Context, mediaItems []Media) error
 	return result.Error
 }
 
+func (c *Client) GetMediaItemByID(ctx context.Context, id uint) (*Media, error) {
+	var mediaItem Media
+	result := c.db.WithContext(ctx).Preload("DiskUsageDeletePolicies").Preload("Request").First(&mediaItem, id)
+	if result.Error != nil {
+		log.Error("failed to get media item by ID", "error", result.Error)
+		return nil, result.Error
+	}
+	return &mediaItem, nil
+}
+
 func (c *Client) GetMediaItems(ctx context.Context) ([]Media, error) {
 	var mediaItems []Media
 	result := c.db.WithContext(ctx).Preload("DiskUsageDeletePolicies").Preload("Request").Find(&mediaItems)
@@ -90,6 +100,16 @@ func (c *Client) GetMediaItemsByMediaType(ctx context.Context, mediaType MediaTy
 	result := c.db.WithContext(ctx).Where("media_type = ?", mediaType).Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		log.Error("failed to get media items by type", "error", result.Error)
+		return nil, result.Error
+	}
+	return mediaItems, nil
+}
+
+func (c *Client) GetMediaWithRequest(ctx context.Context) ([]Media, error) {
+	var mediaItems []Media
+	result := c.db.WithContext(ctx).Preload("Request").Joins("JOIN requests ON requests.media_id = media.id").Find(&mediaItems)
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		log.Error("failed to get media items with requests", "error", result.Error)
 		return nil, result.Error
 	}
 	return mediaItems, nil

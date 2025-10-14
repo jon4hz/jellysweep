@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/charmbracelet/log"
 	"github.com/gin-contrib/sessions"
@@ -23,12 +24,14 @@ const (
 
 type Handler struct {
 	engine     *engine.Engine
+	db         database.DB
 	authConfig *config.AuthConfig
 }
 
-func New(eng *engine.Engine, authConfig *config.AuthConfig) *Handler {
+func New(eng *engine.Engine, db database.DB, authConfig *config.AuthConfig) *Handler {
 	return &Handler{
 		engine:     eng,
+		db:         db,
 		authConfig: authConfig,
 	}
 }
@@ -36,42 +39,18 @@ func New(eng *engine.Engine, authConfig *config.AuthConfig) *Handler {
 func (h *Handler) Home(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
-	// Check if this is a forced refresh
-	cacheControl := c.GetHeader("Cache-Control")
-	pragma := c.GetHeader("Pragma")
-	forceRefresh := c.Query("refresh") == RefreshParamTrue ||
-		cacheControl == CacheControlNoCache ||
-		cacheControl == CacheControlMaxAge0 ||
-		pragma == PragmaNoCache
-
 	mediaItems, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
 	if err != nil {
 		// Log error and fall back to empty data
-		c.Header("Content-Type", "text/html")
-		if user.IsAdmin {
-			// Try to get pending requests for admin even on error
-			if keepRequests, keepErr := h.engine.GetKeepRequests(c.Request.Context(), forceRefresh); keepErr == nil {
-				if err := pages.DashboardWithPendingRequests(user, []database.Media{}, len(keepRequests)).Render(c.Request.Context(), c.Writer); err != nil {
-					log.Error("Failed to render dashboard with pending requests", "error", err)
-				}
-			} else {
-				if err := pages.Dashboard(user, []database.Media{}).Render(c.Request.Context(), c.Writer); err != nil {
-					log.Error("Failed to render dashboard", "error", err)
-				}
-			}
-		} else {
-			if err := pages.Dashboard(user, []database.Media{}).Render(c.Request.Context(), c.Writer); err != nil {
-				log.Error("Failed to render dashboard", "error", err)
-			}
-		}
-		return
+		log.Error("Failed to get media items", "error", err)
+		mediaItems = []database.Media{}
 	}
 
 	c.Header("Content-Type", "text/html")
 
 	// If user is admin, get pending requests count for navbar indicator
 	if user.IsAdmin {
-		keepRequests, err := h.engine.GetKeepRequests(c.Request.Context(), false)
+		requests, err := h.db.GetMediaWithRequest(c.Request.Context())
 		if err != nil {
 			// Log error but continue without pending count
 			if err := pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {
@@ -79,7 +58,7 @@ func (h *Handler) Home(c *gin.Context) {
 			}
 			return
 		}
-		if err := pages.DashboardWithPendingRequests(user, mediaItems, len(keepRequests)).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := pages.DashboardWithPendingRequests(user, mediaItems, len(requests)).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Error("Failed to render dashboard with pending requests", "error", err)
 		}
 	} else {
@@ -116,12 +95,31 @@ func (h *Handler) Logout(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/login")
 }
 
+func parseUintParam(param string) (uint, error) {
+	var id uint64
+	var err error
+	if id, err = strconv.ParseUint(param, 10, 0); err != nil {
+		return 0, err
+	}
+	return uint(id), nil
+}
+
 // API endpoint for requesting to keep media.
 func (h *Handler) RequestKeepMedia(c *gin.Context) {
-	mediaID := c.Param("id")
+	mediaIDVal := c.Param("id")
 	user := c.MustGet("user").(*models.User)
 
-	err := h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.Username)
+	// Convert mediaID to uint
+	mediaID, err := parseUintParam(mediaIDVal)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid media ID",
+		})
+		return
+	}
+
+	err = h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.Username)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -164,7 +162,7 @@ func (h *Handler) Me(c *gin.Context) {
 
 // GetMediaItems returns the current user's media items as JSON.
 func (h *Handler) GetMediaItems(c *gin.Context) {
-	mediaItems, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+	mediaItems, err := h.db.GetMediaItems(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

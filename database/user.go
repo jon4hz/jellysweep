@@ -29,6 +29,17 @@ func (c *Client) CreateUser(ctx context.Context, username string) (*User, error)
 	return &user, nil
 }
 
+func (c *Client) GetUserByID(ctx context.Context, id uint) (*User, error) {
+	var user User
+	if err := c.db.WithContext(ctx).First(&user, id).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			log.Error("failed to get user by ID", "error", err)
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (c *Client) GetUserByUsername(ctx context.Context, username string) (*User, error) {
 	var user User
 	if err := c.db.WithContext(ctx).Preload("UserSettings").Where("username = ?", username).First(&user).Error; err != nil {

@@ -13,21 +13,33 @@ import (
 type DB interface {
 	UserDB
 	MediaDB
+	RequestDB
 }
 
 // MediaDB defines the interface for media-related database operations.
 type MediaDB interface {
 	CreateMediaItems(ctx context.Context, items []Media) error
+	GetMediaItemByID(ctx context.Context, id uint) (*Media, error)
 	GetMediaItems(ctx context.Context) ([]Media, error)
 	GetMediaItemsByMediaType(ctx context.Context, mediaType MediaType) ([]Media, error)
+	GetMediaWithRequest(ctx context.Context) ([]Media, error)
+}
+
+// RequestDB defines the interface for request-related database operations.
+type RequestDB interface {
+	CreateRequest(ctx context.Context, mediaID uint, userID uint) (*Request, error)
+	UpdateRequestStatus(ctx context.Context, requestID uint, status RequestStatus) error
 }
 
 // UserDB defines the interface for user-related database operations.
 type UserDB interface {
 	CreateUser(ctx context.Context, username string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
+	GetUserByID(ctx context.Context, id uint) (*User, error)
 	GetOrCreateUser(ctx context.Context, username string) (*User, error)
 }
+
+var _ DB = (*Client)(nil) // Ensure Client implements DB
 
 // Client wraps the gorm.DB instance.
 type Client struct {
@@ -44,6 +56,7 @@ func New(dbpath string) (*Client, error) {
 	if err := db.AutoMigrate(
 		&Media{},
 		&DiskUsageDeletePolicy{},
+		&Request{},
 		&User{},
 		&UserSettings{},
 		&EmailSettings{},

@@ -22,6 +22,7 @@ import (
 
 type Server struct {
 	cfg          *config.Config
+	db           database.DB
 	ginEngine    *gin.Engine
 	engine       *engine.Engine
 	authProvider auth.AuthProvider
@@ -52,6 +53,7 @@ func New(ctx context.Context, cfg *config.Config, db database.DB, e *engine.Engi
 
 	return &Server{
 		cfg:          cfg,
+		db:           db,
 		ginEngine:    gin.Default(),
 		authProvider: authProvider,
 		engine:       e,
@@ -74,7 +76,7 @@ func (s *Server) setupSession() {
 func (s *Server) setupRoutes() error {
 	s.setupSession()
 
-	h := handler.New(s.engine, s.authProvider.GetAuthConfig())
+	h := handler.New(s.engine, s.db, s.authProvider.GetAuthConfig())
 
 	staticSub, err := fs.Sub(static.StaticFS, "static")
 	if err != nil {
@@ -123,7 +125,7 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup := s.ginEngine.Group("/admin")
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
-	h := handler.NewAdmin(s.engine)
+	h := handler.NewAdmin(s.engine, s.db)
 
 	// Admin panel page
 	adminGroup.GET("", h.AdminPanel)

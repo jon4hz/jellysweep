@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/tags"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
@@ -15,11 +16,13 @@ import (
 
 type AdminHandler struct {
 	engine *engine.Engine
+	db     database.DB
 }
 
-func NewAdmin(eng *engine.Engine) *AdminHandler {
+func NewAdmin(eng *engine.Engine, db database.DB) *AdminHandler {
 	return &AdminHandler{
 		engine: eng,
+		db:     db,
 	}
 }
 
@@ -27,37 +30,37 @@ func NewAdmin(eng *engine.Engine) *AdminHandler {
 func (h *AdminHandler) AdminPanel(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
-	// Check if this is a forced refresh
-	cacheControl := c.GetHeader("Cache-Control")
-	pragma := c.GetHeader("Pragma")
-	forceRefresh := c.Query("refresh") == RefreshParamTrue ||
-		cacheControl == CacheControlNoCache ||
-		cacheControl == CacheControlMaxAge0 ||
-		pragma == PragmaNoCache
-
-	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context(), forceRefresh)
+	requests, err := h.db.GetMediaWithRequest(c.Request.Context())
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to get keep requests: %v", err)
 		return
 	}
 
-	mediaItems, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+	mediaItems, err := h.db.GetMediaItems(c.Request.Context())
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
 		return
 	}
 
 	c.Header("Content-Type", "text/html")
-	if err := pages.AdminPanel(user, keepRequests, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := pages.AdminPanel(user, requests, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Error("Failed to render admin panel", "error", err)
 	}
 }
 
 // AcceptKeepRequest accepts a keep request.
 func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
-	mediaID := c.Param("id")
+	mediaIDVal := c.Param("id")
+	mediaID, err := parseUintParam(mediaIDVal)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid media ID",
+		})
+		return
+	}
 
-	err := h.engine.AcceptKeepRequest(c.Request.Context(), mediaID)
+	err = h.engine.HandleKeepRequest(c.Request.Context(), mediaID, true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -74,9 +77,17 @@ func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 
 // DeclineKeepRequest declines a keep request.
 func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
-	mediaID := c.Param("id")
+	mediaIDVal := c.Param("id")
+	mediaID, err := parseUintParam(mediaIDVal)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid media ID",
+		})
+		return
+	}
 
-	err := h.engine.DeclineKeepRequest(c.Request.Context(), mediaID)
+	err = h.engine.HandleKeepRequest(c.Request.Context(), mediaID, false)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -150,7 +161,7 @@ func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 
 // GetKeepRequests returns keep requests as JSON.
 func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
-	keepRequests, err := h.engine.GetKeepRequests(c.Request.Context(), false)
+	requests, err := h.db.GetMediaWithRequest(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -161,7 +172,7 @@ func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":      true,
-		"keepRequests": keepRequests,
+		"keepRequests": requests,
 	})
 }
 

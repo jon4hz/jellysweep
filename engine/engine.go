@@ -35,8 +35,12 @@ import (
 
 type mediaItemsMap map[string][]arr.MediaItem
 
-// ErrRequestAlreadyProcessed indicates that a keep request has already been processed.
-var ErrRequestAlreadyProcessed = errors.New("request already processed")
+var (
+	// ErrRequestAlreadyProcessed indicates that a keep request has already been processed.
+	ErrRequestAlreadyProcessed = errors.New("request already processed")
+	// ErrUnkeepableMedia indicates that the specified media item cannot be kept.
+	ErrUnkeepableMedia = errors.New("media cannot be kept")
+)
 
 // Engine is the main engine for Jellysweep, managing interactions with sonarr, radarr, and other services.
 // It runs a cleanup job periodically to remove unwanted media.
@@ -577,43 +581,41 @@ func (e *Engine) GetMediaItemsMarkedForDeletionByType(ctx context.Context, media
 }
 
 // RequestKeepMedia adds a keep request tag to the specified media item.
-func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string) error {
+func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, username string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
-	log.Debug("Requesting keep media", "mediaID", mediaID, "username", username)
+	log.Debug("Requesting to keep media", "mediaID", mediaID, "username", username)
 
-	var mediaTitle string
-	var mediaType string
-	var err error
+	user, err := e.db.GetUserByUsername(ctx, username)
+	if err != nil {
+		log.Errorf("failed to get user by username: %v", err)
+		return err
+	}
 
-	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
-		if e.sonarr == nil {
-			return fmt.Errorf("sonarr client not available")
-		}
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Errorf("failed to get media item by ID: %v", err)
+		return err
+	}
 
-		seriesID, parseErr := strconv.ParseInt(seriesIDStr, 10, 32)
-		if parseErr != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", parseErr)
-		}
+	if media.Unkeepable {
+		log.Warn("Media is marked as unkeepable", "mediaID", mediaID, "type", media.MediaType, "title", media.Title)
+		return ErrUnkeepableMedia
+	}
 
-		mediaTitle, mediaType, err = e.sonarr.AddKeepRequest(ctx, int32(seriesID), username)
-	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
-		if e.radarr == nil {
-			return fmt.Errorf("radarr client not available")
-		}
+	if media.Request.ID != 0 {
+		log.Warn("Media already requested", "mediaID", mediaID, "type", media.MediaType, "title", media.Title)
+		return ErrRequestAlreadyProcessed
+	}
 
-		movieID, parseErr := strconv.ParseInt(movieIDStr, 10, 32)
-		if parseErr != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", parseErr)
-		}
-
-		mediaTitle, mediaType, err = e.radarr.AddKeepRequest(ctx, int32(movieID), username)
-	} else {
-		return fmt.Errorf("unsupported media ID format: %s", mediaID)
+	_, err = e.db.CreateRequest(ctx, media.ID, user.ID)
+	if err != nil {
+		log.Errorf("failed to create keep request in database: %v", err)
+		return err
 	}
 
 	// Send ntfy notification if the tag was added successfully
-	if err == nil && e.ntfy != nil {
-		if ntfyErr := e.ntfy.SendKeepRequest(ctx, mediaTitle, mediaType, username); ntfyErr != nil {
+	if e.ntfy != nil {
+		if ntfyErr := e.ntfy.SendKeepRequest(ctx, media.Title, string(media.MediaType), username); ntfyErr != nil {
 			log.Errorf("Failed to send ntfy keep request notification: %v", ntfyErr)
 		}
 	}
@@ -621,108 +623,39 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 	return err
 }
 
-// GetKeepRequests returns all media items that have keep request tags.
-func (e *Engine) GetKeepRequests(ctx context.Context, forceRefresh bool) ([]models.KeepRequest, error) {
-	var result []models.KeepRequest
-
-	// Get Sonarr keep requests
-	if e.sonarr != nil {
-		sonarrKeepRequests, err := e.sonarr.GetKeepRequests(ctx, e.data.libraryFoldersMap, forceRefresh)
-		if err != nil {
-			log.Errorf("failed to get sonarr keep requests: %v", err)
-		} else {
-			result = append(result, sonarrKeepRequests...)
-		}
+// HandleKeepRequest accepts or declines a keep request for the specified media item.
+func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept bool) error {
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Errorf("failed to get media item by ID: %v", err)
+		return err
 	}
 
-	// Get Radarr keep requests
-	if e.radarr != nil {
-		radarrKeepRequests, err := e.radarr.GetKeepRequests(ctx, e.data.libraryFoldersMap, forceRefresh)
-		if err != nil {
-			log.Errorf("failed to get radarr keep requests: %v", err)
-		} else {
-			result = append(result, radarrKeepRequests...)
-		}
+	if media.Request.ID == 0 {
+		log.Warn("Media has no pending keep request", "mediaID", mediaID, "type", media.MediaType, "title", media.Title)
+		return nil
 	}
 
-	return result, nil
-}
-
-// AcceptKeepRequest removes the keep request tag and delete tag from the media item.
-func (e *Engine) AcceptKeepRequest(ctx context.Context, mediaID string) error {
-	var resp *arr.KeepRequestResponse
-	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
-		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", err)
-		}
-		if e.sonarr == nil {
-			return fmt.Errorf("sonarr client not available")
-		}
-		resp, err = e.sonarr.AcceptKeepRequest(ctx, int32(seriesID))
-		if err != nil {
-			return err
-		}
-	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
-		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", err)
-		}
-		if e.radarr == nil {
-			return fmt.Errorf("radarr client not available")
-		}
-		resp, err = e.radarr.AcceptKeepRequest(ctx, int32(movieID))
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("unsupported media ID format: %s", mediaID)
+	newStatus := database.RequestStatusDenied
+	if accept {
+		newStatus = database.RequestStatusApproved
 	}
 
-	if e.webpush != nil && resp.Requester != "" {
-		if pushErr := e.webpush.SendKeepRequestNotification(ctx, resp.Requester, resp.Title, resp.MediaType, resp.Approved); pushErr != nil {
-			log.Errorf("Failed to send webpush notification: %v", pushErr)
-		}
+	err = e.db.UpdateRequestStatus(ctx, media.Request.ID, newStatus)
+	if err != nil {
+		log.Errorf("failed to update request status in database: %v", err)
+		return err
 	}
 
-	return nil
-}
-
-// DeclineKeepRequest removes the keep request tag and adds a delete-for-sure tag.
-func (e *Engine) DeclineKeepRequest(ctx context.Context, mediaID string) error {
-	var resp *arr.KeepRequestResponse
-	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
-		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", err)
-		}
-		if e.sonarr == nil {
-			return fmt.Errorf("sonarr client not available")
-		}
-		resp, err = e.sonarr.DeclineKeepRequest(ctx, int32(seriesID))
-		if err != nil {
-			return err
-		}
-	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
-		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", err)
-		}
-		if e.radarr == nil {
-			return fmt.Errorf("radarr client not available")
-		}
-		resp, err = e.radarr.DeclineKeepRequest(ctx, int32(movieID))
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("unsupported media ID format: %s", mediaID)
+	// get user who made the request
+	user, err := e.db.GetUserByID(ctx, media.Request.UserID)
+	if err != nil {
+		log.Errorf("failed to get user by ID: %v", err)
+		return err
 	}
 
-	if e.webpush != nil && resp.Requester != "" {
-		if pushErr := e.webpush.SendKeepRequestNotification(ctx, resp.Requester, resp.Title, resp.MediaType, resp.Approved); pushErr != nil {
+	if e.webpush != nil && user.Username != "" {
+		if pushErr := e.webpush.SendKeepRequestNotification(ctx, user.Username, media.Title, string(media.MediaType), accept); pushErr != nil {
 			log.Errorf("Failed to send webpush notification: %v", pushErr)
 		}
 	}

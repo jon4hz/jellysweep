@@ -30,6 +30,7 @@ func (m *MockDB) CreateUser(ctx context.Context, username string) (*database.Use
 		},
 	}, nil
 }
+
 func (m *MockDB) GetUserByUsername(ctx context.Context, username string) (*database.User, error) {
 	return &database.User{
 		Username:     username,
@@ -39,12 +40,23 @@ func (m *MockDB) GetUserByUsername(ctx context.Context, username string) (*datab
 		},
 	}, nil
 }
+
 func (m *MockDB) GetOrCreateUser(ctx context.Context, username string) (*database.User, error) {
 	return &database.User{
 		Username:     username,
 		UserSettings: database.UserSettings{},
 		Model: gorm.Model{
 			ID: 10,
+		},
+	}, nil
+}
+
+func (m *MockDB) GetUserByID(ctx context.Context, id uint) (*database.User, error) {
+	return &database.User{
+		Username:     "testuser",
+		UserSettings: database.UserSettings{},
+		Model: gorm.Model{
+			ID: id,
 		},
 	}, nil
 }
