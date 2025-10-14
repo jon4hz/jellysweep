@@ -7,16 +7,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/database"
-	"github.com/jon4hz/jellysweep/engine"
 )
 
 type PluginHandler struct {
-	engine *engine.Engine
+	db database.MediaDB
 }
 
-func NewPlugin(eng *engine.Engine) *PluginHandler {
+func NewPlugin(db database.MediaDB) *PluginHandler {
 	return &PluginHandler{
-		engine: eng,
+		db: db,
 	}
 }
 
@@ -54,7 +53,7 @@ func (h *PluginHandler) CheckMediaItem(c *gin.Context) {
 	}
 
 	// Get all media items marked for deletion
-	markedItems, err := h.engine.GetMediaItemsMarkedForDeletionByType(c, request.MediaType)
+	markedItems, err := h.db.GetMediaItemsByMediaType(c.Request.Context(), request.MediaType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve marked media items"})
 		return

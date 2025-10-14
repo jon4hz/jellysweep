@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -22,7 +23,10 @@ type MediaDB interface {
 	GetMediaItemByID(ctx context.Context, id uint) (*Media, error)
 	GetMediaItems(ctx context.Context) ([]Media, error)
 	GetMediaItemsByMediaType(ctx context.Context, mediaType MediaType) ([]Media, error)
-	GetMediaWithRequest(ctx context.Context) ([]Media, error)
+	GetMediaWithPendingRequest(ctx context.Context) ([]Media, error)
+	SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error
+	MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error
+	DeleteMediaItem(ctx context.Context, mediaID uint) error
 }
 
 // RequestDB defines the interface for request-related database operations.

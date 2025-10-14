@@ -14,14 +14,6 @@ import (
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 )
 
-const (
-	// Cache control constants.
-	CacheControlNoCache = "no-cache"
-	CacheControlMaxAge0 = "max-age=0"
-	PragmaNoCache       = "no-cache"
-	RefreshParamTrue    = "true"
-)
-
 type Handler struct {
 	engine     *engine.Engine
 	db         database.DB
@@ -39,7 +31,7 @@ func New(eng *engine.Engine, db database.DB, authConfig *config.AuthConfig) *Han
 func (h *Handler) Home(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
-	mediaItems, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+	mediaItems, err := h.db.GetMediaItems(c.Request.Context())
 	if err != nil {
 		// Log error and fall back to empty data
 		log.Error("Failed to get media items", "error", err)
@@ -50,7 +42,7 @@ func (h *Handler) Home(c *gin.Context) {
 
 	// If user is admin, get pending requests count for navbar indicator
 	if user.IsAdmin {
-		requests, err := h.db.GetMediaWithRequest(c.Request.Context())
+		requests, err := h.db.GetMediaWithPendingRequest(c.Request.Context())
 		if err != nil {
 			// Log error but continue without pending count
 			if err := pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {

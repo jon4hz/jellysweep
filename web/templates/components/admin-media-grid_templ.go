@@ -931,8 +931,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_cfa6`,
-		Function: `function __templ_AdminMediaGridScript_cfa6(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_de38`,
+		Function: `function __templ_AdminMediaGridScript_de38(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -1094,7 +1094,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 									</div>
 								</div>
 								<div class="mt-3 flex flex-wrap items-center gap-2">
-									${item.hasRequested ? ` + "`" + `
+									${item.hasRequested && !item.mustDelete ? ` + "`" + `
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
 										<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -1204,7 +1204,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 										${item.type}
 									</span>
 									${item.year > 0 ? ` + "`" + `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-600 text-gray-300">${item.year}</span>` + "`" + ` : ''}
-									${item.hasRequested ? ` + "`" + `
+									${item.hasRequested && !item.mustDelete ? ` + "`" + `
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
 										<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -1293,7 +1293,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 				if (statusFilter) {
 					switch (statusFilter) {
 						case 'requested':
-							matchesStatus = item.hasRequested;
+							matchesStatus = item.hasRequested && !item.mustDelete;
 							break;
 						case 'must-delete':
 							matchesStatus = item.mustDelete;
@@ -1548,8 +1548,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_cfa6`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_cfa6`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_de38`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_de38`),
 	}
 }
 

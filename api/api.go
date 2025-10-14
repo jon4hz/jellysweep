@@ -138,8 +138,8 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI := adminGroup.Group("/api")
 	adminAPI.POST("/keep-requests/:id/accept", h.AcceptKeepRequest)
 	adminAPI.POST("/keep-requests/:id/decline", h.DeclineKeepRequest)
-	adminAPI.POST("/media/:id/keep", h.MarkMediaAsKeep)
-	adminAPI.POST("/media/:id/delete", h.MarkMediaForDeletion)
+	adminAPI.POST("/media/:id/keep", h.MarkMediaAsProtected)
+	adminAPI.POST("/media/:id/delete", h.MarkMediaAsUnkeepable)
 	adminAPI.POST("/media/:id/keep-forever", h.MarkMediaAsKeepForever)
 
 	adminAPI.GET("/keep-requests", h.GetKeepRequests)
@@ -163,7 +163,7 @@ func (s *Server) setupPluginRoutes() error {
 	tokenAuth := auth.NewAPIKeyProvider(s.cfg.APIKey)
 	pluginAPI.Use(tokenAuth.RequireAuth())
 
-	h := handler.NewPlugin(s.engine)
+	h := handler.NewPlugin(s.db)
 
 	pluginAPI.GET("/health", h.GetHealth)
 	pluginAPI.POST("/check", h.CheckMediaItem)

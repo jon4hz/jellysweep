@@ -85,9 +85,10 @@ func (c *Client) GetMediaItemByID(ctx context.Context, id uint) (*Media, error) 
 	return &mediaItem, nil
 }
 
+// GetMediaItems retrieves all unprotected media items from the database.
 func (c *Client) GetMediaItems(ctx context.Context) ([]Media, error) {
 	var mediaItems []Media
-	result := c.db.WithContext(ctx).Preload("DiskUsageDeletePolicies").Preload("Request").Find(&mediaItems)
+	result := c.db.WithContext(ctx).Preload("DiskUsageDeletePolicies").Preload("Request").Where("protected_until IS NULL").Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		log.Error("failed to get media items", "error", result.Error)
 		return nil, result.Error
@@ -105,12 +106,46 @@ func (c *Client) GetMediaItemsByMediaType(ctx context.Context, mediaType MediaTy
 	return mediaItems, nil
 }
 
-func (c *Client) GetMediaWithRequest(ctx context.Context) ([]Media, error) {
+func (c *Client) GetMediaWithPendingRequest(ctx context.Context) ([]Media, error) {
 	var mediaItems []Media
-	result := c.db.WithContext(ctx).Preload("Request").Joins("JOIN requests ON requests.media_id = media.id").Find(&mediaItems)
+	result := c.db.WithContext(ctx).
+		Preload("Request").
+		Where("requests.status = ?", RequestStatusPending).
+		Joins("JOIN requests ON requests.media_id = media.id").
+		Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		log.Error("failed to get media items with requests", "error", result.Error)
 		return nil, result.Error
 	}
 	return mediaItems, nil
+}
+
+func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error {
+	result := c.db.WithContext(ctx).Model(&Media{}).
+		Where("id = ?", mediaID).
+		Update("protected_until", protectedUntil).
+		Update("unkeepable", false)
+	if result.Error != nil {
+		log.Error("failed to set media protected until", "error", result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (c *Client) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error {
+	result := c.db.WithContext(ctx).Model(&Media{}).Where("id = ?", mediaID).Update("unkeepable", true)
+	if result.Error != nil {
+		log.Error("failed to mark media as unkeepable", "error", result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (c *Client) DeleteMediaItem(ctx context.Context, mediaID uint) error {
+	result := c.db.WithContext(ctx).Delete(&Media{}, mediaID)
+	if result.Error != nil {
+		log.Error("failed to delete media item", "error", result.Error)
+		return result.Error
+	}
+	return nil
 }

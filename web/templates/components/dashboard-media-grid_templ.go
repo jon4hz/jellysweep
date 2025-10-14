@@ -118,8 +118,8 @@ func DashboardFilters(mediaItems []database.Media) templ.Component {
 
 func DashboardMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_DashboardMediaGridScript_453c`,
-		Function: `function __templ_DashboardMediaGridScript_453c(){class DashboardMediaGridManager extends MediaGridManager {
+		Name: `__templ_DashboardMediaGridScript_a0b9`,
+		Function: `function __templ_DashboardMediaGridScript_a0b9(){class DashboardMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -248,7 +248,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 				}
 			}
 
-			const buttonContent = item.hasRequested
+			const buttonContent = item.hasRequested && !item.mustDelete
 				? ` + "`" + `<span class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -266,7 +266,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 					Request Unavailable
 				</button>` + "`" + `;
 
-			const mobileButtonContent = item.hasRequested
+			const mobileButtonContent = item.hasRequested && !item.mustDelete
 				? ` + "`" + `<span class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -501,7 +501,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 							matchesRequestStatus = !item.hasRequested && item.canRequest && !item.mustDelete;
 							break;
 						case 'requested':
-							matchesRequestStatus = item.hasRequested;
+							matchesRequestStatus = item.hasRequested && !item.mustDelete;
 							break;
 						case 'unavailable':
 							matchesRequestStatus = !item.canRequest || item.mustDelete;
@@ -571,8 +571,8 @@ func DashboardMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_453c`),
-		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_453c`),
+		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_a0b9`),
+		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_a0b9`),
 	}
 }
 

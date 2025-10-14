@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
@@ -9,7 +10,6 @@ import (
 	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
-	"github.com/jon4hz/jellysweep/tags"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
 	"golang.org/x/sync/errgroup"
 )
@@ -30,7 +30,7 @@ func NewAdmin(eng *engine.Engine, db database.DB) *AdminHandler {
 func (h *AdminHandler) AdminPanel(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
-	requests, err := h.db.GetMediaWithRequest(c.Request.Context())
+	requests, err := h.db.GetMediaWithPendingRequest(c.Request.Context())
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to get keep requests: %v", err)
 		return
@@ -102,34 +102,69 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 	})
 }
 
-// MarkMediaAsKeep adds the jellysweep-keep tag to a media item.
-func (h *AdminHandler) MarkMediaAsKeep(c *gin.Context) {
-	mediaID := c.Param("id")
-
-	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, tags.JellysweepKeepPrefix)
+// MarkMediaAsProtected marks a media item as protected for a set duration.
+func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
+	mediaIDVal := c.Param("id")
+	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "Invalid media ID",
+		})
+		return
+	}
+
+	media, err := h.db.GetMediaItemByID(c.Request.Context(), mediaID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Database error",
+		})
+		return
+	}
+
+	protectedUntil := time.Now().Add(time.Hour * 24 * 90) // Protect for 90 days // TODO: make this configurable
+	err = h.db.SetMediaProtectedUntil(c.Request.Context(), media.ID, &protectedUntil)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Failed to set media protected until",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Media marked as keep successfully",
+		"message": "Media protected successfully",
 	})
 }
 
-// MarkMediaForDeletion adds the must-delete tag to a media item.
-func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
-	mediaID := c.Param("id")
-
-	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, tags.JellysweepDeleteForSureTag)
+// MarkMediaAsUnkeepable marks a media item as unkeepable and deny all keep requests.
+func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
+	mediaIDVal := c.Param("id")
+	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "Invalid media ID",
+		})
+		return
+	}
+
+	media, err := h.db.GetMediaItemByID(c.Request.Context(), mediaID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Database error",
+		})
+		return
+	}
+
+	err = h.db.MarkMediaAsUnkeepable(c.Request.Context(), media.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Failed to mark media as unkeepable",
 		})
 		return
 	}
@@ -140,11 +175,29 @@ func (h *AdminHandler) MarkMediaForDeletion(c *gin.Context) {
 	})
 }
 
-// MarkMediaAsKeepForever removes all jellysweep tags and adds the jellysweep-ignore tag to permanently protect media.
+// MarkMediaAsKeepForever removes the media item from the database.
+// It also adds a "jellysweep-ignore" tag to the media item in Sonarr/Radarr to prevent it from being re-added.
 func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
-	mediaID := c.Param("id")
+	mediaIDVal := c.Param("id")
+	mediaID, err := parseUintParam(mediaIDVal)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid media ID",
+		})
+		return
+	}
 
-	err := h.engine.AddTagToMedia(c.Request.Context(), mediaID, tags.JellysweepIgnoreTag)
+	media, err := h.db.GetMediaItemByID(c.Request.Context(), mediaID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Database error",
+		})
+		return
+	}
+
+	err = h.engine.AddIgnoreTag(c.Request.Context(), media)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -153,15 +206,24 @@ func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 		return
 	}
 
+	err = h.db.DeleteMediaItem(c.Request.Context(), media.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Failed to delete media item",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Media protected forever successfully",
+		"message": "Media protected forever",
 	})
 }
 
 // GetKeepRequests returns keep requests as JSON.
 func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
-	requests, err := h.db.GetMediaWithRequest(c.Request.Context())
+	requests, err := h.db.GetMediaWithPendingRequest(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -178,7 +240,7 @@ func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 
 // GetAdminMediaItems returns media items for admin with caching support.
 func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
-	mediaItems, err := h.engine.GetMediaItemsMarkedForDeletion(c.Request.Context())
+	mediaItems, err := h.db.GetMediaItems(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

@@ -4,8 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	radarrAPI "github.com/devopsarr/radarr-go/radarr"
@@ -28,7 +27,6 @@ import (
 	"github.com/jon4hz/jellysweep/notify/webpush"
 	"github.com/jon4hz/jellysweep/policy"
 	"github.com/jon4hz/jellysweep/scheduler"
-	"github.com/jon4hz/jellysweep/tags"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
@@ -570,16 +568,6 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 	return nil
 }
 
-// GetMediaItemsMarkedForDeletion returns all media items that are marked for deletion.
-func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context) ([]database.Media, error) {
-	return e.db.GetMediaItems(ctx)
-}
-
-// GetMediaItemsMarkedForDeletionByType returns media items marked for deletion by type.
-func (e *Engine) GetMediaItemsMarkedForDeletionByType(ctx context.Context, mediaType database.MediaType) ([]database.Media, error) {
-	return e.db.GetMediaItemsByMediaType(ctx, mediaType)
-}
-
 // RequestKeepMedia adds a keep request tag to the specified media item.
 func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, username string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
@@ -645,6 +633,21 @@ func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept boo
 	if err != nil {
 		log.Errorf("failed to update request status in database: %v", err)
 		return err
+	}
+
+	if accept {
+		protectedUntil := time.Now().Add(time.Hour * 24 * 90) // keep for 90 days // TODO: make this configurable
+		err = e.db.SetMediaProtectedUntil(ctx, media.ID, &protectedUntil)
+		if err != nil {
+			log.Errorf("failed to set media protected until in database: %v", err)
+			return err
+		}
+	} else {
+		err = e.db.MarkMediaAsUnkeepable(ctx, media.ID)
+		if err != nil {
+			log.Errorf("failed to mark media as unkeepable in database: %v", err)
+			return err
+		}
 	}
 
 	// get user who made the request
@@ -715,80 +718,26 @@ func (e *Engine) GetWebPushClient() *webpush.Client {
 	return e.webpush
 }
 
-// AddTagToMedia adds a specific tag to a media item (supports jellysweep-keep and must-delete).
-func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName string) error {
-	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
-		defer func() {
-			_ = e.cache.SonarrItemsCache.Clear(ctx)
-		}()
-
-		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", err)
-		}
-
-		if e.sonarr == nil {
-			return fmt.Errorf("sonarr client not available")
-		}
-
-		// Use dedicated tag operations based on the tag name
-		switch tagName {
-		case tags.JellysweepKeepPrefix:
-			// For "keep": remove all tags (including delete) before adding must-keep
-			if err := e.sonarr.ResetSingleTagsForKeep(ctx, int32(seriesID)); err != nil {
-				return fmt.Errorf("failed to reset sonarr tags for keep: %w", err)
-			}
-			// This will add a jellysweep-must-keep tag with expiry date
-			return e.sonarr.AddKeepTag(ctx, int32(seriesID))
-		case tags.JellysweepDeleteForSureTag:
-			// For "must-delete": remove all tags except jellysweep-delete before adding must-delete-for-sure
-			if err := e.sonarr.ResetSingleTagsForMustDelete(ctx, int32(seriesID)); err != nil {
-				return fmt.Errorf("failed to reset sonarr tags for must-delete: %w", err)
-			}
-			return e.sonarr.AddDeleteForSureTag(ctx, int32(seriesID))
-		case tags.JellysweepIgnoreTag:
-			// For "ignore": remove all jellysweep tags and add ignore tag in one operation
-			return e.sonarr.ResetAllTagsAndAddIgnore(ctx, int32(seriesID))
-		default:
-			return fmt.Errorf("unsupported tag name: %s", tagName)
-		}
-	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
-		defer func() {
-			_ = e.cache.RadarrItemsCache.Clear(ctx)
-		}()
-
-		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", err)
-		}
-
+// AddIgnoreTag adds a jellysweep-ignore tag to the specified media item.
+func (e *Engine) AddIgnoreTag(ctx context.Context, media *database.Media) error {
+	switch media.MediaType {
+	case database.MediaTypeMovie:
 		if e.radarr == nil {
 			return fmt.Errorf("radarr client not available")
 		}
-
-		// Use dedicated tag operations based on the tag name
-		switch tagName {
-		case tags.JellysweepKeepPrefix:
-			// For "keep": remove all tags (including delete) before adding must-keep
-			if err := e.radarr.ResetSingleTagsForKeep(ctx, int32(movieID)); err != nil {
-				return fmt.Errorf("failed to reset radarr tags for keep: %w", err)
-			}
-			// This will add a jellysweep-must-keep tag with expiry date
-			return e.radarr.AddKeepTag(ctx, int32(movieID))
-		case tags.JellysweepDeleteForSureTag:
-			// For "must-delete": remove all tags except jellysweep-delete before adding must-delete-for-sure
-			if err := e.radarr.ResetSingleTagsForMustDelete(ctx, int32(movieID)); err != nil {
-				return fmt.Errorf("failed to reset radarr tags for must-delete: %w", err)
-			}
-			return e.radarr.AddDeleteForSureTag(ctx, int32(movieID))
-		case tags.JellysweepIgnoreTag:
-			// For "ignore": remove all jellysweep tags and add ignore tag in one operation
-			return e.radarr.ResetAllTagsAndAddIgnore(ctx, int32(movieID))
-		default:
-			return fmt.Errorf("unsupported tag name: %s", tagName)
+		if err := e.radarr.ResetAllTagsAndAddIgnore(ctx, media.ArrID); err != nil {
+			return fmt.Errorf("failed to add ignore tag in radarr: %w", err)
 		}
+	case database.MediaTypeTV:
+		if e.sonarr == nil {
+			return fmt.Errorf("sonarr client not available")
+		}
+		if err := e.sonarr.ResetAllTagsAndAddIgnore(ctx, media.ArrID); err != nil {
+			return fmt.Errorf("failed to add ignore tag in sonarr: %w", err)
+		}
+	default:
+		return fmt.Errorf("unsupported media type: %s", media.MediaType)
 	}
 
-	return fmt.Errorf("unsupported media ID format: %s", mediaID)
+	return nil
 }
