@@ -88,7 +88,11 @@ func (c *Client) GetMediaItemByID(ctx context.Context, id uint) (*Media, error) 
 // GetMediaItems retrieves all unprotected media items from the database.
 func (c *Client) GetMediaItems(ctx context.Context) ([]Media, error) {
 	var mediaItems []Media
-	result := c.db.WithContext(ctx).Preload("DiskUsageDeletePolicies").Preload("Request").Where("protected_until IS NULL").Find(&mediaItems)
+	result := c.db.WithContext(ctx).
+		Preload("DiskUsageDeletePolicies").
+		Preload("Request").
+		Where("protected_until IS NULL").
+		Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		log.Error("failed to get media items", "error", result.Error)
 		return nil, result.Error
@@ -98,7 +102,9 @@ func (c *Client) GetMediaItems(ctx context.Context) ([]Media, error) {
 
 func (c *Client) GetMediaItemsByMediaType(ctx context.Context, mediaType MediaType) ([]Media, error) {
 	var mediaItems []Media
-	result := c.db.WithContext(ctx).Where("media_type = ?", mediaType).Find(&mediaItems)
+	result := c.db.WithContext(ctx).
+		Where("media_type = ? AND protected_until IS NULL", mediaType).
+		Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		log.Error("failed to get media items by type", "error", result.Error)
 		return nil, result.Error
@@ -110,8 +116,7 @@ func (c *Client) GetMediaWithPendingRequest(ctx context.Context) ([]Media, error
 	var mediaItems []Media
 	result := c.db.WithContext(ctx).
 		Preload("Request").
-		Where("requests.status = ?", RequestStatusPending).
-		Where("protected_until IS NULL").
+		Where("requests.status = ? AND protected_until IS NULL", RequestStatusPending).
 		Joins("JOIN requests ON requests.media_id = media.id").
 		Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
@@ -124,8 +129,7 @@ func (c *Client) GetMediaWithPendingRequest(ctx context.Context) ([]Media, error
 func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error {
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).
-		Update("protected_until", protectedUntil).
-		Update("unkeepable", false)
+		Updates(Media{ProtectedUntil: protectedUntil, Unkeepable: false})
 	if result.Error != nil {
 		log.Error("failed to set media protected until", "error", result.Error)
 		return result.Error
@@ -134,7 +138,9 @@ func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, prote
 }
 
 func (c *Client) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error {
-	result := c.db.WithContext(ctx).Model(&Media{}).Where("id = ?", mediaID).Update("unkeepable", true)
+	result := c.db.WithContext(ctx).Model(&Media{}).
+		Where("id = ?", mediaID).
+		Updates(Media{Unkeepable: true, ProtectedUntil: nil})
 	if result.Error != nil {
 		log.Error("failed to mark media as unkeepable", "error", result.Error)
 		return result.Error
