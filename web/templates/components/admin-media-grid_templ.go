@@ -374,8 +374,8 @@ func getUniqueMediaTypes(items []database.Media) []database.MediaType {
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_26e2`,
-		Function: `function __templ_AdminKeepRequestGridScript_26e2(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_56f8`,
+		Function: `function __templ_AdminKeepRequestGridScript_56f8(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 			// Store original keep requests data for expiry information
@@ -414,24 +414,24 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 				}
 
 				const rawKeepRequests = JSON.parse(keepRequestsData);
-				// Transform KeepRequest to MediaItem format for the grid
+				// Transform database.Media (with Request) to MediaItem format for the grid
 				const transformedItems = rawKeepRequests.map(request => {
-
+					// database.Media has ID, not MediaID
 					const deletionTimestamp = request.DefaultDeleteAt ? new Date(request.DefaultDeleteAt).getTime() : 0;
 
 					return {
-						id: request.MediaID,
+						id: request.ID, // database.Media uses ID field
 						title: request.Title,
-						type: request.MediaType,
+						type: request.MediaType, // database.Media uses MediaType
 						year: request.Year,
-						library: request.LibraryName,
+						library: request.LibraryName, // database.Media uses LibraryName
 						posterURL: request.PosterURL,
 						deletionTimestamp: deletionTimestamp,
 						expiryTimestamp: request.ProtectedUntil ? new Date(request.ProtectedUntil).getTime() : Date.now() + (7 * 24 * 60 * 60 * 1000),
 						canRequest: false, // Already requested
 						hasRequested: true, // By definition
 						mustDelete: false, // Keep requests are for keeping
-						fileSize: 0,
+						fileSize: request.FileSize || 0, // Include file size from database.Media
 						cleanupMode: "",
 						keepCount: 0
 					};
@@ -836,14 +836,14 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			// Transform MediaRequest objects to MediaItem format
 			const transformedItems = mediaRequests.map(request => {
 				// Check if data is already in client format (has deletionTimestamp)
-				// vs server format (has DeletionDate)
+				// vs database.Media format (has DefaultDeleteAt)
 				let deletionTimestamp;
 				if (request.deletionTimestamp !== undefined) {
 					// Already in client format, use as-is
 					deletionTimestamp = request.deletionTimestamp;
-				} else if (request.DeletionDate) {
-					// Server format, convert to timestamp
-					deletionTimestamp = new Date(request.DeletionDate).getTime();
+				} else if (request.DefaultDeleteAt) {
+					// database.Media format, convert to timestamp
+					deletionTimestamp = new Date(request.DefaultDeleteAt).getTime();
 				} else {
 					// No deletion date available
 					deletionTimestamp = 0;
@@ -853,27 +853,27 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 				if (request.expiryTimestamp !== undefined) {
 					// Already in client format, use as-is
 					expiryTimestamp = request.expiryTimestamp;
-				} else if (request.ExpiryDate) {
-					// Server format, convert to timestamp
-					expiryTimestamp = new Date(request.ExpiryDate).getTime();
+				} else if (request.ProtectedUntil) {
+					// database.Media format, convert to timestamp
+					expiryTimestamp = new Date(request.ProtectedUntil).getTime();
 				} else {
 					// Default expiry (7 days from now)
 					expiryTimestamp = Date.now() + (7 * 24 * 60 * 60 * 1000);
 				}
 
 				return {
-					id: request.MediaID || request.id,
+					id: request.ID || request.id, // database.Media uses ID not MediaID
 					title: request.Title || request.title,
-					type: request.Type || request.type,
+					type: request.MediaType || request.type, // database.Media uses MediaType
 					year: request.Year || request.year,
-					library: request.LibraryName,
+					library: request.LibraryName, // database.Media uses LibraryName
 					posterURL: request.PosterURL || request.posterURL,
 					deletionTimestamp: deletionTimestamp,
 					expiryTimestamp: expiryTimestamp,
 					canRequest: false,
 					hasRequested: true,
 					mustDelete: false,
-					fileSize: 0,
+					fileSize: request.FileSize || 0, // Include file size from database.Media
 					cleanupMode: "",
 					keepCount: 0
 				};
@@ -924,15 +924,15 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_26e2`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_26e2`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_56f8`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_56f8`),
 	}
 }
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_ae89`,
-		Function: `function __templ_AdminMediaGridScript_ae89(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_cfa6`,
+		Function: `function __templ_AdminMediaGridScript_cfa6(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -969,21 +969,21 @@ func AdminMediaGridScript() templ.ComponentScript {
 				}
 
 				const rawMediaItems = JSON.parse(mediaItemsData);
-				// Transform Go struct field names to JavaScript-friendly names
+				// Transform database.Media to JavaScript-friendly format
 				const transformedItems = rawMediaItems.map(item => ({
 					id: item.ID,
 					title: item.Title,
-					type: item.Type,
+					type: item.MediaType, // database.Media uses MediaType
 					year: item.Year,
-					library: item.LibraryName,
+					library: item.LibraryName, // database.Media uses LibraryName
 					posterURL: item.PosterURL,
-					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0,
+					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
 					fileSize: item.FileSize || 0,
-					hasRequested: item.HasRequested || false,
-					canRequest: item.CanRequest !== false, // Default to true unless explicitly false
-					mustDelete: item.MustDelete || false,
-					cleanupMode: item.CleanupMode || "",
-					keepCount: item.KeepCount || 0
+					hasRequested: (item.Request && item.Request.ID) || false, // Check if Request exists
+					canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
+					mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
+					cleanupMode: "", // TODO: Add if needed
+					keepCount: 0 // TODO: Add if needed
 				}));
 				this.setItems(transformedItems);
 			} catch (error) {
@@ -1468,17 +1468,17 @@ func AdminMediaGridScript() templ.ComponentScript {
 
 		// Override setItems to handle media item data format
 		setItems(mediaItems) {
-			// Transform server data to client format
+			// Transform database.Media to client format
 			const clientItems = mediaItems.map(item => {
 				// Check if data is already in client format (has deletionTimestamp)
-				// vs server format (has DeletionDate)
+				// vs database.Media format (has DefaultDeleteAt)
 				let deletionTimestamp;
 				if (item.deletionTimestamp !== undefined) {
 					// Already in client format, use as-is
 					deletionTimestamp = item.deletionTimestamp;
-				} else if (item.DeletionDate) {
-					// Server format, convert to timestamp
-					deletionTimestamp = new Date(item.DeletionDate).getTime();
+				} else if (item.DefaultDeleteAt) {
+					// database.Media format, convert to timestamp
+					deletionTimestamp = new Date(item.DefaultDeleteAt).getTime();
 				} else {
 					// No deletion date available
 					deletionTimestamp = 0;
@@ -1488,16 +1488,16 @@ func AdminMediaGridScript() templ.ComponentScript {
 					...item,
 					id: item.ID || item.id,
 					title: item.Title || item.title,
-					library: item.Library || item.library,
+					library: item.LibraryName || item.library, // database.Media uses LibraryName
 					posterURL: item.PosterURL || item.posterURL,
 					fileSize: parseInt(item.FileSize || item.fileSize || 0),
 					deletionTimestamp: deletionTimestamp,
-					hasRequested: item.HasRequested || item.hasRequested,
-					canRequest: item.CanRequest !== undefined ? item.CanRequest : item.canRequest,
-					mustDelete: item.MustDelete || item.mustDelete,
-					cleanupMode: item.CleanupMode || item.cleanupMode,
-					keepCount: parseInt(item.KeepCount || item.keepCount || 0),
-					type: item.Type || item.type,
+					hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false, // Check if Request exists
+					canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
+					mustDelete: item.Unkeepable || item.mustDelete || false,
+					cleanupMode: item.cleanupMode || "",
+					keepCount: parseInt(item.keepCount || 0),
+					type: item.MediaType || item.type, // database.Media uses MediaType
 					year: parseInt(item.Year || item.year || 0)
 				};
 			});
@@ -1548,8 +1548,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_ae89`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_ae89`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_cfa6`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_cfa6`),
 	}
 }
 
