@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/dustin/go-humanize"
 	"github.com/jon4hz/jellysweep/api/models"
-	"github.com/jon4hz/jellysweep/engine/arr/sonarr"
 )
 
 // safeUint64 safely converts int64 to uint64, returning 0 for negative values.
@@ -32,7 +31,12 @@ func (e *Engine) filterContentSizeThreshold(ctx context.Context, mediaItems medi
 			var fileSize int64
 			switch item.MediaType {
 			case models.MediaTypeTV:
-				fileSize = sonarr.GetSeriesFileSize(item.SeriesResource)
+				if item.SeriesResource.HasStatistics() {
+					stats := item.SeriesResource.GetStatistics()
+					if stats.HasSizeOnDisk() {
+						fileSize = stats.GetSizeOnDisk()
+					}
+				}
 			case models.MediaTypeMovie:
 				fileSize = item.MovieResource.GetSizeOnDisk()
 			default:

@@ -38,23 +38,10 @@ type Arrer interface {
 	RemoveExpiredKeepTags(ctx context.Context) error
 	RemoveRecentlyPlayedDeleteTags(ctx context.Context, jellyfinItems []JellyfinItem) error
 
-	// Keep-request workflow
-	AddKeepRequest(ctx context.Context, id int32, username string) (string, string, error)
-	GetKeepRequests(ctx context.Context, libraryFoldersMap map[string][]string, forceRefresh bool) ([]models.KeepRequest, error)
-	AcceptKeepRequest(ctx context.Context, id int32) (*KeepRequestResponse, error)
-	DeclineKeepRequest(ctx context.Context, id int32) (*KeepRequestResponse, error)
-	AddKeepTag(ctx context.Context, id int32) error
-
-	// Explicit tag operations
-	AddDeleteForSureTag(ctx context.Context, id int32) error
-
 	// Bulk tag resets/cleanup
 	ResetTags(ctx context.Context, additionalTags []string) error
 	CleanupAllTags(ctx context.Context, additionalTags []string) error
 
-	// Single-item tag resets
-	ResetSingleTagsForKeep(ctx context.Context, id int32) error
-	ResetSingleTagsForMustDelete(ctx context.Context, id int32) error
 	ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error
 
 	// History methods for getting import dates
