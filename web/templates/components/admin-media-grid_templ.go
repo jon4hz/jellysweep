@@ -374,8 +374,8 @@ func getUniqueMediaTypes(items []database.Media) []database.MediaType {
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_56f8`,
-		Function: `function __templ_AdminKeepRequestGridScript_56f8(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_0970`,
+		Function: `function __templ_AdminKeepRequestGridScript_0970(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 			// Store original keep requests data for expiry information
@@ -420,14 +420,13 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 					const deletionTimestamp = request.DefaultDeleteAt ? new Date(request.DefaultDeleteAt).getTime() : 0;
 
 					return {
-						id: request.ID, // database.Media uses ID field
+						id: request.ID,
 						title: request.Title,
-						type: request.MediaType, // database.Media uses MediaType
+						type: request.MediaType,
 						year: request.Year,
-						library: request.LibraryName, // database.Media uses LibraryName
+						library: request.LibraryName,
 						posterURL: request.PosterURL,
 						deletionTimestamp: deletionTimestamp,
-						expiryTimestamp: request.ProtectedUntil ? new Date(request.ProtectedUntil).getTime() : Date.now() + (7 * 24 * 60 * 60 * 1000),
 						canRequest: false, // Already requested
 						hasRequested: true, // By definition
 						mustDelete: false, // Keep requests are for keeping
@@ -452,7 +451,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			div.setAttribute('data-title', item.title);
 			div.setAttribute('data-library', item.library);
 			div.setAttribute('data-type', item.type);
-			div.setAttribute('data-expiry-timestamp', item.expiryTimestamp || 0);
 
 			// Use the admin-specific card HTML for keep requests
 			div.innerHTML = this.createKeepRequestCardHTML(item);
@@ -486,10 +484,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			// Note: For keep requests, we don't have file size, so we'll omit it
 			const deletionDate = new Date(item.deletionTimestamp);
 			const deletionTime = this.formatRelativeTime(deletionDate);
-
-			// For keep requests, we need to handle expiry date
-			const expiryDate = new Date(item.expiryTimestamp || Date.now() + 7*24*60*60*1000); // Default to 7 days if not set
-			const expiryTime = this.formatRelativeTime(expiryDate);
 
 			const posterImg = item.posterURL
 				? ` + "`" + `<img src="${item.posterURL}" class="w-full h-64 object-cover" loading="lazy"/>` + "`" + `
@@ -527,12 +521,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 										</svg>
 										Deletes ${deletionTime}
-									</div>
-									<div class="flex items-center text-sm text-yellow-400">
-										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4M5 7h14l-1 14H6L5 7z"></path>
-										</svg>
-										Expires ${expiryTime}
 									</div>
 								</div>
 							</div>
@@ -597,12 +585,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 										</svg>
 										Deletes ${deletionTime}
 									</div>
-									<div class="flex items-center text-yellow-400">
-										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4M5 7h14l-1 14H6L5 7z"></path>
-										</svg>
-										Expires ${expiryTime}
-									</div>
 								</div>
 								<div class="mt-2 flex flex-wrap items-center gap-2">
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
@@ -656,10 +638,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 						return a.title.localeCompare(b.title);
 					case 'title-desc':
 						return b.title.localeCompare(a.title);
-					case 'expiry-date-asc':
-						return (a.expiryTimestamp || 0) - (b.expiryTimestamp || 0);
-					case 'expiry-date-desc':
-						return (b.expiryTimestamp || 0) - (a.expiryTimestamp || 0);
 					case 'deletion-date-asc':
 						return a.deletionTimestamp - b.deletionTimestamp;
 					case 'deletion-date-desc':
@@ -849,18 +827,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 					deletionTimestamp = 0;
 				}
 
-				let expiryTimestamp;
-				if (request.expiryTimestamp !== undefined) {
-					// Already in client format, use as-is
-					expiryTimestamp = request.expiryTimestamp;
-				} else if (request.ProtectedUntil) {
-					// database.Media format, convert to timestamp
-					expiryTimestamp = new Date(request.ProtectedUntil).getTime();
-				} else {
-					// Default expiry (7 days from now)
-					expiryTimestamp = Date.now() + (7 * 24 * 60 * 60 * 1000);
-				}
-
 				return {
 					id: request.ID || request.id, // database.Media uses ID not MediaID
 					title: request.Title || request.title,
@@ -869,7 +835,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 					library: request.LibraryName, // database.Media uses LibraryName
 					posterURL: request.PosterURL || request.posterURL,
 					deletionTimestamp: deletionTimestamp,
-					expiryTimestamp: expiryTimestamp,
 					canRequest: false,
 					hasRequested: true,
 					mustDelete: false,
@@ -924,15 +889,15 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_56f8`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_56f8`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_0970`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_0970`),
 	}
 }
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_de38`,
-		Function: `function __templ_AdminMediaGridScript_de38(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_abc4`,
+		Function: `function __templ_AdminMediaGridScript_abc4(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -979,7 +944,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 					posterURL: item.PosterURL,
 					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
 					fileSize: item.FileSize || 0,
-					hasRequested: (item.Request && item.Request.ID) || false, // Check if Request exists
+					hasRequested: !!(item.Request && item.Request.ID), // Check if Request exists and has ID
 					canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
 					mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
 					cleanupMode: "", // TODO: Add if needed
@@ -1013,7 +978,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 				if (!target) return;
 
 				const mediaId = target.getAttribute('data-media-id');
-				if (mediaId !== item.id) return;
+				// Use loose equality to handle string vs number comparison
+				if (mediaId != item.id) return;
 
 				if (target.classList.contains('keep-btn')) {
 					const originalContent = this.setButtonLoading(target, 'Keeping...');
@@ -1368,10 +1334,16 @@ func AdminMediaGridScript() templ.ComponentScript {
 			let apiPromise;
 			switch (action) {
 				case 'keep':
-					apiPromise = window.makeApiRequest(` + "`" + `/admin/api/media/${mediaId}/keep` + "`" + `);
+					apiPromise = window.makeApiRequestEnhanced(` + "`" + `/admin/api/media/${mediaId}/keep` + "`" + `, {
+						method: 'POST',
+						showProgress: true
+					});
 					break;
 				case 'keep-forever':
-					apiPromise = window.makeApiRequest(` + "`" + `/admin/api/media/${mediaId}/keep-forever` + "`" + `);
+					apiPromise = window.makeApiRequestEnhanced(` + "`" + `/admin/api/media/${mediaId}/keep-forever` + "`" + `, {
+						method: 'POST',
+						showProgress: true
+					});
 					break;
 				case 'sweep':
 					apiPromise = window.makeApiRequestEnhanced(` + "`" + `/admin/api/media/${mediaId}/delete` + "`" + `, {
@@ -1492,7 +1464,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 					posterURL: item.PosterURL || item.posterURL,
 					fileSize: parseInt(item.FileSize || item.fileSize || 0),
 					deletionTimestamp: deletionTimestamp,
-					hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false, // Check if Request exists
+					hasRequested: !!(item.Request && item.Request.ID) || !!item.hasRequested, // Check if Request exists and has ID
 					canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
 					mustDelete: item.Unkeepable || item.mustDelete || false,
 					cleanupMode: item.cleanupMode || "",
@@ -1548,8 +1520,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_de38`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_de38`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_abc4`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_abc4`),
 	}
 }
 

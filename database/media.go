@@ -111,6 +111,7 @@ func (c *Client) GetMediaWithPendingRequest(ctx context.Context) ([]Media, error
 	result := c.db.WithContext(ctx).
 		Preload("Request").
 		Where("requests.status = ?", RequestStatusPending).
+		Where("protected_until IS NULL").
 		Joins("JOIN requests ON requests.media_id = media.id").
 		Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
