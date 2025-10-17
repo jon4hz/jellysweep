@@ -237,7 +237,8 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 	if err = e.markForDeletion(ctx); err != nil {
 		log.Error("An error occurred while marking media for deletion")
 	}
-	e.removeRecentlyPlayedDeleteTags(ctx)
+
+	e.removeRecentlyPlayedItems(ctx)
 
 	// only delete media if there was no previous error
 	if err == nil {
@@ -266,27 +267,57 @@ func (e *Engine) GetEngineCache() *cache.EngineCache {
 	return e.cache
 }
 
-// removeRecentlyPlayedDeleteTags removes jellysweep-delete tags from media that has been played recently.
-func (e *Engine) removeRecentlyPlayedDeleteTags(ctx context.Context) {
-	log.Info("Checking for recently played media with pending delete tags")
+func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
+	log.Info("Removing recently played items from database")
 
-	jellyfinItems, _, err := e.jellyfin.GetJellyfinItems(ctx, false)
+	mediaItems, err := e.db.GetMediaItems(ctx)
 	if err != nil {
-		log.Error("Failed to get jellyfin items from cache", "error", err)
+		log.Error("Failed to get media items from database", "error", err)
 		return
 	}
 
-	if e.sonarr != nil {
-		if err := e.sonarr.RemoveRecentlyPlayedDeleteTags(ctx, jellyfinItems); err != nil {
-			log.Error("Failed to remove recently played Sonarr delete tags", "error", err)
+	if len(mediaItems) == 0 {
+		log.Debug("No media items found in database to check for recent plays")
+		return
+	}
+
+	for _, item := range mediaItems {
+		lastPlayed, err := e.stats.GetItemLastPlayed(ctx, item.JellyfinID)
+		if err != nil {
+			log.Error("Failed to get last played time for item", "title", item.Title, "jellyfinID", item.JellyfinID, "error", err)
+			continue
+		}
+
+		if lastPlayed.IsZero() {
+			log.Debug("Item has never been played, skipping removal", "title", item.Title, "jellyfinID", item.JellyfinID)
+			continue
+		}
+
+		libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
+		if libraryConfig == nil {
+			log.Warn("Library config not found", "library", item.LibraryName)
+			continue
+		}
+
+		timeSinceLastPlayed := time.Since(lastPlayed)
+		thresholdDuration := time.Duration(libraryConfig.LastStreamThreshold) * 24 * time.Hour
+		if timeSinceLastPlayed > thresholdDuration {
+			log.Debug("Item last played outside of threshold, skipping removal", "title", item.Title, "jellyfinID", item.JellyfinID, "lastPlayed", lastPlayed.Format(time.RFC3339))
+			continue
+		}
+
+		if e.cfg.DryRun {
+			log.Info("Dry run: Would remove recently played item from database", "title", item.Title, "jellyfinID", item.JellyfinID, "lastPlayed", lastPlayed.Format(time.RFC3339))
+			continue
+		}
+
+		if err := e.db.DeleteMediaItem(ctx, item.ID, database.DBDeleteReasonStreamed); err != nil {
+			log.Error("Failed to remove recently played item from database", "title", item.Title, "jellyfinID", item.JellyfinID, "error", err)
+			continue
 		}
 	}
 
-	if e.radarr != nil {
-		if err := e.radarr.RemoveRecentlyPlayedDeleteTags(ctx, jellyfinItems); err != nil {
-			log.Error("Failed to remove recently played Radarr delete tags", "error", err)
-		}
-	}
+	log.Info("Recently played items removal process completed")
 }
 
 // removeExpiredKeepTags removes keep request tags that have expired.
@@ -662,6 +693,7 @@ func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept boo
 }
 
 // ResetAllTags removes all jellysweep tags from all media in Sonarr and Radarr.
+// Deprecated: this is only kept to migrate from the old tag based system to the new database driven system.
 func (e *Engine) ResetAllTags(ctx context.Context, additionalTags []string) error {
 	log.Info("Resetting all jellysweep tags...")
 
@@ -718,17 +750,21 @@ func (e *Engine) AddIgnoreTag(ctx context.Context, media *database.Media) error 
 	switch media.MediaType {
 	case database.MediaTypeMovie:
 		if e.radarr == nil {
+			log.Warn("Radarr client not available, cannot add ignore tag", "mediaID", media.ID, "title", media.Title)
 			return fmt.Errorf("radarr client not available")
 		}
 		if err := e.radarr.ResetAllTagsAndAddIgnore(ctx, media.ArrID); err != nil {
-			return fmt.Errorf("failed to add ignore tag in radarr: %w", err)
+			log.Error("Failed to add ignore tag in radarr", "mediaID", media.ID, "title", media.Title, "error", err)
+			return err
 		}
 	case database.MediaTypeTV:
 		if e.sonarr == nil {
+			log.Warn("Sonarr client not available, cannot add ignore tag", "mediaID", media.ID, "title", media.Title)
 			return fmt.Errorf("sonarr client not available")
 		}
 		if err := e.sonarr.ResetAllTagsAndAddIgnore(ctx, media.ArrID); err != nil {
-			return fmt.Errorf("failed to add ignore tag in sonarr: %w", err)
+			log.Error("Failed to add ignore tag in sonarr", "mediaID", media.ID, "title", media.Title, "error", err)
+			return err
 		}
 	default:
 		return fmt.Errorf("unsupported media type: %s", media.MediaType)

@@ -36,7 +36,6 @@ type Arrer interface {
 	EnsureTagExists(ctx context.Context, deleteTagLabel string) error
 	DeleteMedia(ctx context.Context, arrID int32, title string) error
 	RemoveExpiredKeepTags(ctx context.Context) error
-	RemoveRecentlyPlayedDeleteTags(ctx context.Context, jellyfinItems []JellyfinItem) error
 
 	// Bulk tag resets/cleanup
 	ResetTags(ctx context.Context, additionalTags []string) error

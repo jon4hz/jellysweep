@@ -10,6 +10,28 @@ import (
 	"gorm.io/gorm"
 )
 
+// MediaType represents the type of media, either TV show or Movie.
+type MediaType string
+
+const (
+	// MediaTypeTV represents TV shows.
+	MediaTypeTV MediaType = "tv"
+	// MediaTypeMovie represents Movies.
+	MediaTypeMovie MediaType = "movie"
+)
+
+// DBDeleteReason represents the reason why a media item was deleted from the database.
+type DBDeleteReason string
+
+const (
+	// DBDeleteReasonDefault indicates the media was actually deleted in Jellyfin.
+	DBDeleteReasonDefault DBDeleteReason = "default"
+	// DBDeleteReasonStreamed indicates the media was deleted in the database only because it was streamed.
+	DBDeleteReasonStreamed DBDeleteReason = "streamed"
+	// DBDeleteReasonKeepForever indicates the media was deleted in the database only because it was marked to keep forever.
+	DBDeleteReasonKeepForever DBDeleteReason = "keep_forever"
+)
+
 // DB defines the interface for database operations.
 type DB interface {
 	UserDB
@@ -26,7 +48,7 @@ type MediaDB interface {
 	GetMediaWithPendingRequest(ctx context.Context) ([]Media, error)
 	SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error
 	MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error
-	DeleteMediaItem(ctx context.Context, mediaID uint) error
+	DeleteMediaItem(ctx context.Context, mediaID uint, deleteReason DBDeleteReason) error
 }
 
 // RequestDB defines the interface for request-related database operations.

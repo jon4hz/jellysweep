@@ -10,16 +10,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// MediaType represents the type of media, either TV show or Movie.
-type MediaType string
-
-const (
-	// MediaTypeTV represents TV shows.
-	MediaTypeTV MediaType = "tv"
-	// MediaTypeMovie represents Movies.
-	MediaTypeMovie MediaType = "movie"
-)
-
 // DiskUsageDeletePolicy represents the disk usage policy for media deletion.
 type DiskUsageDeletePolicy struct {
 	gorm.Model
@@ -27,16 +17,6 @@ type DiskUsageDeletePolicy struct {
 	Threshold  float64   `gorm:"not null"` // Disk usage threshold percentage
 	DeleteDate time.Time `gorm:"not null"` // Date when media should be deleted if threshold is exceeded
 }
-
-// DeletDBDeleteReasoneReason represents the reason why a media item was deleted from the database.
-type DBDeleteReason string
-
-const (
-	// DBDeleteReasonDefault indicates the media was actually deleted in Jellyfin.
-	DBDeleteReasonDefault DBDeleteReason = "default"
-	// DBDeleteReasonStreamed indicates the media was deleted in the database only because it was streamed.
-	DBDeleteReasonStreamed DBDeleteReason = "streamed"
-)
 
 // Media represents a media item in the database.
 type Media struct {
@@ -148,7 +128,15 @@ func (c *Client) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error 
 	return nil
 }
 
-func (c *Client) DeleteMediaItem(ctx context.Context, mediaID uint) error {
+func (c *Client) DeleteMediaItem(ctx context.Context, mediaID uint, deleteReason DBDeleteReason) error {
+	err := c.db.WithContext(ctx).Model(&Media{}).
+		Where("id = ?", mediaID).
+		Update("db_delete_reason", deleteReason).Error
+	if err != nil {
+		log.Error("failed to set media delete reason", "error", err)
+		return err
+	}
+
 	result := c.db.WithContext(ctx).Delete(&Media{}, mediaID)
 	if result.Error != nil {
 		log.Error("failed to delete media item", "error", result.Error)

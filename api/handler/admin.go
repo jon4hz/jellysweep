@@ -201,16 +201,16 @@ func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "Engine error",
 		})
 		return
 	}
 
-	err = h.db.DeleteMediaItem(c.Request.Context(), media.ID)
+	err = h.db.DeleteMediaItem(c.Request.Context(), media.ID, database.DBDeleteReasonKeepForever)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Failed to delete media item",
+			"error":   "Database error",
 		})
 		return
 	}

@@ -17,11 +17,11 @@ func (e *Engine) filterLastStreamThreshold(ctx context.Context, mediaItems media
 			lastStreamed, err := e.stats.GetItemLastPlayed(ctx, item.JellyfinID)
 			if err != nil {
 				if errors.Is(err, streamystats.ErrItemNotFound) {
-					log.Warn("Item not found in StreamyStats", "item", item.JellyfinID)
-					// filteredItems[lib] = append(filteredItems[lib], item) // Item not found, mark for deletion
+					log.Warn("Item not found in StreamyStats", "jellyfinID", item.JellyfinID)
+					log.Debug("Excluding item without streaming history", "jellyfinID", item.JellyfinID)
 					continue
 				}
-				log.Error("Failed to get last streamed time for item", "item", item.JellyfinID, "error", err)
+				log.Error("Failed to get last streamed time for item", "jellyfinID", item.JellyfinID, "error", err)
 				return nil, err
 			}
 			if lastStreamed.IsZero() {
