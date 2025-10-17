@@ -10,6 +10,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const File = "jellysweep.db"
+
 // MediaType represents the type of media, either TV show or Movie.
 type MediaType string
 
@@ -30,6 +32,8 @@ const (
 	DBDeleteReasonStreamed DBDeleteReason = "streamed"
 	// DBDeleteReasonKeepForever indicates the media was deleted in the database only because it was marked to keep forever.
 	DBDeleteReasonKeepForever DBDeleteReason = "keep_forever"
+	// DBDeleteReasonProtectionExpired indicates the media was deleted in the database only because its protection period expired.
+	DBDeleteReasonProtectionExpired DBDeleteReason = "protection_expired"
 )
 
 // DB defines the interface for database operations.
@@ -46,6 +50,7 @@ type MediaDB interface {
 	GetMediaItems(ctx context.Context, includeProtected bool) ([]Media, error)
 	GetMediaItemsByMediaType(ctx context.Context, mediaType MediaType) ([]Media, error)
 	GetMediaWithPendingRequest(ctx context.Context) ([]Media, error)
+	GetMediaExpiredProtection(ctx context.Context, asOf time.Time) ([]Media, error)
 	SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error
 	MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error
 	DeleteMediaItem(ctx context.Context, mediaID uint, deleteReason DBDeleteReason) error
@@ -74,7 +79,7 @@ type Client struct {
 
 // New creates a new database connection and performs migrations.
 func New(dbpath string) (*Client, error) {
-	db, err := gorm.Open(sqlite.Open(path.Join(dbpath, "jellysweep.db")), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(path.Join(dbpath, File)), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect database: %w", err)
 	}

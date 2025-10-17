@@ -24,8 +24,7 @@ type MediaItem struct {
 	Tags           []string
 	MediaType      models.MediaType
 	// User information for the person who requested this media
-	RequestedBy string    // User email or username
-	RequestDate time.Time // When the media was requested
+	RequestedBy string // User email or username
 }
 
 type Arrer interface {

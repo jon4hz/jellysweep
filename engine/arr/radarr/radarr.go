@@ -74,7 +74,7 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 
 	mediaItems := make([]arr.MediaItem, 0)
 	for _, jf := range jellyfinItems {
-		libraryName := strings.ToLower(jf.ParentLibraryName)
+		libraryName := jf.ParentLibraryName
 		if libraryName == "" {
 			log.Error("Library name is empty for Jellyfin item, skipping", "item_id", jf.GetId(), "item_name", jf.GetName())
 			continue
@@ -242,12 +242,6 @@ func (r *Radarr) ResetTags(ctx context.Context, additionalTags []string) error {
 		}
 
 		if hasJellysweepTags {
-			if r.cfg.DryRun {
-				log.Infof("Dry run: Would remove jellysweep tags from Radarr movie: %s", m.GetTitle())
-				updated++
-				continue
-			}
-
 			m.Tags = newTags
 			_, resp, err := r.client.MovieAPI.UpdateMovie(radarrAuthCtx(ctx, r.cfg.Radarr), fmt.Sprintf("%d", m.GetId())).
 				MovieResource(m).
@@ -283,11 +277,6 @@ func (r *Radarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 			slices.Contains(additionalTags, name)
 
 		if isJellysweepTag {
-			if r.cfg.DryRun {
-				log.Infof("Dry run: Would delete Radarr tag: %s", name)
-				deleted++
-				continue
-			}
 			resp, err := r.client.TagAPI.DeleteTag(radarrAuthCtx(ctx, r.cfg.Radarr), t.GetId()).Execute()
 			if err != nil {
 				log.Errorf("Failed to delete Radarr tag %s: %v", name, err)

@@ -551,11 +551,6 @@ func (c *Config) GetLibraryConfig(libraryName string) *CleanupConfig {
 		return nil
 	}
 
-	// First try exact match (for backward compatibility)
-	if config, exists := c.Libraries[libraryName]; exists {
-		return config
-	}
-
 	libraryNameLower := strings.ToLower(libraryName)
 	for key, config := range c.Libraries {
 		if strings.ToLower(key) == libraryNameLower {

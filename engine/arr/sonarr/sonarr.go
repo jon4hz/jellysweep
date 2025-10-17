@@ -73,7 +73,7 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 
 	mediaItems := make([]arr.MediaItem, 0)
 	for _, jf := range jellyfinItems {
-		libraryName := strings.ToLower(jf.ParentLibraryName)
+		libraryName := jf.ParentLibraryName
 		if libraryName == "" {
 			log.Error("Library name is empty for Jellyfin item, skipping", "item_id", jf.GetId(), "item_name", jf.GetName())
 			continue
@@ -225,12 +225,6 @@ func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
 
 		// Update series if it had jellysweep tags
 		if hasJellysweepTags {
-			if s.cfg.DryRun {
-				log.Infof("Dry run: Would remove jellysweep tags from Sonarr series: %s", serie.GetTitle())
-				seriesUpdated++
-				continue
-			}
-
 			serie.Tags = newTags
 			_, _, err = s.client.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), fmt.Sprintf("%d", serie.GetId())).
 				SeriesResource(serie).
@@ -266,11 +260,6 @@ func (s *Sonarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 			slices.Contains(additionalTags, name)
 
 		if isJellysweepTag {
-			if s.cfg.DryRun {
-				log.Infof("Dry run: Would delete sonarr tag: %s", name)
-				deleted++
-				continue
-			}
 			resp, err := s.client.TagAPI.DeleteTag(sonarrAuthCtx(ctx, s.cfg.Sonarr), td.GetId()).Execute()
 			if err != nil {
 				log.Errorf("Failed to delete sonarr tag %s: %v", name, err)

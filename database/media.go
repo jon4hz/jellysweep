@@ -111,6 +111,18 @@ func (c *Client) GetMediaWithPendingRequest(ctx context.Context) ([]Media, error
 	return mediaItems, nil
 }
 
+func (c *Client) GetMediaExpiredProtection(ctx context.Context, asOf time.Time) ([]Media, error) {
+	var mediaItems []Media
+	result := c.db.WithContext(ctx).
+		Where("protected_until IS NOT NULL AND protected_until <= ?", asOf).
+		Find(&mediaItems)
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		log.Error("failed to get media items with expired protection", "error", result.Error)
+		return nil, result.Error
+	}
+	return mediaItems, nil
+}
+
 func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error {
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).

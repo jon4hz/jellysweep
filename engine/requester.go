@@ -25,10 +25,9 @@ func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.Med
 			continue
 		}
 
-		item.RequestDate = *requestInfo.RequestTime
 		item.RequestedBy = requestInfo.UserEmail
 		log.Debugf("Populated requester info for %s: requested by %s on %s",
-			item.Title, item.RequestedBy, item.RequestDate.Format("2006-01-02"))
+			item.Title, item.RequestedBy, requestInfo.RequestTime.Format("2006-01-02"))
 
 		// Update the items in the map
 		mediaItems[i] = item

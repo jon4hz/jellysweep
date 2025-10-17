@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 	"time"
 
@@ -35,6 +36,11 @@ func startServer(cmd *cobra.Command, _ []string) {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	exists, err := dbFileExists(path.Join(cfg.Database.Path, database.File))
+	if err != nil {
+		log.Fatalf("failed to check database file: %v", err)
+	}
+
 	db, err := database.New(cfg.Database.Path)
 	if err != nil {
 		log.Fatalf("failed to initialize database: %v", err)
@@ -43,7 +49,7 @@ func startServer(cmd *cobra.Command, _ []string) {
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
-	engine, err := engine.New(cfg, db)
+	engine, err := engine.New(cfg, db, !exists)
 	if err != nil {
 		log.Fatalf("failed to create engine: %v", err)
 	}
@@ -79,4 +85,15 @@ func startServer(cmd *cobra.Command, _ []string) {
 	// Give time for graceful shutdown
 	cancel()
 	time.Sleep(2 * time.Second)
+}
+
+func dbFileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

@@ -87,6 +87,11 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media datab
 
 	for _, policy := range media.DiskUsageDeletePolicies {
 		if currentDiskUsage >= policy.Threshold {
+			if policy.DeleteDate.IsZero() {
+				log.Warn("Disk usage threshold exceeded but no delete date set in policy. This should not happen.")
+				continue
+			}
+
 			if time.Now().After(policy.DeleteDate) {
 				log.Info("Disk usage threshold exceeded, marking media for deletion",
 					"item", media.Title,

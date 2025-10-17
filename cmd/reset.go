@@ -38,7 +38,7 @@ func reset(cmd *cobra.Command, _ []string) {
 		log.Fatalf("failed to initialize database: %v", err)
 	}
 
-	engine, err := engine.New(cfg, db)
+	engine, err := engine.New(cfg, db, false)
 	if err != nil {
 		log.Fatalf("failed to create engine: %v", err)
 	}
