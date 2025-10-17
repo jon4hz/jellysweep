@@ -53,13 +53,6 @@ type JellyfinItem struct {
 	ParentLibraryName string `json:"parentLibraryName,omitempty"`
 }
 
-type KeepRequestResponse struct {
-	Requester string
-	Title     string
-	MediaType string
-	Approved  bool
-}
-
 var ErrRequestAlreadyProcessed = errors.New("request already processed")
 
 // GetCachedImageURL converts a direct image URL to a cached URL.

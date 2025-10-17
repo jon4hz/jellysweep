@@ -64,9 +64,6 @@ type Engine struct {
 
 // data contains any data collected during the cleanup process.
 type data struct {
-	// library name to library paths
-	libraryFoldersMap map[string][]string
-
 	// userNotifications tracks which users should be notified about which media items
 	userNotifications map[string][]arr.MediaItem // key: user email, value: media items
 }
@@ -161,7 +158,6 @@ func New(cfg *config.Config, db database.DB) (*Engine, error) {
 		scheduler:  sched,
 		data: &data{
 			userNotifications: make(mediaItemsMap),
-			libraryFoldersMap: make(map[string][]string),
 		},
 		imageCache: cache.NewImageCache("./data/cache/images"),
 		cache:      engineCache,
@@ -401,7 +397,6 @@ func (e *Engine) gatherMediaItems(ctx context.Context) (mediaItemsMap, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jellyfin items: %w", err)
 	}
-	e.data.libraryFoldersMap = libraryFoldersMap
 
 	var sonarrItems mediaItemsMap
 	if e.sonarr != nil {
