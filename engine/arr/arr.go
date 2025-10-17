@@ -10,7 +10,6 @@ import (
 	"github.com/devopsarr/radarr-go/radarr"
 	"github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/jon4hz/jellysweep/api/models"
-	"github.com/jon4hz/jellysweep/cache"
 	jellyfin "github.com/sj14/jellyfin-go/api"
 )
 
@@ -31,9 +30,6 @@ type MediaItem struct {
 
 type Arrer interface {
 	GetItems(ctx context.Context, jellyfinItems []JellyfinItem) (map[string][]MediaItem, error)
-	GetTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error)
-	GetTagIDByLabel(ctx context.Context, label string) (int32, error)
-	EnsureTagExists(ctx context.Context, label string) error
 	DeleteMedia(ctx context.Context, arrID int32, title string) error
 
 	// Bulk tag resets/cleanup

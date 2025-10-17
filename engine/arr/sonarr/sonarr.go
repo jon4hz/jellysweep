@@ -54,7 +54,7 @@ func NewSonarr(client *sonarrAPI.APIClient, cfg *config.Config, stats stats.Stat
 }
 
 func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem) (map[string][]arr.MediaItem, error) {
-	tagMap, err := s.GetTags(ctx, true)
+	tagMap, err := s.getTags(ctx, true)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (s *Sonarr) getItems(ctx context.Context) ([]sonarrAPI.SeriesResource, erro
 	return series, nil
 }
 
-func (s *Sonarr) GetTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
+func (s *Sonarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
 	if forceRefresh {
 		if err := s.tagsCache.Clear(ctx); err != nil {
 			log.Debug("Failed to clear Sonarr tags cache, fetching from API", "error", err)
@@ -144,8 +144,8 @@ func (s *Sonarr) GetTags(ctx context.Context, forceRefresh bool) (cache.TagMap, 
 	return tagMap, nil
 }
 
-func (s *Sonarr) GetTagIDByLabel(ctx context.Context, label string) (int32, error) {
-	tagsMap, err := s.GetTags(ctx, false)
+func (s *Sonarr) getTagIDByLabel(ctx context.Context, label string) (int32, error) {
+	tagsMap, err := s.getTags(ctx, false)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get Sonarr tags: %w", err)
 	}
@@ -159,8 +159,8 @@ func (s *Sonarr) GetTagIDByLabel(ctx context.Context, label string) (int32, erro
 	return 0, fmt.Errorf("sonarr tag with label %s not found", label)
 }
 
-func (s *Sonarr) EnsureTagExists(ctx context.Context, deleteTagLabel string) error {
-	tagMap, err := s.GetTags(ctx, false)
+func (s *Sonarr) ensureTagExists(ctx context.Context, deleteTagLabel string) error {
+	tagMap, err := s.getTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get Sonarr tags: %w", err)
 	}
@@ -196,7 +196,7 @@ func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
 		return fmt.Errorf("failed to list sonarr series: %w", err)
 	}
 
-	tagMap, err := s.GetTags(ctx, true)
+	tagMap, err := s.getTags(ctx, true)
 	if err != nil {
 		return fmt.Errorf("failed to get sonarr tags: %w", err)
 	}
@@ -299,16 +299,16 @@ func (s *Sonarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
 		return fmt.Errorf("failed to get sonarr series: %w", err)
 	}
 
-	if err := s.EnsureTagExists(ctx, tags.JellysweepIgnoreTag); err != nil {
+	if err := s.ensureTagExists(ctx, tags.JellysweepIgnoreTag); err != nil {
 		return fmt.Errorf("failed to ensure ignore tag: %w", err)
 	}
 
-	ignoreID, err := s.GetTagIDByLabel(ctx, tags.JellysweepIgnoreTag)
+	ignoreID, err := s.getTagIDByLabel(ctx, tags.JellysweepIgnoreTag)
 	if err != nil {
 		return fmt.Errorf("failed to get ignore tag id: %w", err)
 	}
 
-	tagMap, err := s.GetTags(ctx, false)
+	tagMap, err := s.getTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get sonarr tags: %w", err)
 	}

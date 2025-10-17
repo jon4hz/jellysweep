@@ -55,7 +55,7 @@ func NewRadarr(client *radarrAPI.APIClient, cfg *config.Config, stats stats.Stat
 
 // GetItems merges Jellyfin items with Radarr movies into library-grouped MediaItems.
 func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem) (map[string][]arr.MediaItem, error) {
-	tagMap, err := r.GetTags(ctx, true)
+	tagMap, err := r.getTags(ctx, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Radarr tags: %w", err)
 	}
@@ -114,7 +114,7 @@ func (r *Radarr) getItems(ctx context.Context) ([]radarrAPI.MovieResource, error
 	return movies, nil
 }
 
-func (r *Radarr) GetTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
+func (r *Radarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
 	if forceRefresh {
 		if err := r.tagsCache.Clear(ctx); err != nil {
 			log.Debug("Failed to clear Radarr tags cache, fetching from API", "error", err)
@@ -146,8 +146,8 @@ func (r *Radarr) GetTags(ctx context.Context, forceRefresh bool) (cache.TagMap, 
 	return tagMap, nil
 }
 
-func (r *Radarr) GetTagIDByLabel(ctx context.Context, label string) (int32, error) {
-	tagsMap, err := r.GetTags(ctx, false)
+func (r *Radarr) getTagIDByLabel(ctx context.Context, label string) (int32, error) {
+	tagsMap, err := r.getTags(ctx, false)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -161,8 +161,8 @@ func (r *Radarr) GetTagIDByLabel(ctx context.Context, label string) (int32, erro
 	return 0, fmt.Errorf("radarr tag with label %s not found", label)
 }
 
-func (r *Radarr) EnsureTagExists(ctx context.Context, label string) error {
-	tagMap, err := r.GetTags(ctx, false)
+func (r *Radarr) ensureTagExists(ctx context.Context, label string) error {
+	tagMap, err := r.getTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
@@ -215,7 +215,7 @@ func (r *Radarr) ResetTags(ctx context.Context, additionalTags []string) error {
 		return fmt.Errorf("failed to list radarr movies: %w", err)
 	}
 
-	tagMap, err := r.GetTags(ctx, false)
+	tagMap, err := r.getTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get Radarr tags: %w", err)
 	}
@@ -315,16 +315,16 @@ func (r *Radarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
 		return fmt.Errorf("failed to get radarr movie: %w", err)
 	}
 
-	if err := r.EnsureTagExists(ctx, tags.JellysweepIgnoreTag); err != nil {
+	if err := r.ensureTagExists(ctx, tags.JellysweepIgnoreTag); err != nil {
 		return fmt.Errorf("failed to create ignore tag: %w", err)
 	}
 
-	ignoreID, err := r.GetTagIDByLabel(ctx, tags.JellysweepIgnoreTag)
+	ignoreID, err := r.getTagIDByLabel(ctx, tags.JellysweepIgnoreTag)
 	if err != nil {
 		return fmt.Errorf("failed to get ignore tag ID: %w", err)
 	}
 
-	tagMap, err := r.GetTags(ctx, false)
+	tagMap, err := r.getTags(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get radarr tags: %w", err)
 	}
