@@ -233,7 +233,6 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 	// Clear all caches to ensure fresh data
 	e.cache.ClearAll(ctx)
 
-	e.removeExpiredKeepTags(ctx)
 	if err = e.markForDeletion(ctx); err != nil {
 		log.Error("An error occurred while marking media for deletion")
 	}
@@ -318,22 +317,6 @@ func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
 	}
 
 	log.Info("Recently played items removal process completed")
-}
-
-// removeExpiredKeepTags removes keep request tags that have expired.
-func (e *Engine) removeExpiredKeepTags(ctx context.Context) {
-	log.Info("Removing expired keep request tags")
-	if e.sonarr != nil {
-		if err := e.sonarr.RemoveExpiredKeepTags(ctx); err != nil {
-			log.Errorf("failed to remove expired Sonarr keep tags: %v", err)
-		}
-	}
-
-	if e.radarr != nil {
-		if err := e.radarr.RemoveExpiredKeepTags(ctx); err != nil {
-			log.Errorf("failed to remove expired Radarr keep tags: %v", err)
-		}
-	}
 }
 
 func (e *Engine) markForDeletion(ctx context.Context) error {
