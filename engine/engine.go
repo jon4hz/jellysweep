@@ -270,7 +270,7 @@ func (e *Engine) GetEngineCache() *cache.EngineCache {
 func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
 	log.Info("Removing recently played items from database")
 
-	mediaItems, err := e.db.GetMediaItems(ctx)
+	mediaItems, err := e.db.GetMediaItems(ctx, true)
 	if err != nil {
 		log.Error("Failed to get media items from database", "error", err)
 		return
@@ -531,7 +531,7 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems mediaItemsMap) error {
 func (e *Engine) cleanupMedia(ctx context.Context) error {
 	deletedItems := make(mediaItemsMap)
 
-	mediaItems, err := e.db.GetMediaItems(ctx)
+	mediaItems, err := e.db.GetMediaItems(ctx, false)
 	if err != nil {
 		log.Errorf("failed to get media items from database: %v", err)
 		return err

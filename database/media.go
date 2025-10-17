@@ -66,13 +66,18 @@ func (c *Client) GetMediaItemByID(ctx context.Context, id uint) (*Media, error) 
 }
 
 // GetMediaItems retrieves all unprotected media items from the database.
-func (c *Client) GetMediaItems(ctx context.Context) ([]Media, error) {
-	var mediaItems []Media
-	result := c.db.WithContext(ctx).
+func (c *Client) GetMediaItems(ctx context.Context, includeProtected bool) ([]Media, error) {
+	tx := c.db.WithContext(ctx).
 		Preload("DiskUsageDeletePolicies").
-		Preload("Request").
-		Where("protected_until IS NULL").
-		Find(&mediaItems)
+		Preload("Request")
+
+	if !includeProtected {
+		tx = tx.Where("protected_until IS NULL OR protected_until < ?", time.Now())
+	}
+
+	var mediaItems []Media
+	result := tx.Find(&mediaItems)
+
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		log.Error("failed to get media items", "error", result.Error)
 		return nil, result.Error
@@ -83,7 +88,7 @@ func (c *Client) GetMediaItems(ctx context.Context) ([]Media, error) {
 func (c *Client) GetMediaItemsByMediaType(ctx context.Context, mediaType MediaType) ([]Media, error) {
 	var mediaItems []Media
 	result := c.db.WithContext(ctx).
-		Where("media_type = ? AND protected_until IS NULL", mediaType).
+		Where("media_type = ? AND (protected_until IS NULL OR protected_until < ?)", mediaType, time.Now()).
 		Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		log.Error("failed to get media items by type", "error", result.Error)
@@ -96,7 +101,7 @@ func (c *Client) GetMediaWithPendingRequest(ctx context.Context) ([]Media, error
 	var mediaItems []Media
 	result := c.db.WithContext(ctx).
 		Preload("Request").
-		Where("requests.status = ? AND protected_until IS NULL", RequestStatusPending).
+		Where("requests.status = ? AND (protected_until IS NULL OR protected_until < ?)", RequestStatusPending, time.Now()).
 		Joins("JOIN requests ON requests.media_id = media.id").
 		Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {

@@ -36,7 +36,7 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 		return
 	}
 
-	mediaItems, err := h.db.GetMediaItems(c.Request.Context())
+	mediaItems, err := h.db.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
 		return
@@ -240,7 +240,7 @@ func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 
 // GetAdminMediaItems returns media items for admin with caching support.
 func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
-	mediaItems, err := h.db.GetMediaItems(c.Request.Context())
+	mediaItems, err := h.db.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

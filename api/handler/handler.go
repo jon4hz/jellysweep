@@ -31,7 +31,7 @@ func New(eng *engine.Engine, db database.DB, authConfig *config.AuthConfig) *Han
 func (h *Handler) Home(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
-	mediaItems, err := h.db.GetMediaItems(c.Request.Context())
+	mediaItems, err := h.db.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
 		// Log error and fall back to empty data
 		log.Error("Failed to get media items", "error", err)
@@ -154,7 +154,7 @@ func (h *Handler) Me(c *gin.Context) {
 
 // GetMediaItems returns the current user's media items as JSON.
 func (h *Handler) GetMediaItems(c *gin.Context) {
-	mediaItems, err := h.db.GetMediaItems(c.Request.Context())
+	mediaItems, err := h.db.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

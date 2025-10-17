@@ -43,7 +43,7 @@ type DB interface {
 type MediaDB interface {
 	CreateMediaItems(ctx context.Context, items []Media) error
 	GetMediaItemByID(ctx context.Context, id uint) (*Media, error)
-	GetMediaItems(ctx context.Context) ([]Media, error)
+	GetMediaItems(ctx context.Context, includeProtected bool) ([]Media, error)
 	GetMediaItemsByMediaType(ctx context.Context, mediaType MediaType) ([]Media, error)
 	GetMediaWithPendingRequest(ctx context.Context) ([]Media, error)
 	SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error

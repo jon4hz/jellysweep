@@ -43,10 +43,12 @@ func (e *Engine) ApplyAll(media *database.Media) error {
 // ShouldTriggerDeletion checks if any policy indicates that the media should be deleted.
 // All policies will be checked until one returns true.
 func (e *Engine) ShouldTriggerDeletion(ctx context.Context, media database.Media) (bool, error) {
+	// usually we shouldn't get protected media here because the database query filters them out.
+	// but just to be safe:
 	if media.ProtectedUntil != nil && !media.ProtectedUntil.IsZero() && media.ProtectedUntil.Before(time.Now()) {
-		// If the media is protected until a certain date, do not delete it
 		return false, nil
 	}
+
 	for _, policy := range e.policies {
 		trigger, err := policy.ShouldTriggerDeletion(ctx, media)
 		if err != nil {

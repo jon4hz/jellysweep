@@ -12,7 +12,7 @@ import (
 func (e *Engine) filterAlreadyMarkedForDeletion(mediaItems mediaItemsMap) (mediaItemsMap, error) {
 	filteredItems := make(mediaItemsMap, 0)
 
-	dbItems, err := e.db.GetMediaItems(context.Background())
+	dbItems, err := e.db.GetMediaItems(context.Background(), true)
 	if err != nil {
 		return nil, err
 	}
