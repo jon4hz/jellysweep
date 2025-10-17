@@ -22,11 +22,10 @@ import (
 var _ arr.Arrer = (*Sonarr)(nil)
 
 type Sonarr struct {
-	client     *sonarrAPI.APIClient
-	stats      stats.Statser
-	cfg        *config.Config
-	itemsCache *cache.PrefixedCache[[]sonarrAPI.SeriesResource]
-	tagsCache  *cache.PrefixedCache[cache.TagMap]
+	client    *sonarrAPI.APIClient
+	stats     stats.Statser
+	cfg       *config.Config
+	tagsCache *cache.PrefixedCache[cache.TagMap]
 }
 
 func sonarrAuthCtx(ctx context.Context, cfg *config.SonarrConfig) context.Context {
@@ -45,23 +44,22 @@ func sonarrAuthCtx(ctx context.Context, cfg *config.SonarrConfig) context.Contex
 	)
 }
 
-func NewSonarr(client *sonarrAPI.APIClient, cfg *config.Config, stats stats.Statser, itemsCache *cache.PrefixedCache[[]sonarrAPI.SeriesResource], tagsCache *cache.PrefixedCache[cache.TagMap]) *Sonarr {
+func NewSonarr(client *sonarrAPI.APIClient, cfg *config.Config, stats stats.Statser, tagsCache *cache.PrefixedCache[cache.TagMap]) *Sonarr {
 	return &Sonarr{
-		client:     client,
-		cfg:        cfg,
-		stats:      stats,
-		itemsCache: itemsCache,
-		tagsCache:  tagsCache,
+		client:    client,
+		cfg:       cfg,
+		stats:     stats,
+		tagsCache: tagsCache,
 	}
 }
 
-func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem, forceRefresh bool) (map[string][]arr.MediaItem, error) {
-	tagMap, err := s.GetTags(ctx, forceRefresh)
+func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem) (map[string][]arr.MediaItem, error) {
+	tagMap, err := s.GetTags(ctx, true)
 	if err != nil {
 		return nil, err
 	}
 
-	series, err := s.getItems(ctx, forceRefresh)
+	series, err := s.getItems(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -105,31 +103,12 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem,
 	return mediaItems, nil
 }
 
-func (s *Sonarr) getItems(ctx context.Context, forceRefresh bool) ([]sonarrAPI.SeriesResource, error) {
-	if forceRefresh {
-		if err := s.itemsCache.Clear(ctx); err != nil {
-			log.Debug("Failed to clear sonarr items cache, fetching from API", "error", err)
-		}
-	}
-
-	cachedItems, err := s.itemsCache.Get(ctx, "all")
-	if err != nil {
-		log.Debug("Failed to get Sonarr items from cache, fetching from API", "error", err)
-	}
-	if len(cachedItems) != 0 && !forceRefresh {
-		return cachedItems, nil
-	}
-
+func (s *Sonarr) getItems(ctx context.Context) ([]sonarrAPI.SeriesResource, error) {
 	series, resp, err := s.client.SeriesAPI.ListSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr)).IncludeSeasonImages(false).Execute()
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close() //nolint: errcheck
-
-	if err := s.itemsCache.Set(ctx, "all", series); err != nil {
-		log.Warnf("Failed to cache Sonarr items: %v", err)
-	}
-
 	return series, nil
 }
 
@@ -212,7 +191,7 @@ func (s *Sonarr) EnsureTagExists(ctx context.Context, deleteTagLabel string) err
 
 // ResetTags removes jellysweep-related tags (and additionalTags) from all series.
 func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
-	series, err := s.getItems(ctx, true)
+	series, err := s.getItems(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list sonarr series: %w", err)
 	}

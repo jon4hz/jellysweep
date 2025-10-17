@@ -94,12 +94,12 @@ func New(cfg *config.Config, db database.DB) (*Engine, error) {
 	}
 
 	// Create Jellyfin client
-	jellyfinClient := jellyfin.New(cfg, engineCache.JellyfinItemsCache)
+	jellyfinClient := jellyfin.New(cfg)
 
 	var sonarrClient arr.Arrer
 	if cfg.Sonarr != nil {
 		rawSonarrClient := newSonarrClient(cfg.Sonarr)
-		sonarrClient = sonarrImpl.NewSonarr(rawSonarrClient, cfg, statsClient, engineCache.SonarrItemsCache, engineCache.SonarrTagsCache)
+		sonarrClient = sonarrImpl.NewSonarr(rawSonarrClient, cfg, statsClient, engineCache.SonarrTagsCache)
 	} else {
 		log.Warn("Sonarr configuration is missing, some features will be disabled")
 	}
@@ -107,7 +107,7 @@ func New(cfg *config.Config, db database.DB) (*Engine, error) {
 	var radarrClient arr.Arrer
 	if cfg.Radarr != nil {
 		rawRadarrClient := newRadarrClient(cfg.Radarr)
-		radarrClient = radarrImpl.NewRadarr(rawRadarrClient, cfg, statsClient, engineCache.RadarrItemsCache, engineCache.RadarrTagsCache)
+		radarrClient = radarrImpl.NewRadarr(rawRadarrClient, cfg, statsClient, engineCache.RadarrTagsCache)
 	} else {
 		log.Warn("Radarr configuration is missing, some features will be disabled")
 	}
@@ -407,14 +407,14 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 // gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
 // It merges them into a single collection grouped by library.
 func (e *Engine) gatherMediaItems(ctx context.Context) (mediaItemsMap, error) {
-	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx, true)
+	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jellyfin items: %w", err)
 	}
 
 	var sonarrItems mediaItemsMap
 	if e.sonarr != nil {
-		sonarrItems, err = e.sonarr.GetItems(ctx, jellyfinItems, true)
+		sonarrItems, err = e.sonarr.GetItems(ctx, jellyfinItems)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sonarr items: %w", err)
 		}
@@ -422,7 +422,7 @@ func (e *Engine) gatherMediaItems(ctx context.Context) (mediaItemsMap, error) {
 
 	var radarrItems mediaItemsMap
 	if e.radarr != nil {
-		radarrItems, err = e.radarr.GetItems(ctx, jellyfinItems, true)
+		radarrItems, err = e.radarr.GetItems(ctx, jellyfinItems)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get radarr items: %w", err)
 		}

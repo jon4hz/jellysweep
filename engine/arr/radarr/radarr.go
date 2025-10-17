@@ -22,11 +22,10 @@ import (
 var _ arr.Arrer = (*Radarr)(nil)
 
 type Radarr struct {
-	client     *radarrAPI.APIClient
-	cfg        *config.Config
-	stats      stats.Statser
-	itemsCache *cache.PrefixedCache[[]radarrAPI.MovieResource]
-	tagsCache  *cache.PrefixedCache[cache.TagMap]
+	client    *radarrAPI.APIClient
+	cfg       *config.Config
+	stats     stats.Statser
+	tagsCache *cache.PrefixedCache[cache.TagMap]
 }
 
 func radarrAuthCtx(ctx context.Context, cfg *config.RadarrConfig) context.Context {
@@ -45,24 +44,23 @@ func radarrAuthCtx(ctx context.Context, cfg *config.RadarrConfig) context.Contex
 	)
 }
 
-func NewRadarr(client *radarrAPI.APIClient, cfg *config.Config, stats stats.Statser, itemsCache *cache.PrefixedCache[[]radarrAPI.MovieResource], tagsCache *cache.PrefixedCache[cache.TagMap]) *Radarr {
+func NewRadarr(client *radarrAPI.APIClient, cfg *config.Config, stats stats.Statser, tagsCache *cache.PrefixedCache[cache.TagMap]) *Radarr {
 	return &Radarr{
-		client:     client,
-		cfg:        cfg,
-		stats:      stats,
-		itemsCache: itemsCache,
-		tagsCache:  tagsCache,
+		client:    client,
+		cfg:       cfg,
+		stats:     stats,
+		tagsCache: tagsCache,
 	}
 }
 
 // GetItems merges Jellyfin items with Radarr movies into library-grouped MediaItems.
-func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem, forceRefresh bool) (map[string][]arr.MediaItem, error) {
-	tagMap, err := r.GetTags(ctx, forceRefresh)
+func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem) (map[string][]arr.MediaItem, error) {
+	tagMap, err := r.GetTags(ctx, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Radarr tags: %w", err)
 	}
 
-	movies, err := r.getItems(ctx, forceRefresh)
+	movies, err := r.getItems(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Radarr items: %w", err)
 	}
@@ -107,30 +105,12 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem,
 	return mediaItems, nil
 }
 
-func (r *Radarr) getItems(ctx context.Context, forceRefresh bool) ([]radarrAPI.MovieResource, error) {
-	if forceRefresh {
-		if err := r.itemsCache.Clear(ctx); err != nil {
-			log.Debug("Failed to clear radarr items cache, fetching from API", "error", err)
-		}
-	}
-
-	cachedItems, err := r.itemsCache.Get(ctx, "all")
-	if err != nil {
-		log.Debug("Failed to get Radarr items from cache, fetching from API", "error", err)
-	}
-	if len(cachedItems) != 0 && !forceRefresh {
-		return cachedItems, nil
-	}
-
+func (r *Radarr) getItems(ctx context.Context) ([]radarrAPI.MovieResource, error) {
 	movies, resp, err := r.client.MovieAPI.ListMovie(radarrAuthCtx(ctx, r.cfg.Radarr)).Execute()
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close() //nolint: errcheck
-
-	if err := r.itemsCache.Set(ctx, "all", movies); err != nil {
-		log.Warnf("Failed to cache Radarr items: %v", err)
-	}
 	return movies, nil
 }
 
@@ -230,7 +210,7 @@ func (r *Radarr) DeleteMedia(ctx context.Context, movieID int32, title string) e
 }
 
 func (r *Radarr) ResetTags(ctx context.Context, additionalTags []string) error {
-	movies, err := r.getItems(ctx, true)
+	movies, err := r.getItems(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list radarr movies: %w", err)
 	}

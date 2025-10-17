@@ -30,10 +30,10 @@ type MediaItem struct {
 }
 
 type Arrer interface {
-	GetItems(ctx context.Context, jellyfinItems []JellyfinItem, forceRefresh bool) (map[string][]MediaItem, error)
+	GetItems(ctx context.Context, jellyfinItems []JellyfinItem) (map[string][]MediaItem, error)
 	GetTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error)
 	GetTagIDByLabel(ctx context.Context, label string) (int32, error)
-	EnsureTagExists(ctx context.Context, deleteTagLabel string) error
+	EnsureTagExists(ctx context.Context, label string) error
 	DeleteMedia(ctx context.Context, arrID int32, title string) error
 
 	// Bulk tag resets/cleanup

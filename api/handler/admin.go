@@ -345,25 +345,10 @@ func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
 
 	// Use error group to clear all caches concurrently and collect any errors
 	var g errgroup.Group
-	g.Go(func() error {
-		if err := engineCache.SonarrItemsCache.Clear(c.Request.Context()); err != nil {
-			log.Error("Failed to clear Sonarr items cache", "error", err)
-			return err
-		}
-		return nil
-	})
 
 	g.Go(func() error {
 		if err := engineCache.SonarrTagsCache.Clear(c.Request.Context()); err != nil {
 			log.Error("Failed to clear Sonarr tags cache", "error", err)
-			return err
-		}
-		return nil
-	})
-
-	g.Go(func() error {
-		if err := engineCache.RadarrItemsCache.Clear(c.Request.Context()); err != nil {
-			log.Error("Failed to clear Radarr items cache", "error", err)
 			return err
 		}
 		return nil
