@@ -53,7 +53,7 @@ func NewSonarr(client *sonarrAPI.APIClient, cfg *config.Config, stats stats.Stat
 	}
 }
 
-func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem) (map[string][]arr.MediaItem, error) {
+func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem) ([]arr.MediaItem, error) {
 	tagMap, err := s.getTags(ctx, true)
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 		byKey[key] = s
 	}
 
-	mediaItems := make(map[string][]arr.MediaItem, 0)
+	mediaItems := make([]arr.MediaItem, 0)
 	for _, jf := range jellyfinItems {
 		libraryName := strings.ToLower(jf.ParentLibraryName)
 		if libraryName == "" {
@@ -87,7 +87,7 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 		if !ok {
 			continue
 		}
-		mediaItems[libraryName] = append(mediaItems[libraryName], arr.MediaItem{
+		mediaItems = append(mediaItems, arr.MediaItem{
 			JellyfinID:     jf.GetId(),
 			LibraryName:    libraryName,
 			SeriesResource: sr,

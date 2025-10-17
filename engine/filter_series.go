@@ -9,7 +9,7 @@ import (
 )
 
 // filterSeriesAlreadyMeetingKeepCriteria filters out series that already meet the keep criteria.
-func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria(mediaItems mediaItemsMap) mediaItemsMap {
+func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria(mediaItems []arr.MediaItem) []arr.MediaItem {
 	cleanupMode := e.cfg.GetCleanupMode()
 	keepCount := e.cfg.GetKeepCount()
 
@@ -18,42 +18,29 @@ func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria(mediaItems mediaItemsMap
 		return mediaItems
 	}
 
-	totalSkippedCount := 0
-
-	for lib, items := range mediaItems {
-		var filteredItems []arr.MediaItem
-		skippedCount := 0
-
-		for _, item := range items {
-			if item.MediaType != models.MediaTypeTV {
-				// Keep non-TV items as-is
-				filteredItems = append(filteredItems, item)
-				continue
-			}
-
-			if e.shouldSkipSeriesForDeletion(item.SeriesResource, cleanupMode, keepCount) {
-				log.Debugf("Excluded series %s - already meets keep criteria (%s: %d)", item.Title, cleanupMode, keepCount)
-				skippedCount++
-				totalSkippedCount++
-			} else {
-				log.Debugf("Included series for deletion %s", item.Title)
-				filteredItems = append(filteredItems, item)
-			}
+	skippedCount := 0
+	filteredItems := make([]arr.MediaItem, 0)
+	for _, item := range mediaItems {
+		if item.MediaType != models.MediaTypeTV {
+			// Keep non-TV items as-is
+			filteredItems = append(filteredItems, item)
+			continue
 		}
 
-		// Update the media items for this library
-		mediaItems[lib] = filteredItems
-
-		if skippedCount > 0 {
-			log.Infof("Filtered out %d series from library %s that already meet keep criteria", skippedCount, lib)
+		if e.shouldSkipSeriesForDeletion(item.SeriesResource, cleanupMode, keepCount) {
+			log.Debugf("Excluded series %s - already meets keep criteria (%s: %d)", item.Title, cleanupMode, keepCount)
+			skippedCount++
+		} else {
+			log.Debugf("Included series for deletion %s", item.Title)
+			filteredItems = append(filteredItems, item)
 		}
 	}
 
-	if totalSkippedCount > 0 {
-		log.Infof("Total filtered out: %d series that already meet keep criteria", totalSkippedCount)
+	if skippedCount > 0 {
+		log.Infof("Total filtered out: %d series that already meet keep criteria", skippedCount)
 	}
 
-	return mediaItems
+	return filteredItems
 }
 
 // shouldSkipSeriesForDeletion checks if a series already meets the keep criteria and should not be marked for deletion.

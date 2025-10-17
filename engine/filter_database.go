@@ -9,27 +9,25 @@ import (
 	"github.com/jon4hz/jellysweep/engine/arr"
 )
 
-func (e *Engine) filterAlreadyMarkedForDeletion(mediaItems mediaItemsMap) (mediaItemsMap, error) {
-	filteredItems := make(mediaItemsMap, 0)
+func (e *Engine) filterAlreadyMarkedForDeletion(mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
+	filteredItems := make([]arr.MediaItem, 0)
 
 	dbItems, err := e.db.GetMediaItems(context.Background(), true)
 	if err != nil {
 		return nil, err
 	}
-	for lib, items := range mediaItems {
-		for _, item := range items {
-			markedForDeletion := false
-			for _, dbItem := range dbItems {
-				if arrItemIsEqual(item, dbItem) {
-					log.Debugf("Excluding item %s already marked for deletion in database", item.Title)
-					markedForDeletion = true
-					break
-				}
+	for _, item := range mediaItems {
+		markedForDeletion := false
+		for _, dbItem := range dbItems {
+			if arrItemIsEqual(item, dbItem) {
+				log.Debugf("Excluding item %s already marked for deletion in database", item.Title)
+				markedForDeletion = true
+				break
 			}
-			if !markedForDeletion {
-				log.Debugf("Including item %s not marked for deletion in database", item.Title)
-				filteredItems[lib] = append(filteredItems[lib], item)
-			}
+		}
+		if !markedForDeletion {
+			log.Debugf("Including item %s not marked for deletion in database", item.Title)
+			filteredItems = append(filteredItems, item)
 		}
 	}
 

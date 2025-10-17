@@ -31,8 +31,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type mediaItemsMap map[string][]arr.MediaItem
-
 var (
 	// ErrRequestAlreadyProcessed indicates that a keep request has already been processed.
 	ErrRequestAlreadyProcessed = errors.New("request already processed")
@@ -157,7 +155,7 @@ func New(cfg *config.Config, db database.DB) (*Engine, error) {
 		webpush:    webpushClient,
 		scheduler:  sched,
 		data: &data{
-			userNotifications: make(mediaItemsMap),
+			userNotifications: make(map[string][]arr.MediaItem),
 		},
 		imageCache: cache.NewImageCache("./data/cache/images"),
 		cache:      engineCache,
@@ -370,15 +368,14 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 
 	// Populate user notifications for email sending
 	if e.data.userNotifications == nil {
-		e.data.userNotifications = make(mediaItemsMap)
+		e.data.userNotifications = make(map[string][]arr.MediaItem)
 	}
 
-	for lib, items := range mediaItems {
-		for _, item := range items {
-			e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
-			log.Info("Marking media item for deletion", "name", item.Title, "library", lib)
-		}
+	for _, item := range mediaItems {
+		e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
+		log.Info("Marking media item for deletion", "name", item.Title, "library", item.LibraryName)
 	}
+
 	log.Info("Media items filtered successfully")
 
 	if len(mediaItems) == 0 {
@@ -406,13 +403,13 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 
 // gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
 // It merges them into a single collection grouped by library.
-func (e *Engine) gatherMediaItems(ctx context.Context) (mediaItemsMap, error) {
+func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) {
 	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jellyfin items: %w", err)
 	}
 
-	var sonarrItems mediaItemsMap
+	var sonarrItems []arr.MediaItem
 	if e.sonarr != nil {
 		sonarrItems, err = e.sonarr.GetItems(ctx, jellyfinItems)
 		if err != nil {
@@ -420,7 +417,7 @@ func (e *Engine) gatherMediaItems(ctx context.Context) (mediaItemsMap, error) {
 		}
 	}
 
-	var radarrItems mediaItemsMap
+	var radarrItems []arr.MediaItem
 	if e.radarr != nil {
 		radarrItems, err = e.radarr.GetItems(ctx, jellyfinItems)
 		if err != nil {
@@ -429,18 +426,9 @@ func (e *Engine) gatherMediaItems(ctx context.Context) (mediaItemsMap, error) {
 	}
 
 	// Merge all media items
-	mediaItems := make(mediaItemsMap)
-	totalCount := 0
-	for lib, items := range sonarrItems {
-		mediaItems[lib] = append(mediaItems[lib], items...)
-		totalCount += len(items)
-	}
-	for lib, items := range radarrItems {
-		mediaItems[lib] = append(mediaItems[lib], items...)
-		totalCount += len(items)
-	}
-
-	log.Infof("Merged %d media items across %d libraries", totalCount, len(mediaItems))
+	mediaItems := make([]arr.MediaItem, 0)
+	mediaItems = append(mediaItems, sonarrItems...)
+	mediaItems = append(mediaItems, radarrItems...)
 
 	// Set deletion policies with freshly gathered library folders map
 	e.policy.SetPolicies(
@@ -451,57 +439,55 @@ func (e *Engine) gatherMediaItems(ctx context.Context) (mediaItemsMap, error) {
 	return mediaItems, nil
 }
 
-func (e *Engine) saveMediaItemsToDatabase(mediaItems mediaItemsMap) error {
+func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
 	dbMediaItems := make([]database.Media, 0)
-	for _, items := range mediaItems {
-		for _, item := range items {
-			dbItem := database.Media{
-				JellyfinID:  item.JellyfinID,
-				LibraryName: item.LibraryName,
-				RequestedBy: item.RequestedBy,
-			}
-
-			switch item.MediaType {
-			case models.MediaTypeTV:
-				dbItem.MediaType = database.MediaTypeTV
-				dbItem.ArrID = item.SeriesResource.GetId()
-				dbItem.Title = item.SeriesResource.GetTitle()
-				dbItem.Year = item.SeriesResource.GetYear()
-				dbItem.FileSize = item.SeriesResource.Statistics.GetSizeOnDisk()
-				dbItem.TvdbId = lo.ToPtr(item.SeriesResource.GetTvdbId())
-				dbItem.TmdbId = lo.ToPtr(item.SeriesResource.GetTmdbId())
-
-				for _, img := range item.SeriesResource.GetImages() {
-					if img.GetCoverType() == sonarrAPI.MEDIACOVERTYPES_POSTER {
-						dbItem.PosterURL = img.GetRemoteUrl()
-					}
-				}
-
-			case models.MediaTypeMovie:
-				dbItem.MediaType = database.MediaTypeMovie
-				dbItem.ArrID = item.MovieResource.GetId()
-				dbItem.Title = item.MovieResource.GetTitle()
-				dbItem.Year = item.MovieResource.GetYear()
-				dbItem.FileSize = item.MovieResource.Statistics.GetSizeOnDisk()
-				dbItem.TmdbId = lo.ToPtr(item.MovieResource.GetTmdbId())
-
-				for _, img := range item.MovieResource.GetImages() {
-					if img.GetCoverType() == radarrAPI.MEDIACOVERTYPES_POSTER {
-						dbItem.PosterURL = img.GetRemoteUrl()
-					}
-				}
-
-			default:
-				return fmt.Errorf("unsupported media type: %s", item.MediaType)
-			}
-
-			if err := e.policy.ApplyAll(&dbItem); err != nil {
-				log.Errorf("failed to apply policies to media item %s: %v", dbItem.Title, err)
-				continue
-			}
-
-			dbMediaItems = append(dbMediaItems, dbItem)
+	for _, item := range mediaItems {
+		dbItem := database.Media{
+			JellyfinID:  item.JellyfinID,
+			LibraryName: item.LibraryName,
+			RequestedBy: item.RequestedBy,
 		}
+
+		switch item.MediaType {
+		case models.MediaTypeTV:
+			dbItem.MediaType = database.MediaTypeTV
+			dbItem.ArrID = item.SeriesResource.GetId()
+			dbItem.Title = item.SeriesResource.GetTitle()
+			dbItem.Year = item.SeriesResource.GetYear()
+			dbItem.FileSize = item.SeriesResource.Statistics.GetSizeOnDisk()
+			dbItem.TvdbId = lo.ToPtr(item.SeriesResource.GetTvdbId())
+			dbItem.TmdbId = lo.ToPtr(item.SeriesResource.GetTmdbId())
+
+			for _, img := range item.SeriesResource.GetImages() {
+				if img.GetCoverType() == sonarrAPI.MEDIACOVERTYPES_POSTER {
+					dbItem.PosterURL = img.GetRemoteUrl()
+				}
+			}
+
+		case models.MediaTypeMovie:
+			dbItem.MediaType = database.MediaTypeMovie
+			dbItem.ArrID = item.MovieResource.GetId()
+			dbItem.Title = item.MovieResource.GetTitle()
+			dbItem.Year = item.MovieResource.GetYear()
+			dbItem.FileSize = item.MovieResource.Statistics.GetSizeOnDisk()
+			dbItem.TmdbId = lo.ToPtr(item.MovieResource.GetTmdbId())
+
+			for _, img := range item.MovieResource.GetImages() {
+				if img.GetCoverType() == radarrAPI.MEDIACOVERTYPES_POSTER {
+					dbItem.PosterURL = img.GetRemoteUrl()
+				}
+			}
+
+		default:
+			return fmt.Errorf("unsupported media type: %s", item.MediaType)
+		}
+
+		if err := e.policy.ApplyAll(&dbItem); err != nil {
+			log.Errorf("failed to apply policies to media item %s: %v", dbItem.Title, err)
+			continue
+		}
+
+		dbMediaItems = append(dbMediaItems, dbItem)
 	}
 
 	if err := e.db.CreateMediaItems(context.Background(), dbMediaItems); err != nil {
@@ -512,7 +498,7 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems mediaItemsMap) error {
 }
 
 func (e *Engine) cleanupMedia(ctx context.Context) error {
-	deletedItems := make(mediaItemsMap)
+	deletedItems := make(map[string][]arr.MediaItem)
 
 	mediaItems, err := e.db.GetMediaItems(ctx, false)
 	if err != nil {
@@ -676,7 +662,7 @@ func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept boo
 }
 
 // ResetAllTags removes all jellysweep tags from all media in Sonarr and Radarr.
-// Deprecated: this is only kept to migrate from the old tag based system to the new database driven system.
+// Legacy: also cleans up any remaining tags.
 func (e *Engine) ResetAllTags(ctx context.Context, additionalTags []string) error {
 	log.Info("Resetting all jellysweep tags...")
 

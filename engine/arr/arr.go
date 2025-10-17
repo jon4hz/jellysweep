@@ -29,7 +29,7 @@ type MediaItem struct {
 }
 
 type Arrer interface {
-	GetItems(ctx context.Context, jellyfinItems []JellyfinItem) (map[string][]MediaItem, error)
+	GetItems(ctx context.Context, jellyfinItems []JellyfinItem) ([]MediaItem, error)
 	DeleteMedia(ctx context.Context, arrID int32, title string) error
 
 	// Bulk tag resets/cleanup

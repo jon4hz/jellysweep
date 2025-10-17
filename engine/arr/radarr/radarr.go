@@ -54,7 +54,7 @@ func NewRadarr(client *radarrAPI.APIClient, cfg *config.Config, stats stats.Stat
 }
 
 // GetItems merges Jellyfin items with Radarr movies into library-grouped MediaItems.
-func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem) (map[string][]arr.MediaItem, error) {
+func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem) ([]arr.MediaItem, error) {
 	tagMap, err := r.getTags(ctx, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Radarr tags: %w", err)
@@ -72,7 +72,7 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 		byKey[key] = m
 	}
 
-	mediaItems := make(map[string][]arr.MediaItem)
+	mediaItems := make([]arr.MediaItem, 0)
 	for _, jf := range jellyfinItems {
 		libraryName := strings.ToLower(jf.ParentLibraryName)
 		if libraryName == "" {
@@ -89,7 +89,7 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 			continue
 		}
 
-		mediaItems[libraryName] = append(mediaItems[libraryName], arr.MediaItem{
+		mediaItems = append(mediaItems, arr.MediaItem{
 			JellyfinID:    jf.GetId(),
 			LibraryName:   libraryName,
 			MovieResource: mr,
