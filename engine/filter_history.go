@@ -21,6 +21,9 @@ func (e *Engine) getMediaItemAddedDate(ctx context.Context, item arr.MediaItem) 
 	}
 }
 
+// TODO: make filter smarter so that it checks the content age after the last deletion.
+// We need to handle the use case that content was re-added after deletion correctly.
+
 // filterContentAgeThreshold filters out media items that have been added within the configured threshold.
 func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
 	filteredItems := make([]arr.MediaItem, 0)
