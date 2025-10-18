@@ -179,7 +179,7 @@ func AdminKeepRequestFilters(requestedMedia []database.Media) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</select> <select id=\"request-sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"expiry-date-asc\">Expires Soonest First</option> <option value=\"expiry-date-desc\">Expires Latest First</option> <option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option></select></div><div class=\"flex items-center\"><button id=\"request-refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</select> <select id=\"request-sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option></select></div><div class=\"flex items-center\"><button id=\"request-refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -261,7 +261,7 @@ func AdminMediaFilters(mediaItems []database.Media) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 141, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 139, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -274,7 +274,7 @@ func AdminMediaFilters(mediaItems []database.Media) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 141, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 139, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -297,7 +297,7 @@ func AdminMediaFilters(mediaItems []database.Media) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(mediaType)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 147, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 145, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -310,7 +310,7 @@ func AdminMediaFilters(mediaItems []database.Media) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(mediaType)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 147, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 145, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -374,12 +374,10 @@ func getUniqueMediaTypes(items []database.Media) []database.MediaType {
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_0970`,
-		Function: `function __templ_AdminKeepRequestGridScript_0970(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_b461`,
+		Function: `function __templ_AdminKeepRequestGridScript_b461(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
-			// Store original keep requests data for expiry information
-			this.keepRequestsData = {};
 		}
 
 		loadMediaItemsFromDOM() {
@@ -418,7 +416,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 				const transformedItems = rawKeepRequests.map(request => {
 					// database.Media has ID, not MediaID
 					const deletionTimestamp = request.DefaultDeleteAt ? new Date(request.DefaultDeleteAt).getTime() : 0;
-
+					console.log(request);
+					console.log(request.LibraryName);
 					return {
 						id: request.ID,
 						title: request.Title,
@@ -435,6 +434,7 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 						keepCount: 0
 					};
 				});
+				console.log(transformedItems);
 				this.setItems(transformedItems);
 			} catch (error) {
 				console.error('Failed to parse keep requests data:', error);
@@ -443,6 +443,7 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 
 		createCardElement(item) {
+			console.log(item);
 			const div = document.createElement('div');
 			div.className = 'media-card';
 			div.id = ` + "`" + `request-${item.id}` + "`" + `;
@@ -462,7 +463,7 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 				if (!target) return;
 
 				const mediaId = target.getAttribute('data-media-id');
-				/*if (mediaId !== item.id) return; */
+				if (mediaId != item.id) return;
 
 				if (target.classList.contains('accept-btn')) {
 					const originalContent = this.setButtonLoading(target, 'Accepting...');
@@ -627,7 +628,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			` + "`" + `;
 		}
 
-		// Override sorting to include expiry date
 		sortItems(sortBy) {
 			// Store current scroll position
 			const scrollPosition = window.scrollY;
@@ -812,35 +812,35 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		// Override setItems to handle keep request data format
 		setItems(mediaRequests) {
 			// Transform MediaRequest objects to MediaItem format
-			const transformedItems = mediaRequests.map(request => {
+			const transformedItems = mediaRequests.map(item => {
 				// Check if data is already in client format (has deletionTimestamp)
 				// vs database.Media format (has DefaultDeleteAt)
 				let deletionTimestamp;
-				if (request.deletionTimestamp !== undefined) {
+				if (item.deletionTimestamp !== undefined) {
 					// Already in client format, use as-is
-					deletionTimestamp = request.deletionTimestamp;
-				} else if (request.DefaultDeleteAt) {
+					deletionTimestamp = item.deletionTimestamp;
+				} else if (item.DefaultDeleteAt) {
 					// database.Media format, convert to timestamp
-					deletionTimestamp = new Date(request.DefaultDeleteAt).getTime();
+					deletionTimestamp = new Date(item.DefaultDeleteAt).getTime();
 				} else {
 					// No deletion date available
 					deletionTimestamp = 0;
 				}
 
 				return {
-					id: request.ID || request.id, // database.Media uses ID not MediaID
-					title: request.Title || request.title,
-					type: request.MediaType || request.type, // database.Media uses MediaType
-					year: request.Year || request.year,
-					library: request.LibraryName, // database.Media uses LibraryName
-					posterURL: request.PosterURL || request.posterURL,
+					id: item.ID || item.id,
+					title: item.Title || item.title,
+					library: item.LibraryName || item.library,
+					posterURL: item.PosterURL || item.posterURL,
+					fileSize: parseInt(item.FileSize || item.fileSize || 0),
 					deletionTimestamp: deletionTimestamp,
-					canRequest: false,
-					hasRequested: true,
-					mustDelete: false,
-					fileSize: request.FileSize || 0, // Include file size from database.Media
-					cleanupMode: "",
-					keepCount: 0
+					hasRequested: !!(item.Request && item.Request.ID) || !!item.hasRequested, // Check if Request exists and has ID
+					canRequest: !item.Unkeepable && (item.canRequest !== false),
+					mustDelete: item.Unkeepable || item.mustDelete || false,
+					cleanupMode: item.cleanupMode || "",
+					keepCount: parseInt(item.keepCount || 0),
+					type: item.MediaType || item.type,
+					year: parseInt(item.Year || item.year || 0)
 				};
 			});
 
@@ -889,15 +889,15 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_0970`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_0970`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_b461`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_b461`),
 	}
 }
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_abc4`,
-		Function: `function __templ_AdminMediaGridScript_abc4(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_11f8`,
+		Function: `function __templ_AdminMediaGridScript_11f8(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -938,9 +938,9 @@ func AdminMediaGridScript() templ.ComponentScript {
 				const transformedItems = rawMediaItems.map(item => ({
 					id: item.ID,
 					title: item.Title,
-					type: item.MediaType, // database.Media uses MediaType
+					type: item.MediaType,
 					year: item.Year,
-					library: item.LibraryName, // database.Media uses LibraryName
+					library: item.LibraryName,
 					posterURL: item.PosterURL,
 					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
 					fileSize: item.FileSize || 0,
@@ -1460,16 +1460,16 @@ func AdminMediaGridScript() templ.ComponentScript {
 					...item,
 					id: item.ID || item.id,
 					title: item.Title || item.title,
-					library: item.LibraryName || item.library, // database.Media uses LibraryName
+					library: item.LibraryName || item.library,
 					posterURL: item.PosterURL || item.posterURL,
 					fileSize: parseInt(item.FileSize || item.fileSize || 0),
 					deletionTimestamp: deletionTimestamp,
 					hasRequested: !!(item.Request && item.Request.ID) || !!item.hasRequested, // Check if Request exists and has ID
-					canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
+					canRequest: !item.Unkeepable && (item.canRequest !== false),
 					mustDelete: item.Unkeepable || item.mustDelete || false,
 					cleanupMode: item.cleanupMode || "",
 					keepCount: parseInt(item.keepCount || 0),
-					type: item.MediaType || item.type, // database.Media uses MediaType
+					type: item.MediaType || item.type,
 					year: parseInt(item.Year || item.year || 0)
 				};
 			});
@@ -1520,8 +1520,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_abc4`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_abc4`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_11f8`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_11f8`),
 	}
 }
 

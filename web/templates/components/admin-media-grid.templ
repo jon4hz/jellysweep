@@ -87,8 +87,6 @@ templ AdminKeepRequestFilters(requestedMedia []database.Media) {
 					}
 				</select>
 				<select id="request-sort-by" class="input-field flex-1 sm:flex-none">
-					<option value="expiry-date-asc">Expires Soonest First</option>
-					<option value="expiry-date-desc">Expires Latest First</option>
 					<option value="deletion-date-asc">Deletion Date (Earliest First)</option>
 					<option value="deletion-date-desc">Deletion Date (Latest First)</option>
 					<option value="title-asc">Title (A-Z)</option>
@@ -221,8 +219,6 @@ script AdminKeepRequestGridScript() {
 	class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
-			// Store original keep requests data for expiry information
-			this.keepRequestsData = {};
 		}
 
 		loadMediaItemsFromDOM() {
@@ -261,7 +257,8 @@ script AdminKeepRequestGridScript() {
 				const transformedItems = rawKeepRequests.map(request => {
 					// database.Media has ID, not MediaID
 					const deletionTimestamp = request.DefaultDeleteAt ? new Date(request.DefaultDeleteAt).getTime() : 0;
-
+					console.log(request);
+					console.log(request.LibraryName);
 					return {
 						id: request.ID,
 						title: request.Title,
@@ -278,6 +275,7 @@ script AdminKeepRequestGridScript() {
 						keepCount: 0
 					};
 				});
+				console.log(transformedItems);
 				this.setItems(transformedItems);
 			} catch (error) {
 				console.error('Failed to parse keep requests data:', error);
@@ -286,6 +284,7 @@ script AdminKeepRequestGridScript() {
 		}
 
 		createCardElement(item) {
+			console.log(item);
 			const div = document.createElement('div');
 			div.className = 'media-card';
 			div.id = `request-${item.id}`;
@@ -305,7 +304,7 @@ script AdminKeepRequestGridScript() {
 				if (!target) return;
 
 				const mediaId = target.getAttribute('data-media-id');
-				/*if (mediaId !== item.id) return; */
+				if (mediaId != item.id) return;
 
 				if (target.classList.contains('accept-btn')) {
 					const originalContent = this.setButtonLoading(target, 'Accepting...');
@@ -470,7 +469,6 @@ script AdminKeepRequestGridScript() {
 			`;
 		}
 
-		// Override sorting to include expiry date
 		sortItems(sortBy) {
 			// Store current scroll position
 			const scrollPosition = window.scrollY;
@@ -655,35 +653,35 @@ script AdminKeepRequestGridScript() {
 		// Override setItems to handle keep request data format
 		setItems(mediaRequests) {
 			// Transform MediaRequest objects to MediaItem format
-			const transformedItems = mediaRequests.map(request => {
+			const transformedItems = mediaRequests.map(item => {
 				// Check if data is already in client format (has deletionTimestamp)
 				// vs database.Media format (has DefaultDeleteAt)
 				let deletionTimestamp;
-				if (request.deletionTimestamp !== undefined) {
+				if (item.deletionTimestamp !== undefined) {
 					// Already in client format, use as-is
-					deletionTimestamp = request.deletionTimestamp;
-				} else if (request.DefaultDeleteAt) {
+					deletionTimestamp = item.deletionTimestamp;
+				} else if (item.DefaultDeleteAt) {
 					// database.Media format, convert to timestamp
-					deletionTimestamp = new Date(request.DefaultDeleteAt).getTime();
+					deletionTimestamp = new Date(item.DefaultDeleteAt).getTime();
 				} else {
 					// No deletion date available
 					deletionTimestamp = 0;
 				}
 
 				return {
-					id: request.ID || request.id, // database.Media uses ID not MediaID
-					title: request.Title || request.title,
-					type: request.MediaType || request.type, // database.Media uses MediaType
-					year: request.Year || request.year,
-					library: request.LibraryName, // database.Media uses LibraryName
-					posterURL: request.PosterURL || request.posterURL,
+					id: item.ID || item.id,
+					title: item.Title || item.title,
+					library: item.LibraryName || item.library,
+					posterURL: item.PosterURL || item.posterURL,
+					fileSize: parseInt(item.FileSize || item.fileSize || 0),
 					deletionTimestamp: deletionTimestamp,
-					canRequest: false,
-					hasRequested: true,
-					mustDelete: false,
-					fileSize: request.FileSize || 0, // Include file size from database.Media
-					cleanupMode: "",
-					keepCount: 0
+					hasRequested: !!(item.Request && item.Request.ID) || !!item.hasRequested, // Check if Request exists and has ID
+					canRequest: !item.Unkeepable && (item.canRequest !== false),
+					mustDelete: item.Unkeepable || item.mustDelete || false,
+					cleanupMode: item.cleanupMode || "",
+					keepCount: parseInt(item.keepCount || 0),
+					type: item.MediaType || item.type,
+					year: parseInt(item.Year || item.year || 0)
 				};
 			});
 
@@ -775,9 +773,9 @@ script AdminMediaGridScript() {
 				const transformedItems = rawMediaItems.map(item => ({
 					id: item.ID,
 					title: item.Title,
-					type: item.MediaType, // database.Media uses MediaType
+					type: item.MediaType,
 					year: item.Year,
-					library: item.LibraryName, // database.Media uses LibraryName
+					library: item.LibraryName,
 					posterURL: item.PosterURL,
 					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
 					fileSize: item.FileSize || 0,
@@ -1297,16 +1295,16 @@ script AdminMediaGridScript() {
 					...item,
 					id: item.ID || item.id,
 					title: item.Title || item.title,
-					library: item.LibraryName || item.library, // database.Media uses LibraryName
+					library: item.LibraryName || item.library,
 					posterURL: item.PosterURL || item.posterURL,
 					fileSize: parseInt(item.FileSize || item.fileSize || 0),
 					deletionTimestamp: deletionTimestamp,
 					hasRequested: !!(item.Request && item.Request.ID) || !!item.hasRequested, // Check if Request exists and has ID
-					canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
+					canRequest: !item.Unkeepable && (item.canRequest !== false),
 					mustDelete: item.Unkeepable || item.mustDelete || false,
 					cleanupMode: item.cleanupMode || "",
 					keepCount: parseInt(item.keepCount || 0),
-					type: item.MediaType || item.type, // database.Media uses MediaType
+					type: item.MediaType || item.type,
 					year: parseInt(item.Year || item.year || 0)
 				};
 			});

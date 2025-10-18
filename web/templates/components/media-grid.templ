@@ -226,7 +226,6 @@ script MediaGridScript() {
 						library: item.Library,
 						posterURL: item.PosterURL,
 						deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
-						expiryTimestamp: item.ExpiryDate ? new Date(item.ExpiryDate).getTime() : 0,
 						canRequest: item.CanRequest,
 						hasRequested: item.HasRequested,
 						mustDelete: item.MustDelete,

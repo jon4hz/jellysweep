@@ -1,9 +1,5 @@
 package models
 
-import (
-	"time"
-)
-
 // User represents a user in the system, including their authentication details and admin status.
 type User struct {
 	ID          uint // ID from the database
@@ -20,17 +16,3 @@ const (
 	MediaTypeTV    MediaType = "tv"
 	MediaTypeMovie MediaType = "movie"
 )
-
-// KeepRequest represents a user request to keep a media item.
-type KeepRequest struct {
-	ID           string
-	MediaID      string
-	Title        string
-	Type         MediaType
-	Year         int
-	Library      string
-	DeletionDate time.Time
-	PosterURL    string
-	RequestDate  time.Time
-	ExpiryDate   time.Time
-}

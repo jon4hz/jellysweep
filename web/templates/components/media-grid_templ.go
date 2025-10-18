@@ -327,8 +327,8 @@ func GetUniqueLibraries(items []database.Media) []string {
 
 func MediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_MediaGridScript_85d1`,
-		Function: `function __templ_MediaGridScript_85d1(){class MediaGridManager {
+		Name: `__templ_MediaGridScript_13cd`,
+		Function: `function __templ_MediaGridScript_13cd(){class MediaGridManager {
 		constructor(containerId, options = {}) {
 			this.containerId = containerId;
 			this.container = document.getElementById(containerId);
@@ -447,7 +447,6 @@ func MediaGridScript() templ.ComponentScript {
 						library: item.Library,
 						posterURL: item.PosterURL,
 						deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
-						expiryTimestamp: item.ExpiryDate ? new Date(item.ExpiryDate).getTime() : 0,
 						canRequest: item.CanRequest,
 						hasRequested: item.HasRequested,
 						mustDelete: item.MustDelete,
@@ -1140,8 +1139,8 @@ func MediaGridScript() templ.ComponentScript {
 	// Export the class for use by other scripts
 	window.MediaGridManager = MediaGridManager;
 }`,
-		Call:       templ.SafeScript(`__templ_MediaGridScript_85d1`),
-		CallInline: templ.SafeScriptInline(`__templ_MediaGridScript_85d1`),
+		Call:       templ.SafeScript(`__templ_MediaGridScript_13cd`),
+		CallInline: templ.SafeScriptInline(`__templ_MediaGridScript_13cd`),
 	}
 }
 
