@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/log"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // DiskUsageDeletePolicy represents the disk usage policy for media deletion.
@@ -45,10 +44,7 @@ func (c *Client) CreateMediaItems(ctx context.Context, mediaItems []Media) error
 	if len(mediaItems) == 0 {
 		return errors.New("no media items to create")
 	}
-	result := c.db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "arr_id"}, {Name: "jellyfin_id"}, {Name: "media_type"}, {Name: "default_delete_at"}},
-		DoNothing: true,
-	}).WithContext(ctx).Create(&mediaItems)
+	result := c.db.WithContext(ctx).Create(&mediaItems)
 	if result.Error != nil {
 		log.Error("failed to create media items", "error", result.Error)
 	}
