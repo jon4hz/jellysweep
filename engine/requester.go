@@ -18,7 +18,7 @@ func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.Med
 		requestInfo, err := e.jellyseerr.GetRequestInfo(ctx, item.TmdbId, string(item.MediaType))
 		if err != nil {
 			log.Errorf("Failed to get request info for item %s: %v", item.Title, err)
-			return nil // Don't fail the entire operation for individual item errors
+			continue
 		}
 		if requestInfo == nil || requestInfo.RequestTime == nil {
 			log.Debugf("No request info found for item %s", item.Title)
