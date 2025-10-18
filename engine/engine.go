@@ -851,11 +851,10 @@ func (e *Engine) migrateTagsToDatabase(ctx context.Context) error {
 		return err
 	}
 
-	// TODO: actually cleanup tags from Sonarr and Radarr after migration
-	/* if err := e.ResetAllTags(ctx, nil); err != nil {
+	if err := e.ResetAllTags(ctx, nil); err != nil {
 		log.Error("Failed to reset tags after migration", "error", err)
 		return err
-	} */
+	}
 
 	log.Info("Migration of tags to database completed successfully")
 
