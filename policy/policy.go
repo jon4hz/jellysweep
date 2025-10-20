@@ -45,7 +45,7 @@ func (e *Engine) ApplyAll(media *database.Media) error {
 func (e *Engine) ShouldTriggerDeletion(ctx context.Context, media database.Media) (bool, error) {
 	// usually we shouldn't get protected media here because the database query filters them out.
 	// but just to be safe:
-	if media.ProtectedUntil != nil && !media.ProtectedUntil.IsZero() && media.ProtectedUntil.Before(time.Now()) {
+	if media.ProtectedUntil != nil && !media.ProtectedUntil.IsZero() && media.ProtectedUntil.After(time.Now()) {
 		return false, nil
 	}
 
