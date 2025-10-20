@@ -38,6 +38,9 @@ func (h *Handler) Home(c *gin.Context) {
 		mediaItems = []database.Media{}
 	}
 
+	// Convert to user-safe media items (excludes sensitive fields like RequestedBy)
+	userMediaItems := models.ToUserMediaItems(mediaItems)
+
 	c.Header("Content-Type", "text/html")
 
 	// If user is admin, get pending requests count for navbar indicator
@@ -45,16 +48,16 @@ func (h *Handler) Home(c *gin.Context) {
 		requests, err := h.db.GetMediaWithPendingRequest(c.Request.Context())
 		if err != nil {
 			// Log error but continue without pending count
-			if err := pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+			if err := pages.Dashboard(user, userMediaItems).Render(c.Request.Context(), c.Writer); err != nil {
 				log.Error("Failed to render dashboard", "error", err)
 			}
 			return
 		}
-		if err := pages.DashboardWithPendingRequests(user, mediaItems, len(requests)).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := pages.DashboardWithPendingRequests(user, userMediaItems, len(requests)).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Error("Failed to render dashboard with pending requests", "error", err)
 		}
 	} else {
-		if err := pages.Dashboard(user, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := pages.Dashboard(user, userMediaItems).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Error("Failed to render dashboard", "error", err)
 		}
 	}
@@ -163,8 +166,11 @@ func (h *Handler) GetMediaItems(c *gin.Context) {
 		return
 	}
 
+	// Convert to user-safe media items (excludes sensitive fields like RequestedBy)
+	userMediaItems := models.ToUserMediaItems(mediaItems)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
-		"mediaItems": mediaItems,
+		"mediaItems": userMediaItems,
 	})
 }

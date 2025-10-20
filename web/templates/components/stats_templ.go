@@ -9,7 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/jon4hz/jellysweep/database"
+	"github.com/jon4hz/jellysweep/api/models"
 	"sort"
 	"time"
 )
@@ -55,13 +55,13 @@ type CumulativeChartPoint struct {
 }
 
 // calculateDailyCleanupData processes media items to create data points for daily cleanup graph
-func calculateDailyCleanupData(items []database.Media) []DailyCleanupPoint {
+func calculateDailyCleanupData(items []models.UserMediaItem) []DailyCleanupPoint {
 	if len(items) == 0 {
 		return []DailyCleanupPoint{}
 	}
 
 	// Group items by date (day)
-	dailyMap := make(map[string][]database.Media)
+	dailyMap := make(map[string][]models.UserMediaItem)
 	for _, item := range items {
 		dateKey := item.DefaultDeleteAt.Format("2006-01-02")
 		dailyMap[dateKey] = append(dailyMap[dateKey], item)
@@ -92,13 +92,13 @@ func calculateDailyCleanupData(items []database.Media) []DailyCleanupPoint {
 }
 
 // calculateCumulativeCleanupData processes media items to create data points for cumulative cleanup graph
-func calculateCumulativeCleanupData(items []database.Media) []CumulativeCleanupPoint {
+func calculateCumulativeCleanupData(items []models.UserMediaItem) []CumulativeCleanupPoint {
 	if len(items) == 0 {
 		return []CumulativeCleanupPoint{}
 	}
 
 	// Sort items by deletion date
-	sortedItems := make([]database.Media, len(items))
+	sortedItems := make([]models.UserMediaItem, len(items))
 	copy(sortedItems, items)
 	sort.Slice(sortedItems, func(i, j int) bool {
 		return sortedItems[i].DefaultDeleteAt.Before(sortedItems[j].DefaultDeleteAt)
@@ -132,7 +132,7 @@ func calculateCumulativeCleanupData(items []database.Media) []CumulativeCleanupP
 }
 
 // getTotalStorageToFree calculates the total storage that will be freed
-func getTotalStorageToFree(items []database.Media) int64 {
+func getTotalStorageToFree(items []models.UserMediaItem) int64 {
 	var total int64
 	for _, item := range items {
 		total += item.FileSize
@@ -174,7 +174,7 @@ func generateCumulativeChartData(points []CumulativeCleanupPoint, totalStorage i
 	}
 }
 
-func StatsTab(mediaItems []database.Media) templ.Component {
+func StatsTab(mediaItems []models.UserMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

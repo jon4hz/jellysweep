@@ -8,10 +8,28 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/jon4hz/jellysweep/database"
+import (
+	"fmt"
+	"github.com/jon4hz/jellysweep/api/models"
+)
+
+// getUserMediaUniqueLibraries extracts unique library names from UserMediaItems
+func getUserMediaUniqueLibraries(items []models.UserMediaItem) []string {
+	libraryMap := make(map[string]bool)
+	var libraries []string
+
+	for _, item := range items {
+		if item.LibraryName != "" && !libraryMap[item.LibraryName] {
+			libraryMap[item.LibraryName] = true
+			libraries = append(libraries, item.LibraryName)
+		}
+	}
+
+	return libraries
+}
 
 // DashboardMediaGrid creates a media grid specifically for the dashboard
-func DashboardMediaGrid(mediaItems []database.Media, pageSize int) templ.Component {
+func DashboardMediaGrid(mediaItems []models.UserMediaItem, pageSize int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -32,17 +50,62 @@ func DashboardMediaGrid(mediaItems []database.Media, pageSize int) templ.Compone
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = MediaGrid(mediaItems, MediaGridConfig{
-			ContainerID:    "media-grid-container",
-			GridID:         "media-grid",
-			EnableSearch:   true,
-			EnableFilters:  true,
-			EnableSorting:  true,
-			EnableRefresh:  true,
-			PageSize:       pageSize,
-			MobilePageSize: 6,
-			AnimateChanges: true,
-		}, DashboardFilters(mediaItems)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"media-grid-container\" class=\"space-y-4\"><!-- Loading State --><div id=\"media-grid-container-grid-loading\" class=\"hidden\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = SkeletonGrid(12).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</div><!-- Custom content (filters, search, etc.) -->")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = DashboardFilters(mediaItems).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<!-- Media Grid --><div id=\"media-grid\" class=\"grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 transition-opacity duration-200\" data-page-size=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var2 string
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(pageSize))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/dashboard-media-grid.templ`, Line: 36, Col: 40}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" data-mobile-page-size=\"6\" data-total-items=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var3 string
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(mediaItems)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/dashboard-media-grid.templ`, Line: 38, Col: 49}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" data-enable-search=\"true\" data-enable-filters=\"true\" data-enable-sorting=\"true\" data-enable-refresh=\"true\" data-animate-changes=\"true\" data-media-items=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var4 string
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(mediaItems))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/dashboard-media-grid.templ`, Line: 44, Col: 50}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\"><!-- Items will be populated by JavaScript --></div><!-- Loading indicator for infinite scroll --><div id=\"media-grid-container-scroll-loading\" class=\"hidden text-center py-8\"><div class=\"inline-flex items-center space-x-2\"><div class=\"animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500\"></div><span class=\"text-gray-400\">Loading more...</span></div></div><!-- Load More Button (fallback for poor connections) --><div id=\"media-grid-container-load-more-container\" class=\"text-center mt-6 hidden\"><button id=\"media-grid-container-load-more-btn\" class=\"btn-secondary\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 6v6m0 0v6m0-6h6m-6 0H6\"></path></svg> Load More</button></div><!-- Scroll to Top Button --><button id=\"media-grid-container-scroll-to-top\" class=\"fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white p-2 md:p-3 rounded-full shadow-lg transition-all duration-200 opacity-0 pointer-events-none z-50 transform translate-y-4\" aria-label=\"Scroll to top\"><svg class=\"w-4 h-4 md:w-5 md:h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 10l7-7m0 0l7 7m-7-7v18\"></path></svg></button><!-- Virtual scroll sentinel for intersection observer --><div id=\"media-grid-container-scroll-sentinel\" class=\"h-1 opacity-0\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -51,7 +114,7 @@ func DashboardMediaGrid(mediaItems []database.Media, pageSize int) templ.Compone
 }
 
 // DashboardFilters creates the filter interface for the dashboard
-func DashboardFilters(mediaItems []database.Media) templ.Component {
+func DashboardFilters(mediaItems []models.UserMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -67,48 +130,48 @@ func DashboardFilters(mediaItems []database.Media) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var2 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var2 == nil {
-			templ_7745c5c3_Var2 = templ.NopComponent
+		templ_7745c5c3_Var5 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var5 == nil {
+			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"card-no-hover p-4 sm:p-6 mb-6\"><div class=\"flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between\"><div class=\"flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4\"><div class=\"relative flex-1 sm:flex-none\"><input type=\"text\" id=\"search\" placeholder=\"Search media...\" class=\"input-field pl-10 pr-4 py-2 w-full sm:w-64\"><div class=\"absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none\"><svg class=\"h-5 w-5 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"></path></svg></div></div><select id=\"library-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Libraries</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"card-no-hover p-4 sm:p-6 mb-6\"><div class=\"flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between\"><div class=\"flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4\"><div class=\"relative flex-1 sm:flex-none\"><input type=\"text\" id=\"search\" placeholder=\"Search media...\" class=\"input-field pl-10 pr-4 py-2 w-full sm:w-64\"><div class=\"absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none\"><svg class=\"h-5 w-5 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"></path></svg></div></div><select id=\"library-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Libraries</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, library := range GetUniqueLibraries(mediaItems) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<option value=\"")
+		for _, library := range getUserMediaUniqueLibraries(mediaItems) {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<option value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(library)
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/dashboard-media-grid.templ`, Line: 36, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/dashboard-media-grid.templ`, Line: 95, Col: 29}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var4 string
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(library)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/dashboard-media-grid.templ`, Line: 36, Col: 41}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</option>")
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(library)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/dashboard-media-grid.templ`, Line: 95, Col: 41}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</option>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</select> <select id=\"request-status-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"unrequested\" selected>Unrequested</option> <option value=\"requested\">Requested</option> <option value=\"unavailable\">Unavailable</option> <option value=\"\">All Items</option></select> <select id=\"sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option> <option value=\"size-asc\">File Size (Smallest First)</option> <option value=\"size-desc\">File Size (Largest First)</option></select></div><div class=\"flex items-center\"><button id=\"refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</select> <select id=\"request-status-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"unrequested\" selected>Unrequested</option> <option value=\"requested\">Requested</option> <option value=\"unavailable\">Unavailable</option> <option value=\"\">All Items</option></select> <select id=\"sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option> <option value=\"size-asc\">File Size (Smallest First)</option> <option value=\"size-desc\">File Size (Largest First)</option></select></div><div class=\"flex items-center\"><button id=\"refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

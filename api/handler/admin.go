@@ -42,8 +42,12 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 		return
 	}
 
+	// Convert to admin media items (includes all fields including RequestedBy)
+	adminRequests := models.ToAdminMediaItems(requests)
+	adminMediaItems := models.ToAdminMediaItems(mediaItems)
+
 	c.Header("Content-Type", "text/html")
-	if err := pages.AdminPanel(user, requests, mediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := pages.AdminPanel(user, adminRequests, adminMediaItems).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Error("Failed to render admin panel", "error", err)
 	}
 }
@@ -232,9 +236,12 @@ func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 		return
 	}
 
+	// Convert to admin media items (includes all fields including RequestedBy)
+	adminRequests := models.ToAdminMediaItems(requests)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":      true,
-		"keepRequests": requests,
+		"keepRequests": adminRequests,
 	})
 }
 
@@ -249,9 +256,12 @@ func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
 		return
 	}
 
+	// Convert to admin media items (includes all fields including RequestedBy)
+	adminMediaItems := models.ToAdminMediaItems(mediaItems)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
-		"mediaItems": mediaItems,
+		"mediaItems": adminMediaItems,
 	})
 }
 

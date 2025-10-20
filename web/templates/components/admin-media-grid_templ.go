@@ -10,11 +10,11 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/jon4hz/jellysweep/database"
+	"github.com/jon4hz/jellysweep/api/models"
 )
 
 // AdminKeepRequestGrid creates a media grid specifically for keep requests in admin panel
-func AdminKeepRequestGrid(requestedMedia []database.Media) templ.Component {
+func AdminKeepRequestGrid(requestedMedia []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -86,7 +86,7 @@ func AdminKeepRequestGrid(requestedMedia []database.Media) templ.Component {
 }
 
 // AdminKeepRequestFilters creates the filter interface for keep requests
-func AdminKeepRequestFilters(requestedMedia []database.Media) templ.Component {
+func AdminKeepRequestFilters(requestedMedia []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -188,7 +188,7 @@ func AdminKeepRequestFilters(requestedMedia []database.Media) templ.Component {
 }
 
 // AdminMediaGrid creates a media grid for keep/sweep decisions in admin panel
-func AdminMediaGrid(mediaItems []database.Media) templ.Component {
+func AdminMediaGrid(mediaItems []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -209,17 +209,49 @@ func AdminMediaGrid(mediaItems []database.Media) templ.Component {
 			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = MediaGrid(mediaItems, MediaGridConfig{
-			ContainerID:    "keep-sweep-container",
-			GridID:         "keep-sweep-grid",
-			EnableSearch:   true,
-			EnableFilters:  true,
-			EnableSorting:  true,
-			EnableRefresh:  true,
-			PageSize:       8,
-			MobilePageSize: 4,
-			AnimateChanges: true,
-		}, AdminMediaFilters(mediaItems)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div id=\"keep-sweep-container\" class=\"space-y-4\"><!-- Loading State --><div id=\"keep-sweep-container-grid-loading\" class=\"hidden\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = SkeletonGrid(8).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</div><!-- Custom content (filters, search, etc.) -->")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = AdminMediaFilters(mediaItems).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<!-- Media Grid --><div id=\"keep-sweep-grid\" class=\"grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 transition-opacity duration-200\" data-page-size=\"8\" data-mobile-page-size=\"4\" data-total-items=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var10 string
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(mediaItems)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 123, Col: 49}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" data-enable-search=\"true\" data-enable-filters=\"true\" data-enable-sorting=\"true\" data-enable-refresh=\"true\" data-animate-changes=\"true\" data-media-items=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var11 string
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(mediaItems))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 129, Col: 50}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><!-- Items will be populated by JavaScript --></div><!-- Loading indicator for infinite scroll --><div id=\"keep-sweep-container-scroll-loading\" class=\"hidden text-center py-8\"><div class=\"inline-flex items-center space-x-2\"><div class=\"animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500\"></div><span class=\"text-gray-400\">Loading more...</span></div></div><!-- Load More Button (fallback for poor connections) --><div id=\"keep-sweep-container-load-more-container\" class=\"text-center mt-6 hidden\"><button id=\"keep-sweep-container-load-more-btn\" class=\"btn-secondary\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 6v6m0 0v6m0-6h6m-6 0H6\"></path></svg> Load More</button></div><!-- Scroll to Top Button --><button id=\"keep-sweep-container-scroll-to-top\" class=\"fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white p-2 md:p-3 rounded-full shadow-lg transition-all duration-200 opacity-0 pointer-events-none z-50 transform translate-y-4\" aria-label=\"Scroll to top\"><svg class=\"w-4 h-4 md:w-5 md:h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 10l7-7m0 0l7 7m-7-7v18\"></path></svg></button><!-- Virtual scroll sentinel for intersection observer --><div id=\"keep-sweep-container-scroll-sentinel\" class=\"h-1 opacity-0\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -228,7 +260,7 @@ func AdminMediaGrid(mediaItems []database.Media) templ.Component {
 }
 
 // AdminMediaFilters creates the filter interface for keep/sweep media
-func AdminMediaFilters(mediaItems []database.Media) templ.Component {
+func AdminMediaFilters(mediaItems []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -244,84 +276,84 @@ func AdminMediaFilters(mediaItems []database.Media) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var10 == nil {
-			templ_7745c5c3_Var10 = templ.NopComponent
+		templ_7745c5c3_Var12 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var12 == nil {
+			templ_7745c5c3_Var12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"card-no-hover p-4 sm:p-6 mb-6\"><div class=\"flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between\"><div class=\"flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4\"><div class=\"relative flex-1 sm:flex-none\"><input type=\"text\" id=\"media-search\" placeholder=\"Search media...\" class=\"input-field pl-10 pr-4 py-2 w-full sm:w-64\"><div class=\"absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none\"><svg class=\"h-5 w-5 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"></path></svg></div></div><select id=\"media-library-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Libraries</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"card-no-hover p-4 sm:p-6 mb-6\"><div class=\"flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between\"><div class=\"flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4\"><div class=\"relative flex-1 sm:flex-none\"><input type=\"text\" id=\"media-search\" placeholder=\"Search media...\" class=\"input-field pl-10 pr-4 py-2 w-full sm:w-64\"><div class=\"absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none\"><svg class=\"h-5 w-5 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"></path></svg></div></div><select id=\"media-library-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Libraries</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, library := range GetUniqueLibraries(mediaItems) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<option value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(library)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 139, Col: 29}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(library)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 139, Col: 41}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</option>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</select> <select id=\"media-type-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Types</option> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		for _, mediaType := range getUniqueMediaTypes(mediaItems) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<option value=\"")
+		for _, library := range getAdminMediaUniqueLibraries(mediaItems) {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<option value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(mediaType)
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 145, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 180, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(mediaType)
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 145, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 180, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</option>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</option>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</select> <select id=\"media-status-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Status</option> <option value=\"requested\">Keep Requested</option> <option value=\"must-delete\">Must Delete</option> <option value=\"normal\">Normal</option></select> <select id=\"media-sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option> <option value=\"size-asc\">File Size (Smallest First)</option> <option value=\"size-desc\">File Size (Largest First)</option></select></div><div class=\"flex items-center\"><button id=\"media-refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</select> <select id=\"media-type-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Types</option> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for _, mediaType := range getAdminMediaUniqueTypes(mediaItems) {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<option value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var15 string
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(string(mediaType))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 186, Col: 39}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var16 string
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(string(mediaType))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 186, Col: 61}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</option>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</select> <select id=\"media-status-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Status</option> <option value=\"requested\">Keep Requested</option> <option value=\"must-delete\">Must Delete</option> <option value=\"normal\">Normal</option></select> <select id=\"media-sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option> <option value=\"size-asc\">File Size (Smallest First)</option> <option value=\"size-desc\">File Size (Largest First)</option></select></div><div class=\"flex items-center\"><button id=\"media-refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -330,7 +362,7 @@ func AdminMediaFilters(mediaItems []database.Media) templ.Component {
 }
 
 // Helper functions to extract unique values for filters
-func getUniqueRequestLibraries(requests []database.Media) []string {
+func getUniqueRequestLibraries(requests []models.AdminMediaItem) []string {
 	libraryMap := make(map[string]bool)
 	var libraries []string
 
@@ -344,9 +376,9 @@ func getUniqueRequestLibraries(requests []database.Media) []string {
 	return libraries
 }
 
-func getUniqueRequestTypes(requests []database.Media) []database.MediaType {
-	typeMap := make(map[database.MediaType]bool)
-	var types []database.MediaType
+func getUniqueRequestTypes(requests []models.AdminMediaItem) []models.MediaType {
+	typeMap := make(map[models.MediaType]bool)
+	var types []models.MediaType
 
 	for _, request := range requests {
 		if request.MediaType != "" && !typeMap[request.MediaType] {
@@ -358,9 +390,9 @@ func getUniqueRequestTypes(requests []database.Media) []database.MediaType {
 	return types
 }
 
-func getUniqueMediaTypes(items []database.Media) []database.MediaType {
-	typeMap := make(map[database.MediaType]bool)
-	var types []database.MediaType
+func getUniqueMediaTypes(items []models.AdminMediaItem) []models.MediaType {
+	typeMap := make(map[models.MediaType]bool)
+	var types []models.MediaType
 
 	for _, item := range items {
 		if item.MediaType != "" && !typeMap[item.MediaType] {
@@ -370,6 +402,15 @@ func getUniqueMediaTypes(items []database.Media) []database.MediaType {
 	}
 
 	return types
+}
+
+// Helper function aliases for consistency
+func getAdminMediaUniqueLibraries(items []models.AdminMediaItem) []string {
+	return getUniqueRequestLibraries(items)
+}
+
+func getAdminMediaUniqueTypes(items []models.AdminMediaItem) []models.MediaType {
+	return getUniqueRequestTypes(items)
 }
 
 func AdminKeepRequestGridScript() templ.ComponentScript {

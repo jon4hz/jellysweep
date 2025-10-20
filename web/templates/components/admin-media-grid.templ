@@ -2,11 +2,11 @@ package components
 
 import (
 	"fmt"
-	"github.com/jon4hz/jellysweep/database"
+	"github.com/jon4hz/jellysweep/api/models"
 )
 
 // AdminKeepRequestGrid creates a media grid specifically for keep requests in admin panel
-templ AdminKeepRequestGrid(requestedMedia []database.Media) {
+templ AdminKeepRequestGrid(requestedMedia []models.AdminMediaItem) {
 	<div id="approval-queue-container" class="space-y-4">
 		<!-- Loading State -->
 		<div id="approval-queue-container-grid-loading" class="hidden">
@@ -62,7 +62,7 @@ templ AdminKeepRequestGrid(requestedMedia []database.Media) {
 }
 
 // AdminKeepRequestFilters creates the filter interface for keep requests
-templ AdminKeepRequestFilters(requestedMedia []database.Media) {
+templ AdminKeepRequestFilters(requestedMedia []models.AdminMediaItem) {
 	<div class="card-no-hover p-4 sm:p-6 mb-6">
 		<div class="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
 			<div class="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
@@ -106,22 +106,63 @@ templ AdminKeepRequestFilters(requestedMedia []database.Media) {
 }
 
 // AdminMediaGrid creates a media grid for keep/sweep decisions in admin panel
-templ AdminMediaGrid(mediaItems []database.Media) {
-	@MediaGrid(mediaItems, MediaGridConfig{
-		ContainerID:    "keep-sweep-container",
-		GridID:         "keep-sweep-grid",
-		EnableSearch:   true,
-		EnableFilters:  true,
-		EnableSorting:  true,
-		EnableRefresh:  true,
-		PageSize:       8,
-		MobilePageSize: 4,
-		AnimateChanges: true,
-	}, AdminMediaFilters(mediaItems))
+templ AdminMediaGrid(mediaItems []models.AdminMediaItem) {
+	<div id="keep-sweep-container" class="space-y-4">
+		<!-- Loading State -->
+		<div id="keep-sweep-container-grid-loading" class="hidden">
+			@SkeletonGrid(8)
+		</div>
+		<!-- Custom content (filters, search, etc.) -->
+		@AdminMediaFilters(mediaItems)
+		<!-- Media Grid -->
+		<div
+			id="keep-sweep-grid"
+			class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 transition-opacity duration-200"
+			data-page-size="8"
+			data-mobile-page-size="4"
+			data-total-items={ fmt.Sprint(len(mediaItems)) }
+			data-enable-search="true"
+			data-enable-filters="true"
+			data-enable-sorting="true"
+			data-enable-refresh="true"
+			data-animate-changes="true"
+			data-media-items={ templ.JSONString(mediaItems) }
+		>
+			<!-- Items will be populated by JavaScript -->
+		</div>
+		<!-- Loading indicator for infinite scroll -->
+		<div id="keep-sweep-container-scroll-loading" class="hidden text-center py-8">
+			<div class="inline-flex items-center space-x-2">
+				<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+				<span class="text-gray-400">Loading more...</span>
+			</div>
+		</div>
+		<!-- Load More Button (fallback for poor connections) -->
+		<div id="keep-sweep-container-load-more-container" class="text-center mt-6 hidden">
+			<button id="keep-sweep-container-load-more-btn" class="btn-secondary">
+				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+				</svg>
+				Load More
+			</button>
+		</div>
+		<!-- Scroll to Top Button -->
+		<button
+			id="keep-sweep-container-scroll-to-top"
+			class="fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white p-2 md:p-3 rounded-full shadow-lg transition-all duration-200 opacity-0 pointer-events-none z-50 transform translate-y-4"
+			aria-label="Scroll to top"
+		>
+			<svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+			</svg>
+		</button>
+		<!-- Virtual scroll sentinel for intersection observer -->
+		<div id="keep-sweep-container-scroll-sentinel" class="h-1 opacity-0"></div>
+	</div>
 }
 
 // AdminMediaFilters creates the filter interface for keep/sweep media
-templ AdminMediaFilters(mediaItems []database.Media) {
+templ AdminMediaFilters(mediaItems []models.AdminMediaItem) {
 	<div class="card-no-hover p-4 sm:p-6 mb-6">
 		<div class="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
 			<div class="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
@@ -135,14 +176,14 @@ templ AdminMediaFilters(mediaItems []database.Media) {
 				</div>
 				<select id="media-library-filter" class="input-field flex-1 sm:flex-none">
 					<option value="">All Libraries</option>
-					for _, library := range GetUniqueLibraries(mediaItems) {
+					for _, library := range getAdminMediaUniqueLibraries(mediaItems) {
 						<option value={ library }>{ library }</option>
 					}
 				</select>
 				<select id="media-type-filter" class="input-field flex-1 sm:flex-none">
 					<option value="">All Types</option>
-					for _, mediaType := range getUniqueMediaTypes(mediaItems) {
-						<option value={ mediaType }>{ mediaType }</option>
+					for _, mediaType := range getAdminMediaUniqueTypes(mediaItems) {
+						<option value={ string(mediaType) }>{ string(mediaType) }</option>
 					}
 				</select>
 				<select id="media-status-filter" class="input-field flex-1 sm:flex-none">
@@ -173,7 +214,7 @@ templ AdminMediaFilters(mediaItems []database.Media) {
 }
 
 // Helper functions to extract unique values for filters
-func getUniqueRequestLibraries(requests []database.Media) []string {
+func getUniqueRequestLibraries(requests []models.AdminMediaItem) []string {
 	libraryMap := make(map[string]bool)
 	var libraries []string
 
@@ -187,9 +228,9 @@ func getUniqueRequestLibraries(requests []database.Media) []string {
 	return libraries
 }
 
-func getUniqueRequestTypes(requests []database.Media) []database.MediaType {
-	typeMap := make(map[database.MediaType]bool)
-	var types []database.MediaType
+func getUniqueRequestTypes(requests []models.AdminMediaItem) []models.MediaType {
+	typeMap := make(map[models.MediaType]bool)
+	var types []models.MediaType
 
 	for _, request := range requests {
 		if request.MediaType != "" && !typeMap[request.MediaType] {
@@ -201,9 +242,9 @@ func getUniqueRequestTypes(requests []database.Media) []database.MediaType {
 	return types
 }
 
-func getUniqueMediaTypes(items []database.Media) []database.MediaType {
-	typeMap := make(map[database.MediaType]bool)
-	var types []database.MediaType
+func getUniqueMediaTypes(items []models.AdminMediaItem) []models.MediaType {
+	typeMap := make(map[models.MediaType]bool)
+	var types []models.MediaType
 
 	for _, item := range items {
 		if item.MediaType != "" && !typeMap[item.MediaType] {
@@ -213,6 +254,15 @@ func getUniqueMediaTypes(items []database.Media) []database.MediaType {
 	}
 
 	return types
+}
+
+// Helper function aliases for consistency
+func getAdminMediaUniqueLibraries(items []models.AdminMediaItem) []string {
+	return getUniqueRequestLibraries(items)
+}
+
+func getAdminMediaUniqueTypes(items []models.AdminMediaItem) []models.MediaType {
+	return getUniqueRequestTypes(items)
 }
 
 script AdminKeepRequestGridScript() {

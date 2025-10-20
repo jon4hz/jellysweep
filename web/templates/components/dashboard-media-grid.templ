@@ -1,24 +1,83 @@
 package components
 
-import "github.com/jon4hz/jellysweep/database"
+import (
+	"fmt"
+	"github.com/jon4hz/jellysweep/api/models"
+)
+
+// getUserMediaUniqueLibraries extracts unique library names from UserMediaItems
+func getUserMediaUniqueLibraries(items []models.UserMediaItem) []string {
+	libraryMap := make(map[string]bool)
+	var libraries []string
+
+	for _, item := range items {
+		if item.LibraryName != "" && !libraryMap[item.LibraryName] {
+			libraryMap[item.LibraryName] = true
+			libraries = append(libraries, item.LibraryName)
+		}
+	}
+
+	return libraries
+}
 
 // DashboardMediaGrid creates a media grid specifically for the dashboard
-templ DashboardMediaGrid(mediaItems []database.Media, pageSize int) {
-	@MediaGrid(mediaItems, MediaGridConfig{
-		ContainerID:    "media-grid-container",
-		GridID:         "media-grid",
-		EnableSearch:   true,
-		EnableFilters:  true,
-		EnableSorting:  true,
-		EnableRefresh:  true,
-		PageSize:       pageSize,
-		MobilePageSize: 6,
-		AnimateChanges: true,
-	}, DashboardFilters(mediaItems))
+templ DashboardMediaGrid(mediaItems []models.UserMediaItem, pageSize int) {
+	<div id="media-grid-container" class="space-y-4">
+		<!-- Loading State -->
+		<div id="media-grid-container-grid-loading" class="hidden">
+			@SkeletonGrid(12)
+		</div>
+		<!-- Custom content (filters, search, etc.) -->
+		@DashboardFilters(mediaItems)
+		<!-- Media Grid -->
+		<div
+			id="media-grid"
+			class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 transition-opacity duration-200"
+			data-page-size={ fmt.Sprint(pageSize) }
+			data-mobile-page-size="6"
+			data-total-items={ fmt.Sprint(len(mediaItems)) }
+			data-enable-search="true"
+			data-enable-filters="true"
+			data-enable-sorting="true"
+			data-enable-refresh="true"
+			data-animate-changes="true"
+			data-media-items={ templ.JSONString(mediaItems) }
+		>
+			<!-- Items will be populated by JavaScript -->
+		</div>
+		<!-- Loading indicator for infinite scroll -->
+		<div id="media-grid-container-scroll-loading" class="hidden text-center py-8">
+			<div class="inline-flex items-center space-x-2">
+				<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+				<span class="text-gray-400">Loading more...</span>
+			</div>
+		</div>
+		<!-- Load More Button (fallback for poor connections) -->
+		<div id="media-grid-container-load-more-container" class="text-center mt-6 hidden">
+			<button id="media-grid-container-load-more-btn" class="btn-secondary">
+				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+				</svg>
+				Load More
+			</button>
+		</div>
+		<!-- Scroll to Top Button -->
+		<button
+			id="media-grid-container-scroll-to-top"
+			class="fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white p-2 md:p-3 rounded-full shadow-lg transition-all duration-200 opacity-0 pointer-events-none z-50 transform translate-y-4"
+			aria-label="Scroll to top"
+		>
+			<svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+			</svg>
+		</button>
+		<!-- Virtual scroll sentinel for intersection observer -->
+		<div id="media-grid-container-scroll-sentinel" class="h-1 opacity-0"></div>
+	</div>
 }
 
 // DashboardFilters creates the filter interface for the dashboard
-templ DashboardFilters(mediaItems []database.Media) {
+templ DashboardFilters(mediaItems []models.UserMediaItem) {
 	<div class="card-no-hover p-4 sm:p-6 mb-6">
 		<div class="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
 			<div class="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
@@ -32,7 +91,7 @@ templ DashboardFilters(mediaItems []database.Media) {
 				</div>
 				<select id="library-filter" class="input-field flex-1 sm:flex-none">
 					<option value="">All Libraries</option>
-					for _, library := range GetUniqueLibraries(mediaItems) {
+					for _, library := range getUserMediaUniqueLibraries(mediaItems) {
 						<option value={ library }>{ library }</option>
 					}
 				</select>
