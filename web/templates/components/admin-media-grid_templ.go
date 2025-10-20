@@ -415,8 +415,8 @@ func getAdminMediaUniqueTypes(items []models.AdminMediaItem) []models.MediaType 
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_b461`,
-		Function: `function __templ_AdminKeepRequestGridScript_b461(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_9937`,
+		Function: `function __templ_AdminKeepRequestGridScript_9937(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -457,8 +457,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 				const transformedItems = rawKeepRequests.map(request => {
 					// database.Media has ID, not MediaID
 					const deletionTimestamp = request.DefaultDeleteAt ? new Date(request.DefaultDeleteAt).getTime() : 0;
-					console.log(request);
-					console.log(request.LibraryName);
 					return {
 						id: request.ID,
 						title: request.Title,
@@ -475,7 +473,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 						keepCount: 0
 					};
 				});
-				console.log(transformedItems);
 				this.setItems(transformedItems);
 			} catch (error) {
 				console.error('Failed to parse keep requests data:', error);
@@ -484,7 +481,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 
 		createCardElement(item) {
-			console.log(item);
 			const div = document.createElement('div');
 			div.className = 'media-card';
 			div.id = ` + "`" + `request-${item.id}` + "`" + `;
@@ -930,8 +926,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_b461`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_b461`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_9937`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_9937`),
 	}
 }
 
