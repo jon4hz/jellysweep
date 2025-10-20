@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
-	github.com/a-h/templ v0.3.943
+	github.com/a-h/templ v0.3.960
 	github.com/ccoveille/go-safecast v1.6.1
 	github.com/charmbracelet/log v0.4.2
 	github.com/coreos/go-oidc/v3 v3.15.0
