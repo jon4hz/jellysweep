@@ -181,6 +181,8 @@ type CleanupConfig struct {
 	CleanupDelay int `yaml:"cleanup_delay" mapstructure:"cleanup_delay"`
 	// DiskUsageThresholds is a list of disk usage thresholds for cleanup.
 	DiskUsageThresholds []DiskUsageThreshold `yaml:"disk_usage_thresholds" mapstructure:"disk_usage_thresholds"`
+	// ProtectionPeriod is the number of days to protect requested media from cleanup.
+	ProtectionPeriod int `yaml:"protection_period" mapstructure:"protection_period"`
 }
 
 // DiskUsageThreshold holds the disk usage thresholds for cleanup.
@@ -575,4 +577,44 @@ func (c *Config) GetKeepCount() int {
 		return 1 // Default to keeping 1 episode/season
 	}
 	return c.KeepCount
+}
+
+// GetContentAgeThreshold returns the content age threshold with proper defaults.
+func (c *CleanupConfig) GetContentAgeThreshold() int {
+	if c.ContentAgeThreshold <= 0 {
+		return 30 // Default to 30 days
+	}
+	return c.ContentAgeThreshold
+}
+
+// GetLastStreamThreshold returns the last stream threshold with proper defaults.
+func (c *CleanupConfig) GetLastStreamThreshold() int {
+	if c.LastStreamThreshold <= 0 {
+		return 30 // Default to 30 days
+	}
+	return c.LastStreamThreshold
+}
+
+// GetContentSizeThreshold returns the content size threshold with proper defaults.
+func (c *CleanupConfig) GetContentSizeThreshold() int64 {
+	if c.ContentSizeThreshold <= 0 {
+		return 0 // Default to 0 bytes (no size threshold)
+	}
+	return c.ContentSizeThreshold
+}
+
+// GetCleanupDelay returns the cleanup delay with proper defaults.
+func (c *CleanupConfig) GetCleanupDelay() int {
+	if c.CleanupDelay <= 0 {
+		return 30 // Default to 30 days delay
+	}
+	return c.CleanupDelay
+}
+
+// GetProtectionPeriod returns the protection period with proper defaults.
+func (c *CleanupConfig) GetProtectionPeriod() int {
+	if c.ProtectionPeriod <= 0 {
+		return 90 // Default to 90 days protection
+	}
+	return c.ProtectionPeriod
 }

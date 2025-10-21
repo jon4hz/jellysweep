@@ -48,7 +48,7 @@ func (e *Engine) sendEmailNotifications(mediaItems []arr.MediaItem) {
 				if item.RequestedBy == userEmail {
 					libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
 					if libraryConfig != nil {
-						cleanupDate = cleanupDate.Add(time.Duration(libraryConfig.CleanupDelay) * 24 * time.Hour)
+						cleanupDate = cleanupDate.Add(time.Duration(libraryConfig.GetCleanupDelay()) * 24 * time.Hour)
 					}
 					break
 				}

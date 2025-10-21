@@ -54,16 +54,16 @@ func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems []arr
 		// Check if the content has been added longer ago than the configured threshold
 		libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
 		if libraryConfig != nil {
-			contentAgeThreshold := time.Duration(libraryConfig.ContentAgeThreshold) * 24 * time.Hour
+			contentAgeThreshold := time.Duration(libraryConfig.GetContentAgeThreshold()) * 24 * time.Hour
 			timeSinceAdded := time.Since(*addedDate)
 
 			if timeSinceAdded > contentAgeThreshold {
 				filteredItems = append(filteredItems, item)
 				log.Debugf("Including item %s for deletion, added %d days ago (threshold: %d days)",
-					item.Title, int(timeSinceAdded.Hours()/24), libraryConfig.ContentAgeThreshold)
+					item.Title, int(timeSinceAdded.Hours()/24), libraryConfig.GetContentAgeThreshold())
 			} else {
 				log.Debugf("Excluding item %s due to recent addition: %s (%d days ago, threshold: %d days)",
-					item.Title, addedDate.Format(time.RFC3339), int(timeSinceAdded.Hours()/24), libraryConfig.ContentAgeThreshold)
+					item.Title, addedDate.Format(time.RFC3339), int(timeSinceAdded.Hours()/24), libraryConfig.GetContentAgeThreshold())
 			}
 		} else {
 			// No library config, include for deletion

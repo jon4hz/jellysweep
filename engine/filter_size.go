@@ -46,14 +46,14 @@ func (e *Engine) filterContentSizeThreshold(ctx context.Context, mediaItems []ar
 
 		// Check if the content size meets the configured threshold
 		libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
-		if libraryConfig != nil && libraryConfig.ContentSizeThreshold > 0 {
-			if fileSize >= libraryConfig.ContentSizeThreshold {
+		if libraryConfig != nil && libraryConfig.GetContentSizeThreshold() > 0 {
+			if fileSize >= libraryConfig.GetContentSizeThreshold() {
 				filteredItems = append(filteredItems, item)
 				log.Debugf("Including item %s for deletion, size %s (threshold: %s)",
-					item.Title, humanize.Bytes(safeUint64(fileSize)), humanize.Bytes(safeUint64(libraryConfig.ContentSizeThreshold)))
+					item.Title, humanize.Bytes(safeUint64(fileSize)), humanize.Bytes(safeUint64(libraryConfig.GetContentSizeThreshold())))
 			} else {
 				log.Debugf("Excluding item %s due to small size: %s (threshold: %s)",
-					item.Title, humanize.Bytes(safeUint64(fileSize)), humanize.Bytes(safeUint64(libraryConfig.ContentSizeThreshold)))
+					item.Title, humanize.Bytes(safeUint64(fileSize)), humanize.Bytes(safeUint64(libraryConfig.GetContentSizeThreshold())))
 			}
 		} else {
 			// No size threshold configured or threshold is 0, include the item

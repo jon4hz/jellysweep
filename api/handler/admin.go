@@ -130,7 +130,16 @@ func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
 		return
 	}
 
-	protectedUntil := time.Now().Add(time.Hour * 24 * 90) // Protect for 90 days // TODO: make this configurable
+	libraryConfig := h.config.GetLibraryConfig(media.LibraryName)
+	if libraryConfig == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "No library configuration found",
+		})
+		return
+	}
+
+	protectedUntil := time.Now().Add(time.Hour * 24 * time.Duration(libraryConfig.GetProtectionPeriod()))
 	err = h.db.SetMediaProtectedUntil(c.Request.Context(), media.ID, &protectedUntil)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

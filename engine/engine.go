@@ -331,7 +331,7 @@ func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
 		}
 
 		timeSinceLastPlayed := time.Since(lastPlayed)
-		thresholdDuration := time.Duration(libraryConfig.LastStreamThreshold) * 24 * time.Hour
+		thresholdDuration := time.Duration(libraryConfig.GetLastStreamThreshold()) * 24 * time.Hour
 		if timeSinceLastPlayed > thresholdDuration {
 			log.Debug("Item last played outside of threshold, skipping removal", "title", item.Title, "jellyfinID", item.JellyfinID, "lastPlayed", lastPlayed.Format(time.RFC3339))
 			continue
@@ -664,7 +664,13 @@ func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept boo
 	}
 
 	if accept {
-		protectedUntil := time.Now().Add(time.Hour * 24 * 90) // keep for 90 days // TODO: make this configurable
+		libraryConfig := e.cfg.GetLibraryConfig(media.LibraryName)
+		if libraryConfig == nil {
+			log.Errorf("library config not found for library: %s", media.LibraryName)
+			return fmt.Errorf("library config not found for library: %s", media.LibraryName)
+		}
+
+		protectedUntil := time.Now().Add(time.Hour * 24 * time.Duration(libraryConfig.GetProtectionPeriod()))
 		err = e.db.SetMediaProtectedUntil(ctx, media.ID, &protectedUntil)
 		if err != nil {
 			log.Errorf("failed to set media protected until in database: %v", err)

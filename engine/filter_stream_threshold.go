@@ -30,7 +30,7 @@ func (e *Engine) filterLastStreamThreshold(ctx context.Context, mediaItems []arr
 		}
 		// Check if the last streamed time is older than the configured threshold
 		libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
-		if libraryConfig != nil && time.Since(lastStreamed) > time.Duration(libraryConfig.LastStreamThreshold)*24*time.Hour {
+		if libraryConfig != nil && time.Since(lastStreamed) > time.Duration(libraryConfig.GetLastStreamThreshold())*24*time.Hour {
 			log.Debugf("Including item %s - last streamed on %s", item.Title, lastStreamed.Format(time.RFC3339))
 			filteredItems = append(filteredItems, item)
 			continue

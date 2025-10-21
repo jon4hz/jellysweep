@@ -31,13 +31,8 @@ func (p *DefaultDelete) Apply(media *database.Media) error {
 		return fmt.Errorf("no configuration found for library: %s", media.LibraryName)
 	}
 
-	// Always add the default cleanup tag
-	cleanupDelay := libraryConfig.CleanupDelay
-	if cleanupDelay <= 0 {
-		cleanupDelay = 1
-	}
 	media.DefaultDeleteAt = time.Now().Add(
-		time.Duration(cleanupDelay) * 24 * time.Hour,
+		time.Duration(libraryConfig.GetCleanupDelay()) * 24 * time.Hour,
 	)
 	log.Debug("Set default delete policy", "item", media.Title, "library", media.LibraryName, "deleteAt", media.DefaultDeleteAt)
 
