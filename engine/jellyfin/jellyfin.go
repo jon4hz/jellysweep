@@ -289,19 +289,13 @@ func (c *Client) GetEpisodes(ctx context.Context, seriesID string) ([]jellyfin.B
 
 			// Check if we've gotten all episodes from this season
 			totalRecordCount := episodesResp.GetTotalRecordCount()
-			episodesLen, err := safecast.ToInt32(len(episodes))
+			episodesCount, err := safecast.ToInt32(len(episodes))
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to cast episodes length: %w", err)
 			}
-			if episodesLen > 0 && startIndex+episodesLen >= totalRecordCount {
+			if episodesCount > 0 && startIndex+episodesCount >= totalRecordCount {
 				log.Debug("Retrieved all episodes from season", "seasonID", seasonID, "seasonName", seasonName, "total", totalRecordCount)
 				break
-			}
-
-			// Move to next batch
-			episodesCount, err := safecast.ToInt32(len(episodes))
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to cast episodes count: %w", err)
 			}
 			startIndex += episodesCount
 		}
