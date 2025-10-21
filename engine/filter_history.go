@@ -6,23 +6,21 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine/arr"
 )
 
 // getMediaItemAddedDate returns the first date when media content was added/imported for a given media item.
-func (e *Engine) getMediaItemAddedDate(ctx context.Context, item arr.MediaItem) (*time.Time, error) {
+func (e *Engine) getMediaItemAddedDate(ctx context.Context, item arr.MediaItem, since time.Time) (*time.Time, error) {
 	switch item.MediaType {
 	case models.MediaTypeMovie:
-		return e.radarr.GetItemAddedDate(ctx, item.MovieResource.GetId())
+		return e.radarr.GetItemAddedDate(ctx, item.MovieResource.GetId(), since)
 	case models.MediaTypeTV:
-		return e.sonarr.GetItemAddedDate(ctx, item.SeriesResource.GetId())
+		return e.sonarr.GetItemAddedDate(ctx, item.SeriesResource.GetId(), since)
 	default:
 		return nil, nil
 	}
 }
-
-// TODO: make filter smarter so that it checks the content age after the last deletion.
-// We need to handle the use case that content was re-added after deletion correctly.
 
 // filterContentAgeThreshold filters out media items that have been added within the configured threshold.
 func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
@@ -35,7 +33,32 @@ func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems []arr
 		default:
 		}
 
-		addedDate, err := e.getMediaItemAddedDate(ctx, item)
+		// check if item was already deleted once
+		var deletedMedia []database.Media
+		var err error
+		if item.TmdbId != 0 {
+			deletedMedia, err = e.db.GetDeletedMediaByTMDBID(ctx, item.TmdbId)
+		} else if item.TvdbId != 0 {
+			deletedMedia, err = e.db.GetDeletedMediaByTVDBID(ctx, item.TvdbId)
+		}
+		if err != nil {
+			log.Warn("Failed to check deleted media history", "title", item.Title, "error", err)
+		}
+
+		var lastDeleted time.Time
+		if len(deletedMedia) > 0 {
+			for _, dm := range deletedMedia {
+				if !dm.DeletedAt.Time.IsZero() && dm.DeletedAt.Time.After(lastDeleted) {
+					lastDeleted = dm.DeletedAt.Time
+				}
+			}
+		}
+
+		if !lastDeleted.IsZero() {
+			log.Debug("Item was previously deleted", "title", item.Title, "last_deleted", lastDeleted)
+		}
+
+		addedDate, err := e.getMediaItemAddedDate(ctx, item, lastDeleted)
 		if err != nil {
 			log.Errorf("Failed to get added date for item %s: %v", item.Title, err)
 			// If we can't get the added date, continue processing but mark for deletion

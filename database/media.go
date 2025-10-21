@@ -24,8 +24,8 @@ type Media struct {
 	LibraryName     string
 	ArrID           int32 `gorm:"not null;uniqueIndex:idx_media_arr"` // Sonarr or Radarr ID
 	Title           string
-	TmdbId          *int32
-	TvdbId          *int32
+	TmdbId          *int32 `gorm:"index"`
+	TvdbId          *int32 `gorm:"index"`
 	Year            int32
 	FileSize        int64
 	PosterURL       string
@@ -114,6 +114,32 @@ func (c *Client) GetMediaExpiredProtection(ctx context.Context, asOf time.Time) 
 		Find(&mediaItems)
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		log.Error("failed to get media items with expired protection", "error", result.Error)
+		return nil, result.Error
+	}
+	return mediaItems, nil
+}
+
+func (c *Client) GetDeletedMediaByTMDBID(ctx context.Context, tmdbID int32) ([]Media, error) {
+	var mediaItems []Media
+	result := c.db.WithContext(ctx).
+		Unscoped().
+		Where("deleted_at IS NOT NULL AND tmdb_id = ?", tmdbID).
+		Find(&mediaItems)
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		log.Error("failed to get deleted media by TMDB ID", "error", result.Error)
+		return nil, result.Error
+	}
+	return mediaItems, nil
+}
+
+func (c *Client) GetDeletedMediaByTVDBID(ctx context.Context, tvdbID int32) ([]Media, error) {
+	var mediaItems []Media
+	result := c.db.WithContext(ctx).
+		Unscoped().
+		Where("deleted_at IS NOT NULL AND tvdb_id = ?", tvdbID).
+		Find(&mediaItems)
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		log.Error("failed to get deleted media by TVDB ID", "error", result.Error)
 		return nil, result.Error
 	}
 	return mediaItems, nil

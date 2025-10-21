@@ -346,7 +346,7 @@ func (r *Radarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
 }
 
 // GetItemAddedDate retrieves the first date when a movie was imported.
-func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32) (*time.Time, error) {
+func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32, since time.Time) (*time.Time, error) {
 	var allHistory []radarrAPI.HistoryResource
 	page := int32(1)
 	pageSize := int32(250)
@@ -379,17 +379,26 @@ func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32) (*time.Tim
 		if historyResp.TotalRecords == nil || len(allHistory) >= int(*historyResp.TotalRecords) {
 			break
 		}
+
+		// or if the last record is older than 'since'
+		if len(historyResp.Records) > 0 {
+			lastRecord := historyResp.Records[len(historyResp.Records)-1]
+			if lastRecord.GetDate().Before(since) {
+				break
+			}
+		}
+
 		page++
 	}
 
-	// Find the earliest "downloaded" or "importedmovie" event
+	// Find the earliest "downloaded" or "importedmovie" event that is after 'since'
 	var earliestTime *time.Time
 	for _, record := range allHistory {
 		eventType := record.GetEventType()
 		if eventType == radarrAPI.MOVIEHISTORYEVENTTYPE_DOWNLOAD_FOLDER_IMPORTED ||
 			eventType == radarrAPI.MOVIEHISTORYEVENTTYPE_MOVIE_FOLDER_IMPORTED {
 			recordTime := record.GetDate()
-			if earliestTime == nil || recordTime.Before(*earliestTime) {
+			if earliestTime == nil || (recordTime.Before(*earliestTime) && recordTime.After(since)) {
 				earliestTime = &recordTime
 			}
 		}

@@ -93,6 +93,7 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 			SeriesResource: sr,
 			Title:          sr.GetTitle(),
 			TmdbId:         sr.GetTmdbId(),
+			TvdbId:         sr.GetTvdbId(),
 			Year:           sr.GetYear(),
 			Tags:           lo.Map(sr.GetTags(), func(tag int32, _ int) string { return tagMap[tag] }),
 			MediaType:      models.MediaTypeTV,
@@ -330,7 +331,7 @@ func (s *Sonarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
 }
 
 // GetItemAddedDate retrieves the first date when any episode of a series was imported.
-func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32) (*time.Time, error) {
+func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32, since time.Time) (*time.Time, error) {
 	var allHistory []sonarrAPI.HistoryResource
 	page := int32(1)
 	pageSize := int32(250)
@@ -363,6 +364,15 @@ func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32) (*time.Ti
 		if historyResp.TotalRecords == nil || len(allHistory) >= int(*historyResp.TotalRecords) {
 			break
 		}
+
+		// or if the last record is older than 'since'
+		if len(historyResp.Records) > 0 {
+			lastRecord := historyResp.Records[len(historyResp.Records)-1]
+			if lastRecord.GetDate().Before(since) {
+				break
+			}
+		}
+
 		page++
 	}
 
@@ -373,7 +383,7 @@ func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32) (*time.Ti
 		if eventType == sonarrAPI.EPISODEHISTORYEVENTTYPE_DOWNLOAD_FOLDER_IMPORTED ||
 			eventType == sonarrAPI.EPISODEHISTORYEVENTTYPE_SERIES_FOLDER_IMPORTED {
 			recordTime := record.GetDate()
-			if earliestTime == nil || recordTime.Before(*earliestTime) {
+			if earliestTime == nil || (recordTime.Before(*earliestTime) && recordTime.After(since)) {
 				earliestTime = &recordTime
 			}
 		}
