@@ -584,6 +584,11 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 			log.Errorf("unsupported media type for deletion: %s", item.MediaType)
 			continue
 		}
+
+		if err := e.db.DeleteMediaItem(ctx, item.ID, database.DBDeleteReasonDefault); err != nil {
+			log.Errorf("failed to delete media item %s from database: %v", item.Title, err)
+			continue
+		}
 	}
 
 	// Send completion notification if any items were deleted
