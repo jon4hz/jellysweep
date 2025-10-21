@@ -237,7 +237,7 @@ func (c *Client) deleteEmptySeasons(ctx context.Context, title string, episodesB
 		}
 
 		// If all episodes from this season were deleted, mark the season for deletion
-		if allEpisodesDeleted && len(episodes) > 0 {
+		if allEpisodesDeleted && seasonID != "" {
 			seasonsToDelete = append(seasonsToDelete, seasonID)
 		}
 	}
