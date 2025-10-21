@@ -3,14 +3,11 @@ package database
 import (
 	"context"
 	"fmt"
-	"path"
 	"time"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
-
-const File = "jellysweep.db"
 
 // MediaType represents the type of media, either TV show or Movie.
 type MediaType string
@@ -79,7 +76,7 @@ type Client struct {
 
 // New creates a new database connection and performs migrations.
 func New(dbpath string) (*Client, error) {
-	db, err := gorm.Open(sqlite.Open(path.Join(dbpath, File)), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dbpath), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect database: %w", err)
 	}

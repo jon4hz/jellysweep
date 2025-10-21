@@ -342,7 +342,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.jellyfin.enabled", true)
 
 	// Database defaults
-	v.SetDefault("database.path", "./data/")
+	v.SetDefault("database.path", "./data/jellysweep.db")
 
 	// Cache defaults
 	v.SetDefault("cache.enabled", true)

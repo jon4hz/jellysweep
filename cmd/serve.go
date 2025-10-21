@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"path"
 	"syscall"
 	"time"
 
@@ -36,7 +35,7 @@ func startServer(cmd *cobra.Command, _ []string) {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	exists, err := dbFileExists(path.Join(cfg.Database.Path, database.File))
+	exists, err := dbFileExists(cfg.Database.Path)
 	if err != nil {
 		log.Fatalf("failed to check database file: %v", err)
 	}
