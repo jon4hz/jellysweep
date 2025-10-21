@@ -8,11 +8,13 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/jon4hz/jellysweep/api/models"
-import "fmt"
+import (
+	"fmt"
+	"github.com/jon4hz/jellysweep/api/models"
+)
 
 // AdminKeepRequestGrid creates a media grid specifically for keep requests in admin panel
-func AdminKeepRequestGrid(keepRequests []models.KeepRequest) templ.Component {
+func AdminKeepRequestGrid(requestedMedia []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -45,7 +47,7 @@ func AdminKeepRequestGrid(keepRequests []models.KeepRequest) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = AdminKeepRequestFilters(keepRequests).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = AdminKeepRequestFilters(requestedMedia).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -54,9 +56,9 @@ func AdminKeepRequestGrid(keepRequests []models.KeepRequest) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(keepRequests)))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(requestedMedia)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 21, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 23, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -67,9 +69,9 @@ func AdminKeepRequestGrid(keepRequests []models.KeepRequest) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(keepRequests))
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(requestedMedia))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 27, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 29, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -84,7 +86,7 @@ func AdminKeepRequestGrid(keepRequests []models.KeepRequest) templ.Component {
 }
 
 // AdminKeepRequestFilters creates the filter interface for keep requests
-func AdminKeepRequestFilters(keepRequests []models.KeepRequest) templ.Component {
+func AdminKeepRequestFilters(requestedMedia []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -109,7 +111,7 @@ func AdminKeepRequestFilters(keepRequests []models.KeepRequest) templ.Component 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, library := range getUniqueKeepRequestLibraries(keepRequests) {
+		for _, library := range getUniqueRequestLibraries(requestedMedia) {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<option value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -117,7 +119,7 @@ func AdminKeepRequestFilters(keepRequests []models.KeepRequest) templ.Component 
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 78, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 80, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -130,7 +132,7 @@ func AdminKeepRequestFilters(keepRequests []models.KeepRequest) templ.Component 
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 78, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 80, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -145,7 +147,7 @@ func AdminKeepRequestFilters(keepRequests []models.KeepRequest) templ.Component 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, mediaType := range getUniqueKeepRequestTypes(keepRequests) {
+		for _, mediaType := range getUniqueRequestTypes(requestedMedia) {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<option value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -153,7 +155,7 @@ func AdminKeepRequestFilters(keepRequests []models.KeepRequest) templ.Component 
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(mediaType)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 84, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 86, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -166,7 +168,7 @@ func AdminKeepRequestFilters(keepRequests []models.KeepRequest) templ.Component 
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(mediaType)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 84, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 86, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -177,7 +179,7 @@ func AdminKeepRequestFilters(keepRequests []models.KeepRequest) templ.Component 
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</select> <select id=\"request-sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"expiry-date-asc\">Expires Soonest First</option> <option value=\"expiry-date-desc\">Expires Latest First</option> <option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option></select></div><div class=\"flex items-center\"><button id=\"request-refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</select> <select id=\"request-sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option></select></div><div class=\"flex items-center\"><button id=\"request-refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -186,7 +188,7 @@ func AdminKeepRequestFilters(keepRequests []models.KeepRequest) templ.Component 
 }
 
 // AdminMediaGrid creates a media grid for keep/sweep decisions in admin panel
-func AdminMediaGrid(mediaItems []models.MediaItem) templ.Component {
+func AdminMediaGrid(mediaItems []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -207,17 +209,49 @@ func AdminMediaGrid(mediaItems []models.MediaItem) templ.Component {
 			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = MediaGrid(mediaItems, MediaGridConfig{
-			ContainerID:    "keep-sweep-container",
-			GridID:         "keep-sweep-grid",
-			EnableSearch:   true,
-			EnableFilters:  true,
-			EnableSorting:  true,
-			EnableRefresh:  true,
-			PageSize:       8,
-			MobilePageSize: 4,
-			AnimateChanges: true,
-		}, AdminMediaFilters(mediaItems)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div id=\"keep-sweep-container\" class=\"space-y-4\"><!-- Loading State --><div id=\"keep-sweep-container-grid-loading\" class=\"hidden\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = SkeletonGrid(8).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</div><!-- Custom content (filters, search, etc.) -->")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = AdminMediaFilters(mediaItems).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<!-- Media Grid --><div id=\"keep-sweep-grid\" class=\"grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 transition-opacity duration-200\" data-page-size=\"8\" data-mobile-page-size=\"4\" data-total-items=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var10 string
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(len(mediaItems)))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 123, Col: 49}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" data-enable-search=\"true\" data-enable-filters=\"true\" data-enable-sorting=\"true\" data-enable-refresh=\"true\" data-animate-changes=\"true\" data-media-items=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var11 string
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(mediaItems))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 129, Col: 50}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><!-- Items will be populated by JavaScript --></div><!-- Loading indicator for infinite scroll --><div id=\"keep-sweep-container-scroll-loading\" class=\"hidden text-center py-8\"><div class=\"inline-flex items-center space-x-2\"><div class=\"animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500\"></div><span class=\"text-gray-400\">Loading more...</span></div></div><!-- Load More Button (fallback for poor connections) --><div id=\"keep-sweep-container-load-more-container\" class=\"text-center mt-6 hidden\"><button id=\"keep-sweep-container-load-more-btn\" class=\"btn-secondary\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 6v6m0 0v6m0-6h6m-6 0H6\"></path></svg> Load More</button></div><!-- Scroll to Top Button --><button id=\"keep-sweep-container-scroll-to-top\" class=\"fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white p-2 md:p-3 rounded-full shadow-lg transition-all duration-200 opacity-0 pointer-events-none z-50 transform translate-y-4\" aria-label=\"Scroll to top\"><svg class=\"w-4 h-4 md:w-5 md:h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 10l7-7m0 0l7 7m-7-7v18\"></path></svg></button><!-- Virtual scroll sentinel for intersection observer --><div id=\"keep-sweep-container-scroll-sentinel\" class=\"h-1 opacity-0\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -226,7 +260,7 @@ func AdminMediaGrid(mediaItems []models.MediaItem) templ.Component {
 }
 
 // AdminMediaFilters creates the filter interface for keep/sweep media
-func AdminMediaFilters(mediaItems []models.MediaItem) templ.Component {
+func AdminMediaFilters(mediaItems []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -242,84 +276,84 @@ func AdminMediaFilters(mediaItems []models.MediaItem) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var10 == nil {
-			templ_7745c5c3_Var10 = templ.NopComponent
+		templ_7745c5c3_Var12 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var12 == nil {
+			templ_7745c5c3_Var12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"card-no-hover p-4 sm:p-6 mb-6\"><div class=\"flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between\"><div class=\"flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4\"><div class=\"relative flex-1 sm:flex-none\"><input type=\"text\" id=\"media-search\" placeholder=\"Search media...\" class=\"input-field pl-10 pr-4 py-2 w-full sm:w-64\"><div class=\"absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none\"><svg class=\"h-5 w-5 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"></path></svg></div></div><select id=\"media-library-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Libraries</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"card-no-hover p-4 sm:p-6 mb-6\"><div class=\"flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between\"><div class=\"flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4\"><div class=\"relative flex-1 sm:flex-none\"><input type=\"text\" id=\"media-search\" placeholder=\"Search media...\" class=\"input-field pl-10 pr-4 py-2 w-full sm:w-64\"><div class=\"absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none\"><svg class=\"h-5 w-5 text-gray-400\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"></path></svg></div></div><select id=\"media-library-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Libraries</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, library := range GetUniqueLibraries(mediaItems) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<option value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(library)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 139, Col: 29}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(library)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 139, Col: 41}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</option>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</select> <select id=\"media-type-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Types</option> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		for _, mediaType := range getUniqueMediaTypes(mediaItems) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<option value=\"")
+		for _, library := range getAdminMediaUniqueLibraries(mediaItems) {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<option value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(mediaType)
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 145, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 180, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(mediaType)
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(library)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 145, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 180, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</option>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</option>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</select> <select id=\"media-status-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Status</option> <option value=\"requested\">Keep Requested</option> <option value=\"must-delete\">Must Delete</option> <option value=\"normal\">Normal</option></select> <select id=\"media-sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option> <option value=\"size-asc\">File Size (Smallest First)</option> <option value=\"size-desc\">File Size (Largest First)</option></select></div><div class=\"flex items-center\"><button id=\"media-refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</select> <select id=\"media-type-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Types</option> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for _, mediaType := range getAdminMediaUniqueTypes(mediaItems) {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<option value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var15 string
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(string(mediaType))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 186, Col: 39}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var16 string
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(string(mediaType))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/components/admin-media-grid.templ`, Line: 186, Col: 61}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</option>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</select> <select id=\"media-status-filter\" class=\"input-field flex-1 sm:flex-none\"><option value=\"\">All Status</option> <option value=\"requested\">Keep Requested</option> <option value=\"must-delete\">Must Delete</option> <option value=\"normal\">Normal</option></select> <select id=\"media-sort-by\" class=\"input-field flex-1 sm:flex-none\"><option value=\"deletion-date-asc\">Deletion Date (Earliest First)</option> <option value=\"deletion-date-desc\">Deletion Date (Latest First)</option> <option value=\"title-asc\">Title (A-Z)</option> <option value=\"title-desc\">Title (Z-A)</option> <option value=\"size-asc\">File Size (Smallest First)</option> <option value=\"size-desc\">File Size (Largest First)</option></select></div><div class=\"flex items-center\"><button id=\"media-refresh-btn\" class=\"flex items-center justify-center btn-secondary w-full sm:w-auto\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -328,81 +362,63 @@ func AdminMediaFilters(mediaItems []models.MediaItem) templ.Component {
 }
 
 // Helper functions to extract unique values for filters
-func getUniqueKeepRequestLibraries(requests []models.KeepRequest) []string {
+func getUniqueRequestLibraries(requests []models.AdminMediaItem) []string {
 	libraryMap := make(map[string]bool)
 	var libraries []string
 
 	for _, request := range requests {
-		if request.Library != "" && !libraryMap[request.Library] {
-			libraryMap[request.Library] = true
-			libraries = append(libraries, request.Library)
+		if request.LibraryName != "" && !libraryMap[request.LibraryName] {
+			libraryMap[request.LibraryName] = true
+			libraries = append(libraries, request.LibraryName)
 		}
 	}
 
 	return libraries
 }
 
-func getUniqueKeepRequestTypes(requests []models.KeepRequest) []models.MediaType {
+func getUniqueRequestTypes(requests []models.AdminMediaItem) []models.MediaType {
 	typeMap := make(map[models.MediaType]bool)
 	var types []models.MediaType
 
 	for _, request := range requests {
-		if request.Type != "" && !typeMap[request.Type] {
-			typeMap[request.Type] = true
-			types = append(types, request.Type)
+		if request.MediaType != "" && !typeMap[request.MediaType] {
+			typeMap[request.MediaType] = true
+			types = append(types, request.MediaType)
 		}
 	}
 
 	return types
 }
 
-func getUniqueMediaTypes(items []models.MediaItem) []models.MediaType {
+func getUniqueMediaTypes(items []models.AdminMediaItem) []models.MediaType {
 	typeMap := make(map[models.MediaType]bool)
 	var types []models.MediaType
 
 	for _, item := range items {
-		if item.Type != "" && !typeMap[item.Type] {
-			typeMap[item.Type] = true
-			types = append(types, item.Type)
+		if item.MediaType != "" && !typeMap[item.MediaType] {
+			typeMap[item.MediaType] = true
+			types = append(types, item.MediaType)
 		}
 	}
 
 	return types
 }
 
-// Convert KeepRequest to MediaItem for compatibility with MediaGrid
-func convertKeepRequestsToMediaItems(requests []models.KeepRequest) []models.MediaItem {
-	items := make([]models.MediaItem, len(requests))
+// Helper function aliases for consistency
+func getAdminMediaUniqueLibraries(items []models.AdminMediaItem) []string {
+	return getUniqueRequestLibraries(items)
+}
 
-	for i, request := range requests {
-		items[i] = models.MediaItem{
-			ID:           request.MediaID,
-			Title:        request.Title,
-			Type:         request.Type,
-			Year:         int32(request.Year),
-			Library:      request.Library,
-			PosterURL:    request.PosterURL,
-			DeletionDate: request.DeletionDate,
-			FileSize:     0,     // KeepRequest doesn't have file size
-			HasRequested: true,  // By definition, all keep requests have been requested
-			CanRequest:   false, // Already requested
-			MustDelete:   false, // Keep requests are for keeping
-			CleanupMode:  "",
-			KeepCount:    0,
-		}
-	}
-
-	return items
+func getAdminMediaUniqueTypes(items []models.AdminMediaItem) []models.MediaType {
+	return getUniqueRequestTypes(items)
 }
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_a913`,
-		Function: `function __templ_AdminKeepRequestGridScript_a913(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_9937`,
+		Function: `function __templ_AdminKeepRequestGridScript_9937(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
-			// Store original keep requests data for expiry information
-			this.keepRequestsData = {};
 		}
 
 		loadMediaItemsFromDOM() {
@@ -437,24 +453,22 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 				}
 
 				const rawKeepRequests = JSON.parse(keepRequestsData);
-				// Transform KeepRequest to MediaItem format for the grid
+				// Transform database.Media (with Request) to MediaItem format for the grid
 				const transformedItems = rawKeepRequests.map(request => {
-
-					const deletionTimestamp = request.DeletionDate ? new Date(request.DeletionDate).getTime() : 0;
-
+					// database.Media has ID, not MediaID
+					const deletionTimestamp = request.DefaultDeleteAt ? new Date(request.DefaultDeleteAt).getTime() : 0;
 					return {
-						id: request.MediaID,
+						id: request.ID,
 						title: request.Title,
-						type: request.Type,
+						type: request.MediaType,
 						year: request.Year,
-						library: request.Library,
+						library: request.LibraryName,
 						posterURL: request.PosterURL,
 						deletionTimestamp: deletionTimestamp,
-						expiryTimestamp: request.ExpiryDate ? new Date(request.ExpiryDate).getTime() : Date.now() + (7 * 24 * 60 * 60 * 1000),
 						canRequest: false, // Already requested
 						hasRequested: true, // By definition
 						mustDelete: false, // Keep requests are for keeping
-						fileSize: 0,
+						fileSize: request.FileSize || 0, // Include file size from database.Media
 						cleanupMode: "",
 						keepCount: 0
 					};
@@ -475,7 +489,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			div.setAttribute('data-title', item.title);
 			div.setAttribute('data-library', item.library);
 			div.setAttribute('data-type', item.type);
-			div.setAttribute('data-expiry-timestamp', item.expiryTimestamp || 0);
 
 			// Use the admin-specific card HTML for keep requests
 			div.innerHTML = this.createKeepRequestCardHTML(item);
@@ -487,7 +500,7 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 				if (!target) return;
 
 				const mediaId = target.getAttribute('data-media-id');
-				if (mediaId !== item.id) return;
+				if (mediaId != item.id) return;
 
 				if (target.classList.contains('accept-btn')) {
 					const originalContent = this.setButtonLoading(target, 'Accepting...');
@@ -509,10 +522,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			// Note: For keep requests, we don't have file size, so we'll omit it
 			const deletionDate = new Date(item.deletionTimestamp);
 			const deletionTime = this.formatRelativeTime(deletionDate);
-
-			// For keep requests, we need to handle expiry date
-			const expiryDate = new Date(item.expiryTimestamp || Date.now() + 7*24*60*60*1000); // Default to 7 days if not set
-			const expiryTime = this.formatRelativeTime(expiryDate);
 
 			const posterImg = item.posterURL
 				? ` + "`" + `<img src="${item.posterURL}" class="w-full h-64 object-cover" loading="lazy"/>` + "`" + `
@@ -550,12 +559,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 										</svg>
 										Deletes ${deletionTime}
-									</div>
-									<div class="flex items-center text-sm text-yellow-400">
-										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4M5 7h14l-1 14H6L5 7z"></path>
-										</svg>
-										Expires ${expiryTime}
 									</div>
 								</div>
 							</div>
@@ -620,12 +623,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 										</svg>
 										Deletes ${deletionTime}
 									</div>
-									<div class="flex items-center text-yellow-400">
-										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4M5 7h14l-1 14H6L5 7z"></path>
-										</svg>
-										Expires ${expiryTime}
-									</div>
 								</div>
 								<div class="mt-2 flex flex-wrap items-center gap-2">
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
@@ -668,7 +665,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			` + "`" + `;
 		}
 
-		// Override sorting to include expiry date
 		sortItems(sortBy) {
 			// Store current scroll position
 			const scrollPosition = window.scrollY;
@@ -679,10 +675,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 						return a.title.localeCompare(b.title);
 					case 'title-desc':
 						return b.title.localeCompare(a.title);
-					case 'expiry-date-asc':
-						return (a.expiryTimestamp || 0) - (b.expiryTimestamp || 0);
-					case 'expiry-date-desc':
-						return (b.expiryTimestamp || 0) - (a.expiryTimestamp || 0);
 					case 'deletion-date-asc':
 						return a.deletionTimestamp - b.deletionTimestamp;
 					case 'deletion-date-desc':
@@ -855,50 +847,37 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 
 		// Override setItems to handle keep request data format
-		setItems(keepRequests) {
-			// Transform KeepRequest objects to MediaItem format
-			const transformedItems = keepRequests.map(request => {
+		setItems(mediaRequests) {
+			// Transform MediaRequest objects to MediaItem format
+			const transformedItems = mediaRequests.map(item => {
 				// Check if data is already in client format (has deletionTimestamp)
-				// vs server format (has DeletionDate)
+				// vs database.Media format (has DefaultDeleteAt)
 				let deletionTimestamp;
-				if (request.deletionTimestamp !== undefined) {
+				if (item.deletionTimestamp !== undefined) {
 					// Already in client format, use as-is
-					deletionTimestamp = request.deletionTimestamp;
-				} else if (request.DeletionDate) {
-					// Server format, convert to timestamp
-					deletionTimestamp = new Date(request.DeletionDate).getTime();
+					deletionTimestamp = item.deletionTimestamp;
+				} else if (item.DefaultDeleteAt) {
+					// database.Media format, convert to timestamp
+					deletionTimestamp = new Date(item.DefaultDeleteAt).getTime();
 				} else {
 					// No deletion date available
 					deletionTimestamp = 0;
 				}
 
-				let expiryTimestamp;
-				if (request.expiryTimestamp !== undefined) {
-					// Already in client format, use as-is
-					expiryTimestamp = request.expiryTimestamp;
-				} else if (request.ExpiryDate) {
-					// Server format, convert to timestamp
-					expiryTimestamp = new Date(request.ExpiryDate).getTime();
-				} else {
-					// Default expiry (7 days from now)
-					expiryTimestamp = Date.now() + (7 * 24 * 60 * 60 * 1000);
-				}
-
 				return {
-					id: request.MediaID || request.id,
-					title: request.Title || request.title,
-					type: request.Type || request.type,
-					year: request.Year || request.year,
-					library: request.Library || request.library,
-					posterURL: request.PosterURL || request.posterURL,
+					id: item.ID || item.id,
+					title: item.Title || item.title,
+					library: item.LibraryName || item.library,
+					posterURL: item.PosterURL || item.posterURL,
+					fileSize: parseInt(item.FileSize || item.fileSize || 0),
 					deletionTimestamp: deletionTimestamp,
-					expiryTimestamp: expiryTimestamp,
-					canRequest: false,
-					hasRequested: true,
-					mustDelete: false,
-					fileSize: 0,
-					cleanupMode: "",
-					keepCount: 0
+					hasRequested: !!(item.Request && item.Request.ID) || !!item.hasRequested, // Check if Request exists and has ID
+					canRequest: !item.Unkeepable && (item.canRequest !== false),
+					mustDelete: item.Unkeepable || item.mustDelete || false,
+					cleanupMode: item.cleanupMode || "",
+					keepCount: parseInt(item.keepCount || 0),
+					type: item.MediaType || item.type,
+					year: parseInt(item.Year || item.year || 0)
 				};
 			});
 
@@ -947,15 +926,15 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_a913`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_a913`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_9937`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_9937`),
 	}
 }
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_11e6`,
-		Function: `function __templ_AdminMediaGridScript_11e6(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_9916`,
+		Function: `function __templ_AdminMediaGridScript_9916(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -992,21 +971,19 @@ func AdminMediaGridScript() templ.ComponentScript {
 				}
 
 				const rawMediaItems = JSON.parse(mediaItemsData);
-				// Transform Go struct field names to JavaScript-friendly names
+				// Transform database.Media to JavaScript-friendly format
 				const transformedItems = rawMediaItems.map(item => ({
 					id: item.ID,
 					title: item.Title,
-					type: item.Type,
+					type: item.MediaType,
 					year: item.Year,
-					library: item.Library,
+					library: item.LibraryName,
 					posterURL: item.PosterURL,
-					deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
+					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
 					fileSize: item.FileSize || 0,
-					hasRequested: item.HasRequested || false,
-					canRequest: item.CanRequest !== false, // Default to true unless explicitly false
-					mustDelete: item.MustDelete || false,
-					cleanupMode: item.CleanupMode || "",
-					keepCount: item.KeepCount || 0
+					hasRequested: !!(item.Request && item.Request.ID), // Check if Request exists and has ID
+					canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
+					mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
 				}));
 				this.setItems(transformedItems);
 			} catch (error) {
@@ -1036,7 +1013,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 				if (!target) return;
 
 				const mediaId = target.getAttribute('data-media-id');
-				if (mediaId !== item.id) return;
+				// Use loose equality to handle string vs number comparison
+				if (mediaId != item.id) return;
 
 				if (target.classList.contains('keep-btn')) {
 					const originalContent = this.setButtonLoading(target, 'Keeping...');
@@ -1117,7 +1095,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 									</div>
 								</div>
 								<div class="mt-3 flex flex-wrap items-center gap-2">
-									${item.hasRequested ? ` + "`" + `
+									${item.hasRequested && !item.mustDelete ? ` + "`" + `
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
 										<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -1227,7 +1205,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 										${item.type}
 									</span>
 									${item.year > 0 ? ` + "`" + `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-600 text-gray-300">${item.year}</span>` + "`" + ` : ''}
-									${item.hasRequested ? ` + "`" + `
+									${item.hasRequested && !item.mustDelete ? ` + "`" + `
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
 										<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -1316,7 +1294,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 				if (statusFilter) {
 					switch (statusFilter) {
 						case 'requested':
-							matchesStatus = item.hasRequested;
+							matchesStatus = item.hasRequested && !item.mustDelete;
 							break;
 						case 'must-delete':
 							matchesStatus = item.mustDelete;
@@ -1391,10 +1369,16 @@ func AdminMediaGridScript() templ.ComponentScript {
 			let apiPromise;
 			switch (action) {
 				case 'keep':
-					apiPromise = window.makeApiRequest(` + "`" + `/admin/api/media/${mediaId}/keep` + "`" + `);
+					apiPromise = window.makeApiRequestEnhanced(` + "`" + `/admin/api/media/${mediaId}/keep` + "`" + `, {
+						method: 'POST',
+						showProgress: true
+					});
 					break;
 				case 'keep-forever':
-					apiPromise = window.makeApiRequest(` + "`" + `/admin/api/media/${mediaId}/keep-forever` + "`" + `);
+					apiPromise = window.makeApiRequestEnhanced(` + "`" + `/admin/api/media/${mediaId}/keep-forever` + "`" + `, {
+						method: 'POST',
+						showProgress: true
+					});
 					break;
 				case 'sweep':
 					apiPromise = window.makeApiRequestEnhanced(` + "`" + `/admin/api/media/${mediaId}/delete` + "`" + `, {
@@ -1491,17 +1475,17 @@ func AdminMediaGridScript() templ.ComponentScript {
 
 		// Override setItems to handle media item data format
 		setItems(mediaItems) {
-			// Transform server data to client format
+			// Transform database.Media to client format
 			const clientItems = mediaItems.map(item => {
 				// Check if data is already in client format (has deletionTimestamp)
-				// vs server format (has DeletionDate)
+				// vs database.Media format (has DefaultDeleteAt)
 				let deletionTimestamp;
 				if (item.deletionTimestamp !== undefined) {
 					// Already in client format, use as-is
 					deletionTimestamp = item.deletionTimestamp;
-				} else if (item.DeletionDate) {
-					// Server format, convert to timestamp
-					deletionTimestamp = new Date(item.DeletionDate).getTime();
+				} else if (item.DefaultDeleteAt) {
+					// database.Media format, convert to timestamp
+					deletionTimestamp = new Date(item.DefaultDeleteAt).getTime();
 				} else {
 					// No deletion date available
 					deletionTimestamp = 0;
@@ -1511,16 +1495,16 @@ func AdminMediaGridScript() templ.ComponentScript {
 					...item,
 					id: item.ID || item.id,
 					title: item.Title || item.title,
-					library: item.Library || item.library,
+					library: item.LibraryName || item.library,
 					posterURL: item.PosterURL || item.posterURL,
 					fileSize: parseInt(item.FileSize || item.fileSize || 0),
 					deletionTimestamp: deletionTimestamp,
-					hasRequested: item.HasRequested || item.hasRequested,
-					canRequest: item.CanRequest !== undefined ? item.CanRequest : item.canRequest,
-					mustDelete: item.MustDelete || item.mustDelete,
-					cleanupMode: item.CleanupMode || item.cleanupMode,
-					keepCount: parseInt(item.KeepCount || item.keepCount || 0),
-					type: item.Type || item.type,
+					hasRequested: !!(item.Request && item.Request.ID) || !!item.hasRequested, // Check if Request exists and has ID
+					canRequest: !item.Unkeepable && (item.canRequest !== false),
+					mustDelete: item.Unkeepable || item.mustDelete || false,
+					cleanupMode: item.cleanupMode || "",
+					keepCount: parseInt(item.keepCount || 0),
+					type: item.MediaType || item.type,
 					year: parseInt(item.Year || item.year || 0)
 				};
 			});
@@ -1571,8 +1555,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_11e6`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_11e6`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_9916`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_9916`),
 	}
 }
 

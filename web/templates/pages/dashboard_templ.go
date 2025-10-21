@@ -85,7 +85,7 @@ func getSeasonTooltip(keepCount int) string {
 	return b.String()
 }
 
-func Dashboard(user *models.User, mediaItems []models.MediaItem) templ.Component {
+func Dashboard(user *models.User, mediaItems []models.UserMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -114,7 +114,7 @@ func Dashboard(user *models.User, mediaItems []models.MediaItem) templ.Component
 	})
 }
 
-func DashboardWithPendingRequests(user *models.User, mediaItems []models.MediaItem, pendingRequestsCount int) templ.Component {
+func DashboardWithPendingRequests(user *models.User, mediaItems []models.UserMediaItem, pendingRequestsCount int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -186,7 +186,7 @@ func DashboardWithPendingRequests(user *models.User, mediaItems []models.MediaIt
 	})
 }
 
-func DashboardContent(user *models.User, mediaItems []models.MediaItem) templ.Component {
+func DashboardContent(user *models.User, mediaItems []models.UserMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -300,7 +300,7 @@ func DashboardContent(user *models.User, mediaItems []models.MediaItem) templ.Co
 }
 
 // DashboardTabs creates the tab interface for the dashboard
-func DashboardTabs(mediaItems []models.MediaItem) templ.Component {
+func DashboardTabs(mediaItems []models.UserMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -456,8 +456,8 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_3013`,
-		Function: `function __templ_dashboardScripts_3013(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_fe9e`,
+		Function: `function __templ_dashboardScripts_fe9e(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
 		initializeDashboardGrid();
@@ -475,22 +475,22 @@ func dashboardScripts() templ.ComponentScript {
 		if (dataScript && window.dashboardMediaGridManager) {
 			try {
 				const mediaItems = JSON.parse(dataScript.textContent);
-				// Convert server data to client format
+				// Convert database.Media to client format
 				const clientItems = mediaItems.map(item => ({
 					...item,
 					// Ensure proper data format for client-side handling
 					id: item.ID || item.id,
 					title: item.Title || item.title,
-					library: item.Library || item.library,
+					library: item.LibraryName || item.library, // database.Media uses LibraryName
 					posterURL: item.PosterURL || item.posterURL,
 					fileSize: parseInt(item.FileSize || item.fileSize || 0),
-					deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
-					hasRequested: item.HasRequested || item.hasRequested,
-					canRequest: item.CanRequest || item.canRequest,
-					mustDelete: item.MustDelete || item.mustDelete,
-					cleanupMode: item.CleanupMode || item.cleanupMode,
-					keepCount: parseInt(item.KeepCount || item.keepCount || 0),
-					type: item.Type || item.type,
+					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+					hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false, // Check if Request exists
+					canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
+					mustDelete: item.Unkeepable || item.mustDelete || false,
+					cleanupMode: item.CleanupMode || "",
+					keepCount: parseInt(item.KeepCount || 0),
+					type: item.MediaType || item.type, // database.Media uses MediaType
 					year: parseInt(item.Year || item.year || 0)
 				}));
 
@@ -616,19 +616,19 @@ func dashboardScripts() templ.ComponentScript {
 				if (window.dashboardMediaGridManager) {
 					const clientItems = data.mediaItems.map(item => ({
 						...item,
-						// Ensure proper data format for client-side handling
+						// Convert database.Media to client format
 						id: item.ID || item.id,
 						title: item.Title || item.title,
-						library: item.Library || item.library,
+						library: item.LibraryName || item.library, // database.Media uses LibraryName
 						posterURL: item.PosterURL || item.posterURL,
 						fileSize: parseInt(item.FileSize || item.fileSize || 0),
-						deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
-						hasRequested: item.HasRequested || item.hasRequested,
-						canRequest: item.CanRequest || item.canRequest,
-						mustDelete: item.MustDelete || item.mustDelete,
-						cleanupMode: item.CleanupMode || item.cleanupMode,
-						keepCount: parseInt(item.KeepCount || item.keepCount || 0),
-						type: item.Type || item.type,
+						deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+						hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false,
+						canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
+						mustDelete: item.Unkeepable || item.mustDelete || false,
+						cleanupMode: item.cleanupMode || "",
+						keepCount: parseInt(item.keepCount || 0),
+						type: item.MediaType || item.type, // database.Media uses MediaType
 						year: parseInt(item.Year || item.year || 0)
 					}));
 
@@ -649,12 +649,12 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_3013`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_3013`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_fe9e`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_fe9e`),
 	}
 }
 
-func OverviewTab(mediaItems []models.MediaItem) templ.Component {
+func OverviewTab(mediaItems []models.UserMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

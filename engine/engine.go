@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
+	radarrAPI "github.com/devopsarr/radarr-go/radarr"
+	sonarrAPI "github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine/arr"
 	radarrImpl "github.com/jon4hz/jellysweep/engine/arr/radarr"
 	sonarrImpl "github.com/jon4hz/jellysweep/engine/arr/sonarr"
@@ -23,18 +25,26 @@ import (
 	"github.com/jon4hz/jellysweep/notify/email"
 	"github.com/jon4hz/jellysweep/notify/ntfy"
 	"github.com/jon4hz/jellysweep/notify/webpush"
+	"github.com/jon4hz/jellysweep/policy"
 	"github.com/jon4hz/jellysweep/scheduler"
 	"github.com/jon4hz/jellysweep/tags"
+	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
 
-// ErrRequestAlreadyProcessed indicates that a keep request has already been processed.
-var ErrRequestAlreadyProcessed = errors.New("request already processed")
+var (
+	// ErrRequestAlreadyProcessed indicates that a keep request has already been processed.
+	ErrRequestAlreadyProcessed = errors.New("request already processed")
+	// ErrUnkeepableMedia indicates that the specified media item cannot be kept.
+	ErrUnkeepableMedia = errors.New("media cannot be kept")
+)
 
 // Engine is the main engine for Jellysweep, managing interactions with sonarr, radarr, and other services.
 // It runs a cleanup job periodically to remove unwanted media.
 type Engine struct {
 	cfg        *config.Config
+	db         database.DB
+	policy     *policy.Engine
 	jellyfin   *jellyfin.Client
 	stats      stats.Statser
 	jellyseerr *jellyseerr.Client
@@ -48,22 +58,20 @@ type Engine struct {
 	imageCache *cache.ImageCache
 	cache      *cache.EngineCache // Cache for engine-specific data
 
+	// migrate old tag based items to database
+	initialDBMigration bool
+
 	data *data
 }
 
 // data contains any data collected during the cleanup process.
 type data struct {
-	// library name to library paths
-	libraryFoldersMap map[string][]string
-
-	mediaItems map[string][]arr.MediaItem
-
 	// userNotifications tracks which users should be notified about which media items
 	userNotifications map[string][]arr.MediaItem // key: user email, value: media items
 }
 
 // New creates a new Engine instance.
-func New(cfg *config.Config) (*Engine, error) {
+func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, error) {
 	// Create scheduler first
 	sched, err := scheduler.New()
 	if err != nil {
@@ -88,12 +96,12 @@ func New(cfg *config.Config) (*Engine, error) {
 	}
 
 	// Create Jellyfin client
-	jellyfinClient := jellyfin.New(cfg, engineCache.JellyfinItemsCache)
+	jellyfinClient := jellyfin.New(cfg)
 
 	var sonarrClient arr.Arrer
 	if cfg.Sonarr != nil {
 		rawSonarrClient := newSonarrClient(cfg.Sonarr)
-		sonarrClient = sonarrImpl.NewSonarr(rawSonarrClient, cfg, statsClient, engineCache.SonarrItemsCache, engineCache.SonarrTagsCache)
+		sonarrClient = sonarrImpl.NewSonarr(rawSonarrClient, cfg, statsClient, engineCache.SonarrTagsCache)
 	} else {
 		log.Warn("Sonarr configuration is missing, some features will be disabled")
 	}
@@ -101,7 +109,7 @@ func New(cfg *config.Config) (*Engine, error) {
 	var radarrClient arr.Arrer
 	if cfg.Radarr != nil {
 		rawRadarrClient := newRadarrClient(cfg.Radarr)
-		radarrClient = radarrImpl.NewRadarr(rawRadarrClient, cfg, statsClient, engineCache.RadarrItemsCache, engineCache.RadarrTagsCache)
+		radarrClient = radarrImpl.NewRadarr(rawRadarrClient, cfg, statsClient, engineCache.RadarrTagsCache)
 	} else {
 		log.Warn("Radarr configuration is missing, some features will be disabled")
 	}
@@ -138,19 +146,21 @@ func New(cfg *config.Config) (*Engine, error) {
 	}
 
 	engine := &Engine{
-		cfg:        cfg,
-		jellyfin:   jellyfinClient,
-		stats:      statsClient,
-		jellyseerr: jellyseerrClient,
-		sonarr:     sonarrClient,
-		radarr:     radarrClient,
-		email:      emailService,
-		ntfy:       ntfyClient,
-		webpush:    webpushClient,
-		scheduler:  sched,
+		cfg:                cfg,
+		db:                 db,
+		initialDBMigration: initialDBMigration,
+		policy:             policy.NewEngine(),
+		jellyfin:           jellyfinClient,
+		stats:              statsClient,
+		jellyseerr:         jellyseerrClient,
+		sonarr:             sonarrClient,
+		radarr:             radarrClient,
+		email:              emailService,
+		ntfy:               ntfyClient,
+		webpush:            webpushClient,
+		scheduler:          sched,
 		data: &data{
 			userNotifications: make(map[string][]arr.MediaItem),
-			libraryFoldersMap: make(map[string][]string),
 		},
 		imageCache: cache.NewImageCache("./data/cache/images"),
 		cache:      engineCache,
@@ -226,16 +236,28 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 	// Clear all caches to ensure fresh data
 	e.cache.ClearAll(ctx)
 
-	e.removeExpiredKeepTags(ctx)
-	e.cleanupOldTags(ctx)
+	if e.initialDBMigration {
+		// migrate old tag based items to database
+		if err := e.migrateTagsToDatabase(ctx); err != nil {
+			log.Error("An error occurred while migrating tags to database")
+			return err
+		}
+	}
+
+	e.removeProtectedExpiredItems(ctx)
+
 	if err = e.markForDeletion(ctx); err != nil {
 		log.Error("An error occurred while marking media for deletion")
 	}
-	e.removeRecentlyPlayedDeleteTags(ctx)
+
+	e.removeRecentlyPlayedItems(ctx)
 
 	// only delete media if there was no previous error
 	if err == nil {
-		e.cleanupMedia(ctx)
+		if err := e.cleanupMedia(ctx); err != nil {
+			log.Error("An error occurred while deleting media")
+			return err
+		}
 	}
 
 	log.Info("Scheduled cleanup job completed")
@@ -257,105 +279,151 @@ func (e *Engine) GetEngineCache() *cache.EngineCache {
 	return e.cache
 }
 
-// removeRecentlyPlayedDeleteTags removes jellysweep-delete tags from media that has been played recently.
-func (e *Engine) removeRecentlyPlayedDeleteTags(ctx context.Context) {
-	log.Info("Checking for recently played media with pending delete tags")
-
-	jellyfinItems, _, err := e.jellyfin.GetJellyfinItems(ctx, false)
+func (e *Engine) removeProtectedExpiredItems(ctx context.Context) {
+	log.Info("Removing media items with expired protection from database")
+	mediaItems, err := e.db.GetMediaExpiredProtection(ctx, time.Now())
 	if err != nil {
-		log.Error("Failed to get jellyfin items from cache", "error", err)
+		log.Error("Failed to get media items with expired protection from database", "error", err)
+		return
+	}
+	if len(mediaItems) == 0 {
+		log.Debug("No media items with expired protection found in database")
+		return
+	}
+	for _, item := range mediaItems {
+		if err := e.db.DeleteMediaItem(ctx, item.ID, database.DBDeleteReasonProtectionExpired); err != nil {
+			log.Error("Failed to remove media item with expired protection from database", "title", item.Title, "jellyfinID", item.JellyfinID, "protectedUntil", item.ProtectedUntil, "error", err)
+		}
+	}
+	log.Info("Media items with expired protection removal process completed")
+}
+
+func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
+	log.Info("Removing recently played items from database")
+
+	mediaItems, err := e.db.GetMediaItems(ctx, true)
+	if err != nil {
+		log.Error("Failed to get media items from database", "error", err)
 		return
 	}
 
-	if e.sonarr != nil {
-		if err := e.sonarr.RemoveRecentlyPlayedDeleteTags(ctx, jellyfinItems); err != nil {
-			log.Error("Failed to remove recently played Sonarr delete tags", "error", err)
+	if len(mediaItems) == 0 {
+		log.Debug("No media items found in database to check for recent plays")
+		return
+	}
+
+	for _, item := range mediaItems {
+		lastPlayed, err := e.stats.GetItemLastPlayed(ctx, item.JellyfinID)
+		if err != nil {
+			log.Error("Failed to get last played time for item", "title", item.Title, "jellyfinID", item.JellyfinID, "error", err)
+			continue
+		}
+
+		if lastPlayed.IsZero() {
+			log.Debug("Item has never been played, skipping removal", "title", item.Title, "jellyfinID", item.JellyfinID)
+			continue
+		}
+
+		libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
+		if libraryConfig == nil {
+			log.Warn("Library config not found", "library", item.LibraryName)
+			continue
+		}
+
+		timeSinceLastPlayed := time.Since(lastPlayed)
+		thresholdDuration := time.Duration(libraryConfig.LastStreamThreshold) * 24 * time.Hour
+		if timeSinceLastPlayed > thresholdDuration {
+			log.Debug("Item last played outside of threshold, skipping removal", "title", item.Title, "jellyfinID", item.JellyfinID, "lastPlayed", lastPlayed.Format(time.RFC3339))
+			continue
+		}
+
+		if err := e.db.DeleteMediaItem(ctx, item.ID, database.DBDeleteReasonStreamed); err != nil {
+			log.Error("Failed to remove recently played item from database", "title", item.Title, "jellyfinID", item.JellyfinID, "error", err)
+			continue
 		}
 	}
 
-	if e.radarr != nil {
-		if err := e.radarr.RemoveRecentlyPlayedDeleteTags(ctx, jellyfinItems); err != nil {
-			log.Error("Failed to remove recently played Radarr delete tags", "error", err)
-		}
-	}
-}
-
-// removeExpiredKeepTags removes keep request tags that have expired.
-func (e *Engine) removeExpiredKeepTags(ctx context.Context) {
-	log.Info("Removing expired keep request tags")
-	if e.sonarr != nil {
-		if err := e.sonarr.RemoveExpiredKeepTags(ctx); err != nil {
-			log.Errorf("failed to remove expired Sonarr keep tags: %v", err)
-		}
-	}
-
-	if e.radarr != nil {
-		if err := e.radarr.RemoveExpiredKeepTags(ctx); err != nil {
-			log.Errorf("failed to remove expired Radarr keep tags: %v", err)
-		}
-	}
+	log.Info("Recently played items removal process completed")
 }
 
 func (e *Engine) markForDeletion(ctx context.Context) error {
-	if err := e.gatherMediaItems(ctx); err != nil {
+	mediaItems, err := e.gatherMediaItems(ctx)
+	if err != nil {
 		log.Errorf("failed to gather media items: %v", err)
 		return err
 	}
 	log.Info("Media items gathered successfully")
 
+	// Filter out items that are already marked for deletion in the database
+	log.Info("Filtering out items already marked for deletion in the database")
+	mediaItems, err = e.filterAlreadyMarkedForDeletion(mediaItems)
+	if err != nil {
+		log.Errorf("failed to filter already marked for deletion: %v", err)
+		return err
+	}
+
 	// Filter out series that already meet the keep criteria (if cleanup mode is set to keep episodes or seasons)
 	log.Info("Filtering series that already meet keep criteria")
-	e.filterSeriesAlreadyMeetingKeepCriteria()
+	mediaItems = e.filterSeriesAlreadyMeetingKeepCriteria(mediaItems)
 
 	// Filter media items based on tags
 	log.Info("Filtering media items based on tags")
-	e.filterMediaTags()
+	mediaItems = e.filterMediaTags(mediaItems)
 
 	log.Info("Checking content age")
-	if err := e.filterContentAgeThreshold(ctx); err != nil {
+	mediaItems, err = e.filterContentAgeThreshold(ctx, mediaItems)
+	if err != nil {
 		log.Errorf("failed to filter content age threshold: %v", err)
 		return err
 	}
 
 	log.Info("Checking content size")
-	if err := e.filterContentSizeThreshold(ctx); err != nil {
+	mediaItems, err = e.filterContentSizeThreshold(ctx, mediaItems)
+	if err != nil {
 		log.Errorf("failed to filter content size threshold: %v", err)
 		return err
 	}
 
 	log.Info("Checking for streaming history")
-	if err := e.filterLastStreamThreshold(ctx); err != nil {
+	mediaItems, err = e.filterLastStreamThreshold(ctx, mediaItems)
+	if err != nil {
 		log.Errorf("failed to filter last stream threshold: %v", err)
 		return err
 	}
 
 	// Populate requester information from Jellyseerr
 	log.Info("Populating requester information")
-	e.populateRequesterInfo(ctx)
+	mediaItems = e.populateRequesterInfo(ctx, mediaItems)
 
 	// Populate user notifications for email sending
 	if e.data.userNotifications == nil {
 		e.data.userNotifications = make(map[string][]arr.MediaItem)
 	}
 
-	for lib, items := range e.data.mediaItems {
-		for _, item := range items {
-			e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
-			log.Info("Marking media item for deletion", "name", item.Title, "library", lib)
-		}
+	for _, item := range mediaItems {
+		e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
+		log.Info("Marking media item for deletion", "name", item.Title, "library", item.LibraryName)
 	}
+
 	log.Info("Media items filtered successfully")
 
-	if err := e.markMediaItemsForDeletion(ctx); err != nil {
-		log.Errorf("failed to mark media items for deletion: %v", err)
-		return err
+	if len(mediaItems) == 0 {
+		log.Info("No media items marked for deletion after filtering")
+		return nil
 	}
 
+	// save items to database
+	if err := e.saveMediaItemsToDatabase(mediaItems); err != nil {
+		log.Errorf("failed to save media items to database: %v", err)
+		return err
+	}
+	log.Info("Media items saved to database successfully")
+
 	// Send email notifications before marking for deletion
-	e.sendEmailNotifications()
+	e.sendEmailNotifications(mediaItems)
 
 	// Send ntfy deletion summary notification
-	if err := e.sendNtfyDeletionSummary(ctx); err != nil {
+	if err := e.sendNtfyDeletionSummary(ctx, mediaItems); err != nil {
 		log.Errorf("failed to send ntfy deletion summary: %v", err)
 		// Don't return here, continue with the cleanup process
 	}
@@ -364,89 +432,157 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 
 // gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
 // It merges them into a single collection grouped by library.
-func (e *Engine) gatherMediaItems(ctx context.Context) error {
-	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx, true)
+func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) {
+	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get jellyfin items: %w", err)
+		return nil, fmt.Errorf("failed to get jellyfin items: %w", err)
 	}
-	e.data.libraryFoldersMap = libraryFoldersMap
 
-	var sonarrItems map[string][]arr.MediaItem
+	var sonarrItems []arr.MediaItem
 	if e.sonarr != nil {
-		sonarrItems, err = e.sonarr.GetItems(ctx, jellyfinItems, true)
+		sonarrItems, err = e.sonarr.GetItems(ctx, jellyfinItems)
 		if err != nil {
-			return fmt.Errorf("failed to get sonarr items: %w", err)
+			return nil, fmt.Errorf("failed to get sonarr items: %w", err)
 		}
 	}
 
-	var radarrItems map[string][]arr.MediaItem
+	var radarrItems []arr.MediaItem
 	if e.radarr != nil {
-		radarrItems, err = e.radarr.GetItems(ctx, jellyfinItems, true)
+		radarrItems, err = e.radarr.GetItems(ctx, jellyfinItems)
 		if err != nil {
-			return fmt.Errorf("failed to get radarr items: %w", err)
+			return nil, fmt.Errorf("failed to get radarr items: %w", err)
 		}
 	}
 
 	// Merge all media items
-	mediaItems := make(map[string][]arr.MediaItem)
-	for lib, items := range sonarrItems {
-		mediaItems[lib] = append(mediaItems[lib], items...)
-	}
-	for lib, items := range radarrItems {
-		mediaItems[lib] = append(mediaItems[lib], items...)
+	mediaItems := make([]arr.MediaItem, 0, len(sonarrItems)+len(radarrItems))
+	mediaItems = append(mediaItems, sonarrItems...)
+	mediaItems = append(mediaItems, radarrItems...)
+
+	// Set deletion policies with freshly gathered library folders map
+	e.policy.SetPolicies(
+		policy.NewDefaultDelete(e.cfg),
+		policy.NewDiskUsageDelete(e.cfg, libraryFoldersMap),
+	)
+
+	return mediaItems, nil
+}
+
+func arrMediaToDBMediaItem(item arr.MediaItem) database.Media {
+	dbItem := database.Media{
+		JellyfinID:  item.JellyfinID,
+		LibraryName: item.LibraryName,
+		RequestedBy: item.RequestedBy,
 	}
 
-	e.data.mediaItems = mediaItems
-	log.Infof("Merged %d media items across %d libraries", len(e.data.mediaItems), len(e.data.mediaItems))
+	switch item.MediaType {
+	case models.MediaTypeTV:
+		dbItem.MediaType = database.MediaTypeTV
+		dbItem.ArrID = item.SeriesResource.GetId()
+		dbItem.Title = item.SeriesResource.GetTitle()
+		dbItem.Year = item.SeriesResource.GetYear()
+		dbItem.FileSize = item.SeriesResource.Statistics.GetSizeOnDisk()
+		dbItem.TvdbId = lo.ToPtr(item.SeriesResource.GetTvdbId())
+		dbItem.TmdbId = lo.ToPtr(item.SeriesResource.GetTmdbId())
+
+		for _, img := range item.SeriesResource.GetImages() {
+			if img.GetCoverType() == sonarrAPI.MEDIACOVERTYPES_POSTER {
+				dbItem.PosterURL = img.GetRemoteUrl()
+			}
+		}
+
+	case models.MediaTypeMovie:
+		dbItem.MediaType = database.MediaTypeMovie
+		dbItem.ArrID = item.MovieResource.GetId()
+		dbItem.Title = item.MovieResource.GetTitle()
+		dbItem.Year = item.MovieResource.GetYear()
+		dbItem.FileSize = item.MovieResource.Statistics.GetSizeOnDisk()
+		dbItem.TmdbId = lo.ToPtr(item.MovieResource.GetTmdbId())
+
+		for _, img := range item.MovieResource.GetImages() {
+			if img.GetCoverType() == radarrAPI.MEDIACOVERTYPES_POSTER {
+				dbItem.PosterURL = img.GetRemoteUrl()
+			}
+		}
+	default:
+		return database.Media{}
+	}
+
+	return dbItem
+}
+
+func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
+	dbMediaItems := make([]database.Media, 0)
+
+	for _, item := range mediaItems {
+		dbItem := arrMediaToDBMediaItem(item)
+		if err := e.policy.ApplyAll(&dbItem); err != nil {
+			log.Errorf("failed to apply policies to media item %s: %v", dbItem.Title, err)
+			continue
+		}
+		dbMediaItems = append(dbMediaItems, dbItem)
+	}
+
+	if err := e.db.CreateMediaItems(context.Background(), dbMediaItems); err != nil {
+		return fmt.Errorf("failed to create media items to database: %w", err)
+	}
 
 	return nil
 }
 
-// markMediaItemsForDeletion marks media items for deletion using the Arrer interface.
-func (e *Engine) markMediaItemsForDeletion(ctx context.Context) error {
-	if e.sonarr != nil {
-		if err := e.sonarr.MarkItemForDeletion(ctx, e.data.mediaItems, e.data.libraryFoldersMap); err != nil {
-			return fmt.Errorf("failed to mark Sonarr items for deletion: %w", err)
-		}
-	}
-
-	if e.radarr != nil {
-		if err := e.radarr.MarkItemForDeletion(ctx, e.data.mediaItems, e.data.libraryFoldersMap); err != nil {
-			return fmt.Errorf("failed to mark Radarr items for deletion: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (e *Engine) cleanupOldTags(ctx context.Context) {
-	if e.sonarr != nil {
-		if err := e.sonarr.CleanupTags(ctx); err != nil {
-			log.Errorf("failed to clean up Sonarr tags: %v", err)
-		}
-	}
-	if e.radarr != nil {
-		if err := e.radarr.CleanupTags(ctx); err != nil {
-			log.Errorf("failed to clean up Radarr tags: %v", err)
-		}
-	}
-}
-
-func (e *Engine) cleanupMedia(ctx context.Context) {
+func (e *Engine) cleanupMedia(ctx context.Context) error {
 	deletedItems := make(map[string][]arr.MediaItem)
 
-	if e.sonarr != nil {
-		if sonarrDeleted, err := e.sonarr.DeleteMedia(ctx, e.data.libraryFoldersMap); err != nil {
-			log.Errorf("failed to delete Sonarr media: %v", err)
-		} else if len(sonarrDeleted) > 0 {
-			deletedItems["TV Shows"] = sonarrDeleted
-		}
+	mediaItems, err := e.db.GetMediaItems(ctx, false)
+	if err != nil {
+		log.Errorf("failed to get media items from database: %v", err)
+		return err
 	}
-	if e.radarr != nil {
-		if radarrDeleted, err := e.radarr.DeleteMedia(ctx, e.data.libraryFoldersMap); err != nil {
-			log.Errorf("failed to delete Radarr media: %v", err)
-		} else if len(radarrDeleted) > 0 {
-			deletedItems["Movies"] = radarrDeleted
+
+	for _, item := range mediaItems {
+		// since the deletion policies were already set during the scaning phase, we can just use the existing policy engine.
+		if ok, err := e.policy.ShouldTriggerDeletion(ctx, item); err != nil {
+			log.Errorf("failed to check deletion policy for media item %s: %v", item.Title, err)
+			continue
+		} else if !ok {
+			log.Infof("Skipping deletion for media item %s, no policies triggered", item.Title)
+			continue
+		}
+
+		switch item.MediaType {
+		case database.MediaTypeTV:
+			if e.sonarr == nil {
+				log.Warnf("Sonarr client not configured, cannot delete TV show %s", item.Title)
+				continue
+			}
+			if err := e.sonarr.DeleteMedia(ctx, item.ArrID, item.Title); err != nil {
+				log.Errorf("failed to delete Sonarr media %s: %v", item.Title, err)
+				continue
+			}
+			deletedItems["TV Shows"] = append(deletedItems["TV Shows"], arr.MediaItem{
+				Title:     item.Title,
+				Year:      item.Year,
+				MediaType: models.MediaTypeTV,
+			})
+
+		case database.MediaTypeMovie:
+			if e.radarr == nil {
+				log.Warnf("Radarr client not configured, cannot delete movie %s", item.Title)
+				continue
+			}
+			if err := e.radarr.DeleteMedia(ctx, item.ArrID, item.Title); err != nil {
+				log.Errorf("failed to delete Radarr media %s: %v", item.Title, err)
+				continue
+			}
+			deletedItems["Movies"] = append(deletedItems["Movies"], arr.MediaItem{
+				Title:     item.Title,
+				Year:      item.Year,
+				MediaType: models.MediaTypeMovie,
+			})
+
+		default:
+			log.Errorf("unsupported media type for deletion: %s", item.MediaType)
+			continue
 		}
 	}
 
@@ -456,113 +592,46 @@ func (e *Engine) cleanupMedia(ctx context.Context) {
 			log.Errorf("failed to send deletion completed notification: %v", err)
 		}
 	}
-}
 
-// GetMediaItemsMarkedForDeletion returns all media items that are marked for deletion.
-func (e *Engine) GetMediaItemsMarkedForDeletion(ctx context.Context, forceRefresh bool) (map[string][]models.MediaItem, error) {
-	result := make(map[string][]models.MediaItem)
-
-	// Get Sonarr items marked for deletion
-	if e.sonarr != nil {
-		sonarrItems, err := e.sonarr.GetMediaItemsMarkedForDeletion(ctx, forceRefresh)
-		if err != nil {
-			log.Errorf("failed to get sonarr media items marked for deletion: %v", err)
-		} else {
-			if len(sonarrItems) > 0 {
-				for _, item := range sonarrItems {
-					result[item.Library] = append(result[item.Library], item)
-				}
-			}
-		}
-	}
-
-	// Get Radarr items marked for deletion
-	if e.radarr != nil {
-		radarrItems, err := e.radarr.GetMediaItemsMarkedForDeletion(ctx, forceRefresh)
-		if err != nil {
-			log.Errorf("failed to get radarr media items marked for deletion: %v", err)
-		} else {
-			if len(radarrItems) > 0 {
-				for _, item := range radarrItems {
-					result[item.Library] = append(result[item.Library], item)
-				}
-			}
-		}
-	}
-
-	return result, nil
-}
-
-// GetMediaItemsMarkedForDeletionByType returns media items marked for deletion by type.
-func (e *Engine) GetMediaItemsMarkedForDeletionByType(ctx context.Context, mediaType models.MediaType, forceRefresh bool) ([]models.MediaItem, error) {
-	var result []models.MediaItem
-
-	switch mediaType {
-	case models.MediaTypeTV:
-		// Get Sonarr items marked for deletion
-		if e.sonarr != nil {
-			sonarrItems, err := e.sonarr.GetMediaItemsMarkedForDeletion(ctx, forceRefresh)
-			if err != nil {
-				log.Errorf("failed to get sonarr media items marked for deletion: %v", err)
-			} else {
-				result = append(result, sonarrItems...)
-			}
-		}
-	case models.MediaTypeMovie:
-		// Get Radarr items marked for deletion
-		if e.radarr != nil {
-			radarrItems, err := e.radarr.GetMediaItemsMarkedForDeletion(ctx, forceRefresh)
-			if err != nil {
-				log.Errorf("failed to get radarr media items marked for deletion: %v", err)
-			} else {
-				result = append(result, radarrItems...)
-			}
-		}
-	default:
-		return nil, fmt.Errorf("unsupported media type: %s", mediaType)
-	}
-
-	return result, nil
+	return nil
 }
 
 // RequestKeepMedia adds a keep request tag to the specified media item.
-func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string) error {
+func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, username string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
-	log.Debug("Requesting keep media", "mediaID", mediaID, "username", username)
+	log.Debug("Requesting to keep media", "mediaID", mediaID, "username", username)
 
-	var mediaTitle string
-	var mediaType string
-	var err error
+	user, err := e.db.GetUserByUsername(ctx, username)
+	if err != nil {
+		log.Errorf("failed to get user by username: %v", err)
+		return err
+	}
 
-	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
-		if e.sonarr == nil {
-			return fmt.Errorf("sonarr client not available")
-		}
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Errorf("failed to get media item by ID: %v", err)
+		return err
+	}
 
-		seriesID, parseErr := strconv.ParseInt(seriesIDStr, 10, 32)
-		if parseErr != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", parseErr)
-		}
+	if media.Unkeepable {
+		log.Warn("Media is marked as unkeepable", "mediaID", mediaID, "type", media.MediaType, "title", media.Title)
+		return ErrUnkeepableMedia
+	}
 
-		mediaTitle, mediaType, err = e.sonarr.AddKeepRequest(ctx, int32(seriesID), username)
-	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
-		if e.radarr == nil {
-			return fmt.Errorf("radarr client not available")
-		}
+	if media.Request.ID != 0 {
+		log.Warn("Media already requested", "mediaID", mediaID, "type", media.MediaType, "title", media.Title)
+		return ErrRequestAlreadyProcessed
+	}
 
-		movieID, parseErr := strconv.ParseInt(movieIDStr, 10, 32)
-		if parseErr != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", parseErr)
-		}
-
-		mediaTitle, mediaType, err = e.radarr.AddKeepRequest(ctx, int32(movieID), username)
-	} else {
-		return fmt.Errorf("unsupported media ID format: %s", mediaID)
+	_, err = e.db.CreateRequest(ctx, media.ID, user.ID)
+	if err != nil {
+		log.Errorf("failed to create keep request in database: %v", err)
+		return err
 	}
 
 	// Send ntfy notification if the tag was added successfully
-	if err == nil && e.ntfy != nil {
-		if ntfyErr := e.ntfy.SendKeepRequest(ctx, mediaTitle, mediaType, username); ntfyErr != nil {
+	if e.ntfy != nil {
+		if ntfyErr := e.ntfy.SendKeepRequest(ctx, media.Title, string(media.MediaType), username); ntfyErr != nil {
 			log.Errorf("Failed to send ntfy keep request notification: %v", ntfyErr)
 		}
 	}
@@ -570,108 +639,54 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID, username string)
 	return err
 }
 
-// GetKeepRequests returns all media items that have keep request tags.
-func (e *Engine) GetKeepRequests(ctx context.Context, forceRefresh bool) ([]models.KeepRequest, error) {
-	var result []models.KeepRequest
-
-	// Get Sonarr keep requests
-	if e.sonarr != nil {
-		sonarrKeepRequests, err := e.sonarr.GetKeepRequests(ctx, e.data.libraryFoldersMap, forceRefresh)
-		if err != nil {
-			log.Errorf("failed to get sonarr keep requests: %v", err)
-		} else {
-			result = append(result, sonarrKeepRequests...)
-		}
+// HandleKeepRequest accepts or declines a keep request for the specified media item.
+func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept bool) error {
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Errorf("failed to get media item by ID: %v", err)
+		return err
 	}
 
-	// Get Radarr keep requests
-	if e.radarr != nil {
-		radarrKeepRequests, err := e.radarr.GetKeepRequests(ctx, e.data.libraryFoldersMap, forceRefresh)
-		if err != nil {
-			log.Errorf("failed to get radarr keep requests: %v", err)
-		} else {
-			result = append(result, radarrKeepRequests...)
-		}
+	if media.Request.ID == 0 {
+		log.Warn("Media has no pending keep request", "mediaID", mediaID, "type", media.MediaType, "title", media.Title)
+		return nil
 	}
 
-	return result, nil
-}
+	newStatus := database.RequestStatusDenied
+	if accept {
+		newStatus = database.RequestStatusApproved
+	}
 
-// AcceptKeepRequest removes the keep request tag and delete tag from the media item.
-func (e *Engine) AcceptKeepRequest(ctx context.Context, mediaID string) error {
-	var resp *arr.KeepRequestResponse
-	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
-		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
+	err = e.db.UpdateRequestStatus(ctx, media.Request.ID, newStatus)
+	if err != nil {
+		log.Errorf("failed to update request status in database: %v", err)
+		return err
+	}
+
+	if accept {
+		protectedUntil := time.Now().Add(time.Hour * 24 * 90) // keep for 90 days // TODO: make this configurable
+		err = e.db.SetMediaProtectedUntil(ctx, media.ID, &protectedUntil)
 		if err != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", err)
-		}
-		if e.sonarr == nil {
-			return fmt.Errorf("sonarr client not available")
-		}
-		resp, err = e.sonarr.AcceptKeepRequest(ctx, int32(seriesID))
-		if err != nil {
-			return err
-		}
-	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
-		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", err)
-		}
-		if e.radarr == nil {
-			return fmt.Errorf("radarr client not available")
-		}
-		resp, err = e.radarr.AcceptKeepRequest(ctx, int32(movieID))
-		if err != nil {
+			log.Errorf("failed to set media protected until in database: %v", err)
 			return err
 		}
 	} else {
-		return fmt.Errorf("unsupported media ID format: %s", mediaID)
-	}
-
-	if e.webpush != nil && resp.Requester != "" {
-		if pushErr := e.webpush.SendKeepRequestNotification(ctx, resp.Requester, resp.Title, resp.MediaType, resp.Approved); pushErr != nil {
-			log.Errorf("Failed to send webpush notification: %v", pushErr)
-		}
-	}
-
-	return nil
-}
-
-// DeclineKeepRequest removes the keep request tag and adds a delete-for-sure tag.
-func (e *Engine) DeclineKeepRequest(ctx context.Context, mediaID string) error {
-	var resp *arr.KeepRequestResponse
-	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
-		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
+		err = e.db.MarkMediaAsUnkeepable(ctx, media.ID)
 		if err != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", err)
-		}
-		if e.sonarr == nil {
-			return fmt.Errorf("sonarr client not available")
-		}
-		resp, err = e.sonarr.DeclineKeepRequest(ctx, int32(seriesID))
-		if err != nil {
+			log.Errorf("failed to mark media as unkeepable in database: %v", err)
 			return err
 		}
-	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
-		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", err)
-		}
-		if e.radarr == nil {
-			return fmt.Errorf("radarr client not available")
-		}
-		resp, err = e.radarr.DeclineKeepRequest(ctx, int32(movieID))
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("unsupported media ID format: %s", mediaID)
 	}
 
-	if e.webpush != nil && resp.Requester != "" {
-		if pushErr := e.webpush.SendKeepRequestNotification(ctx, resp.Requester, resp.Title, resp.MediaType, resp.Approved); pushErr != nil {
+	// get user who made the request
+	user, err := e.db.GetUserByID(ctx, media.Request.UserID)
+	if err != nil {
+		log.Errorf("failed to get user by ID: %v", err)
+		return err
+	}
+
+	if e.webpush != nil && user.Username != "" {
+		if pushErr := e.webpush.SendKeepRequestNotification(ctx, user.Username, media.Title, string(media.MediaType), accept); pushErr != nil {
 			log.Errorf("Failed to send webpush notification: %v", pushErr)
 		}
 	}
@@ -680,6 +695,7 @@ func (e *Engine) DeclineKeepRequest(ctx context.Context, mediaID string) error {
 }
 
 // ResetAllTags removes all jellysweep tags from all media in Sonarr and Radarr.
+// Legacy: also cleans up any remaining tags.
 func (e *Engine) ResetAllTags(ctx context.Context, additionalTags []string) error {
 	log.Info("Resetting all jellysweep tags...")
 
@@ -731,80 +747,116 @@ func (e *Engine) GetWebPushClient() *webpush.Client {
 	return e.webpush
 }
 
-// AddTagToMedia adds a specific tag to a media item (supports jellysweep-keep and must-delete).
-func (e *Engine) AddTagToMedia(ctx context.Context, mediaID string, tagName string) error {
-	// Parse media ID to determine if it's a Sonarr or Radarr item
-	if seriesIDStr, ok := strings.CutPrefix(mediaID, "sonarr-"); ok {
-		defer func() {
-			_ = e.cache.SonarrItemsCache.Clear(ctx)
-		}()
-
-		seriesID, err := strconv.ParseInt(seriesIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid sonarr series ID: %w", err)
-		}
-
-		if e.sonarr == nil {
-			return fmt.Errorf("sonarr client not available")
-		}
-
-		// Use dedicated tag operations based on the tag name
-		switch tagName {
-		case tags.JellysweepKeepPrefix:
-			// For "keep": remove all tags (including delete) before adding must-keep
-			if err := e.sonarr.ResetSingleTagsForKeep(ctx, int32(seriesID)); err != nil {
-				return fmt.Errorf("failed to reset sonarr tags for keep: %w", err)
-			}
-			// This will add a jellysweep-must-keep tag with expiry date
-			return e.sonarr.AddKeepTag(ctx, int32(seriesID))
-		case tags.JellysweepDeleteForSureTag:
-			// For "must-delete": remove all tags except jellysweep-delete before adding must-delete-for-sure
-			if err := e.sonarr.ResetSingleTagsForMustDelete(ctx, int32(seriesID)); err != nil {
-				return fmt.Errorf("failed to reset sonarr tags for must-delete: %w", err)
-			}
-			return e.sonarr.AddDeleteForSureTag(ctx, int32(seriesID))
-		case tags.JellysweepIgnoreTag:
-			// For "ignore": remove all jellysweep tags and add ignore tag in one operation
-			return e.sonarr.ResetAllTagsAndAddIgnore(ctx, int32(seriesID))
-		default:
-			return fmt.Errorf("unsupported tag name: %s", tagName)
-		}
-	} else if movieIDStr, ok := strings.CutPrefix(mediaID, "radarr-"); ok {
-		defer func() {
-			_ = e.cache.RadarrItemsCache.Clear(ctx)
-		}()
-
-		movieID, err := strconv.ParseInt(movieIDStr, 10, 32)
-		if err != nil {
-			return fmt.Errorf("invalid radarr movie ID: %w", err)
-		}
-
+// AddIgnoreTag adds a jellysweep-ignore tag to the specified media item.
+func (e *Engine) AddIgnoreTag(ctx context.Context, media *database.Media) error {
+	switch media.MediaType {
+	case database.MediaTypeMovie:
 		if e.radarr == nil {
+			log.Warn("Radarr client not available, cannot add ignore tag", "mediaID", media.ID, "title", media.Title)
 			return fmt.Errorf("radarr client not available")
 		}
+		if err := e.radarr.ResetAllTagsAndAddIgnore(ctx, media.ArrID); err != nil {
+			log.Error("Failed to add ignore tag in radarr", "mediaID", media.ID, "title", media.Title, "error", err)
+			return err
+		}
+	case database.MediaTypeTV:
+		if e.sonarr == nil {
+			log.Warn("Sonarr client not available, cannot add ignore tag", "mediaID", media.ID, "title", media.Title)
+			return fmt.Errorf("sonarr client not available")
+		}
+		if err := e.sonarr.ResetAllTagsAndAddIgnore(ctx, media.ArrID); err != nil {
+			log.Error("Failed to add ignore tag in sonarr", "mediaID", media.ID, "title", media.Title, "error", err)
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported media type: %s", media.MediaType)
+	}
 
-		// Use dedicated tag operations based on the tag name
-		switch tagName {
-		case tags.JellysweepKeepPrefix:
-			// For "keep": remove all tags (including delete) before adding must-keep
-			if err := e.radarr.ResetSingleTagsForKeep(ctx, int32(movieID)); err != nil {
-				return fmt.Errorf("failed to reset radarr tags for keep: %w", err)
+	return nil
+}
+
+// migrateTagsToDatabase migrates existing jellysweep items to the database based on their tags in Sonarr and Radarr.
+func (e *Engine) migrateTagsToDatabase(ctx context.Context) error {
+	log.Info("Starting migration of jellysweep tags to database...")
+
+	jellyfinItems, _, err := e.jellyfin.GetJellyfinItems(ctx)
+	if err != nil {
+		log.Error("Failed to get jellyfin items for migration", "error", err)
+		return err
+	}
+
+	legacyitems := make([]arr.MediaItem, 0)
+	if e.sonarr != nil {
+		sonarrItems, err := e.sonarr.GetItems(ctx, jellyfinItems)
+		if err != nil {
+			log.Error("Failed to get sonarr items for migration", "error", err)
+			return err
+		}
+		legacyitems = append(legacyitems, sonarrItems...)
+	}
+	if e.radarr != nil {
+		radarrItems, err := e.radarr.GetItems(ctx, jellyfinItems)
+		if err != nil {
+			log.Error("Failed to get radarr items for migration", "error", err)
+			return err
+		}
+		legacyitems = append(legacyitems, radarrItems...)
+	}
+
+	dbItems := make([]database.Media, 0)
+	for _, item := range legacyitems {
+		mustMigrate := false
+		dbItem := arrMediaToDBMediaItem(item)
+		for _, tagName := range item.Tags {
+			tag, err := tags.ParseJellysweepTag(tagName)
+			if err != nil {
+				continue
 			}
-			// This will add a jellysweep-must-keep tag with expiry date
-			return e.radarr.AddKeepTag(ctx, int32(movieID))
-		case tags.JellysweepDeleteForSureTag:
-			// For "must-delete": remove all tags except jellysweep-delete before adding must-delete-for-sure
-			if err := e.radarr.ResetSingleTagsForMustDelete(ctx, int32(movieID)); err != nil {
-				return fmt.Errorf("failed to reset radarr tags for must-delete: %w", err)
+
+			if !tag.ProtectedUntil.IsZero() {
+				dbItem.ProtectedUntil = &tag.ProtectedUntil
+				mustMigrate = true
 			}
-			return e.radarr.AddDeleteForSureTag(ctx, int32(movieID))
-		case tags.JellysweepIgnoreTag:
-			// For "ignore": remove all jellysweep tags and add ignore tag in one operation
-			return e.radarr.ResetAllTagsAndAddIgnore(ctx, int32(movieID))
-		default:
-			return fmt.Errorf("unsupported tag name: %s", tagName)
+
+			if tag.MustDelete {
+				dbItem.Unkeepable = true
+				mustMigrate = true
+			}
+
+			if tag.DiskUsage > 0 && !tag.DeletionDate.IsZero() {
+				dbItem.DiskUsageDeletePolicies = append(dbItem.DiskUsageDeletePolicies, database.DiskUsageDeletePolicy{
+					Threshold:  tag.DiskUsage,
+					DeleteDate: tag.DeletionDate,
+				})
+				mustMigrate = true
+			} else if !tag.DeletionDate.IsZero() {
+				dbItem.DefaultDeleteAt = tag.DeletionDate
+				mustMigrate = true
+			}
+		}
+
+		if mustMigrate {
+			dbItems = append(dbItems, dbItem)
+			log.Info("Migrating item to database", "title", dbItem.Title, "library", dbItem.LibraryName)
 		}
 	}
 
-	return fmt.Errorf("unsupported media ID format: %s", mediaID)
+	if len(dbItems) == 0 {
+		log.Debug("No items found for migration")
+		return nil
+	}
+
+	if err := e.db.CreateMediaItems(ctx, dbItems); err != nil {
+		log.Error("Failed to migrate items to database", "error", err)
+		return err
+	}
+
+	if err := e.ResetAllTags(ctx, nil); err != nil {
+		log.Error("Failed to reset tags after migration", "error", err)
+		return err
+	}
+
+	log.Info("Migration of tags to database completed successfully")
+
+	return nil
 }

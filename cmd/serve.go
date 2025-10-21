@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/api"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/spf13/cobra"
 )
@@ -34,15 +35,25 @@ func startServer(cmd *cobra.Command, _ []string) {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	exists, err := dbFileExists(cfg.Database.Path)
+	if err != nil {
+		log.Fatalf("failed to check database file: %v", err)
+	}
+
+	db, err := database.New(cfg.Database.Path)
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
+
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
-	engine, err := engine.New(cfg)
+	engine, err := engine.New(cfg, db, !exists)
 	if err != nil {
 		log.Fatalf("failed to create engine: %v", err)
 	}
 
-	server, err := api.New(ctx, cfg, engine, log.GetLevel() == log.DebugLevel)
+	server, err := api.New(ctx, cfg, db, engine, log.GetLevel() == log.DebugLevel)
 	if err != nil {
 		log.Fatalf("failed to create API server: %v", err)
 	}
@@ -73,4 +84,15 @@ func startServer(cmd *cobra.Command, _ []string) {
 	// Give time for graceful shutdown
 	cancel()
 	time.Sleep(2 * time.Second)
+}
+
+func dbFileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

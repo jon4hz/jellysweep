@@ -6,8 +6,8 @@ import (
 	"github.com/jon4hz/jellysweep/web/templates/components"
 )
 
-templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems []models.MediaItem) {
-	@templates.LayoutWithPendingRequests("Admin Panel", user, len(keepRequests)) {
+templ AdminPanel(user *models.User, requestedMedia []models.AdminMediaItem, mediaItems []models.AdminMediaItem) {
+	@templates.LayoutWithPendingRequests("Admin Panel", user, len(requestedMedia)) {
 		<div class="space-y-6">
 			<!-- Header -->
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -19,11 +19,11 @@ templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItem
 				</div>
 				<div class="mt-4 sm:mt-0">
 					<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-900 text-blue-200">
-						{ len(keepRequests) } pending requests
+						{ len(requestedMedia) } pending requests
 					</span>
 				</div>
 			</div>
-			@AdminTabs(keepRequests, mediaItems)
+			@AdminTabs(requestedMedia, mediaItems)
 		</div>
 		<!-- Include shared utility scripts -->
 		@templates.ToastScript()
@@ -64,14 +64,14 @@ templ AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItem
 	}
 }
 
-templ AdminTabs(keepRequests []models.KeepRequest, mediaItems []models.MediaItem) {
+templ AdminTabs(requestedMedia []models.AdminMediaItem, mediaItems []models.AdminMediaItem) {
 	@components.TabContainer("admin-tabs") {
 		@components.TabButton("approval-queue", "Approval Queue", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`, true)
 		@components.TabButton("keep-sweep", "Keep or Sweep", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path></svg>`, false)
 	}
 	@components.TabContentContainer() {
 		@components.TabContent("approval-queue", true) {
-			@ApprovalQueueTab(keepRequests)
+			@ApprovalQueueTab(requestedMedia)
 		}
 		@components.TabContent("keep-sweep", false) {
 			@KeepSweepTab(mediaItems)
@@ -79,17 +79,17 @@ templ AdminTabs(keepRequests []models.KeepRequest, mediaItems []models.MediaItem
 	}
 }
 
-templ ApprovalQueueTab(keepRequests []models.KeepRequest) {
-	if len(keepRequests) == 0 {
+templ ApprovalQueueTab(requestedMedia []models.AdminMediaItem) {
+	if len(requestedMedia) == 0 {
 		@AdminEmptyState()
 	} else {
-		@components.AdminKeepRequestGrid(keepRequests)
+		@components.AdminKeepRequestGrid(requestedMedia)
 		<!-- Pass data to JavaScript -->
-		@templ.JSONScript("keep-requests-data", keepRequests)
+		@templ.JSONScript("keep-requests-data", requestedMedia)
 	}
 }
 
-templ KeepSweepTab(mediaItems []models.MediaItem) {
+templ KeepSweepTab(mediaItems []models.AdminMediaItem) {
 	if len(mediaItems) == 0 {
 		@KeepSweepEmptyState()
 	} else {

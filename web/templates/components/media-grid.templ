@@ -1,7 +1,6 @@
 package components
 
-import "github.com/jon4hz/jellysweep/api/models"
-import "fmt"
+import "github.com/jon4hz/jellysweep/database"
 
 // MediaGridConfig holds configuration for the media grid
 type MediaGridConfig struct {
@@ -31,73 +30,15 @@ func DefaultMediaGridConfig() MediaGridConfig {
 	}
 }
 
-// MediaGrid is a generic, reusable media grid component
-templ MediaGrid(mediaItems []models.MediaItem, config MediaGridConfig, customContent templ.Component) {
-	<div id={ config.ContainerID } class="space-y-4">
-		<!-- Loading State -->
-		<div id={ config.ContainerID + "-grid-loading" } class="hidden">
-			@SkeletonGrid(12)
-		</div>
-		<!-- Custom content (filters, search, etc.) -->
-		if customContent != nil {
-			@customContent
-		}
-		<!-- Media Grid -->
-		<div
-			id={ config.GridID }
-			class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 transition-opacity duration-200"
-			data-page-size={ fmt.Sprint(config.PageSize) }
-			data-mobile-page-size={ fmt.Sprint(config.MobilePageSize) }
-			data-total-items={ fmt.Sprint(len(mediaItems)) }
-			data-enable-search={ fmt.Sprint(config.EnableSearch) }
-			data-enable-filters={ fmt.Sprint(config.EnableFilters) }
-			data-enable-sorting={ fmt.Sprint(config.EnableSorting) }
-			data-enable-refresh={ fmt.Sprint(config.EnableRefresh) }
-			data-animate-changes={ fmt.Sprint(config.AnimateChanges) }
-			data-media-items={ templ.JSONString(mediaItems) }
-		>
-			<!-- Items will be populated by JavaScript -->
-		</div>
-		<!-- Loading indicator for infinite scroll -->
-		<div id={ config.ContainerID + "-scroll-loading" } class="hidden text-center py-8">
-			<div class="inline-flex items-center space-x-2">
-				<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
-				<span class="text-gray-400">Loading more...</span>
-			</div>
-		</div>
-		<!-- Load More Button (fallback for poor connections) -->
-		<div id={ config.ContainerID + "-load-more-container" } class="text-center mt-6 hidden">
-			<button id={ config.ContainerID + "-load-more-btn" } class="btn-secondary">
-				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-				</svg>
-				Load More
-			</button>
-		</div>
-		<!-- Scroll to Top Button -->
-		<button
-			id={ config.ContainerID + "-scroll-to-top" }
-			class="fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white p-2 md:p-3 rounded-full shadow-lg transition-all duration-200 opacity-0 pointer-events-none z-50 transform translate-y-4"
-			aria-label="Scroll to top"
-		>
-			<svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
-			</svg>
-		</button>
-		<!-- Virtual scroll sentinel for intersection observer -->
-		<div id={ config.ContainerID + "-scroll-sentinel" } class="h-1 opacity-0"></div>
-	</div>
-}
-
 // GetUniqueLibraries extracts unique library names from media items
-func GetUniqueLibraries(items []models.MediaItem) []string {
+func GetUniqueLibraries(items []database.Media) []string {
 	libraryMap := make(map[string]bool)
 	var libraries []string
 
 	for _, item := range items {
-		if item.Library != "" && !libraryMap[item.Library] {
-			libraryMap[item.Library] = true
-			libraries = append(libraries, item.Library)
+		if item.LibraryName != "" && !libraryMap[item.LibraryName] {
+			libraryMap[item.LibraryName] = true
+			libraries = append(libraries, item.LibraryName)
 		}
 	}
 
@@ -224,7 +165,6 @@ script MediaGridScript() {
 						library: item.Library,
 						posterURL: item.PosterURL,
 						deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
-						expiryTimestamp: item.ExpiryDate ? new Date(item.ExpiryDate).getTime() : 0,
 						canRequest: item.CanRequest,
 						hasRequested: item.HasRequested,
 						mustDelete: item.MustDelete,

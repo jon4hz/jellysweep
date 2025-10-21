@@ -77,11 +77,11 @@ func getSeasonTooltip(keepCount int) string {
 	return b.String()
 }
 
-templ Dashboard(user *models.User, mediaItems []models.MediaItem) {
+templ Dashboard(user *models.User, mediaItems []models.UserMediaItem) {
 	@DashboardWithPendingRequests(user, mediaItems, 0)
 }
 
-templ DashboardWithPendingRequests(user *models.User, mediaItems []models.MediaItem, pendingRequestsCount int) {
+templ DashboardWithPendingRequests(user *models.User, mediaItems []models.UserMediaItem, pendingRequestsCount int) {
 	if user != nil && user.IsAdmin {
 		@templates.LayoutWithPendingRequests("Dashboard", user, pendingRequestsCount) {
 			@DashboardContent(user, mediaItems)
@@ -93,7 +93,7 @@ templ DashboardWithPendingRequests(user *models.User, mediaItems []models.MediaI
 	}
 }
 
-templ DashboardContent(user *models.User, mediaItems []models.MediaItem) {
+templ DashboardContent(user *models.User, mediaItems []models.UserMediaItem) {
 	<div class="space-y-6">
 		<!-- Header -->
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -133,7 +133,7 @@ templ DashboardContent(user *models.User, mediaItems []models.MediaItem) {
 }
 
 // DashboardTabs creates the tab interface for the dashboard
-templ DashboardTabs(mediaItems []models.MediaItem) {
+templ DashboardTabs(mediaItems []models.UserMediaItem) {
 	@components.TabContainer("dashboard-tabs") {
 		@components.TabButton("deletion-queue", "Overview", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>`, true)
 		if len(mediaItems) > 0 {
@@ -194,22 +194,22 @@ script dashboardScripts() {
 		if (dataScript && window.dashboardMediaGridManager) {
 			try {
 				const mediaItems = JSON.parse(dataScript.textContent);
-				// Convert server data to client format
+				// Convert database.Media to client format
 				const clientItems = mediaItems.map(item => ({
 					...item,
 					// Ensure proper data format for client-side handling
 					id: item.ID || item.id,
 					title: item.Title || item.title,
-					library: item.Library || item.library,
+					library: item.LibraryName || item.library, // database.Media uses LibraryName
 					posterURL: item.PosterURL || item.posterURL,
 					fileSize: parseInt(item.FileSize || item.fileSize || 0),
-					deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
-					hasRequested: item.HasRequested || item.hasRequested,
-					canRequest: item.CanRequest || item.canRequest,
-					mustDelete: item.MustDelete || item.mustDelete,
-					cleanupMode: item.CleanupMode || item.cleanupMode,
-					keepCount: parseInt(item.KeepCount || item.keepCount || 0),
-					type: item.Type || item.type,
+					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+					hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false, // Check if Request exists
+					canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
+					mustDelete: item.Unkeepable || item.mustDelete || false,
+					cleanupMode: item.CleanupMode || "",
+					keepCount: parseInt(item.KeepCount || 0),
+					type: item.MediaType || item.type, // database.Media uses MediaType
 					year: parseInt(item.Year || item.year || 0)
 				}));
 
@@ -335,19 +335,19 @@ script dashboardScripts() {
 				if (window.dashboardMediaGridManager) {
 					const clientItems = data.mediaItems.map(item => ({
 						...item,
-						// Ensure proper data format for client-side handling
+						// Convert database.Media to client format
 						id: item.ID || item.id,
 						title: item.Title || item.title,
-						library: item.Library || item.library,
+						library: item.LibraryName || item.library, // database.Media uses LibraryName
 						posterURL: item.PosterURL || item.posterURL,
 						fileSize: parseInt(item.FileSize || item.fileSize || 0),
-						deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
-						hasRequested: item.HasRequested || item.hasRequested,
-						canRequest: item.CanRequest || item.canRequest,
-						mustDelete: item.MustDelete || item.mustDelete,
-						cleanupMode: item.CleanupMode || item.cleanupMode,
-						keepCount: parseInt(item.KeepCount || item.keepCount || 0),
-						type: item.Type || item.type,
+						deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+						hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false,
+						canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
+						mustDelete: item.Unkeepable || item.mustDelete || false,
+						cleanupMode: item.cleanupMode || "",
+						keepCount: parseInt(item.keepCount || 0),
+						type: item.MediaType || item.type, // database.Media uses MediaType
 						year: parseInt(item.Year || item.year || 0)
 					}));
 
@@ -369,7 +369,7 @@ script dashboardScripts() {
 	}
 }
 
-templ OverviewTab(mediaItems []models.MediaItem) {
+templ OverviewTab(mediaItems []models.UserMediaItem) {
 	<!-- Media Grid -->
 	if len(mediaItems) == 0 {
 		@EmptyState()

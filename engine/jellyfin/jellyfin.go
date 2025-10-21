@@ -6,7 +6,6 @@ import (
 
 	"github.com/ccoveille/go-safecast"
 	"github.com/charmbracelet/log"
-	"github.com/jon4hz/jellysweep/cache"
 	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/engine/arr"
 	"github.com/jon4hz/jellysweep/version"
@@ -15,17 +14,15 @@ import (
 
 // Client provides a high-level interface for interacting with Jellyfin.
 type Client struct {
-	jellyfin   *jellyfin.APIClient
-	cfg        *config.Config
-	itemsCache *cache.PrefixedCache[cache.JellyfinItemsData]
+	jellyfin *jellyfin.APIClient
+	cfg      *config.Config
 }
 
 // New creates a new Jellyfin client with the given configuration and cache.
-func New(cfg *config.Config, itemsCache *cache.PrefixedCache[cache.JellyfinItemsData]) *Client {
+func New(cfg *config.Config) *Client {
 	return &Client{
-		jellyfin:   newJellyfinClient(cfg.Jellyfin),
-		cfg:        cfg,
-		itemsCache: itemsCache,
+		jellyfin: newJellyfinClient(cfg.Jellyfin),
+		cfg:      cfg,
 	}
 }
 
@@ -45,76 +42,28 @@ func newJellyfinClient(cfg *config.JellyfinConfig) *jellyfin.APIClient {
 
 // GetJellyfinItems retrieves all media items from enabled Jellyfin libraries.
 // It returns JellyfinItem objects that include the library name for easier processing.
-func (c *Client) GetJellyfinItems(ctx context.Context, forceRefresh bool) ([]arr.JellyfinItem, map[string][]string, error) {
-	if forceRefresh {
-		if err := c.itemsCache.Clear(ctx); err != nil {
-			log.Debug("Failed to clear jellyfin items cache, fetching from API", "error", err)
-		}
-	}
-
-	cachedData, err := c.itemsCache.Get(ctx, "all")
-	if err != nil {
-		log.Debug("Failed to get Jellyfin items from cache, fetching from API", "error", err)
-	}
-	if len(cachedData.Items) != 0 && !forceRefresh {
-		// Convert cached JellyfinItems to arr.JellyfinItems
-		arrItems := make([]arr.JellyfinItem, len(cachedData.Items))
-		for i, item := range cachedData.Items {
-			arrItems[i] = arr.JellyfinItem{
-				BaseItemDto:       item.BaseItemDto,
-				ParentLibraryName: item.ParentLibraryName,
-			}
-		}
-		return arrItems, cachedData.LibraryFoldersMap, nil
-	}
-
-	allItems, libraryFoldersMap, err := c.fetchJellyfinItems(ctx)
+func (c *Client) GetJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, map[string][]string, error) {
+	allItems, err := c.fetchJellyfinItems(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Convert to cache format and store
-	cacheItems := make([]cache.JellyfinItem, len(allItems))
-	for i, item := range allItems {
-		cacheItems[i] = cache.JellyfinItem{
-			BaseItemDto:       item.BaseItemDto,
-			ParentLibraryName: item.ParentLibraryName,
-		}
-	}
-
-	cacheData := cache.JellyfinItemsData{
-		Items:             cacheItems,
-		LibraryFoldersMap: libraryFoldersMap,
-	}
-
-	if err := c.itemsCache.Set(ctx, "all", cacheData); err != nil {
-		log.Warnf("Failed to cache Jellyfin items: %v", err)
+	libraryFoldersMap, err := c.GetLibraryFoldersMap(ctx)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return allItems, libraryFoldersMap, nil
 }
 
-// fetchJellyfinItems fetches items from the Jellyfin API (extracted from original GetJellyfinItems).
-func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, map[string][]string, error) {
-	var allItems []arr.JellyfinItem
+// GetLibraryFoldersMap retrieves the mapping of library names to their folder paths.
+func (c *Client) GetLibraryFoldersMap(ctx context.Context) (map[string][]string, error) {
 	libraryFoldersMap := make(map[string][]string)
-
-	// First, get all media folders (libraries)
-	mediaFoldersResp, _, err := c.jellyfin.LibraryAPI.GetMediaFolders(ctx).Execute()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get media folders: %w", err)
-	}
-
-	// Check if we have items in the response
-	mediaFolders := mediaFoldersResp.GetItems()
-	if len(mediaFolders) == 0 {
-		return nil, nil, fmt.Errorf("no media folders found")
-	}
 
 	// fetch virtual folders (required for the thresholds based on disk usage)
 	virtualFolders, _, err := c.jellyfin.LibraryStructureAPI.GetVirtualFolders(ctx).Execute()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get virtual folders: %w", err)
+		return nil, fmt.Errorf("failed to get virtual folders: %w", err)
 	}
 	if len(virtualFolders) == 0 {
 		log.Warn("No virtual folders found")
@@ -130,6 +79,25 @@ func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, ma
 			continue
 		}
 		libraryFoldersMap[libraryName] = folder.GetLocations()
+	}
+
+	return libraryFoldersMap, nil
+}
+
+// fetchJellyfinItems fetches items from the Jellyfin API (extracted from original GetJellyfinItems).
+func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, error) {
+	var allItems []arr.JellyfinItem
+
+	// First, get all media folders (libraries)
+	mediaFoldersResp, _, err := c.jellyfin.LibraryAPI.GetMediaFolders(ctx).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get media folders: %w", err)
+	}
+
+	// Check if we have items in the response
+	mediaFolders := mediaFoldersResp.GetItems()
+	if len(mediaFolders) == 0 {
+		return nil, fmt.Errorf("no media folders found")
 	}
 
 	// Process each enabled library
@@ -167,7 +135,7 @@ func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, ma
 		}
 	}
 
-	return allItems, libraryFoldersMap, nil
+	return allItems, nil
 }
 
 // getJellyfinItemsFromLibrary retrieves all items from a specific Jellyfin library.

@@ -4,172 +4,113 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
 	sonarrAPI "github.com/devopsarr/sonarr-go/sonarr"
-	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
-	"github.com/jon4hz/jellysweep/engine/arr"
-	"github.com/jon4hz/jellysweep/tags"
 )
 
-func (s *Sonarr) DeleteMedia(ctx context.Context, libraryFoldersMap map[string][]string) ([]arr.MediaItem, error) {
-	deletedItems := make([]arr.MediaItem, 0)
+func (s *Sonarr) DeleteMedia(ctx context.Context, seriesID int32, title string) error {
+	// Get the global cleanup configuration
+	cleanupMode := s.cfg.GetCleanupMode()
+	keepCount := s.cfg.GetKeepCount()
 
-	sonarrItems, err := s.getItems(ctx, false)
-	if err != nil {
-		return deletedItems, fmt.Errorf("failed to get Sonarr items: %w", err)
+	if s.cfg.DryRun {
+		log.Infof("Dry run: Would delete Sonarr series %s using cleanup mode: %s", title, cleanupMode)
+		return nil
 	}
 
-	tagMap, err := s.GetTags(ctx, false)
-	if err != nil {
-		return deletedItems, fmt.Errorf("failed to get Sonarr tags: %w", err)
-	}
+	var deletionDescription string
 
-	for _, series := range sonarrItems {
-		libraryName := "TV Shows" // TODO: dont hardcode library name
+	switch cleanupMode {
+	case config.CleanupModeAll:
+		// Delete the entire series (original behavior)
+		resp, err := s.client.SeriesAPI.DeleteSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), seriesID).
+			DeleteFiles(true).
+			Execute()
+		if err != nil {
+			return fmt.Errorf("failed to delete Sonarr series %s: %w", title, err)
+		}
+		defer resp.Body.Close() //nolint: errcheck
+		deletionDescription = "entire series"
 
-		// Get tag names for this series
-		var tagNames []string
-		for _, tagID := range series.GetTags() {
-			if tagName, exists := tagMap[tagID]; exists {
-				tagNames = append(tagNames, tagName)
+	case config.CleanupModeKeepEpisodes, config.CleanupModeKeepSeasons:
+		// Get episode files to keep
+		filesToKeep, err := s.getEpisodeFilesToKeep(ctx, seriesID, title, cleanupMode, keepCount)
+		if err != nil {
+			log.Errorf("Failed to determine episode files to keep for series %s: %v", title, err)
+			return err
+		}
+
+		// Get all episode files for the series
+		allEpisodeFiles, err := s.getEpisodeFiles(ctx, seriesID)
+		if err != nil {
+			log.Errorf("Failed to get episode files for series %s: %v", title, err)
+			return err
+		}
+
+		// Determine which files to delete
+		var filesToDelete []int32
+		for _, file := range allEpisodeFiles {
+			if !slices.Contains(filesToKeep, file.GetId()) {
+				filesToDelete = append(filesToDelete, file.GetId())
 			}
 		}
 
-		// Check if the series should be deleted based on current disk usage
-		if !tags.ShouldTriggerDeletionBasedOnDiskUsage(ctx, s.cfg, libraryName, tagNames, libraryFoldersMap) {
-			continue
-		}
-
-		// Get the global cleanup configuration
-		cleanupMode := s.cfg.GetCleanupMode()
-		keepCount := s.cfg.GetKeepCount()
-
-		if s.cfg.DryRun {
-			log.Infof("Dry run: Would delete Sonarr series %s using cleanup mode: %s", series.GetTitle(), cleanupMode)
-			continue
-		}
-
-		var deletionDescription string
-
-		switch cleanupMode {
-		case config.CleanupModeAll:
-			// Delete the entire series (original behavior)
-			resp, err := s.client.SeriesAPI.DeleteSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), series.GetId()).
-				DeleteFiles(true).
-				Execute()
+		// Delete the determined episode files
+		if len(filesToDelete) > 0 {
+			err := s.deleteEpisodeFiles(ctx, filesToDelete)
 			if err != nil {
-				return deletedItems, fmt.Errorf("failed to delete Sonarr series %s: %w", series.GetTitle(), err)
+				log.Errorf("Failed to delete episode files for series %s: %v", title, err)
+				return err
 			}
-			defer resp.Body.Close() //nolint: errcheck
-			deletionDescription = "entire series"
 
-		case config.CleanupModeKeepEpisodes, config.CleanupModeKeepSeasons:
-			// Get episode files to keep
-			filesToKeep, err := s.getEpisodeFilesToKeep(ctx, series, cleanupMode, keepCount)
+			// Unmonitor episodes that had their files deleted to prevent redownload
+			err = s.unmonitorDeletedEpisodes(ctx, seriesID, title, cleanupMode, keepCount)
 			if err != nil {
-				log.Errorf("Failed to determine episode files to keep for series %s: %v", series.GetTitle(), err)
-				continue
+				log.Warnf("Failed to unmonitor deleted episodes for series %s: %v", title, err)
+				// continue with execution even when unmonitoring fails
 			}
 
-			// Get all episode files for the series
-			allEpisodeFiles, err := s.getEpisodeFiles(ctx, series.GetId())
-			if err != nil {
-				log.Errorf("Failed to get episode files for series %s: %v", series.GetTitle(), err)
-				continue
-			}
-
-			// Determine which files to delete
-			var filesToDelete []int32
-			for _, file := range allEpisodeFiles {
-				if !slices.Contains(filesToKeep, file.GetId()) {
-					filesToDelete = append(filesToDelete, file.GetId())
-				}
-			}
-
-			// Delete the determined episode files
-			if len(filesToDelete) > 0 {
-				err := s.deleteEpisodeFiles(ctx, filesToDelete)
-				if err != nil {
-					log.Errorf("Failed to delete episode files for series %s: %v", series.GetTitle(), err)
-					continue
-				}
-
-				// Unmonitor episodes that had their files deleted to prevent redownload
-				err = s.unmonitorDeletedEpisodes(ctx, series, cleanupMode, keepCount)
-				if err != nil {
-					log.Warnf("Failed to unmonitor deleted episodes for series %s: %v", series.GetTitle(), err)
-					// Continue execution - file deletion succeeded, unmonitoring is not critical
-				}
-
-				if cleanupMode == config.CleanupModeKeepEpisodes {
-					deletionDescription = fmt.Sprintf("all but first %d episodes (and unmonitored deleted episodes)", keepCount)
-				} else {
-					deletionDescription = fmt.Sprintf("all but first %d seasons (and unmonitored deleted episodes)", keepCount)
-				}
+			if cleanupMode == config.CleanupModeKeepEpisodes {
+				deletionDescription = fmt.Sprintf("all but first %d episodes (and unmonitored deleted episodes)", keepCount)
 			} else {
-				log.Infof("No episode files to delete for series %s (all files are marked to keep)", series.GetTitle())
-				continue
+				deletionDescription = fmt.Sprintf("all but first %d seasons (and unmonitored deleted episodes)", keepCount)
 			}
-
-		default:
-			log.Warnf("Unknown cleanup mode %s for series %s, using default 'all' mode", cleanupMode, series.GetTitle())
-			// Fallback to deleting entire series
-			resp, err := s.client.SeriesAPI.DeleteSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), series.GetId()).
-				DeleteFiles(true).
-				Execute()
-			if err != nil {
-				return deletedItems, fmt.Errorf("failed to delete Sonarr series %s: %w", series.GetTitle(), err)
-			}
-			defer resp.Body.Close() //nolint: errcheck
-			deletionDescription = "entire series (fallback)"
-		}
-
-		log.Infof("Deleted from Sonarr series %s: %s", series.GetTitle(), deletionDescription)
-
-		// Remove jellysweep-delete tags from the series after successful deletion
-		if cleanupMode != config.CleanupModeAll {
-			// Only remove tags if the series still exists (not for complete series deletion)
-			err := s.cleanupSonarrTagsAfterDelete(ctx, series)
-			if err != nil {
-				log.Warnf("Failed to cleanup jellysweep tags from series %s: %v", series.GetTitle(), err)
-				// Continue execution - deletion succeeded, tag removal is not critical
-			}
-		}
-
-		// Add to deleted items list
-		deletedItems = append(deletedItems, arr.MediaItem{
-			Title:       series.GetTitle(),
-			LibraryName: libraryName,
-			MediaType:   models.MediaTypeTV,
-			Year:        series.GetYear(),
-		})
-	}
-
-	if len(deletedItems) > 0 {
-		if err := s.itemsCache.Clear(ctx); err != nil {
-			log.Warnf("Failed to clear Sonarr items cache after deletion: %v", err)
 		} else {
-			log.Debug("Cleared Sonarr items cache after deletion")
+			log.Infof("No episode files to delete for series %s (all files are marked to keep)", title)
+			return nil
 		}
+
+	default:
+		log.Warnf("Unknown cleanup mode %s for series %s, using default 'all' mode", cleanupMode, title)
+		// Fallback to deleting entire series
+		resp, err := s.client.SeriesAPI.DeleteSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), seriesID).
+			DeleteFiles(true).
+			Execute()
+		if err != nil {
+			log.Errorf("Failed to delete Sonarr series %s: %v", title, err)
+			return err
+		}
+		defer resp.Body.Close() //nolint: errcheck
+		deletionDescription = "entire series (fallback)"
 	}
 
-	return deletedItems, nil
+	log.Infof("Deleted from Sonarr series %s: %s", title, deletionDescription)
+	return nil
 }
 
 // getEpisodeFilesToKeep determines which episode files to keep based on cleanup mode.
-func (s *Sonarr) getEpisodeFilesToKeep(ctx context.Context, series sonarrAPI.SeriesResource, cleanupMode config.CleanupMode, keepCount int) ([]int32, error) {
+func (s *Sonarr) getEpisodeFilesToKeep(ctx context.Context, seriesID int32, title string, cleanupMode config.CleanupMode, keepCount int) ([]int32, error) {
 	if cleanupMode == config.CleanupModeAll {
 		// For "all" mode, we delete the entire series (no episode files to keep)
 		return []int32{}, nil
 	}
 
-	episodes, err := s.getEpisodes(ctx, series.GetId())
+	episodes, err := s.getEpisodes(ctx, seriesID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get episodes for series %s: %w", series.GetTitle(), err)
+		return nil, fmt.Errorf("failed to get episodes for series %s: %w", title, err)
 	}
 
 	var filesToKeep []int32
@@ -251,17 +192,17 @@ func (s *Sonarr) getEpisodeFilesToKeep(ctx context.Context, series sonarrAPI.Ser
 		})
 
 		// Keep files for the first keepCount regular seasons (lowest-numbered)
-		log.Debugf("Series %s: Total regular seasons found: %d, seasons to keep: %d (excluding specials)", series.GetTitle(), len(seasons), keepCount)
-		log.Debugf("Series %s: Regular season numbers in order: %v", series.GetTitle(), seasons)
+		log.Debugf("Series %s: Total regular seasons found: %d, seasons to keep: %d (excluding specials)", title, len(seasons), keepCount)
+		log.Debugf("Series %s: Regular season numbers in order: %v", title, seasons)
 
 		keptSeasons := 0
 		for _, seasonNum := range seasons {
 			if keptSeasons >= keepCount {
-				log.Debugf("Series %s: Season %d will be deleted (already kept %d seasons)", series.GetTitle(), seasonNum, keptSeasons)
+				log.Debugf("Series %s: Season %d will be deleted (already kept %d seasons)", title, seasonNum, keptSeasons)
 				break
 			}
 
-			log.Debugf("Series %s: Season %d will be kept (keeping season %d of %d)", series.GetTitle(), seasonNum, keptSeasons+1, keepCount)
+			log.Debugf("Series %s: Season %d will be kept (keeping season %d of %d)", title, seasonNum, keptSeasons+1, keepCount)
 			for _, episode := range seasonEpisodes[seasonNum] {
 				if episode.HasFile != nil && *episode.HasFile && episode.HasEpisodeFileId() {
 					filesToKeep = append(filesToKeep, episode.GetEpisodeFileId())
@@ -316,11 +257,11 @@ func (s *Sonarr) deleteEpisodeFiles(ctx context.Context, episodeFileIDs []int32)
 }
 
 // unmonitorDeletedEpisodes unmonitors episodes that were deleted to prevent Sonarr from redownloading them.
-func (s *Sonarr) unmonitorDeletedEpisodes(ctx context.Context, series sonarrAPI.SeriesResource, cleanupMode config.CleanupMode, keepCount int) error {
+func (s *Sonarr) unmonitorDeletedEpisodes(ctx context.Context, seriesID int32, title string, cleanupMode config.CleanupMode, keepCount int) error {
 	// Get all episodes for the series
-	episodes, err := s.getEpisodes(ctx, series.GetId())
+	episodes, err := s.getEpisodes(ctx, seriesID)
 	if err != nil {
-		return fmt.Errorf("failed to get episodes for series %s: %w", series.GetTitle(), err)
+		return fmt.Errorf("failed to get episodes for series %s: %w", title, err)
 	}
 
 	var episodesToUnmonitor []int32
@@ -381,19 +322,19 @@ func (s *Sonarr) unmonitorDeletedEpisodes(ctx context.Context, series sonarrAPI.
 		slices.Sort(seasons)
 
 		// Unmonitor episodes from regular seasons beyond the first keepCount seasons
-		log.Debugf("Series %s (unmonitor): Total regular seasons found: %d, seasons to keep: %d (excluding specials)", series.GetTitle(), len(seasons), keepCount)
-		log.Debugf("Series %s (unmonitor): Regular season numbers in order: %v", series.GetTitle(), seasons)
+		log.Debugf("Series %s (unmonitor): Total regular seasons found: %d, seasons to keep: %d (excluding specials)", title, len(seasons), keepCount)
+		log.Debugf("Series %s (unmonitor): Regular season numbers in order: %v", title, seasons)
 
 		keptSeasons := 0
 		for _, seasonNum := range seasons {
 			if keptSeasons >= keepCount {
-				log.Debugf("Series %s (unmonitor): Season %d episodes will be unmonitored (already kept %d seasons)", series.GetTitle(), seasonNum, keptSeasons)
+				log.Debugf("Series %s (unmonitor): Season %d episodes will be unmonitored (already kept %d seasons)", title, seasonNum, keptSeasons)
 				for _, episode := range seasonEpisodes[seasonNum] {
 					episodesToUnmonitor = append(episodesToUnmonitor, episode.GetId())
 				}
 				continue
 			} else {
-				log.Debugf("Series %s (unmonitor): Season %d episodes will remain monitored (keeping season %d of %d)", series.GetTitle(), seasonNum, keptSeasons+1, keepCount)
+				log.Debugf("Series %s (unmonitor): Season %d episodes will remain monitored (keeping season %d of %d)", title, seasonNum, keptSeasons+1, keepCount)
 			}
 			keptSeasons++
 		}
@@ -410,10 +351,10 @@ func (s *Sonarr) unmonitorDeletedEpisodes(ctx context.Context, series sonarrAPI.
 			EpisodesMonitoredResource(*resource).
 			Execute()
 		if err != nil {
-			return fmt.Errorf("failed to unmonitor %d episodes for series %s: %w", len(episodesToUnmonitor), series.GetTitle(), err)
+			return fmt.Errorf("failed to unmonitor %d episodes for series %s: %w", len(episodesToUnmonitor), title, err)
 		}
 
-		log.Infof("Unmonitored %d episodes for series %s to prevent redownload", len(episodesToUnmonitor), series.GetTitle())
+		log.Infof("Unmonitored %d episodes for series %s to prevent redownload", len(episodesToUnmonitor), title)
 	}
 
 	return nil
@@ -422,53 +363,4 @@ func (s *Sonarr) unmonitorDeletedEpisodes(ctx context.Context, series sonarrAPI.
 func episodeAlreadyAired(episode sonarrAPI.EpisodeResource, now time.Time) bool {
 	// An episode is considered aired if it has a non-zero air date
 	return !episode.GetAirDateUtc().IsZero() && episode.GetAirDateUtc().Before(now)
-}
-
-// cleanupSonarrTagsAfterDelete removes jellysweep-delete-, jellysweep-must-delete- and jellysweep-keep-request- tags from a Sonarr series.
-func (s *Sonarr) cleanupSonarrTagsAfterDelete(ctx context.Context, series sonarrAPI.SeriesResource) error {
-	if series.GetTags() == nil || len(series.GetTags()) == 0 {
-		return nil // No tags to remove
-	}
-
-	tagMap, err := s.GetTags(ctx, false)
-	if err != nil {
-		return fmt.Errorf("failed to get Sonarr tags: %w", err)
-	}
-
-	// Find tags to keep (all tags except jellysweep-delete-, jellysweep-must-delete- and jellysweep-keep-request-)
-	var tagsToKeep []int32
-	var removedTagNames []string
-
-	for _, tagID := range series.GetTags() {
-		if tagName, exists := tagMap[tagID]; exists {
-			if strings.HasPrefix(tagName, tags.JellysweepTagPrefix) || tagName == tags.JellysweepDeleteForSureTag || strings.HasPrefix(tagName, tags.JellysweepKeepRequestPrefix) {
-				// This is a jellysweep-delete- or jellysweep-must-delete-for-sure or jellysweep-keep-request- tag, don't keep it
-				removedTagNames = append(removedTagNames, tagName)
-			} else {
-				// Keep all other tags
-				tagsToKeep = append(tagsToKeep, tagID)
-			}
-		} else {
-			// Keep tags we don't recognize
-			tagsToKeep = append(tagsToKeep, tagID)
-		}
-	}
-
-	// If no tags were removed, nothing to do
-	if len(removedTagNames) == 0 {
-		return nil
-	}
-
-	// Update the series with the filtered tags
-	series.Tags = tagsToKeep
-	_, resp, err := s.client.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), fmt.Sprintf("%d", series.GetId())).
-		SeriesResource(series).
-		Execute()
-	if err != nil {
-		return fmt.Errorf("failed to update series tags: %w", err)
-	}
-	defer resp.Body.Close() //nolint: errcheck
-
-	log.Infof("Removed jellysweep-delete tags from series %s: %v", series.GetTitle(), removedTagNames)
-	return nil
 }

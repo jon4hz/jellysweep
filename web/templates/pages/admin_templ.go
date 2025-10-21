@@ -14,7 +14,7 @@ import (
 	"github.com/jon4hz/jellysweep/web/templates/components"
 )
 
-func AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems []models.MediaItem) templ.Component {
+func AdminPanel(user *models.User, requestedMedia []models.AdminMediaItem, mediaItems []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -52,9 +52,9 @@ func AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(len(keepRequests))
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(len(requestedMedia))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 22, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/admin.templ`, Line: 22, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -64,7 +64,7 @@ func AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = AdminTabs(keepRequests, mediaItems).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = AdminTabs(requestedMedia, mediaItems).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -146,7 +146,7 @@ func AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = templates.LayoutWithPendingRequests("Admin Panel", user, len(keepRequests)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templates.LayoutWithPendingRequests("Admin Panel", user, len(requestedMedia)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -154,7 +154,7 @@ func AdminPanel(user *models.User, keepRequests []models.KeepRequest, mediaItems
 	})
 }
 
-func AdminTabs(keepRequests []models.KeepRequest, mediaItems []models.MediaItem) templ.Component {
+func AdminTabs(requestedMedia []models.AdminMediaItem, mediaItems []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -229,7 +229,7 @@ func AdminTabs(keepRequests []models.KeepRequest, mediaItems []models.MediaItem)
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = ApprovalQueueTab(keepRequests).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = ApprovalQueueTab(requestedMedia).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -275,7 +275,7 @@ func AdminTabs(keepRequests []models.KeepRequest, mediaItems []models.MediaItem)
 	})
 }
 
-func ApprovalQueueTab(keepRequests []models.KeepRequest) templ.Component {
+func ApprovalQueueTab(requestedMedia []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -296,13 +296,13 @@ func ApprovalQueueTab(keepRequests []models.KeepRequest) templ.Component {
 			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		if len(keepRequests) == 0 {
+		if len(requestedMedia) == 0 {
 			templ_7745c5c3_Err = AdminEmptyState().Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = components.AdminKeepRequestGrid(keepRequests).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.AdminKeepRequestGrid(requestedMedia).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -310,7 +310,7 @@ func ApprovalQueueTab(keepRequests []models.KeepRequest) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templ.JSONScript("keep-requests-data", keepRequests).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templ.JSONScript("keep-requests-data", requestedMedia).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -319,7 +319,7 @@ func ApprovalQueueTab(keepRequests []models.KeepRequest) templ.Component {
 	})
 }
 
-func KeepSweepTab(mediaItems []models.MediaItem) templ.Component {
+func KeepSweepTab(mediaItems []models.AdminMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

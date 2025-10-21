@@ -13,7 +13,7 @@ import (
 )
 
 // sendEmailNotifications sends email notifications to users about their media being marked for deletion.
-func (e *Engine) sendEmailNotifications() {
+func (e *Engine) sendEmailNotifications(mediaItems []arr.MediaItem) {
 	if e.email == nil || !e.cfg.Email.Enabled {
 		log.Debug("Email service not configured or disabled, skipping notifications")
 		return
@@ -24,17 +24,17 @@ func (e *Engine) sendEmailNotifications() {
 		return
 	}
 
-	for userEmail, mediaItems := range e.data.userNotifications {
-		if len(mediaItems) == 0 {
+	for userEmail, emailMediaItems := range e.data.userNotifications {
+		if len(emailMediaItems) == 0 {
 			continue
 		}
 
 		// Convert engine MediaItems to email MediaItems
-		emailMediaItems := make([]email.MediaItem, 0, len(mediaItems))
-		for _, item := range mediaItems {
+		emailMediaItems := make([]email.MediaItem, 0, len(emailMediaItems))
+		for _, item := range emailMediaItems {
 			emailMediaItems = append(emailMediaItems, email.MediaItem{
 				Title:       item.Title,
-				MediaType:   string(item.MediaType),
+				MediaType:   item.MediaType,
 				RequestedBy: item.RequestedBy,
 				RequestDate: item.RequestDate,
 			})
@@ -44,17 +44,14 @@ func (e *Engine) sendEmailNotifications() {
 		cleanupDate := time.Now()
 		if len(mediaItems) > 0 {
 			// Use the cleanup delay from the first item's library
-			for lib, libItems := range e.data.mediaItems {
-				for _, libItem := range libItems {
-					if libItem.RequestedBy == userEmail {
-						libraryConfig := e.cfg.GetLibraryConfig(lib)
-						if libraryConfig != nil {
-							cleanupDate = cleanupDate.Add(time.Duration(libraryConfig.CleanupDelay) * 24 * time.Hour)
-						}
-						break
+			for _, item := range mediaItems {
+				if item.RequestedBy == userEmail {
+					libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
+					if libraryConfig != nil {
+						cleanupDate = cleanupDate.Add(time.Duration(libraryConfig.CleanupDelay) * 24 * time.Hour)
 					}
+					break
 				}
-				break
 			}
 		}
 
@@ -76,46 +73,40 @@ func (e *Engine) sendEmailNotifications() {
 }
 
 // sendNtfyDeletionSummary sends a summary notification about media marked for deletion.
-func (e *Engine) sendNtfyDeletionSummary(ctx context.Context) error {
+func (e *Engine) sendNtfyDeletionSummary(ctx context.Context, mediaItems []arr.MediaItem) error {
 	if e.ntfy == nil {
 		log.Debug("Ntfy service not configured, skipping deletion summary notification")
 		return nil
 	}
 
-	if len(e.data.mediaItems) == 0 {
+	if len(mediaItems) == 0 {
 		log.Debug("No media items marked for deletion")
 		return nil
 	}
 
 	// Calculate totals and prepare media items for notification
-	totalItems := 0
-	libraries := make(map[string][]ntfy.MediaItem)
-
-	for library, items := range e.data.mediaItems {
-		if len(items) > 0 {
-			totalItems += len(items)
-
-			// Convert engine MediaItems to ntfy MediaItems
-			ntfyItems := make([]ntfy.MediaItem, 0, len(items))
-			for _, item := range items {
-				mediaType := "tv"
-				if item.MediaType == models.MediaTypeMovie {
-					mediaType = "movie"
-				}
-
-				ntfyItems = append(ntfyItems, ntfy.MediaItem{
-					Title: item.Title,
-					Type:  mediaType,
-					Year:  item.Year,
-				})
-			}
-			libraries[library] = ntfyItems
-		}
-	}
-
+	totalItems := len(mediaItems)
 	if totalItems == 0 {
 		log.Debug("No media items to notify about")
 		return nil
+	}
+
+	libraries := make(map[string][]ntfy.MediaItem)
+	for _, item := range mediaItems {
+		mediaType := "tv"
+		if item.MediaType == models.MediaTypeMovie {
+			mediaType = "movie"
+		}
+
+		if _, exists := libraries[item.LibraryName]; !exists {
+			libraries[item.LibraryName] = make([]ntfy.MediaItem, 0)
+		}
+
+		libraries[item.LibraryName] = append(libraries[item.LibraryName], ntfy.MediaItem{
+			Title: item.Title,
+			Type:  mediaType,
+			Year:  item.Year,
+		})
 	}
 
 	// Send the notification

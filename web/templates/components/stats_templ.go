@@ -55,15 +55,15 @@ type CumulativeChartPoint struct {
 }
 
 // calculateDailyCleanupData processes media items to create data points for daily cleanup graph
-func calculateDailyCleanupData(items []models.MediaItem) []DailyCleanupPoint {
+func calculateDailyCleanupData(items []models.UserMediaItem) []DailyCleanupPoint {
 	if len(items) == 0 {
 		return []DailyCleanupPoint{}
 	}
 
 	// Group items by date (day)
-	dailyMap := make(map[string][]models.MediaItem)
+	dailyMap := make(map[string][]models.UserMediaItem)
 	for _, item := range items {
-		dateKey := item.DeletionDate.Format("2006-01-02")
+		dateKey := item.DefaultDeleteAt.Format("2006-01-02")
 		dailyMap[dateKey] = append(dailyMap[dateKey], item)
 	}
 
@@ -92,16 +92,16 @@ func calculateDailyCleanupData(items []models.MediaItem) []DailyCleanupPoint {
 }
 
 // calculateCumulativeCleanupData processes media items to create data points for cumulative cleanup graph
-func calculateCumulativeCleanupData(items []models.MediaItem) []CumulativeCleanupPoint {
+func calculateCumulativeCleanupData(items []models.UserMediaItem) []CumulativeCleanupPoint {
 	if len(items) == 0 {
 		return []CumulativeCleanupPoint{}
 	}
 
 	// Sort items by deletion date
-	sortedItems := make([]models.MediaItem, len(items))
+	sortedItems := make([]models.UserMediaItem, len(items))
 	copy(sortedItems, items)
 	sort.Slice(sortedItems, func(i, j int) bool {
-		return sortedItems[i].DeletionDate.Before(sortedItems[j].DeletionDate)
+		return sortedItems[i].DefaultDeleteAt.Before(sortedItems[j].DefaultDeleteAt)
 	})
 
 	var points []CumulativeCleanupPoint
@@ -109,7 +109,7 @@ func calculateCumulativeCleanupData(items []models.MediaItem) []CumulativeCleanu
 	var itemsDeleted int
 
 	// Start from the first deletion date
-	firstDeletionDate := sortedItems[0].DeletionDate
+	firstDeletionDate := sortedItems[0].DefaultDeleteAt
 	points = append(points, CumulativeCleanupPoint{
 		Date:            firstDeletionDate,
 		CumulativeBytes: 0,
@@ -122,7 +122,7 @@ func calculateCumulativeCleanupData(items []models.MediaItem) []CumulativeCleanu
 		itemsDeleted++
 
 		points = append(points, CumulativeCleanupPoint{
-			Date:            item.DeletionDate,
+			Date:            item.DefaultDeleteAt,
 			CumulativeBytes: cumulativeBytes,
 			ItemsDeleted:    itemsDeleted,
 		})
@@ -132,7 +132,7 @@ func calculateCumulativeCleanupData(items []models.MediaItem) []CumulativeCleanu
 }
 
 // getTotalStorageToFree calculates the total storage that will be freed
-func getTotalStorageToFree(items []models.MediaItem) int64 {
+func getTotalStorageToFree(items []models.UserMediaItem) int64 {
 	var total int64
 	for _, item := range items {
 		total += item.FileSize
@@ -174,7 +174,7 @@ func generateCumulativeChartData(points []CumulativeCleanupPoint, totalStorage i
 	}
 }
 
-func StatsTab(mediaItems []models.MediaItem) templ.Component {
+func StatsTab(mediaItems []models.UserMediaItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

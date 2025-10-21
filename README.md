@@ -56,9 +56,6 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [⚙️ Configuration](#️-configuration)
     - [Environment Variables](#environment-variables)
     - [Configuration File](#configuration-file)
-  - [🏷️ Tag System](#️-tag-system)
-    - [Automatic Tags](#automatic-tags)
-    - [Custom Tags](#custom-tags)
   - [🔧 Commands](#-commands)
   - [🤝 Contributing](#-contributing)
     - [Development Setup](#development-setup)
@@ -120,10 +117,10 @@ libraries:
 
 Let's say today is 2025-07-26:
 
-- **Normal Operation (80% usage)**: Media gets `jellysweep-delete-2025-08-25` (30-day delay)
-- **Moderate Pressure (87% usage)**: Deletion triggered by `jellysweep-delete-du85-2025-08-09` (14-day delay)
-- **High Pressure (93% usage)**: Deletion triggered by `jellysweep-delete-du90-2025-08-02` (7-day delay)
-- **Critical Pressure (97% usage)**: Deletion triggered by `jellysweep-delete-du95-2025-07-29` (3-day delay)
+- **Disk usage 80%**: Media gets deleted on `2025-08-25` (after 30 days)
+- **Disk usage 87%**: Media gets deleted on `2025-08-09` (after 14 days)
+- **Disk usage 93%**: Media gets deleted on `2025-08-02` (after 7 days)
+- **Disk usage 97%**: Media gets deleted on `2025-07-29` (after 3 days)
 
 ---
 
@@ -336,6 +333,8 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_SESSION_KEY` | *(required)* | Random string for session encryption (`openssl rand -base64 32`) |
 | `JELLYSWEEP_SESSION_MAX_AGE` | `172800` | Session maximum age in seconds (48 hours) |
 | `JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the Jellysweep server |
+| **Database Configuration** | | |
+| `JELLYSWEEP_DATABASE_PATH` | `./data/jellysweep.db` | Path to the database file |
 | **OIDC Authentication** | | |
 | `JELLYSWEEP_AUTH_OIDC_ENABLED` | `false` | Enable OIDC/SSO authentication |
 | `JELLYSWEEP_AUTH_OIDC_NAME` | OIDC | Display name on the login page |
@@ -400,10 +399,6 @@ All configuration options can be set via environment variables with the `JELLYSW
 > [!TIP]
 > Either Sonarr or Radarr (or both) must be configured. Only one of Jellystat or Streamystats can be configured at a time.
 
-> [!WARNING]
-> If no authentication methods are enabled, the web interface will be accessible without authentication.
-> Make sure to configure at least one authentication method.
-
 > [!NOTE]
 > Some complex library configuration options are not supported by environment variables. In that case, the library configuration must be done via the YAML configuration file. These options are: `disk_usage_thresholds`, `exclude_tags`
 .
@@ -421,6 +416,10 @@ keep_count: 1                    # Number of episodes/seasons to keep (when usin
 session_key: "your-session-key"  # Random string for session encryption
 session_max_age: 172800          # Session max age in seconds (48 hours)
 server_url: "http://localhost:3002"
+
+# Database configuration (optional)
+database:
+  path: "./data/jellysweep.db"
 
 # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
 auth:
@@ -556,25 +555,6 @@ cache:
   type: "memory"                 # Options: "memory", "redis"
   redis_url: "localhost:6379"    # Redis server URL (when using redis cache)
 ```
-
----
-
-## 🏷️ Tag System
-
-Jellysweep uses the tagging feature from sonarr and radarr to track media state:
-
-### Automatic Tags
-- `jellysweep-delete-YYYY-MM-DD` - Media marked for deletion on date
-- `jellysweep-delete-du90-YYYY-MM-DD` - Media marked for deletion when disk usage ≥90% (example)
-- `jellysweep-delete-du95-YYYY-MM-DD` - Media marked for deletion when disk usage ≥95% (example)
-- `jellysweep-keep-request-YYYY-MM-DD` - User requested to keep
-- `jellysweep-must-keep-YYYY-MM-DD` - Admin approved keep
-- `jellysweep-must-delete-for-sure` - Admin forced deletion (prevents keep requests)
-- `jellysweep-ignore` - Media will never be marked for deletion
-
-### Custom Tags
-Configure custom tags in your Sonarr/Radarr to:
-- **Exclude from deletion**: Add tags to `exclude_tags` list
 
 ---
 

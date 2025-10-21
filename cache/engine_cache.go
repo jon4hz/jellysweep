@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/charmbracelet/log"
-	"github.com/devopsarr/radarr-go/radarr"
-	"github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/codec"
 	"github.com/jon4hz/jellysweep/config"
@@ -36,34 +34,16 @@ const (
 )
 
 type EngineCache struct {
-	JellyfinItemsCache *PrefixedCache[JellyfinItemsData]
-	SonarrItemsCache   *PrefixedCache[[]sonarr.SeriesResource]
-	SonarrTagsCache    *PrefixedCache[TagMap]
-	RadarrItemsCache   *PrefixedCache[[]radarr.MovieResource]
-	RadarrTagsCache    *PrefixedCache[TagMap]
+	SonarrTagsCache *PrefixedCache[TagMap]
+	RadarrTagsCache *PrefixedCache[TagMap]
 }
 
 func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
 	return &EngineCache{
-		JellyfinItemsCache: NewPrefixedCache[JellyfinItemsData](
-			newCacheInstanceByType(cfg),
-			cfg.Type,
-			JellyfinItemsCachePrefix,
-		),
-		SonarrItemsCache: NewPrefixedCache[[]sonarr.SeriesResource](
-			newCacheInstanceByType(cfg),
-			cfg.Type,
-			SonarrItemsCachePrefix,
-		),
 		SonarrTagsCache: NewPrefixedCache[TagMap](
 			newCacheInstanceByType(cfg),
 			cfg.Type,
 			SonarrTagsCachePrefix,
-		),
-		RadarrItemsCache: NewPrefixedCache[[]radarr.MovieResource](
-			newCacheInstanceByType(cfg),
-			cfg.Type,
-			RadarrItemsCachePrefix,
 		),
 		RadarrTagsCache: NewPrefixedCache[TagMap](
 			newCacheInstanceByType(cfg),
@@ -75,10 +55,7 @@ func NewEngineCache(cfg *config.CacheConfig) (*EngineCache, error) {
 
 func (e *EngineCache) ClearAll(ctx context.Context) {
 	errs := []error{
-		e.JellyfinItemsCache.Clear(ctx),
-		e.SonarrItemsCache.Clear(ctx),
 		e.SonarrTagsCache.Clear(ctx),
-		e.RadarrItemsCache.Clear(ctx),
 		e.RadarrTagsCache.Clear(ctx),
 	}
 	for _, err := range errs {
@@ -107,20 +84,8 @@ type Stats struct {
 func (e *EngineCache) GetStats() []*Stats {
 	return []*Stats{
 		{
-			Stats:     e.JellyfinItemsCache.GetStats(),
-			CacheName: "jellyfin-items",
-		},
-		{
-			Stats:     e.SonarrItemsCache.GetStats(),
-			CacheName: "sonarr-items",
-		},
-		{
 			Stats:     e.SonarrTagsCache.GetStats(),
 			CacheName: "sonarr-tags",
-		},
-		{
-			Stats:     e.RadarrItemsCache.GetStats(),
-			CacheName: "radarr-items",
 		},
 		{
 			Stats:     e.RadarrTagsCache.GetStats(),

@@ -1,24 +1,83 @@
 package components
 
-import "github.com/jon4hz/jellysweep/api/models"
+import (
+	"fmt"
+	"github.com/jon4hz/jellysweep/api/models"
+)
+
+// getUserMediaUniqueLibraries extracts unique library names from UserMediaItems
+func getUserMediaUniqueLibraries(items []models.UserMediaItem) []string {
+	libraryMap := make(map[string]bool)
+	var libraries []string
+
+	for _, item := range items {
+		if item.LibraryName != "" && !libraryMap[item.LibraryName] {
+			libraryMap[item.LibraryName] = true
+			libraries = append(libraries, item.LibraryName)
+		}
+	}
+
+	return libraries
+}
 
 // DashboardMediaGrid creates a media grid specifically for the dashboard
-templ DashboardMediaGrid(mediaItems []models.MediaItem, pageSize int) {
-	@MediaGrid(mediaItems, MediaGridConfig{
-		ContainerID:    "media-grid-container",
-		GridID:         "media-grid",
-		EnableSearch:   true,
-		EnableFilters:  true,
-		EnableSorting:  true,
-		EnableRefresh:  true,
-		PageSize:       pageSize,
-		MobilePageSize: 6,
-		AnimateChanges: true,
-	}, DashboardFilters(mediaItems))
+templ DashboardMediaGrid(mediaItems []models.UserMediaItem, pageSize int) {
+	<div id="media-grid-container" class="space-y-4">
+		<!-- Loading State -->
+		<div id="media-grid-container-grid-loading" class="hidden">
+			@SkeletonGrid(12)
+		</div>
+		<!-- Custom content (filters, search, etc.) -->
+		@DashboardFilters(mediaItems)
+		<!-- Media Grid -->
+		<div
+			id="media-grid"
+			class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 transition-opacity duration-200"
+			data-page-size={ fmt.Sprint(pageSize) }
+			data-mobile-page-size="6"
+			data-total-items={ fmt.Sprint(len(mediaItems)) }
+			data-enable-search="true"
+			data-enable-filters="true"
+			data-enable-sorting="true"
+			data-enable-refresh="true"
+			data-animate-changes="true"
+			data-media-items={ templ.JSONString(mediaItems) }
+		>
+			<!-- Items will be populated by JavaScript -->
+		</div>
+		<!-- Loading indicator for infinite scroll -->
+		<div id="media-grid-container-scroll-loading" class="hidden text-center py-8">
+			<div class="inline-flex items-center space-x-2">
+				<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+				<span class="text-gray-400">Loading more...</span>
+			</div>
+		</div>
+		<!-- Load More Button (fallback for poor connections) -->
+		<div id="media-grid-container-load-more-container" class="text-center mt-6 hidden">
+			<button id="media-grid-container-load-more-btn" class="btn-secondary">
+				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+				</svg>
+				Load More
+			</button>
+		</div>
+		<!-- Scroll to Top Button -->
+		<button
+			id="media-grid-container-scroll-to-top"
+			class="fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white p-2 md:p-3 rounded-full shadow-lg transition-all duration-200 opacity-0 pointer-events-none z-50 transform translate-y-4"
+			aria-label="Scroll to top"
+		>
+			<svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+			</svg>
+		</button>
+		<!-- Virtual scroll sentinel for intersection observer -->
+		<div id="media-grid-container-scroll-sentinel" class="h-1 opacity-0"></div>
+	</div>
 }
 
 // DashboardFilters creates the filter interface for the dashboard
-templ DashboardFilters(mediaItems []models.MediaItem) {
+templ DashboardFilters(mediaItems []models.UserMediaItem) {
 	<div class="card-no-hover p-4 sm:p-6 mb-6">
 		<div class="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:justify-between">
 			<div class="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
@@ -32,7 +91,7 @@ templ DashboardFilters(mediaItems []models.MediaItem) {
 				</div>
 				<select id="library-filter" class="input-field flex-1 sm:flex-none">
 					<option value="">All Libraries</option>
-					for _, library := range GetUniqueLibraries(mediaItems) {
+					for _, library := range getUserMediaUniqueLibraries(mediaItems) {
 						<option value={ library }>{ library }</option>
 					}
 				</select>
@@ -100,24 +159,24 @@ script DashboardMediaGridScript() {
 					return;
 				}
 
-				const rawMediaItems = JSON.parse(mediaItemsData);
-				// Transform Go struct field names to JavaScript-friendly names
-				const transformedItems = rawMediaItems.map(item => ({
-					id: item.ID,
-					title: item.Title,
-					type: item.Type,
-					year: item.Year,
-					library: item.Library,
-					posterURL: item.PosterURL,
-					deletionTimestamp: item.DeletionDate ? new Date(item.DeletionDate).getTime() : 0,
-					fileSize: item.FileSize || 0,
-					hasRequested: item.HasRequested || false,
-					canRequest: item.CanRequest !== false, // Default to true unless explicitly false
-					mustDelete: item.MustDelete || false,
-					cleanupMode: item.CleanupMode || "",
-					keepCount: item.KeepCount || 0
-				}));
-				this.setItems(transformedItems);
+			const rawMediaItems = JSON.parse(mediaItemsData);
+			// Transform database.Media to JavaScript-friendly format
+			const transformedItems = rawMediaItems.map(item => ({
+				id: item.ID,
+				title: item.Title,
+				type: item.MediaType, // database.Media uses MediaType field
+				year: item.Year,
+				library: item.LibraryName, // database.Media uses LibraryName field
+				posterURL: item.PosterURL,
+				deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+				fileSize: item.FileSize || 0,
+				hasRequested: item.Request && item.Request.ID ? true : false, // Check if Request exists and has ID
+				canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
+				mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
+				cleanupMode: item.CleanupMode || "",
+				keepCount: parseInt(item.KeepCount || 0),
+			}));
+			this.setItems(transformedItems);
 			} catch (error) {
 				console.error('Failed to parse media items data:', error);
 				this.setItems([]);
@@ -193,7 +252,7 @@ script DashboardMediaGridScript() {
 				}
 			}
 
-			const buttonContent = item.hasRequested
+			const buttonContent = item.hasRequested && !item.mustDelete
 				? `<span class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -211,7 +270,7 @@ script DashboardMediaGridScript() {
 					Request Unavailable
 				</button>`;
 
-			const mobileButtonContent = item.hasRequested
+			const mobileButtonContent = item.hasRequested && !item.mustDelete
 				? `<span class="w-full flex items-center justify-center btn-secondary opacity-50 cursor-not-allowed">
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -446,7 +505,7 @@ script DashboardMediaGridScript() {
 							matchesRequestStatus = !item.hasRequested && item.canRequest && !item.mustDelete;
 							break;
 						case 'requested':
-							matchesRequestStatus = item.hasRequested;
+							matchesRequestStatus = item.hasRequested && !item.mustDelete;
 							break;
 						case 'unavailable':
 							matchesRequestStatus = !item.canRequest || item.mustDelete;

@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,12 @@ func reset(cmd *cobra.Command, _ []string) {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	engine, err := engine.New(cfg)
+	db, err := database.New(cfg.Database.Path)
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
+
+	engine, err := engine.New(cfg, db, false)
 	if err != nil {
 		log.Fatalf("failed to create engine: %v", err)
 	}

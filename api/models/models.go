@@ -1,18 +1,14 @@
 package models
 
-import (
-	"time"
-
-	"github.com/jon4hz/jellysweep/config"
-)
+import "time"
 
 // User represents a user in the system, including their authentication details and admin status.
 type User struct {
-	Sub         string
-	Email       string
+	ID          uint // ID from the database
 	Name        string
 	Username    string
 	IsAdmin     bool
+	Email       string // User's email address from the oidc token (used for gravatar)
 	GravatarURL string // URL to the user's Gravatar image, empty if not available
 }
 
@@ -23,33 +19,61 @@ const (
 	MediaTypeMovie MediaType = "movie"
 )
 
-// MediaItem represents a media item for display in the UI and for deletion tracking.
-type MediaItem struct {
-	ID           string
-	Title        string
-	Type         MediaType
-	Year         int32
-	Library      string
-	DeletionDate time.Time
-	PosterURL    string
-	CanRequest   bool
-	HasRequested bool
-	MustDelete   bool               // Indicates if this item is marked for deletion for sure
-	FileSize     int64              // Size in bytes
-	CleanupMode  config.CleanupMode // Cleanup mode for this item: "all", "keep_episodes", "keep_seasons"
-	KeepCount    int                // Number of episodes/seasons to keep (when cleanup mode is not "all")
+// UserMediaItem represents media information exposed to regular users.
+type UserMediaItem struct {
+	ID              uint      `json:"ID"`
+	Title           string    `json:"Title"`
+	Year            int32     `json:"Year"`
+	PosterURL       string    `json:"PosterURL"`
+	MediaType       MediaType `json:"MediaType"`
+	LibraryName     string    `json:"LibraryName"`
+	FileSize        int64     `json:"FileSize"`
+	DefaultDeleteAt time.Time `json:"DefaultDeleteAt"`
+	Unkeepable      bool      `json:"Unkeepable"`
+	// Cleanup mode for TV series (only applies to MediaTypeTV)
+	CleanupMode string `json:"CleanupMode,omitempty"`
+	// Keep count for TV series cleanup (only applies to MediaTypeTV)
+	KeepCount int `json:"KeepCount,omitempty"`
+	// Request info without revealing who requested
+	Request *UserRequestInfo `json:"Request,omitempty"`
 }
 
-// KeepRequest represents a user request to keep a media item.
-type KeepRequest struct {
-	ID           string
-	MediaID      string
-	Title        string
-	Type         MediaType
-	Year         int
-	Library      string
-	DeletionDate time.Time
-	PosterURL    string
-	RequestDate  time.Time
-	ExpiryDate   time.Time
+// UserRequestInfo represents request information visible to users.
+type UserRequestInfo struct {
+	ID     uint   `json:"ID"`
+	Status string `json:"Status"`
+}
+
+// AdminMediaItem represents media information exposed to admins.
+type AdminMediaItem struct {
+	ID              uint       `json:"ID"`
+	JellyfinID      string     `json:"JellyfinID"`
+	LibraryName     string     `json:"LibraryName"`
+	ArrID           int32      `json:"ArrID"`
+	Title           string     `json:"Title"`
+	TmdbId          *int32     `json:"TmdbId,omitempty"`
+	TvdbId          *int32     `json:"TvdbId,omitempty"`
+	Year            int32      `json:"Year"`
+	FileSize        int64      `json:"FileSize"`
+	PosterURL       string     `json:"PosterURL"`
+	MediaType       MediaType  `json:"MediaType"`
+	RequestedBy     string     `json:"RequestedBy"`
+	DefaultDeleteAt time.Time  `json:"DefaultDeleteAt"`
+	ProtectedUntil  *time.Time `json:"ProtectedUntil,omitempty"`
+	Unkeepable      bool       `json:"Unkeepable"`
+	// Cleanup mode for TV series (only applies to MediaTypeTV)
+	CleanupMode string `json:"CleanupMode,omitempty"`
+	// Keep count for TV series cleanup (only applies to MediaTypeTV)
+	KeepCount int `json:"KeepCount,omitempty"`
+	// Request with full details
+	Request *AdminRequestInfo `json:"Request,omitempty"`
+}
+
+// AdminRequestInfo represents full request information for admins.
+type AdminRequestInfo struct {
+	ID        uint      `json:"ID"`
+	UserID    uint      `json:"UserID"`
+	Status    string    `json:"Status"`
+	CreatedAt time.Time `json:"CreatedAt"`
+	UpdatedAt time.Time `json:"UpdatedAt"`
 }

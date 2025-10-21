@@ -44,7 +44,7 @@ func (s *IntegrationTestSuite) TestMultiProvider_Integration_JellyfinOnly() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg, nil)
+	provider, err := NewProvider(context.Background(), cfg, nil, &MockDB{})
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), provider)
 
@@ -109,7 +109,7 @@ func (s *IntegrationTestSuite) TestMultiProvider_Integration_BothProviders() {
 	}
 
 	// This will likely fail due to OIDC provider initialization
-	provider, err := NewProvider(context.Background(), cfg, nil)
+	provider, err := NewProvider(context.Background(), cfg, nil, &MockDB{})
 	if err != nil {
 		// Expected in test environment without real OIDC
 		assert.Contains(s.T(), err.Error(), "failed to create OIDC provider")
@@ -137,14 +137,13 @@ func (s *IntegrationTestSuite) TestAuthProvider_Interface() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg, nil)
+	provider, err := NewProvider(context.Background(), cfg, nil, &MockDB{})
 	assert.NoError(s.T(), err)
 
 	// Test that provider implements all interface methods
 	var _ AuthProvider = provider
 
 	// Test each method exists and can be called
-	assert.NotNil(s.T(), provider.GetAuthConfig())
 	assert.NotNil(s.T(), provider.RequireAuth())
 	assert.NotNil(s.T(), provider.RequireAdmin())
 
@@ -178,7 +177,7 @@ func (s *IntegrationTestSuite) TestMiddleware_Chain() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg, nil)
+	provider, err := NewProvider(context.Background(), cfg, nil, &MockDB{})
 	assert.NoError(s.T(), err)
 
 	callOrder := []string{}
@@ -318,7 +317,7 @@ func (s *IntegrationTestSuite) TestConfigValidation() {
 
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
-			provider, err := NewProvider(context.Background(), tc.config, nil)
+			provider, err := NewProvider(context.Background(), tc.config, nil, &MockDB{})
 
 			if tc.expectError {
 				assert.Error(t, err)

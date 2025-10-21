@@ -13,9 +13,53 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 )
+
+type MockDB struct{}
+
+func (m *MockDB) CreateUser(ctx context.Context, username string) (*database.User, error) {
+	return &database.User{
+		Username:     username,
+		UserSettings: database.UserSettings{},
+		Model: gorm.Model{
+			ID: 10,
+		},
+	}, nil
+}
+
+func (m *MockDB) GetUserByUsername(ctx context.Context, username string) (*database.User, error) {
+	return &database.User{
+		Username:     username,
+		UserSettings: database.UserSettings{},
+		Model: gorm.Model{
+			ID: 10,
+		},
+	}, nil
+}
+
+func (m *MockDB) GetOrCreateUser(ctx context.Context, username string) (*database.User, error) {
+	return &database.User{
+		Username:     username,
+		UserSettings: database.UserSettings{},
+		Model: gorm.Model{
+			ID: 10,
+		},
+	}, nil
+}
+
+func (m *MockDB) GetUserByID(ctx context.Context, id uint) (*database.User, error) {
+	return &database.User{
+		Username:     "testuser",
+		UserSettings: database.UserSettings{},
+		Model: gorm.Model{
+			ID: id,
+		},
+	}, nil
+}
 
 type FactoryTestSuite struct {
 	suite.Suite
@@ -32,7 +76,7 @@ func (s *FactoryTestSuite) SetupTest() {
 }
 
 func (s *FactoryTestSuite) TestNewProvider_NilConfig() {
-	provider, err := NewProvider(context.Background(), nil, nil)
+	provider, err := NewProvider(context.Background(), nil, nil, &MockDB{})
 	assert.Nil(s.T(), provider)
 	assert.Error(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "auth config is required")
@@ -50,7 +94,7 @@ func (s *FactoryTestSuite) TestNewProvider_NoProvidersEnabled() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg, nil)
+	provider, err := NewProvider(context.Background(), cfg, nil, &MockDB{})
 	assert.Nil(s.T(), provider)
 	assert.Error(s.T(), err)
 	assert.Contains(s.T(), err.Error(), "no authentication provider is enabled")
@@ -69,7 +113,7 @@ func (s *FactoryTestSuite) TestNewProvider_OnlyJellyfinEnabled() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg, nil)
+	provider, err := NewProvider(context.Background(), cfg, nil, &MockDB{})
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), provider)
 
@@ -92,7 +136,7 @@ func (s *FactoryTestSuite) TestNewProvider_InvalidOIDCConfig() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg, nil)
+	provider, err := NewProvider(context.Background(), cfg, nil, &MockDB{})
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), provider)
 	assert.Contains(s.T(), err.Error(), "failed to create OIDC provider")
@@ -111,7 +155,7 @@ func (s *FactoryTestSuite) TestMultiProvider_Login_JellyfinPost() {
 		},
 	}
 
-	provider, err := NewProvider(context.Background(), cfg, nil)
+	provider, err := NewProvider(context.Background(), cfg, nil, &MockDB{})
 	assert.NoError(s.T(), err)
 
 	// Setup test route
@@ -197,7 +241,7 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithSession() {
 	// First, create a route to set up the session
 	router.POST("/setup-session", func(c *gin.Context) {
 		session := sessions.Default(c)
-		session.Set("user_id", "test-user-id")
+		session.Set("user_id", uint(10))
 		session.Set("user_email", "test@example.com")
 		session.Set("user_name", "Test User")
 		session.Set("user_username", "testuser")
@@ -245,7 +289,6 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAdmin_NotAdmin() {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Set("user", &models.User{
-		Sub:     "test-user",
 		IsAdmin: false,
 	})
 
@@ -269,7 +312,6 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAdmin_IsAdmin() {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Set("user", &models.User{
-		Sub:     "admin-user",
 		IsAdmin: true,
 	})
 
@@ -279,19 +321,6 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAdmin_IsAdmin() {
 
 	// If not aborted, the middleware passed
 	assert.False(s.T(), c.IsAborted())
-}
-
-func (s *FactoryTestSuite) TestMultiProvider_GetAuthConfig() {
-	cfg := &config.AuthConfig{
-		OIDC: &config.OIDCConfig{
-			Enabled: true,
-		},
-	}
-
-	mp := &MultiProvider{cfg: cfg, gravatarCfg: nil}
-	result := mp.GetAuthConfig()
-
-	assert.Equal(s.T(), cfg, result)
 }
 
 func (s *FactoryTestSuite) TestMultiProvider_HasOIDC() {
@@ -401,7 +430,7 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithGravatar() {
 	// First, create a route to set up the session with email
 	router.POST("/setup-session", func(c *gin.Context) {
 		session := sessions.Default(c)
-		session.Set("user_id", "test-user-id")
+		session.Set("user_id", uint(10))
 		session.Set("user_email", "test@example.com")
 		session.Set("user_name", "Test User")
 		session.Set("user_username", "testuser")
@@ -459,7 +488,7 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithoutEmail() {
 	// First, create a route to set up the session without email
 	router.POST("/setup-session", func(c *gin.Context) {
 		session := sessions.Default(c)
-		session.Set("user_id", "test-user-id")
+		session.Set("user_id", uint(10))
 		session.Set("user_email", "") // No email
 		session.Set("user_name", "Test User")
 		session.Set("user_username", "testuser")

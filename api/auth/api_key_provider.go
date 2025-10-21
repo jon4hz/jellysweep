@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
-	"github.com/jon4hz/jellysweep/config"
 )
 
 // APIKeyProvider provides an implementation of the AuthProvider interface
@@ -40,9 +39,8 @@ func (ap *APIKeyProvider) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("user_id", "api_key")
+		c.Set("user_id", uint(0))
 		c.Set("user", &models.User{
-			Sub:      "api_key",
 			Name:     "api_key",
 			Username: "api_key",
 			IsAdmin:  true,
@@ -54,13 +52,4 @@ func (ap *APIKeyProvider) RequireAuth() gin.HandlerFunc {
 // RequireAdmin returns a middleware that always passes through when authentication is disabled.
 func (ap *APIKeyProvider) RequireAdmin() gin.HandlerFunc {
 	return ap.RequireAuth() // Admin check is the same as auth check for API key
-}
-
-// GetAuthConfig returns a minimal auth config.
-func (ap *APIKeyProvider) GetAuthConfig() *config.AuthConfig {
-	return &config.AuthConfig{
-		// Return empty config with no providers enabled
-		OIDC:     &config.OIDCConfig{Enabled: false},
-		Jellyfin: &config.JellyfinAuthConfig{Enabled: false},
-	}
 }

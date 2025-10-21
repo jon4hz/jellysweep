@@ -15,34 +15,27 @@ import (
 	"github.com/jon4hz/jellysweep/api/auth"
 	"github.com/jon4hz/jellysweep/api/handler"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/static"
 )
 
 type Server struct {
 	cfg          *config.Config
+	db           database.DB
 	ginEngine    *gin.Engine
 	engine       *engine.Engine
 	authProvider auth.AuthProvider
 }
 
-func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) (*Server, error) {
+func New(ctx context.Context, cfg *config.Config, db database.DB, e *engine.Engine, debug bool) (*Server, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is required")
 	}
 
-	var authProvider auth.AuthProvider
-	var err error
-
-	// Only initialize auth provider if authentication is enabled
-	if cfg.IsAuthenticationEnabled() {
-		authProvider, err = auth.NewProvider(ctx, cfg, cfg.Gravatar)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create auth provider: %w", err)
-		}
-	} else {
-		// Create a no-op auth provider if auth is disabled
-		authProvider = auth.NewNoOpProvider()
+	authProvider, err := auth.NewProvider(ctx, cfg, cfg.Gravatar, db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth provider: %w", err)
 	}
 
 	if !debug {
@@ -51,6 +44,7 @@ func New(ctx context.Context, cfg *config.Config, e *engine.Engine, debug bool) 
 
 	return &Server{
 		cfg:          cfg,
+		db:           db,
 		ginEngine:    gin.Default(),
 		authProvider: authProvider,
 		engine:       e,
@@ -73,7 +67,7 @@ func (s *Server) setupSession() {
 func (s *Server) setupRoutes() error {
 	s.setupSession()
 
-	h := handler.New(s.engine, s.authProvider.GetAuthConfig())
+	h := handler.New(s.engine, s.db, s.cfg)
 
 	staticSub, err := fs.Sub(static.StaticFS, "static")
 	if err != nil {
@@ -81,15 +75,12 @@ func (s *Server) setupRoutes() error {
 	}
 	s.ginEngine.StaticFS("/static", http.FS(staticSub))
 
-	// Setup routes depending on authentication status
-	if s.cfg.IsAuthenticationEnabled() {
-		s.ginEngine.GET("/login", h.Login)
+	s.ginEngine.GET("/login", h.Login)
 
-		// Auth routes
-		s.ginEngine.POST("/auth/jellyfin/login", s.authProvider.Login)
-		s.ginEngine.GET("/auth/oidc/callback", s.authProvider.Callback)
-		s.ginEngine.GET("/auth/oidc/login", s.authProvider.Login)
-	}
+	// Auth routes
+	s.ginEngine.POST("/auth/jellyfin/login", s.authProvider.Login)
+	s.ginEngine.GET("/auth/oidc/callback", s.authProvider.Callback)
+	s.ginEngine.GET("/auth/oidc/login", s.authProvider.Login)
 
 	protected := s.ginEngine.Group("/")
 	protected.Use(s.authProvider.RequireAuth())
@@ -122,7 +113,7 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup := s.ginEngine.Group("/admin")
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
-	h := handler.NewAdmin(s.engine)
+	h := handler.NewAdmin(s.engine, s.db, s.cfg)
 
 	// Admin panel page
 	adminGroup.GET("", h.AdminPanel)
@@ -135,8 +126,8 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI := adminGroup.Group("/api")
 	adminAPI.POST("/keep-requests/:id/accept", h.AcceptKeepRequest)
 	adminAPI.POST("/keep-requests/:id/decline", h.DeclineKeepRequest)
-	adminAPI.POST("/media/:id/keep", h.MarkMediaAsKeep)
-	adminAPI.POST("/media/:id/delete", h.MarkMediaForDeletion)
+	adminAPI.POST("/media/:id/keep", h.MarkMediaAsProtected)
+	adminAPI.POST("/media/:id/delete", h.MarkMediaAsUnkeepable)
 	adminAPI.POST("/media/:id/keep-forever", h.MarkMediaAsKeepForever)
 
 	adminAPI.GET("/keep-requests", h.GetKeepRequests)
@@ -160,7 +151,7 @@ func (s *Server) setupPluginRoutes() error {
 	tokenAuth := auth.NewAPIKeyProvider(s.cfg.APIKey)
 	pluginAPI.Use(tokenAuth.RequireAuth())
 
-	h := handler.NewPlugin(s.engine)
+	h := handler.NewPlugin(s.db)
 
 	pluginAPI.GET("/health", h.GetHealth)
 	pluginAPI.POST("/check", h.CheckMediaItem)

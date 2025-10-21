@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/config"
+	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/gravatar"
 )
 
@@ -25,13 +26,11 @@ type AuthProvider interface {
 
 	// RequireAdmin returns middleware that requires admin privileges
 	RequireAdmin() gin.HandlerFunc
-
-	// GetAuthConfig returns the authentication configuration for templates
-	GetAuthConfig() *config.AuthConfig
 }
 
 // MultiProvider wraps multiple auth providers.
 type MultiProvider struct {
+	db               database.UserDB
 	oidcProvider     *OIDCProvider
 	jellyfinProvider *JellyfinProvider
 	cfg              *config.AuthConfig
@@ -39,16 +38,16 @@ type MultiProvider struct {
 }
 
 // NewProvider creates a multi-provider that supports both OIDC and Jellyfin authentication.
-func NewProvider(ctx context.Context, cfg *config.Config, gravatarCfg *config.GravatarConfig) (AuthProvider, error) {
+func NewProvider(ctx context.Context, cfg *config.Config, gravatarCfg *config.GravatarConfig, db database.UserDB) (AuthProvider, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("auth config is required")
 	}
 
-	mp := &MultiProvider{cfg: cfg.Auth, gravatarCfg: gravatarCfg}
+	mp := &MultiProvider{cfg: cfg.Auth, gravatarCfg: gravatarCfg, db: db}
 
 	// Initialize OIDC provider if enabled
 	if cfg.Auth.OIDC != nil && cfg.Auth.OIDC.Enabled {
-		oidcProvider, err := NewOIDCProvider(ctx, cfg.Auth.OIDC, gravatarCfg)
+		oidcProvider, err := NewOIDCProvider(ctx, cfg.Auth.OIDC, gravatarCfg, db)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create OIDC provider: %w", err)
 		}
@@ -57,7 +56,7 @@ func NewProvider(ctx context.Context, cfg *config.Config, gravatarCfg *config.Gr
 
 	// Initialize Jellyfin provider if enabled
 	if cfg.Jellyfin != nil && cfg.Auth.Jellyfin.Enabled {
-		mp.jellyfinProvider = NewJellyfinProvider(cfg.Jellyfin, cfg.Auth.Jellyfin, gravatarCfg)
+		mp.jellyfinProvider = NewJellyfinProvider(cfg.Jellyfin, db, cfg.Auth.Jellyfin, gravatarCfg)
 	}
 
 	// At least one provider must be enabled
@@ -110,7 +109,6 @@ func (mp *MultiProvider) RequireAuth() gin.HandlerFunc {
 
 		// create user model from session data
 		user := &models.User{
-			Sub:      userID.(string),
 			Email:    getSessionString(session, "user_email"),
 			Name:     getSessionString(session, "user_name"),
 			Username: getSessionString(session, "user_username"),
@@ -139,11 +137,6 @@ func (mp *MultiProvider) RequireAdmin() gin.HandlerFunc {
 		}
 		c.Next()
 	}
-}
-
-// GetAuthConfig returns the authentication configuration for templates.
-func (mp *MultiProvider) GetAuthConfig() *config.AuthConfig {
-	return mp.cfg
 }
 
 // Helper methods for the MultiProvider.
