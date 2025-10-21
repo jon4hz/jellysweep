@@ -443,7 +443,7 @@ func validateConfig(c *Config) error {
 	}
 
 	if !authEnabled {
-		log.Warn("No authentication methods enabled, Jellysweep will run without authentication")
+		return fmt.Errorf("at least one authentication method must be enabled")
 	}
 	// Validate external services
 	if c.Jellyseerr == nil {
@@ -559,23 +559,6 @@ func (c *Config) GetLibraryConfig(libraryName string) *CleanupConfig {
 	}
 
 	return nil
-}
-
-// IsAuthenticationEnabled returns true if at least one authentication method is enabled.
-func (c *Config) IsAuthenticationEnabled() bool {
-	if c.Auth == nil {
-		return false
-	}
-
-	if c.Auth.OIDC != nil && c.Auth.OIDC.Enabled {
-		return true
-	}
-
-	if c.Auth.Jellyfin != nil && c.Auth.Jellyfin.Enabled {
-		return true
-	}
-
-	return false
 }
 
 // GetCleanupMode returns the cleanup mode with proper defaults.
