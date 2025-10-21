@@ -828,8 +828,6 @@ script AdminMediaGridScript() {
 					hasRequested: !!(item.Request && item.Request.ID), // Check if Request exists and has ID
 					canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
 					mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
-					cleanupMode: "", // TODO: Add if needed
-					keepCount: 0 // TODO: Add if needed
 				}));
 				this.setItems(transformedItems);
 			} catch (error) {

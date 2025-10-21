@@ -933,8 +933,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_11f8`,
-		Function: `function __templ_AdminMediaGridScript_11f8(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_9916`,
+		Function: `function __templ_AdminMediaGridScript_9916(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -984,8 +984,6 @@ func AdminMediaGridScript() templ.ComponentScript {
 					hasRequested: !!(item.Request && item.Request.ID), // Check if Request exists and has ID
 					canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
 					mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
-					cleanupMode: "", // TODO: Add if needed
-					keepCount: 0 // TODO: Add if needed
 				}));
 				this.setItems(transformedItems);
 			} catch (error) {
@@ -1557,8 +1555,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_11f8`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_11f8`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_9916`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_9916`),
 	}
 }
 

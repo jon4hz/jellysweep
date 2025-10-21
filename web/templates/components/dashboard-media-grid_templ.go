@@ -181,8 +181,8 @@ func DashboardFilters(mediaItems []models.UserMediaItem) templ.Component {
 
 func DashboardMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_DashboardMediaGridScript_a0b9`,
-		Function: `function __templ_DashboardMediaGridScript_a0b9(){class DashboardMediaGridManager extends MediaGridManager {
+		Name: `__templ_DashboardMediaGridScript_8084`,
+		Function: `function __templ_DashboardMediaGridScript_8084(){class DashboardMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -232,8 +232,6 @@ func DashboardMediaGridScript() templ.ComponentScript {
 					hasRequested: item.Request && item.Request.ID ? true : false, // Check if Request exists and has ID
 					canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
 					mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
-					cleanupMode: "", // TODO: Add cleanup mode to database.Media if needed
-					keepCount: 0 // TODO: Add keep count to database.Media if needed
 				}));
 				this.setItems(transformedItems);
 			} catch (error) {
@@ -634,8 +632,8 @@ func DashboardMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_a0b9`),
-		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_a0b9`),
+		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_8084`),
+		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_8084`),
 	}
 }
 
