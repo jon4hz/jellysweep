@@ -447,15 +447,14 @@ func validateConfig(c *Config) error {
 	if !authEnabled {
 		return fmt.Errorf("at least one authentication method must be enabled")
 	}
-	// Validate external services
-	if c.Jellyseerr == nil {
-		return fmt.Errorf("missing jellyseerr config")
-	}
-	if c.Jellyseerr.URL == "" {
-		return fmt.Errorf("jellyseerr URL is required")
-	}
-	if c.Jellyseerr.APIKey == "" {
-		return fmt.Errorf("jellyseerr API key is required")
+
+	if c.Jellyseerr != nil {
+		if c.Jellyseerr.URL == "" {
+			return fmt.Errorf("jellyseerr URL is required")
+		}
+		if c.Jellyseerr.APIKey == "" {
+			return fmt.Errorf("jellyseerr API key is required")
+		}
 	}
 
 	if c.Sonarr == nil && c.Radarr == nil {
