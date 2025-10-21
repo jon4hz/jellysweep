@@ -456,8 +456,8 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_c627`,
-		Function: `function __templ_dashboardScripts_c627(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_fe9e`,
+		Function: `function __templ_dashboardScripts_fe9e(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
 		initializeDashboardGrid();
@@ -488,8 +488,8 @@ func dashboardScripts() templ.ComponentScript {
 					hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false, // Check if Request exists
 					canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
 					mustDelete: item.Unkeepable || item.mustDelete || false,
-					cleanupMode: item.cleanupMode || "",
-					keepCount: parseInt(item.keepCount || 0),
+					cleanupMode: item.CleanupMode || "",
+					keepCount: parseInt(item.KeepCount || 0),
 					type: item.MediaType || item.type, // database.Media uses MediaType
 					year: parseInt(item.Year || item.year || 0)
 				}));
@@ -649,8 +649,8 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_c627`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_c627`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_fe9e`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_fe9e`),
 	}
 }
 

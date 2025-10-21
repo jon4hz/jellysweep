@@ -222,24 +222,6 @@ func (s *OIDCProviderTestSuite) TestOIDCProvider_RequireAdmin_InvalidUser() {
 	assert.True(s.T(), c.IsAborted())
 }
 
-func (s *OIDCProviderTestSuite) TestOIDCProvider_GetAuthConfig() {
-	cfg := &config.OIDCConfig{
-		Enabled:      true,
-		Issuer:       "https://example.com",
-		ClientID:     "test-client",
-		ClientSecret: "test-secret",
-		RedirectURL:  "http://localhost/callback",
-		AdminGroup:   "admin",
-	}
-
-	provider := &OIDCProvider{cfg: cfg}
-	authConfig := provider.GetAuthConfig()
-
-	assert.NotNil(s.T(), authConfig)
-	assert.Equal(s.T(), cfg, authConfig.OIDC)
-	assert.Nil(s.T(), authConfig.Jellyfin)
-}
-
 func (s *OIDCProviderTestSuite) TestOIDCProvider_Login() {
 	// This test is limited because Login redirects to external OIDC provider
 	provider := &OIDCProvider{

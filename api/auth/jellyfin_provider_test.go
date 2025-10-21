@@ -244,23 +244,6 @@ func (s *JellyfinProviderTestSuite) TestRequireAdmin_InvalidUser() {
 	assert.True(s.T(), c.IsAborted())
 }
 
-func (s *JellyfinProviderTestSuite) TestGetAuthConfig() {
-	jellyfinCfg := &config.JellyfinConfig{
-		URL:    "http://localhost:8096",
-		APIKey: "test-api-key",
-	}
-	authCfg := &config.JellyfinAuthConfig{
-		Enabled: true,
-	}
-	provider := NewJellyfinProvider(jellyfinCfg, &MockDB{}, authCfg, nil)
-
-	authConfig := provider.GetAuthConfig()
-
-	assert.NotNil(s.T(), authConfig)
-	assert.Equal(s.T(), authCfg, authConfig.Jellyfin)
-	assert.Nil(s.T(), authConfig.OIDC)
-}
-
 func TestJellyfinProviderTestSuite(t *testing.T) {
 	suite.Run(t, new(JellyfinProviderTestSuite))
 }

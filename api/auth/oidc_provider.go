@@ -87,10 +87,3 @@ func (p *OIDCProvider) RequireAdmin() gin.HandlerFunc {
 		c.Next()
 	}
 }
-
-// GetAuthConfig returns the OIDC configuration wrapped in AuthConfig.
-func (p *OIDCProvider) GetAuthConfig() *config.AuthConfig {
-	return &config.AuthConfig{
-		OIDC: p.cfg,
-	}
-}

@@ -26,9 +26,6 @@ type AuthProvider interface {
 
 	// RequireAdmin returns middleware that requires admin privileges
 	RequireAdmin() gin.HandlerFunc
-
-	// GetAuthConfig returns the authentication configuration for templates
-	GetAuthConfig() *config.AuthConfig
 }
 
 // MultiProvider wraps multiple auth providers.
@@ -140,11 +137,6 @@ func (mp *MultiProvider) RequireAdmin() gin.HandlerFunc {
 		}
 		c.Next()
 	}
-}
-
-// GetAuthConfig returns the authentication configuration for templates.
-func (mp *MultiProvider) GetAuthConfig() *config.AuthConfig {
-	return mp.cfg
 }
 
 // Helper methods for the MultiProvider.

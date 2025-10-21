@@ -30,6 +30,10 @@ type UserMediaItem struct {
 	FileSize        int64     `json:"FileSize"`
 	DefaultDeleteAt time.Time `json:"DefaultDeleteAt"`
 	Unkeepable      bool      `json:"Unkeepable"`
+	// Cleanup mode for TV series (only applies to MediaTypeTV)
+	CleanupMode string `json:"CleanupMode,omitempty"`
+	// Keep count for TV series cleanup (only applies to MediaTypeTV)
+	KeepCount int `json:"KeepCount,omitempty"`
 	// Request info without revealing who requested
 	Request *UserRequestInfo `json:"Request,omitempty"`
 }
@@ -57,6 +61,10 @@ type AdminMediaItem struct {
 	DefaultDeleteAt time.Time  `json:"DefaultDeleteAt"`
 	ProtectedUntil  *time.Time `json:"ProtectedUntil,omitempty"`
 	Unkeepable      bool       `json:"Unkeepable"`
+	// Cleanup mode for TV series (only applies to MediaTypeTV)
+	CleanupMode string `json:"CleanupMode,omitempty"`
+	// Keep count for TV series cleanup (only applies to MediaTypeTV)
+	KeepCount int `json:"KeepCount,omitempty"`
 	// Request with full details
 	Request *AdminRequestInfo `json:"Request,omitempty"`
 }

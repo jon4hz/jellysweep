@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
-	"github.com/jon4hz/jellysweep/config"
 )
 
 // NoOpProvider provides a no-op implementation of the AuthProvider interface
@@ -45,14 +44,5 @@ func (np *NoOpProvider) RequireAuth() gin.HandlerFunc {
 func (np *NoOpProvider) RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
-	}
-}
-
-// GetAuthConfig returns a minimal auth config.
-func (np *NoOpProvider) GetAuthConfig() *config.AuthConfig {
-	return &config.AuthConfig{
-		// Return empty config with no providers enabled
-		OIDC:     &config.OIDCConfig{Enabled: false},
-		Jellyfin: &config.JellyfinAuthConfig{Enabled: false},
 	}
 }

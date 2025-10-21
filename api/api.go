@@ -76,7 +76,7 @@ func (s *Server) setupSession() {
 func (s *Server) setupRoutes() error {
 	s.setupSession()
 
-	h := handler.New(s.engine, s.db, s.authProvider.GetAuthConfig())
+	h := handler.New(s.engine, s.db, s.cfg)
 
 	staticSub, err := fs.Sub(static.StaticFS, "static")
 	if err != nil {
@@ -125,7 +125,7 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup := s.ginEngine.Group("/admin")
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
-	h := handler.NewAdmin(s.engine, s.db)
+	h := handler.NewAdmin(s.engine, s.db, s.cfg)
 
 	// Admin panel page
 	adminGroup.GET("", h.AdminPanel)

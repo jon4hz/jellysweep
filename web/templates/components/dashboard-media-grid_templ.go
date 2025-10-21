@@ -181,8 +181,8 @@ func DashboardFilters(mediaItems []models.UserMediaItem) templ.Component {
 
 func DashboardMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_DashboardMediaGridScript_8084`,
-		Function: `function __templ_DashboardMediaGridScript_8084(){class DashboardMediaGridManager extends MediaGridManager {
+		Name: `__templ_DashboardMediaGridScript_9e24`,
+		Function: `function __templ_DashboardMediaGridScript_9e24(){class DashboardMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -218,22 +218,24 @@ func DashboardMediaGridScript() templ.ComponentScript {
 					return;
 				}
 
-				const rawMediaItems = JSON.parse(mediaItemsData);
-				// Transform database.Media to JavaScript-friendly format
-				const transformedItems = rawMediaItems.map(item => ({
-					id: item.ID,
-					title: item.Title,
-					type: item.MediaType, // database.Media uses MediaType field
-					year: item.Year,
-					library: item.LibraryName, // database.Media uses LibraryName field
-					posterURL: item.PosterURL,
-					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
-					fileSize: item.FileSize || 0,
-					hasRequested: item.Request && item.Request.ID ? true : false, // Check if Request exists and has ID
-					canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
-					mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
-				}));
-				this.setItems(transformedItems);
+			const rawMediaItems = JSON.parse(mediaItemsData);
+			// Transform database.Media to JavaScript-friendly format
+			const transformedItems = rawMediaItems.map(item => ({
+				id: item.ID,
+				title: item.Title,
+				type: item.MediaType, // database.Media uses MediaType field
+				year: item.Year,
+				library: item.LibraryName, // database.Media uses LibraryName field
+				posterURL: item.PosterURL,
+				deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+				fileSize: item.FileSize || 0,
+				hasRequested: item.Request && item.Request.ID ? true : false, // Check if Request exists and has ID
+				canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
+				mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
+				cleanupMode: item.CleanupMode || "",
+				keepCount: parseInt(item.KeepCount || 0),
+			}));
+			this.setItems(transformedItems);
 			} catch (error) {
 				console.error('Failed to parse media items data:', error);
 				this.setItems([]);
@@ -632,8 +634,8 @@ func DashboardMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_8084`),
-		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_8084`),
+		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_9e24`),
+		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_9e24`),
 	}
 }
 

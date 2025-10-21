@@ -149,10 +149,3 @@ func (p *JellyfinProvider) RequireAdmin() gin.HandlerFunc {
 		c.Next()
 	}
 }
-
-// GetAuthConfig returns the Jellyfin configuration wrapped in AuthConfig.
-func (p *JellyfinProvider) GetAuthConfig() *config.AuthConfig {
-	return &config.AuthConfig{
-		Jellyfin: p.cfg,
-	}
-}

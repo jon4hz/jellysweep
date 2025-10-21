@@ -144,7 +144,6 @@ func (s *IntegrationTestSuite) TestAuthProvider_Interface() {
 	var _ AuthProvider = provider
 
 	// Test each method exists and can be called
-	assert.NotNil(s.T(), provider.GetAuthConfig())
 	assert.NotNil(s.T(), provider.RequireAuth())
 	assert.NotNil(s.T(), provider.RequireAdmin())
 

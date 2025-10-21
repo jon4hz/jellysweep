@@ -15,16 +15,16 @@ import (
 )
 
 type Handler struct {
-	engine     *engine.Engine
-	db         database.DB
-	authConfig *config.AuthConfig
+	engine *engine.Engine
+	db     database.DB
+	config *config.Config
 }
 
-func New(eng *engine.Engine, db database.DB, authConfig *config.AuthConfig) *Handler {
+func New(eng *engine.Engine, db database.DB, cfg *config.Config) *Handler {
 	return &Handler{
-		engine:     eng,
-		db:         db,
-		authConfig: authConfig,
+		engine: eng,
+		db:     db,
+		config: cfg,
 	}
 }
 
@@ -39,7 +39,7 @@ func (h *Handler) Home(c *gin.Context) {
 	}
 
 	// Convert to user-safe media items (excludes sensitive fields like RequestedBy)
-	userMediaItems := models.ToUserMediaItems(mediaItems)
+	userMediaItems := models.ToUserMediaItems(mediaItems, h.config)
 
 	c.Header("Content-Type", "text/html")
 
@@ -73,7 +73,7 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html")
-	if err := pages.Login(h.authConfig).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := pages.Login(h.config.Auth).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Error("Failed to render login page", "error", err)
 	}
 }
@@ -167,7 +167,7 @@ func (h *Handler) GetMediaItems(c *gin.Context) {
 	}
 
 	// Convert to user-safe media items (excludes sensitive fields like RequestedBy)
-	userMediaItems := models.ToUserMediaItems(mediaItems)
+	userMediaItems := models.ToUserMediaItems(mediaItems, h.config)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,

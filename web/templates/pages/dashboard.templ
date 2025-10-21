@@ -207,8 +207,8 @@ script dashboardScripts() {
 					hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false, // Check if Request exists
 					canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
 					mustDelete: item.Unkeepable || item.mustDelete || false,
-					cleanupMode: item.cleanupMode || "",
-					keepCount: parseInt(item.keepCount || 0),
+					cleanupMode: item.CleanupMode || "",
+					keepCount: parseInt(item.KeepCount || 0),
 					type: item.MediaType || item.type, // database.Media uses MediaType
 					year: parseInt(item.Year || item.year || 0)
 				}));

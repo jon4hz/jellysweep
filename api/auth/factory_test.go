@@ -323,19 +323,6 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAdmin_IsAdmin() {
 	assert.False(s.T(), c.IsAborted())
 }
 
-func (s *FactoryTestSuite) TestMultiProvider_GetAuthConfig() {
-	cfg := &config.AuthConfig{
-		OIDC: &config.OIDCConfig{
-			Enabled: true,
-		},
-	}
-
-	mp := &MultiProvider{cfg: cfg, gravatarCfg: nil}
-	result := mp.GetAuthConfig()
-
-	assert.Equal(s.T(), cfg, result)
-}
-
 func (s *FactoryTestSuite) TestMultiProvider_HasOIDC() {
 	mp := &MultiProvider{}
 

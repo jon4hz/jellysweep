@@ -1,12 +1,13 @@
 package models
 
 import (
+	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/database"
 )
 
 // ToUserMediaItem converts a database.Media to UserMediaItem for regular users.
 // This excludes sensitive fields like RequestedBy.
-func ToUserMediaItem(m database.Media) UserMediaItem {
+func ToUserMediaItem(m database.Media, cfg *config.Config) UserMediaItem {
 	item := UserMediaItem{
 		ID:              m.ID,
 		Title:           m.Title,
@@ -17,6 +18,12 @@ func ToUserMediaItem(m database.Media) UserMediaItem {
 		FileSize:        m.FileSize,
 		DefaultDeleteAt: m.DefaultDeleteAt,
 		Unkeepable:      m.Unkeepable,
+	}
+
+	// Add cleanup mode and keep count for TV series
+	if m.MediaType == database.MediaTypeTV && cfg != nil {
+		item.CleanupMode = string(cfg.GetCleanupMode())
+		item.KeepCount = cfg.GetKeepCount()
 	}
 
 	// Include request info without revealing who requested
@@ -31,16 +38,16 @@ func ToUserMediaItem(m database.Media) UserMediaItem {
 }
 
 // ToUserMediaItems converts a slice of database.Media to UserMediaItems.
-func ToUserMediaItems(items []database.Media) []UserMediaItem {
+func ToUserMediaItems(items []database.Media, cfg *config.Config) []UserMediaItem {
 	result := make([]UserMediaItem, len(items))
 	for i, item := range items {
-		result[i] = ToUserMediaItem(item)
+		result[i] = ToUserMediaItem(item, cfg)
 	}
 	return result
 }
 
 // ToAdminMediaItem converts a database.Media to AdminMediaItem for admins.
-func ToAdminMediaItem(m database.Media) AdminMediaItem {
+func ToAdminMediaItem(m database.Media, cfg *config.Config) AdminMediaItem {
 	item := AdminMediaItem{
 		ID:              m.ID,
 		JellyfinID:      m.JellyfinID,
@@ -59,6 +66,12 @@ func ToAdminMediaItem(m database.Media) AdminMediaItem {
 		Unkeepable:      m.Unkeepable,
 	}
 
+	// Add cleanup mode and keep count for TV series
+	if m.MediaType == database.MediaTypeTV && cfg != nil {
+		item.CleanupMode = string(cfg.GetCleanupMode())
+		item.KeepCount = cfg.GetKeepCount()
+	}
+
 	// Include full request info for admins
 	if m.Request.ID != 0 {
 		item.Request = &AdminRequestInfo{
@@ -74,10 +87,10 @@ func ToAdminMediaItem(m database.Media) AdminMediaItem {
 }
 
 // ToAdminMediaItems converts a slice of database.Media to AdminMediaItems.
-func ToAdminMediaItems(items []database.Media) []AdminMediaItem {
+func ToAdminMediaItems(items []database.Media, cfg *config.Config) []AdminMediaItem {
 	result := make([]AdminMediaItem, len(items))
 	for i, item := range items {
-		result[i] = ToAdminMediaItem(item)
+		result[i] = ToAdminMediaItem(item, cfg)
 	}
 	return result
 }

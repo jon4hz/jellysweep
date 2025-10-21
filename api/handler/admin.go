@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
 	"github.com/jon4hz/jellysweep/cache"
+	"github.com/jon4hz/jellysweep/config"
 	"github.com/jon4hz/jellysweep/database"
 	"github.com/jon4hz/jellysweep/engine"
 	"github.com/jon4hz/jellysweep/web/templates/pages"
@@ -17,12 +18,14 @@ import (
 type AdminHandler struct {
 	engine *engine.Engine
 	db     database.DB
+	config *config.Config
 }
 
-func NewAdmin(eng *engine.Engine, db database.DB) *AdminHandler {
+func NewAdmin(eng *engine.Engine, db database.DB, cfg *config.Config) *AdminHandler {
 	return &AdminHandler{
 		engine: eng,
 		db:     db,
+		config: cfg,
 	}
 }
 
@@ -43,8 +46,8 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 	}
 
 	// Convert to admin media items (includes all fields including RequestedBy)
-	adminRequests := models.ToAdminMediaItems(requests)
-	adminMediaItems := models.ToAdminMediaItems(mediaItems)
+	adminRequests := models.ToAdminMediaItems(requests, h.config)
+	adminMediaItems := models.ToAdminMediaItems(mediaItems, h.config)
 
 	c.Header("Content-Type", "text/html")
 	if err := pages.AdminPanel(user, adminRequests, adminMediaItems).Render(c.Request.Context(), c.Writer); err != nil {
@@ -237,7 +240,7 @@ func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 	}
 
 	// Convert to admin media items (includes all fields including RequestedBy)
-	adminRequests := models.ToAdminMediaItems(requests)
+	adminRequests := models.ToAdminMediaItems(requests, h.config)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":      true,
@@ -257,7 +260,7 @@ func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
 	}
 
 	// Convert to admin media items (includes all fields including RequestedBy)
-	adminMediaItems := models.ToAdminMediaItems(mediaItems)
+	adminMediaItems := models.ToAdminMediaItems(mediaItems, h.config)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
