@@ -20,6 +20,7 @@ type MediaItem struct {
 	MovieResource  radarr.MovieResource
 	Title          string
 	TmdbId         int32
+	TvdbId         int32
 	Year           int32
 	Tags           []string
 	MediaType      models.MediaType
@@ -38,7 +39,7 @@ type Arrer interface {
 	ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error
 
 	// History methods for getting import dates
-	GetItemAddedDate(ctx context.Context, itemID int32) (*time.Time, error)
+	GetItemAddedDate(ctx context.Context, itemID int32, since time.Time) (*time.Time, error)
 }
 
 type JellyfinItem struct {
