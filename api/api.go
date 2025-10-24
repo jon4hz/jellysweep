@@ -75,6 +75,16 @@ func (s *Server) setupRoutes() error {
 	}
 	s.ginEngine.StaticFS("/static", http.FS(staticSub))
 
+	// Serve robots.txt from root
+	s.ginEngine.GET("/robots.txt", func(c *gin.Context) {
+		data, err := static.StaticFS.ReadFile("static/robots.txt")
+		if err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.Data(http.StatusOK, "text/plain", data)
+	})
+
 	s.ginEngine.GET("/login", h.Login)
 
 	// Auth routes
