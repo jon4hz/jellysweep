@@ -97,6 +97,7 @@ func (c *Client) GetMediaWithPendingRequest(ctx context.Context) ([]Media, error
 	var mediaItems []Media
 	result := c.db.WithContext(ctx).
 		Preload("Request").
+		Preload("Request.User").
 		Where("requests.status = ? AND (protected_until IS NULL OR protected_until < ?)", RequestStatusPending, time.Now()).
 		Joins("JOIN requests ON requests.media_id = media.id").
 		Find(&mediaItems)
