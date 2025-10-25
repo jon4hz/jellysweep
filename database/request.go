@@ -20,8 +20,9 @@ const (
 type Request struct {
 	gorm.Model
 	MediaID uint          `gorm:"not null;index;unique"`
-	UserID  uint          `gorm:"not null;index"`
 	Status  RequestStatus `gorm:"not null;default:'pending';index"`
+	UserID  uint          `gorm:"not null;index"`
+	User    User
 }
 
 func (c *Client) CreateRequest(ctx context.Context, mediaID uint, userID uint) (*Request, error) {

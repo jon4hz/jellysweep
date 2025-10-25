@@ -415,8 +415,8 @@ func getAdminMediaUniqueTypes(items []models.AdminMediaItem) []models.MediaType 
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_9937`,
-		Function: `function __templ_AdminKeepRequestGridScript_9937(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_1784`,
+		Function: `function __templ_AdminKeepRequestGridScript_1784(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -470,7 +470,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 						mustDelete: false, // Keep requests are for keeping
 						fileSize: request.FileSize || 0, // Include file size from database.Media
 						cleanupMode: "",
-						keepCount: 0
+						keepCount: 0,
+						requestUser: request.Request ? request.Request.Username : "" // Username of the requester
 					};
 				});
 				this.setItems(transformedItems);
@@ -554,6 +555,14 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 										</svg>
 										${item.library}
 									</div>
+									${item.requestUser ? ` + "`" + `
+									<div class="flex items-center text-sm text-blue-400">
+										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+										</svg>
+										Requested by ${item.requestUser}
+									</div>
+									` + "`" + ` : ''}
 									<div class="flex items-center text-sm text-red-400">
 										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -617,6 +626,14 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 										</svg>
 										${item.library}
 									</div>
+									${item.requestUser ? ` + "`" + `
+									<div class="flex items-center text-blue-400">
+										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+										</svg>
+										${item.requestUser}
+									</div>
+									` + "`" + ` : ''}
 									<div class="flex items-center text-red-400">
 										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -877,7 +894,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 					cleanupMode: item.cleanupMode || "",
 					keepCount: parseInt(item.keepCount || 0),
 					type: item.MediaType || item.type,
-					year: parseInt(item.Year || item.year || 0)
+					year: parseInt(item.Year || item.year || 0),
+					requestUser: item.Request ? item.Request.Username : item.requestUser || ""
 				};
 			});
 
@@ -926,8 +944,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_9937`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_9937`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_1784`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_1784`),
 	}
 }
 

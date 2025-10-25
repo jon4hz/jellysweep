@@ -77,6 +77,7 @@ func ToAdminMediaItem(m database.Media, cfg *config.Config) AdminMediaItem {
 		item.Request = &AdminRequestInfo{
 			ID:        m.Request.ID,
 			UserID:    m.Request.UserID,
+			Username:  m.Request.User.Username,
 			Status:    string(m.Request.Status),
 			CreatedAt: m.Request.CreatedAt,
 			UpdatedAt: m.Request.UpdatedAt,

@@ -73,6 +73,7 @@ type AdminMediaItem struct {
 type AdminRequestInfo struct {
 	ID        uint      `json:"ID"`
 	UserID    uint      `json:"UserID"`
+	Username  string    `json:"Username"`
 	Status    string    `json:"Status"`
 	CreatedAt time.Time `json:"CreatedAt"`
 	UpdatedAt time.Time `json:"UpdatedAt"`
