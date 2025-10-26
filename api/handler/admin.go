@@ -475,28 +475,40 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 	jellyfinID := c.Query("jellyfinId")
 
 	if pageStr := c.Query("page"); pageStr != "" {
-		if p, err := parseUintParam(pageStr); err == nil && p > 0 {
-			page, err = safecast.ToInt(p)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"success": false,
-					"error":   "Invalid page parameter",
-				})
-				return
-			}
+		p, err := parseUintParam(pageStr)
+		if err != nil || p == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid page parameter",
+			})
+			return
+		}
+		page, err = safecast.ToInt(p)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid page parameter",
+			})
+			return
 		}
 	}
 
 	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
-		if ps, err := parseUintParam(pageSizeStr); err == nil && ps > 0 && ps <= 100 {
-			pageSize, err = safecast.ToInt(ps)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"success": false,
-					"error":   "Invalid pageSize parameter",
-				})
-				return
-			}
+		ps, err := parseUintParam(pageSizeStr)
+		if err != nil || ps == 0 || ps > 100 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid pageSize parameter",
+			})
+			return
+		}
+		pageSize, err = safecast.ToInt(ps)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid pageSize parameter",
+			})
+			return
 		}
 	}
 
