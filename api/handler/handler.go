@@ -16,14 +16,12 @@ import (
 
 type Handler struct {
 	engine *engine.Engine
-	db     database.DB
 	config *config.Config
 }
 
-func New(eng *engine.Engine, db database.DB, cfg *config.Config) *Handler {
+func New(eng *engine.Engine, cfg *config.Config) *Handler {
 	return &Handler{
 		engine: eng,
-		db:     db,
 		config: cfg,
 	}
 }
@@ -31,7 +29,7 @@ func New(eng *engine.Engine, db database.DB, cfg *config.Config) *Handler {
 func (h *Handler) Home(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
-	mediaItems, err := h.db.GetMediaItems(c.Request.Context(), false)
+	mediaItems, err := h.engine.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
 		// Log error and fall back to empty data
 		log.Error("Failed to get media items", "error", err)
@@ -45,7 +43,7 @@ func (h *Handler) Home(c *gin.Context) {
 
 	// If user is admin, get pending requests count for navbar indicator
 	if user.IsAdmin {
-		requests, err := h.db.GetMediaWithPendingRequest(c.Request.Context())
+		requests, err := h.engine.GetMediaWithPendingRequest(c.Request.Context())
 		if err != nil {
 			// Log error but continue without pending count
 			if err := pages.Dashboard(user, userMediaItems).Render(c.Request.Context(), c.Writer); err != nil {
@@ -114,7 +112,7 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 		return
 	}
 
-	err = h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.Username)
+	err = h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.ID, user.Username)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -157,7 +155,7 @@ func (h *Handler) Me(c *gin.Context) {
 
 // GetMediaItems returns the current user's media items as JSON.
 func (h *Handler) GetMediaItems(c *gin.Context) {
-	mediaItems, err := h.db.GetMediaItems(c.Request.Context(), false)
+	mediaItems, err := h.engine.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

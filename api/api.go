@@ -67,7 +67,7 @@ func (s *Server) setupSession() {
 func (s *Server) setupRoutes() error {
 	s.setupSession()
 
-	h := handler.New(s.engine, s.db, s.cfg)
+	h := handler.New(s.engine, s.cfg)
 
 	staticSub, err := fs.Sub(static.StaticFS, "static")
 	if err != nil {
@@ -123,7 +123,7 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup := s.ginEngine.Group("/admin")
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
-	h := handler.NewAdmin(s.engine, s.db, s.cfg)
+	h := handler.NewAdmin(s.engine, s.cfg)
 
 	// Admin panel page
 	adminGroup.GET("", h.AdminPanel)
@@ -131,6 +131,9 @@ func (s *Server) setupAdminRoutes() {
 
 	// Scheduler panel page
 	adminGroup.GET("/scheduler", h.SchedulerPanel)
+
+	// History panel page
+	adminGroup.GET("/history", h.HistoryPanel)
 
 	// Admin API routes
 	adminAPI := adminGroup.Group("/api")
@@ -150,6 +153,9 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI.POST("/scheduler/jobs/:id/disable", h.DisableSchedulerJob)
 	adminAPI.GET("/scheduler/cache/stats", h.GetSchedulerCacheStats)
 	adminAPI.POST("/scheduler/cache/clear", h.ClearSchedulerCache)
+
+	// History endpoints
+	adminAPI.GET("/history", h.GetHistory)
 }
 
 func (s *Server) setupPluginRoutes() error {
@@ -161,7 +167,7 @@ func (s *Server) setupPluginRoutes() error {
 	tokenAuth := auth.NewAPIKeyProvider(s.cfg.APIKey)
 	pluginAPI.Use(tokenAuth.RequireAuth())
 
-	h := handler.NewPlugin(s.db)
+	h := handler.NewPlugin(s.engine)
 
 	pluginAPI.GET("/health", h.GetHealth)
 	pluginAPI.POST("/check", h.CheckMediaItem)

@@ -168,16 +168,16 @@ func (c *Client) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error 
 	return nil
 }
 
-func (c *Client) DeleteMediaItem(ctx context.Context, mediaID uint, deleteReason DBDeleteReason) error {
+func (c *Client) DeleteMediaItem(ctx context.Context, media *Media) error {
 	err := c.db.WithContext(ctx).Model(&Media{}).
-		Where("id = ?", mediaID).
-		Update("db_delete_reason", deleteReason).Error
+		Where("id = ?", media.ID).
+		Update("db_delete_reason", media.DBDeleteReason).Error
 	if err != nil {
 		log.Error("failed to set media delete reason", "error", err)
 		return err
 	}
 
-	result := c.db.WithContext(ctx).Delete(&Media{}, mediaID)
+	result := c.db.WithContext(ctx).Delete(&Media{}, media.ID)
 	if result.Error != nil {
 		log.Error("failed to delete media item", "error", result.Error)
 		return result.Error

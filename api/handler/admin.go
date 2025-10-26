@@ -2,8 +2,9 @@ package handler
 
 import (
 	"net/http"
-	"time"
+	"strings"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
@@ -17,14 +18,12 @@ import (
 
 type AdminHandler struct {
 	engine *engine.Engine
-	db     database.DB
 	config *config.Config
 }
 
-func NewAdmin(eng *engine.Engine, db database.DB, cfg *config.Config) *AdminHandler {
+func NewAdmin(eng *engine.Engine, cfg *config.Config) *AdminHandler {
 	return &AdminHandler{
 		engine: eng,
-		db:     db,
 		config: cfg,
 	}
 }
@@ -33,13 +32,13 @@ func NewAdmin(eng *engine.Engine, db database.DB, cfg *config.Config) *AdminHand
 func (h *AdminHandler) AdminPanel(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
-	requests, err := h.db.GetMediaWithPendingRequest(c.Request.Context())
+	requests, err := h.engine.GetMediaWithPendingRequest(c.Request.Context())
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to get keep requests: %v", err)
 		return
 	}
 
-	mediaItems, err := h.db.GetMediaItems(c.Request.Context(), false)
+	mediaItems, err := h.engine.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to get media items: %v", err)
 		return
@@ -57,6 +56,8 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 
 // AcceptKeepRequest accepts a keep request.
 func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -67,7 +68,7 @@ func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 		return
 	}
 
-	err = h.engine.HandleKeepRequest(c.Request.Context(), mediaID, true)
+	err = h.engine.HandleKeepRequest(c.Request.Context(), user.ID, mediaID, true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -84,6 +85,8 @@ func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 
 // DeclineKeepRequest declines a keep request.
 func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -94,7 +97,7 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 		return
 	}
 
-	err = h.engine.HandleKeepRequest(c.Request.Context(), mediaID, false)
+	err = h.engine.HandleKeepRequest(c.Request.Context(), user.ID, mediaID, false)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -111,6 +114,8 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 
 // MarkMediaAsProtected marks a media item as protected for a set duration.
 func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -121,30 +126,11 @@ func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
 		return
 	}
 
-	media, err := h.db.GetMediaItemByID(c.Request.Context(), mediaID)
+	err = h.engine.MarkMediaAsProtected(c.Request.Context(), mediaID, user.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Database error",
-		})
-		return
-	}
-
-	libraryConfig := h.config.GetLibraryConfig(media.LibraryName)
-	if libraryConfig == nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "No library configuration found",
-		})
-		return
-	}
-
-	protectedUntil := time.Now().Add(time.Hour * 24 * time.Duration(libraryConfig.GetProtectionPeriod()))
-	err = h.db.SetMediaProtectedUntil(c.Request.Context(), media.ID, &protectedUntil)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Failed to set media protected until",
+			"error":   err.Error(),
 		})
 		return
 	}
@@ -157,6 +143,8 @@ func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
 
 // MarkMediaAsUnkeepable marks a media item as unkeepable and deny all keep requests.
 func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -167,20 +155,11 @@ func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
 		return
 	}
 
-	media, err := h.db.GetMediaItemByID(c.Request.Context(), mediaID)
+	err = h.engine.MarkMediaAsUnkeepable(c.Request.Context(), mediaID, user.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Database error",
-		})
-		return
-	}
-
-	err = h.db.MarkMediaAsUnkeepable(c.Request.Context(), media.ID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Failed to mark media as unkeepable",
+			"error":   err.Error(),
 		})
 		return
 	}
@@ -194,6 +173,8 @@ func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
 // MarkMediaAsKeepForever removes the media item from the database.
 // It also adds a "jellysweep-ignore" tag to the media item in Sonarr/Radarr to prevent it from being re-added.
 func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -204,29 +185,11 @@ func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 		return
 	}
 
-	media, err := h.db.GetMediaItemByID(c.Request.Context(), mediaID)
+	err = h.engine.MarkMediaAsKeepForever(c.Request.Context(), mediaID, user.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Database error",
-		})
-		return
-	}
-
-	err = h.engine.AddIgnoreTag(c.Request.Context(), media)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Engine error",
-		})
-		return
-	}
-
-	err = h.db.DeleteMediaItem(c.Request.Context(), media.ID, database.DBDeleteReasonKeepForever)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Database error",
+			"error":   err.Error(),
 		})
 		return
 	}
@@ -239,7 +202,7 @@ func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 
 // GetKeepRequests returns keep requests as JSON.
 func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
-	requests, err := h.db.GetMediaWithPendingRequest(c.Request.Context())
+	requests, err := h.engine.GetMediaWithPendingRequest(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -259,7 +222,7 @@ func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 
 // GetAdminMediaItems returns media items for admin with caching support.
 func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
-	mediaItems, err := h.db.GetMediaItems(c.Request.Context(), false)
+	mediaItems, err := h.engine.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -416,4 +379,122 @@ func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
 	if err := pages.SchedulerPanel(user, jobs, cacheStats).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Error("Failed to render scheduler panel", "error", err)
 	}
+}
+
+// HistoryPanel shows the deletion history panel.
+func (h *AdminHandler) HistoryPanel(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
+	c.Header("Content-Type", "text/html")
+	if err := pages.HistoryPanel(user).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Error("Failed to render history panel", "error", err)
+	}
+}
+
+// GetHistory returns paginated history events.
+func (h *AdminHandler) GetHistory(c *gin.Context) {
+	page := 1
+	pageSize := 50
+	sortBy := c.DefaultQuery("sortBy", "event_time")
+	sortOrder := c.DefaultQuery("sortOrder", "desc")
+	jellyfinID := c.Query("jellyfinId")
+
+	// Parse includeEventTypes parameter (comma-separated list)
+	var eventTypes []database.HistoryEventType
+	if eventTypesStr := c.Query("includeEventTypes"); eventTypesStr != "" {
+		eventTypeStrings := strings.SplitSeq(eventTypesStr, ",")
+		for et := range eventTypeStrings {
+			et = strings.TrimSpace(et)
+			if et != "" {
+				eventTypes = append(eventTypes, database.HistoryEventType(et))
+			}
+		}
+	}
+
+	if pageStr := c.Query("page"); pageStr != "" {
+		p, err := parseUintParam(pageStr)
+		if err != nil || p == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid page parameter",
+			})
+			return
+		}
+		page, err = safecast.ToInt(p)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid page parameter",
+			})
+			return
+		}
+	}
+
+	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
+		ps, err := parseUintParam(pageSizeStr)
+		if err != nil || ps == 0 || ps > 100 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid pageSize parameter",
+			})
+			return
+		}
+		pageSize, err = safecast.ToInt(ps)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid pageSize parameter",
+			})
+			return
+		}
+	}
+
+	var events []database.HistoryEvent
+	var total int64
+	var err error
+	// If jellyfinId is provided, get history for that specific media
+	if jellyfinID != "" {
+		events, err = h.engine.GetHistoryEventsByJellyfinID(c.Request.Context(), jellyfinID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to get history for media",
+			})
+			return
+		}
+		total = int64(len(events))
+		pageSize = len(events) // overwrite pagination options
+		page = 1
+	} else {
+		// Get all history events, optionally filtered by event types
+		events, total, err = h.engine.GetHistoryEvents(c.Request.Context(), page, pageSize, sortBy, database.SortOrder(sortOrder), eventTypes)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to get history",
+			})
+			return
+		}
+	}
+
+	// Convert to history event items
+	items := models.ToHistoryEventItems(events)
+
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize != 0 {
+		totalPages++
+	}
+
+	response := models.HistoryResponse{
+		Items:      items,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
+	})
 }

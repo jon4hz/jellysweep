@@ -1,0 +1,657 @@
+package pages
+
+import (
+	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/web/templates"
+)
+
+templ HistoryPanel(user *models.User) {
+	@templates.Layout("Activity History", user) {
+		<style>
+			.sort-icon {
+				opacity: 0.3;
+				transition: opacity 0.2s, transform 0.2s;
+			}
+			th[data-sort]:hover .sort-icon {
+				opacity: 0.6;
+			}
+			.sort-icon.sort-active {
+				opacity: 1;
+				color: #60a5fa;
+			}
+			.sort-icon.sort-desc {
+				transform: rotate(0deg);
+			}
+			.sort-icon.sort-asc {
+				transform: rotate(180deg);
+			}
+			.event-badge {
+				display: inline-flex;
+				align-items: center;
+				padding: 0.25rem 0.75rem;
+				font-size: 0.75rem;
+				font-weight: 500;
+				border-radius: 9999px;
+			}
+		</style>
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h1 class="text-3xl font-bold text-gray-100">Activity History</h1>
+					<p class="mt-1 text-sm text-gray-400">
+						View the complete history of all jellysweep actions.
+					</p>
+				</div>
+				<div class="mt-4 sm:mt-0 flex gap-3">
+					<button
+						id="open-filter-btn"
+						class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+						</svg>
+						<span id="filter-button-text">Filter Events</span>
+						<span id="filter-count-badge" style="display: none;" class="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-600 text-white"></span>
+					</button>
+					<button
+						id="refresh-history-btn"
+						class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+						</svg>
+						Refresh
+					</button>
+				</div>
+			</div>
+			<!-- History Table -->
+			@HistoryTable()
+		</div>
+		<!-- Include shared utility scripts -->
+		@templates.ToastScript()
+		@templates.ButtonLoadingUtils()
+		@templates.ApiUtils()
+		@templates.SmoothNavigationUtils()
+		<!-- Include history-specific scripts -->
+		@HistoryScript()
+	}
+}
+
+templ HistoryTable() {
+	<div class="bg-gray-800 rounded-lg border border-gray-700">
+		<div class="overflow-x-auto">
+			<table class="min-w-full divide-y divide-gray-700">
+				<thead class="bg-gray-900">
+					<tr>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+							Details
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="event_time">
+							<div class="flex items-center space-x-1">
+								<span>Date</span>
+								<svg class="w-4 h-4 sort-icon sort-active" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="title">
+							<div class="flex items-center space-x-1">
+								<span>Title</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="library">
+							<div class="flex items-center space-x-1">
+								<span>Library</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="event_type">
+							<div class="flex items-center space-x-1">
+								<span>Event</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="username">
+							<div class="flex items-center space-x-1">
+								<span>User</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+					</tr>
+				</thead>
+				<tbody id="history-table-body" class="bg-gray-800 divide-y divide-gray-700">
+					<!-- Table rows will be populated by JavaScript -->
+					<tr id="history-loading">
+						<td colspan="6" class="px-6 py-12 text-center">
+							<div class="flex items-center justify-center">
+								<svg class="animate-spin h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+								</svg>
+								<span class="ml-3 text-gray-400">Loading history...</span>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<!-- Pagination -->
+		<div id="pagination-container" class="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+			<div class="flex items-center">
+				<span class="text-sm text-gray-400">
+					Showing <span id="showing-from">0</span> to <span id="showing-to">0</span> of <span id="total-items">0</span> items
+				</span>
+			</div>
+			<div class="flex items-center space-x-2">
+				<button
+					id="prev-page-btn"
+					disabled
+					class="px-3 py-2 border border-gray-600 rounded-md text-sm font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+				>
+					Previous
+				</button>
+				<span class="text-sm text-gray-400">
+					Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+				</span>
+				<button
+					id="next-page-btn"
+					disabled
+					class="px-3 py-2 border border-gray-600 rounded-md text-sm font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+				>
+					Next
+				</button>
+			</div>
+		</div>
+	</div>
+	<!-- Media Detail Modal -->
+	<div id="media-detail-modal" style="display: none;" class="fixed inset-0 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20" onclick="if(event.target === this) closeMediaDetail()">
+		<div class="absolute inset-0 bg-black/50" onclick="closeMediaDetail()"></div>
+		<div class="relative p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-gray-800 border-gray-700 max-h-[80vh] overflow-y-auto z-10" onclick="event.stopPropagation()">
+			<div class="flex justify-between items-center mb-4">
+				<h3 class="text-xl font-semibold text-gray-100" id="modal-title">Media History</h3>
+				<button onclick="closeMediaDetail()" class="text-gray-400 hover:text-gray-200">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+				</button>
+			</div>
+			<div id="modal-content" class="space-y-4">
+				<!-- Content will be populated by JavaScript -->
+			</div>
+		</div>
+	</div>
+	<!-- Filter Modal -->
+	<div id="filter-modal" style="display: none;" class="fixed inset-0 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20" onclick="if(event.target === this) closeFilterModal()">
+		<div class="absolute inset-0 bg-black/50" onclick="closeFilterModal()"></div>
+		<div class="relative p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-gray-800 border-gray-700 z-10" onclick="event.stopPropagation()">
+			<div class="flex justify-between items-center mb-4">
+				<h3 class="text-xl font-semibold text-gray-100">Filter Events</h3>
+				<button onclick="closeFilterModal()" class="text-gray-400 hover:text-gray-200">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+				</button>
+			</div>
+			<div class="space-y-3 max-h-[60vh] overflow-y-auto">
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="picked_up" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">📥 Picked Up</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="protected" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">🛡️ Protected</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="unprotected" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">⚠️ Unprotected</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="protection_expired" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">⏰ Protection Expired</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="deleted" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">🗑️ Deleted</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="request_created" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">📝 Request Created</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="request_approved" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">✅ Request Approved</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="request_denied" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">❌ Request Denied</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="keep_forever" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">♾️ Keep Forever</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="admin_keep" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">👑 Admin Keep</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="admin_unkeep" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">🚫 Admin Unkeep</span>
+				</label>
+			</div>
+			<div class="mt-6 flex justify-between items-center">
+				<button
+					id="clear-all-filters-btn"
+					class="px-4 py-2 text-sm font-medium text-gray-300 hover:text-gray-100 transition-colors"
+				>
+					Clear All
+				</button>
+				<div class="flex gap-2">
+					<button
+						onclick="closeFilterModal()"
+						class="px-4 py-2 border border-gray-600 rounded-md text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 transition-colors"
+					>
+						Cancel
+					</button>
+					<button
+						id="apply-filter-btn"
+						class="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+					>
+						Apply Filters
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ HistoryScript() {
+	<script>
+		let currentPage = 1;
+		let pageSize = 50;
+		let totalPages = 1;
+		let currentSort = 'event_time';
+		let currentSortOrder = 'desc';
+		let currentEventTypes = [];
+
+		document.addEventListener('DOMContentLoaded', function() {
+			updateSortIcons();
+			loadHistory();
+
+			// Open filter modal
+			document.getElementById('open-filter-btn').addEventListener('click', function() {
+				openFilterModal();
+			});
+
+			// Clear all filters in modal
+			document.getElementById('clear-all-filters-btn').addEventListener('click', function() {
+				document.querySelectorAll('.event-type-checkbox').forEach(checkbox => {
+					checkbox.checked = false;
+				});
+			});
+
+			// Apply filters
+			document.getElementById('apply-filter-btn').addEventListener('click', function() {
+				const checkedBoxes = document.querySelectorAll('.event-type-checkbox:checked');
+				currentEventTypes = Array.from(checkedBoxes).map(cb => cb.value);
+				currentPage = 1; // Reset to first page when filtering
+				updateFilterBadge();
+				closeFilterModal();
+				loadHistory();
+			});
+
+			// Refresh button
+			document.getElementById('refresh-history-btn').addEventListener('click', function() {
+				refreshHistory();
+			});
+
+			// Pagination buttons
+			document.getElementById('prev-page-btn').addEventListener('click', function() {
+				if (currentPage > 1) {
+					currentPage--;
+					loadHistory();
+				}
+			});
+
+			document.getElementById('next-page-btn').addEventListener('click', function() {
+				if (currentPage < totalPages) {
+					currentPage++;
+					loadHistory();
+				}
+			});
+
+			// Sorting
+			document.querySelectorAll('th[data-sort]').forEach(header => {
+				header.addEventListener('click', function() {
+					const sortBy = this.getAttribute('data-sort');
+
+					// Toggle sort order if clicking the same column
+					if (currentSort === sortBy) {
+						currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+					} else {
+						currentSort = sortBy;
+						currentSortOrder = 'desc'; // Default to descending for new column
+					}
+
+					currentPage = 1; // Reset to first page when sorting
+					updateSortIcons();
+					loadHistory();
+				});
+			});
+		});
+
+		function updateSortIcons() {
+			// Remove active class from all icons
+			document.querySelectorAll('.sort-icon').forEach(icon => {
+				icon.classList.remove('sort-active', 'sort-asc', 'sort-desc');
+			});
+
+			// Add active class to current sort column
+			const activeHeader = document.querySelector(`th[data-sort="${currentSort}"]`);
+			if (activeHeader) {
+				const icon = activeHeader.querySelector('.sort-icon');
+				if (icon) {
+					icon.classList.add('sort-active', `sort-${currentSortOrder}`);
+				}
+			}
+		}
+
+		function loadHistory() {
+			const tbody = document.getElementById('history-table-body');
+			const loading = document.getElementById('history-loading');
+
+			if (loading) {
+				loading.style.display = '';
+			}
+
+			// Build API URL
+			let apiUrl = `/admin/api/history?page=${currentPage}&pageSize=${pageSize}&sortBy=${currentSort}&sortOrder=${currentSortOrder}`;
+
+			// Add event type filter if any types are selected
+			if (currentEventTypes.length > 0) {
+				apiUrl += `&includeEventTypes=${currentEventTypes.join(',')}`;
+			}
+
+			window.makeApiRequestEnhanced(apiUrl, {
+				method: 'GET',
+				showProgress: false
+			})
+			.then(data => {
+				if (data.success) {
+					updateTable(data.data);
+					updatePagination(data.data);
+				} else {
+					throw new Error(data.error || 'Failed to load history');
+				}
+			})
+			.catch(error => {
+				console.error('Error loading history:', error);
+				window.showToast('Failed to load history: ' + error.message, 'error');
+				tbody.innerHTML = `
+					<tr>
+							<td colspan="6" class="px-6 py-12 text-center text-gray-400">
+							Failed to load history. Please try again.
+						</td>
+					</tr>
+				`;
+			});
+		}
+
+		function updateTable(historyData) {
+			const tbody = document.getElementById('history-table-body');
+
+				if (!historyData.items || historyData.items.length === 0) {
+					tbody.innerHTML = `
+						<tr>
+							<td colspan="6" class="px-6 py-12 text-center text-gray-400">
+								No history found.
+							</td>
+						</tr>
+					`;
+					return;
+				}
+
+				tbody.innerHTML = historyData.items.map(item => {
+					const eventTime = new Date(item.EventTime);
+					const formattedDate = eventTime.toLocaleString();
+					// Format date to be more compact (e.g., "Oct 26, 2025")
+					const shortDate = eventTime.toLocaleDateString(undefined, {
+						month: 'short',
+						day: 'numeric',
+						year: 'numeric'
+					});
+					// Format time (e.g., "14:30")
+					const shortTime = eventTime.toLocaleTimeString(undefined, {
+						hour: 'numeric',
+						minute: '2-digit',
+						hour12: false
+					});
+					const compactDate = `${shortDate} ${shortTime}`;
+					const eventBadge = getEventBadge(item.EventType);
+
+					// Escape values for use in HTML attributes
+					const escapedJellyfinId = escapeHtml(item.JellyfinID);
+					const escapedTitle = escapeHtml(item.Title);
+					// Additionally escape for JavaScript string context
+					const jsEscapedTitle = escapedTitle.replace(/'/g, "\\'");
+
+					return `
+						<tr class="hover:bg-gray-750 transition-colors duration-150">
+							<td class="px-6 py-4 whitespace-nowrap text-center">
+								<button onclick="showMediaDetail('${escapedJellyfinId}', '${jsEscapedTitle}')" class="text-blue-400 hover:text-blue-300 p-1 transition-colors" title="${formattedDate}">
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+									</svg>
+								</button>
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300" title="${formattedDate}">
+								${compactDate}
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap">
+								<div>
+									<div class="text-sm font-medium text-gray-100">${escapedTitle} <span class="text-xs text-gray-500">(${item.Year})</span></div>
+									<div class="text-xs text-gray-500">ID: ${item.JellyfinID}</div>
+								</div>
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+								<span class="px-2 py-1 text-xs rounded-full ${item.MediaType === 'tv' ? 'bg-purple-900 text-purple-200' : 'bg-blue-900 text-blue-200'}">
+									${escapeHtml(item.LibraryName)}
+								</span>
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap">
+								${eventBadge}
+							</td>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+								${item.Username ? escapeHtml(item.Username) : '-'}
+							</td>
+						</tr>
+					`;
+				}).join('');
+		}
+
+		function updatePagination(historyData) {
+			totalPages = historyData.totalPages || 1;
+			const total = historyData.total || 0;
+			const from = total > 0 ? ((currentPage - 1) * pageSize) + 1 : 0;
+			const to = Math.min(currentPage * pageSize, total);
+
+			document.getElementById('showing-from').textContent = from;
+			document.getElementById('showing-to').textContent = to;
+			document.getElementById('total-items').textContent = total;
+			document.getElementById('current-page').textContent = currentPage;
+			document.getElementById('total-pages').textContent = totalPages;
+
+			const prevBtn = document.getElementById('prev-page-btn');
+			const nextBtn = document.getElementById('next-page-btn');
+
+			prevBtn.disabled = currentPage <= 1;
+			nextBtn.disabled = currentPage >= totalPages;
+		}
+
+		function refreshHistory() {
+			const buttonId = 'refresh-history-btn';
+			const originalContent = window.setButtonLoading(buttonId, 'Refreshing...');
+			if (!originalContent) return;
+
+			loadHistory();
+
+			setTimeout(() => {
+				window.restoreButton(buttonId, originalContent);
+				window.showToast('History refreshed successfully', 'success');
+			}, 500);
+		}
+
+		function showMediaDetail(jellyfinId, title) {
+			const modal = document.getElementById('media-detail-modal');
+			const modalTitle = document.getElementById('modal-title');
+			const modalContent = document.getElementById('modal-content');
+
+			modalTitle.textContent = 'History for: ' + title;
+			modalContent.innerHTML = '<div class="text-center text-gray-400">Loading...</div>';
+			modal.style.display = 'flex';
+
+			window.makeApiRequestEnhanced(`/admin/api/history?jellyfinId=${encodeURIComponent(jellyfinId)}&pageSize=100`, {
+				method: 'GET',
+				showProgress: false
+			})
+			.then(data => {
+				if (data.success && data.data.items && data.data.items.length > 0) {
+					const timeline = data.data.items.map(event => {
+						const eventTime = new Date(event.EventTime);
+						const formattedDate = eventTime.toLocaleString();
+						// Format date to be more compact
+						const shortDate = eventTime.toLocaleDateString(undefined, {
+							month: 'short',
+							day: 'numeric',
+							year: 'numeric'
+						});
+						const shortTime = eventTime.toLocaleTimeString(undefined, {
+							hour: 'numeric',
+							minute: '2-digit',
+							hour12: false
+						});
+						const compactDate = `${shortDate} ${shortTime}`;
+
+						const eventBadge = getEventBadge(event.EventType);
+						const eventDescription = getEventDescription(event);
+						const username = event.Username ? escapeHtml(event.Username) : 'system';
+
+						return `
+							<div class="border-l-2 border-gray-600 pl-4 pb-4">
+								<div class="flex items-center space-x-2 mb-2">
+									${eventBadge}
+									<span class="text-sm text-gray-400" title="${formattedDate}">${compactDate}</span>
+								</div>
+								<div class="text-sm text-gray-300">${eventDescription}</div>
+								<div class="text-xs text-gray-500 mt-1">By: ${username}</div>
+							</div>
+						`;
+					}).join('');
+
+					modalContent.innerHTML = `<div class="space-y-2">${timeline}</div>`;
+				} else {
+					modalContent.innerHTML = '<div class="text-center text-gray-400">No history found for this item.</div>';
+				}
+			})
+			.catch(error => {
+				console.error('Error loading media detail:', error);
+				modalContent.innerHTML = '<div class="text-center text-red-400">Failed to load history details.</div>';
+			});
+		}
+
+		function closeMediaDetail() {
+			const modal = document.getElementById('media-detail-modal');
+			modal.style.display = 'none';
+		}
+
+		function openFilterModal() {
+			const modal = document.getElementById('filter-modal');
+			// Update checkboxes to reflect current filters
+			document.querySelectorAll('.event-type-checkbox').forEach(checkbox => {
+				checkbox.checked = currentEventTypes.includes(checkbox.value);
+			});
+			modal.style.display = 'flex';
+		}
+
+		function closeFilterModal() {
+			const modal = document.getElementById('filter-modal');
+			modal.style.display = 'none';
+		}
+
+		function updateFilterBadge() {
+			const badge = document.getElementById('filter-count-badge');
+			const buttonText = document.getElementById('filter-button-text');
+
+			if (currentEventTypes.length > 0) {
+				badge.textContent = currentEventTypes.length;
+				badge.style.display = 'inline-block';
+				buttonText.textContent = 'Filter Events';
+			} else {
+				badge.style.display = 'none';
+				buttonText.textContent = 'Filter Events';
+			}
+		}
+
+		function getEventBadge(eventType) {
+			const badges = {
+				'picked_up': '<span class="event-badge bg-green-900 text-green-200">📥 Picked Up</span>',
+				'protected': '<span class="event-badge bg-blue-900 text-blue-200">🛡️ Protected</span>',
+				'unprotected': '<span class="event-badge bg-yellow-900 text-yellow-200">⚠️ Unprotected</span>',
+				'protection_expired': '<span class="event-badge bg-orange-900 text-orange-200">⏰ Protection Expired</span>',
+				'deleted': '<span class="event-badge bg-red-900 text-red-200">🗑️ Deleted</span>',
+				'request_created': '<span class="event-badge bg-purple-900 text-purple-200">📝 Request Created</span>',
+				'request_approved': '<span class="event-badge bg-green-900 text-green-200">✅ Request Approved</span>',
+				'request_denied': '<span class="event-badge bg-red-900 text-red-200">❌ Request Denied</span>',
+				'keep_forever': '<span class="event-badge bg-indigo-900 text-indigo-200">♾️ Keep Forever</span>',
+				'admin_keep': '<span class="event-badge bg-cyan-900 text-cyan-200">👑 Admin Keep</span>',
+				'admin_unkeep': '<span class="event-badge bg-orange-900 text-orange-200">🚫 Admin Unkeep</span>'
+			};
+			return badges[eventType] || `<span class="event-badge bg-gray-900 text-gray-200">${eventType}</span>`;
+		}
+
+		function getEventDescription(event) {
+			switch (event.EventType) {
+				case 'picked_up':
+					return 'Media item was discovered and tracked by jellysweep';
+				case 'protected':
+					return 'Media item was marked as protected';
+				case 'unprotected':
+					return 'Protection was manually removed from this media item';
+				case 'protection_expired':
+					return 'Protection period expired for this media item';
+				case 'deleted':
+					return 'Media item was deleted from the system';
+				case 'request_created':
+					return 'A keep request was submitted for this media item';
+				case 'request_approved':
+					return 'Keep request was approved';
+				case 'request_denied':
+					return 'Keep request was denied';
+				case 'keep_forever':
+					return 'Media item was set to keep forever';
+				case 'admin_keep':
+					return 'Media item was kept by an admin';
+				case 'admin_unkeep':
+					return 'Media item was marked as unkeepable by an admin';
+				default:
+					return event.EventType;
+			}
+		}
+
+		function escapeHtml(text) {
+			if (!text) return '';
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	</script>
+}

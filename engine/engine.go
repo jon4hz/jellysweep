@@ -291,8 +291,15 @@ func (e *Engine) removeProtectedExpiredItems(ctx context.Context) {
 		return
 	}
 	for _, item := range mediaItems {
-		if err := e.db.DeleteMediaItem(ctx, item.ID, database.DBDeleteReasonProtectionExpired); err != nil {
+		item.DBDeleteReason = database.DBDeleteReasonProtectionExpired
+
+		if err := e.db.DeleteMediaItem(ctx, &item); err != nil {
 			log.Error("Failed to remove media item with expired protection from database", "title", item.Title, "jellyfinID", item.JellyfinID, "protectedUntil", item.ProtectedUntil, "error", err)
+		}
+
+		// Create history event for protection expiration before deletion
+		if err := e.CreateProtectionExpiredEvent(ctx, &item); err != nil {
+			log.Errorf("failed to create protection expired event for %s: %v", item.Title, err)
 		}
 	}
 	log.Info("Media items with expired protection removal process completed")
@@ -336,8 +343,13 @@ func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
 			log.Debug("Item last played outside of threshold, skipping removal", "title", item.Title, "jellyfinID", item.JellyfinID, "lastPlayed", lastPlayed.Format(time.RFC3339))
 			continue
 		}
+		item.DBDeleteReason = database.DBDeleteReasonStreamed
+		// Create deletion event for streamed items
+		if err := e.CreateStreamedEvent(ctx, &item); err != nil {
+			log.Errorf("failed to create deletion event for %s: %v", item.Title, err)
+		}
 
-		if err := e.db.DeleteMediaItem(ctx, item.ID, database.DBDeleteReasonStreamed); err != nil {
+		if err := e.db.DeleteMediaItem(ctx, &item); err != nil {
 			log.Error("Failed to remove recently played item from database", "title", item.Title, "jellyfinID", item.JellyfinID, "error", err)
 			continue
 		}
@@ -527,23 +539,24 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
 		return fmt.Errorf("failed to create media items to database: %w", err)
 	}
 
+	// Create history events for newly picked up items
+	for i := range dbMediaItems {
+		if err := e.CreatePickedUpEvent(context.Background(), &dbMediaItems[i]); err != nil {
+			log.Errorf("failed to create picked up event for %s: %v", dbMediaItems[i].Title, err)
+		}
+	}
+
 	return nil
 }
 
 // RequestKeepMedia adds a keep request tag to the specified media item.
-func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, username string) error {
+func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint, username string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
-	log.Debug("Requesting to keep media", "mediaID", mediaID, "username", username)
-
-	user, err := e.db.GetUserByUsername(ctx, username)
-	if err != nil {
-		log.Errorf("failed to get user by username: %v", err)
-		return err
-	}
+	log.Debug("Requesting to keep media", "mediaID", mediaID, "userID", userID)
 
 	media, err := e.db.GetMediaItemByID(ctx, mediaID)
 	if err != nil {
-		log.Errorf("failed to get media item by ID: %v", err)
+		log.Errorf("failed to get user by username: %v", err)
 		return err
 	}
 
@@ -557,10 +570,15 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, username st
 		return ErrRequestAlreadyProcessed
 	}
 
-	_, err = e.db.CreateRequest(ctx, media.ID, user.ID)
+	_, err = e.db.CreateRequest(ctx, media.ID, userID)
 	if err != nil {
 		log.Errorf("failed to create keep request in database: %v", err)
 		return err
+	}
+
+	// Create history event for request creation
+	if err := e.CreateRequestCreatedEvent(ctx, media, userID); err != nil {
+		log.Errorf("failed to create request created event for %s: %v", media.Title, err)
 	}
 
 	// Send ntfy notification if the tag was added successfully
@@ -574,7 +592,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, username st
 }
 
 // HandleKeepRequest accepts or declines a keep request for the specified media item.
-func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept bool) error {
+func (e *Engine) HandleKeepRequest(ctx context.Context, userID, mediaID uint, accept bool) error {
 	media, err := e.db.GetMediaItemByID(ctx, mediaID)
 	if err != nil {
 		log.Errorf("failed to get media item by ID: %v", err)
@@ -610,11 +628,25 @@ func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept boo
 			log.Errorf("failed to set media protected until in database: %v", err)
 			return err
 		}
+
+		// Create history event for request approval and protection
+		if err := e.CreateRequestApprovedEvent(ctx, userID, media); err != nil {
+			log.Errorf("failed to create request approved event for %s: %v", media.Title, err)
+		}
+
+		if err := e.CreateProtectedEvent(ctx, media); err != nil {
+			log.Errorf("failed to create protected event for %s: %v", media.Title, err)
+		}
 	} else {
 		err = e.db.MarkMediaAsUnkeepable(ctx, media.ID)
 		if err != nil {
 			log.Errorf("failed to mark media as unkeepable in database: %v", err)
 			return err
+		}
+
+		// Create history event for request denial
+		if err := e.CreateRequestDeniedEvent(ctx, userID, media); err != nil {
+			log.Errorf("failed to create request denied event for %s: %v", media.Title, err)
 		}
 	}
 
@@ -687,8 +719,8 @@ func (e *Engine) GetWebPushClient() *webpush.Client {
 	return e.webpush
 }
 
-// AddIgnoreTag adds a jellysweep-ignore tag to the specified media item.
-func (e *Engine) AddIgnoreTag(ctx context.Context, media *database.Media) error {
+// addIgnoreTag adds a jellysweep-ignore tag to the specified media item.
+func (e *Engine) addIgnoreTag(ctx context.Context, media *database.Media) error {
 	switch media.MediaType {
 	case database.MediaTypeMovie:
 		if e.radarr == nil {
@@ -713,6 +745,113 @@ func (e *Engine) AddIgnoreTag(ctx context.Context, media *database.Media) error 
 	}
 
 	return nil
+}
+
+// GetMediaItems retrieves all media items from the database.
+func (e *Engine) GetMediaItems(ctx context.Context, includeProtected bool) ([]database.Media, error) {
+	return e.db.GetMediaItems(ctx, includeProtected)
+}
+
+// GetMediaWithPendingRequest retrieves all media items with pending keep requests.
+func (e *Engine) GetMediaWithPendingRequest(ctx context.Context) ([]database.Media, error) {
+	return e.db.GetMediaWithPendingRequest(ctx)
+}
+
+// GetMediaItemByID retrieves a specific media item by ID.
+func (e *Engine) GetMediaItemByID(ctx context.Context, id uint) (*database.Media, error) {
+	return e.db.GetMediaItemByID(ctx, id)
+}
+
+// GetMediaItemsByMediaType retrieves all media items of a specific type.
+func (e *Engine) GetMediaItemsByMediaType(ctx context.Context, mediaType database.MediaType) ([]database.Media, error) {
+	return e.db.GetMediaItemsByMediaType(ctx, mediaType)
+}
+
+// MarkMediaAsProtected marks a media item as protected for the configured duration.
+func (e *Engine) MarkMediaAsProtected(ctx context.Context, mediaID uint, adminID uint) error {
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Error("Failed to get media item by ID", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	libraryConfig := e.cfg.GetLibraryConfig(media.LibraryName)
+	if libraryConfig == nil {
+		log.Error("No library configuration found", "library", media.LibraryName)
+		return fmt.Errorf("no library configuration found")
+	}
+
+	protectedUntil := time.Now().Add(time.Hour * 24 * time.Duration(libraryConfig.GetProtectionPeriod()))
+	if err := e.db.SetMediaProtectedUntil(ctx, media.ID, &protectedUntil); err != nil {
+		log.Error("Failed to set media protected until", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("failed to set media protected until: %w", err)
+	}
+
+	if err := e.CreateAdminKeepEvent(ctx, adminID, media); err != nil {
+		log.Error("Failed to create admin keep event", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("failed to create admin keep event: %w", err)
+	}
+
+	return nil
+}
+
+// MarkMediaAsUnkeepable marks a media item as unkeepable and denies all keep requests.
+func (e *Engine) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint, adminID uint) error {
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Error("Failed to get media item by ID", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	if err := e.db.MarkMediaAsUnkeepable(ctx, media.ID); err != nil {
+		log.Error("Failed to mark media as unkeepable", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("failed to mark media as unkeepable: %w", err)
+	}
+
+	if err := e.CreateAdminUnkeepEvent(ctx, adminID, media); err != nil {
+		log.Error("Failed to create admin unkeep event", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("failed to create admin unkeep event: %w", err)
+	}
+
+	return nil
+}
+
+// MarkMediaAsKeepForever removes the media item from the database and adds an ignore tag.
+func (e *Engine) MarkMediaAsKeepForever(ctx context.Context, mediaID uint, adminID uint) error {
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Error("Failed to get media item by ID", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	if err := e.addIgnoreTag(ctx, media); err != nil {
+		log.Error("Failed to add ignore tag", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("engine error: %w", err)
+	}
+
+	media.DBDeleteReason = database.DBDeleteReasonKeepForever
+	if err := e.db.DeleteMediaItem(ctx, media); err != nil {
+		log.Error("Failed to delete media item", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	if err := e.CreateKeepForeverEvent(ctx, adminID, media); err != nil {
+		log.Error("Failed to create keep forever event", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	return nil
+}
+
+// GetHistoryEvents retrieves paginated history events.
+// If eventTypes is provided and not empty, only events of those types will be returned.
+func (e *Engine) GetHistoryEvents(ctx context.Context, page, pageSize int, sortBy string, sortOrder database.SortOrder, eventTypes []database.HistoryEventType) ([]database.HistoryEvent, int64, error) {
+	return e.db.GetHistoryEvents(ctx, page, pageSize, sortBy, sortOrder, eventTypes)
+}
+
+// GetHistoryEventsByJellyfinID retrieves all history events for a specific Jellyfin ID.
+func (e *Engine) GetHistoryEventsByJellyfinID(ctx context.Context, jellyfinID string) ([]database.HistoryEvent, error) {
+	return e.db.GetHistoryEventsByJellyfinID(ctx, jellyfinID)
 }
 
 // migrateTagsToDatabase migrates existing jellysweep items to the database based on their tags in Sonarr and Radarr.
