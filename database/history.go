@@ -102,7 +102,7 @@ func (c *Client) GetHistoryEvents(ctx context.Context, page, pageSize int, sortB
 	}
 
 	sortField, ok := validSortFields[sortBy]
-	if !ok || sortField == "" {
+	if !ok {
 		sortField = "event_time"
 	}
 
