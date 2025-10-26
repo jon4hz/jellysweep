@@ -483,6 +483,10 @@ func validateConfig(c *Config) error {
 		return fmt.Errorf("only one of jellystat or streamystats can be configured at a time")
 	}
 
+	if c.Jellystat == nil && c.Streamystats == nil {
+		return fmt.Errorf("either jellystat or streamystats config must be provided")
+	}
+
 	if c.Jellystat != nil {
 		if c.Jellystat.URL == "" {
 			return fmt.Errorf("jellystat URL is required when jellystat is configured")
