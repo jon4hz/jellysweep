@@ -58,6 +58,8 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 
 // AcceptKeepRequest accepts a keep request.
 func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -68,7 +70,7 @@ func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 		return
 	}
 
-	err = h.engine.HandleKeepRequest(c.Request.Context(), mediaID, true)
+	err = h.engine.HandleKeepRequest(c.Request.Context(), user.ID, mediaID, true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -85,6 +87,8 @@ func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 
 // DeclineKeepRequest declines a keep request.
 func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -95,7 +99,7 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 		return
 	}
 
-	err = h.engine.HandleKeepRequest(c.Request.Context(), mediaID, false)
+	err = h.engine.HandleKeepRequest(c.Request.Context(), user.ID, mediaID, false)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -112,6 +116,8 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 
 // MarkMediaAsProtected marks a media item as protected for a set duration.
 func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -150,6 +156,14 @@ func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
 		return
 	}
 
+	if err = h.engine.CreateAdminKeepEvent(c.Request.Context(), user.ID, media); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Failed to create admin keep event",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Media protected successfully",
@@ -158,6 +172,8 @@ func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
 
 // MarkMediaAsUnkeepable marks a media item as unkeepable and deny all keep requests.
 func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -186,6 +202,15 @@ func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
 		return
 	}
 
+	err = h.engine.CreateAdminUnkeepEvent(c.Request.Context(), user.ID, media)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Failed to create admin unkeep event",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Media marked for deletion successfully",
@@ -195,6 +220,8 @@ func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
 // MarkMediaAsKeepForever removes the media item from the database.
 // It also adds a "jellysweep-ignore" tag to the media item in Sonarr/Radarr to prevent it from being re-added.
 func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
@@ -223,7 +250,17 @@ func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
 		return
 	}
 
-	err = h.db.DeleteMediaItem(c.Request.Context(), media.ID, database.DBDeleteReasonKeepForever)
+	media.DBDeleteReason = database.DBDeleteReasonKeepForever
+	err = h.db.DeleteMediaItem(c.Request.Context(), media)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Database error",
+		})
+		return
+	}
+
+	err = h.engine.CreateKeepForeverEvent(c.Request.Context(), user.ID, media)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -429,12 +466,13 @@ func (h *AdminHandler) HistoryPanel(c *gin.Context) {
 	}
 }
 
-// GetDeletedMedia returns paginated deleted media items.
-func (h *AdminHandler) GetDeletedMedia(c *gin.Context) {
+// GetHistory returns paginated history events.
+func (h *AdminHandler) GetHistory(c *gin.Context) {
 	page := 1
 	pageSize := 50
-	sortBy := c.DefaultQuery("sortBy", "deleted_at")
+	sortBy := c.DefaultQuery("sortBy", "event_time")
 	sortOrder := c.DefaultQuery("sortOrder", "desc")
+	jellyfinID := c.Query("jellyfinId")
 
 	if pageStr := c.Query("page"); pageStr != "" {
 		if p, err := parseUintParam(pageStr); err == nil && p > 0 {
@@ -462,24 +500,53 @@ func (h *AdminHandler) GetDeletedMedia(c *gin.Context) {
 		}
 	}
 
-	deletedMedia, total, err := h.db.GetDeletedMedia(c.Request.Context(), page, pageSize, sortBy, sortOrder)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get deleted media",
-		})
-		return
+	var events []database.HistoryEvent
+	var total int64
+	var err error
+	// If jellyfinId is provided, get history for that specific media
+	if jellyfinID != "" {
+		events, err = h.db.GetHistoryEventsByJellyfinID(c.Request.Context(), jellyfinID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to get history for media",
+			})
+			return
+		}
+		total = int64(len(events))
+
+		// Apply manual pagination since GetHistoryEventsByJellyfinID doesn't paginate
+		start := (page - 1) * pageSize
+		end := start + pageSize
+		if start > len(events) {
+			events = []database.HistoryEvent{}
+		} else {
+			if end > len(events) {
+				end = len(events)
+			}
+			events = events[start:end]
+		}
+	} else {
+		// Get all history events
+		events, total, err = h.db.GetHistoryEvents(c.Request.Context(), page, pageSize, sortBy, database.SortOrder(sortOrder))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Failed to get history",
+			})
+			return
+		}
 	}
 
-	// Convert to deleted media items
-	items := models.ToDeletedMediaItems(deletedMedia)
+	// Convert to history event items
+	items := models.ToHistoryEventItems(events)
 
 	totalPages := int(total) / pageSize
 	if int(total)%pageSize != 0 {
 		totalPages++
 	}
 
-	response := models.DeletedMediaResponse{
+	response := models.HistoryResponse{
 		Items:      items,
 		Total:      total,
 		Page:       page,

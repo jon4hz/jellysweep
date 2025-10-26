@@ -105,3 +105,28 @@ type DeletedMediaResponse struct {
 	PageSize   int                `json:"pageSize"`
 	TotalPages int                `json:"totalPages"`
 }
+
+// HistoryEventItem represents a history event for display.
+type HistoryEventItem struct {
+	ID          uint      `json:"ID"`
+	MediaID     uint      `json:"MediaID"`
+	JellyfinID  string    `json:"JellyfinID"`
+	ArrID       int32     `json:"ArrID"`
+	MediaType   MediaType `json:"MediaType"`
+	Title       string    `json:"Title"`
+	Year        int32     `json:"Year"`
+	LibraryName string    `json:"LibraryName"`
+	EventType   string    `json:"EventType"`
+	Username    string    `json:"Username,omitempty"`
+	EventTime   time.Time `json:"EventTime"`
+	CreatedAt   time.Time `json:"CreatedAt"`
+}
+
+// HistoryResponse represents the paginated response for history events.
+type HistoryResponse struct {
+	Items      []HistoryEventItem `json:"items"`
+	Total      int64              `json:"total"`
+	Page       int                `json:"page"`
+	PageSize   int                `json:"pageSize"`
+	TotalPages int                `json:"totalPages"`
+}

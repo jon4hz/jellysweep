@@ -291,8 +291,15 @@ func (e *Engine) removeProtectedExpiredItems(ctx context.Context) {
 		return
 	}
 	for _, item := range mediaItems {
-		if err := e.db.DeleteMediaItem(ctx, item.ID, database.DBDeleteReasonProtectionExpired); err != nil {
+		item.DBDeleteReason = database.DBDeleteReasonProtectionExpired
+
+		if err := e.db.DeleteMediaItem(ctx, &item); err != nil {
 			log.Error("Failed to remove media item with expired protection from database", "title", item.Title, "jellyfinID", item.JellyfinID, "protectedUntil", item.ProtectedUntil, "error", err)
+		}
+
+		// Create history event for protection expiration before deletion
+		if err := e.CreateProtectionExpiredEvent(ctx, &item); err != nil {
+			log.Errorf("failed to create protection expired event for %s: %v", item.Title, err)
 		}
 	}
 	log.Info("Media items with expired protection removal process completed")
@@ -336,8 +343,13 @@ func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
 			log.Debug("Item last played outside of threshold, skipping removal", "title", item.Title, "jellyfinID", item.JellyfinID, "lastPlayed", lastPlayed.Format(time.RFC3339))
 			continue
 		}
+		item.DBDeleteReason = database.DBDeleteReasonStreamed
+		// Create deletion event for streamed items
+		if err := e.CreateStreamedEvent(ctx, &item); err != nil {
+			log.Errorf("failed to create deletion event for %s: %v", item.Title, err)
+		}
 
-		if err := e.db.DeleteMediaItem(ctx, item.ID, database.DBDeleteReasonStreamed); err != nil {
+		if err := e.db.DeleteMediaItem(ctx, &item); err != nil {
 			log.Error("Failed to remove recently played item from database", "title", item.Title, "jellyfinID", item.JellyfinID, "error", err)
 			continue
 		}
@@ -527,23 +539,24 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
 		return fmt.Errorf("failed to create media items to database: %w", err)
 	}
 
+	// Create history events for newly picked up items
+	for i := range dbMediaItems {
+		if err := e.CreatePickedUpEvent(context.Background(), &dbMediaItems[i]); err != nil {
+			log.Errorf("failed to create picked up event for %s: %v", dbMediaItems[i].Title, err)
+		}
+	}
+
 	return nil
 }
 
 // RequestKeepMedia adds a keep request tag to the specified media item.
-func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, username string) error {
+func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint, username string) error {
 	// Parse media ID to determine if it's a Sonarr or Radarr item
-	log.Debug("Requesting to keep media", "mediaID", mediaID, "username", username)
-
-	user, err := e.db.GetUserByUsername(ctx, username)
-	if err != nil {
-		log.Errorf("failed to get user by username: %v", err)
-		return err
-	}
+	log.Debug("Requesting to keep media", "mediaID", mediaID, "userID", userID)
 
 	media, err := e.db.GetMediaItemByID(ctx, mediaID)
 	if err != nil {
-		log.Errorf("failed to get media item by ID: %v", err)
+		log.Errorf("failed to get user by username: %v", err)
 		return err
 	}
 
@@ -557,10 +570,15 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, username st
 		return ErrRequestAlreadyProcessed
 	}
 
-	_, err = e.db.CreateRequest(ctx, media.ID, user.ID)
+	_, err = e.db.CreateRequest(ctx, media.ID, userID)
 	if err != nil {
 		log.Errorf("failed to create keep request in database: %v", err)
 		return err
+	}
+
+	// Create history event for request creation
+	if err := e.CreateRequestCreatedEvent(ctx, media, userID); err != nil {
+		log.Errorf("failed to create request created event for %s: %v", media.Title, err)
 	}
 
 	// Send ntfy notification if the tag was added successfully
@@ -574,7 +592,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, username st
 }
 
 // HandleKeepRequest accepts or declines a keep request for the specified media item.
-func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept bool) error {
+func (e *Engine) HandleKeepRequest(ctx context.Context, userID, mediaID uint, accept bool) error {
 	media, err := e.db.GetMediaItemByID(ctx, mediaID)
 	if err != nil {
 		log.Errorf("failed to get media item by ID: %v", err)
@@ -610,11 +628,25 @@ func (e *Engine) HandleKeepRequest(ctx context.Context, mediaID uint, accept boo
 			log.Errorf("failed to set media protected until in database: %v", err)
 			return err
 		}
+
+		// Create history event for request approval and protection
+		if err := e.CreateRequestApprovedEvent(ctx, userID, media); err != nil {
+			log.Errorf("failed to create request approved event for %s: %v", media.Title, err)
+		}
+
+		if err := e.CreateProtectedEvent(ctx, media); err != nil {
+			log.Errorf("failed to create protected event for %s: %v", media.Title, err)
+		}
 	} else {
 		err = e.db.MarkMediaAsUnkeepable(ctx, media.ID)
 		if err != nil {
 			log.Errorf("failed to mark media as unkeepable in database: %v", err)
 			return err
+		}
+
+		// Create history event for request denial
+		if err := e.CreateRequestDeniedEvent(ctx, userID, media); err != nil {
+			log.Errorf("failed to create request denied event for %s: %v", media.Title, err)
 		}
 	}
 

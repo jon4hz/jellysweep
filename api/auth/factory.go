@@ -109,6 +109,7 @@ func (mp *MultiProvider) RequireAuth() gin.HandlerFunc {
 
 		// create user model from session data
 		user := &models.User{
+			ID:       userID.(uint),
 			Email:    getSessionString(session, "user_email"),
 			Name:     getSessionString(session, "user_name"),
 			Username: getSessionString(session, "user_username"),

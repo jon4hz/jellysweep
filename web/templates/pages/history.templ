@@ -6,7 +6,7 @@ import (
 )
 
 templ HistoryPanel(user *models.User) {
-	@templates.Layout("Deletion History", user) {
+	@templates.Layout("Activity History", user) {
 		<style>
 			.sort-icon {
 				opacity: 0.3;
@@ -25,14 +25,22 @@ templ HistoryPanel(user *models.User) {
 			.sort-icon.sort-asc {
 				transform: rotate(180deg);
 			}
+			.event-badge {
+				display: inline-flex;
+				align-items: center;
+				padding: 0.25rem 0.75rem;
+				font-size: 0.75rem;
+				font-weight: 500;
+				border-radius: 9999px;
+			}
 		</style>
 		<div class="space-y-6">
 			<!-- Header -->
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 class="text-3xl font-bold text-gray-100">Deletion History</h1>
+					<h1 class="text-3xl font-bold text-gray-100">Activity History</h1>
 					<p class="mt-1 text-sm text-gray-400">
-						View the complete history of jellysweep actions.
+						View the complete history of jellysweep actions including pickups, protection changes, and deletions.
 					</p>
 				</div>
 				<div class="mt-4 sm:mt-0">
@@ -98,18 +106,23 @@ templ HistoryTable() {
 								</svg>
 							</div>
 						</th>
-						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="requested_by">
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="event_type">
 							<div class="flex items-center space-x-1">
-								<span>Requested By</span>
+								<span>Event</span>
 								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
 								</svg>
 							</div>
 						</th>
-						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-							Action
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="username">
+							<div class="flex items-center space-x-1">
+								<span>User</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
 						</th>
-						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="deleted_at">
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="event_time">
 							<div class="flex items-center space-x-1">
 								<span>Date</span>
 								<svg class="w-4 h-4 sort-icon sort-active" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,13 +130,8 @@ templ HistoryTable() {
 								</svg>
 							</div>
 						</th>
-						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="file_size">
-							<div class="flex items-center space-x-1">
-								<span>File Size</span>
-								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
-								</svg>
-							</div>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+							Actions
 						</th>
 					</tr>
 				</thead>
@@ -171,6 +179,23 @@ templ HistoryTable() {
 			</div>
 		</div>
 	</div>
+	<!-- Media Detail Modal -->
+	<div id="media-detail-modal" style="display: none;" class="fixed inset-0 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20" onclick="if(event.target === this) closeMediaDetail()">
+		<div class="absolute inset-0 bg-black/50" onclick="closeMediaDetail()"></div>
+		<div class="relative p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-gray-800 border-gray-700 max-h-[80vh] overflow-y-auto z-10" onclick="event.stopPropagation()">
+			<div class="flex justify-between items-center mb-4">
+				<h3 class="text-xl font-semibold text-gray-100" id="modal-title">Media History</h3>
+				<button onclick="closeMediaDetail()" class="text-gray-400 hover:text-gray-200">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+				</button>
+			</div>
+			<div id="modal-content" class="space-y-4">
+				<!-- Content will be populated by JavaScript -->
+			</div>
+		</div>
+	</div>
 }
 
 templ HistoryScript() {
@@ -178,7 +203,7 @@ templ HistoryScript() {
 		let currentPage = 1;
 		let pageSize = 50;
 		let totalPages = 1;
-		let currentSort = 'deleted_at';
+		let currentSort = 'event_time';
 		let currentSortOrder = 'desc';
 
 		document.addEventListener('DOMContentLoaded', function() {
@@ -281,7 +306,7 @@ templ HistoryScript() {
 				tbody.innerHTML = `
 					<tr>
 						<td colspan="8" class="px-6 py-12 text-center text-gray-400">
-							No deletion history found.
+							No history found.
 						</td>
 					</tr>
 				`;
@@ -289,19 +314,24 @@ templ HistoryScript() {
 			}
 
 			tbody.innerHTML = historyData.items.map(item => {
-				const deletedAt = new Date(item.DeletedAt);
-				const formattedDate = deletedAt.toLocaleString();
+				const eventTime = new Date(item.EventTime);
+				const formattedDate = eventTime.toLocaleString();
 				const mediaTypeIcon = item.MediaType === 'tv' ? '📺' : '🎬';
-				const fileSize = formatFileSize(item.FileSize);
-				const deleteReasonBadge = getDeleteReasonBadge(item.DBDeleteReason);
+				const eventBadge = getEventBadge(item.EventType);
+
+				// Escape values for use in HTML attributes
+				const escapedJellyfinId = escapeHtml(item.JellyfinID);
+				const escapedTitle = escapeHtml(item.Title);
+				// Additionally escape for JavaScript string context
+				const jsEscapedTitle = escapedTitle.replace(/'/g, "\\'");
 
 				return `
-					<tr class="hover:bg-gray-750 transition-colors duration-150">
+					<tr class="hover:bg-gray-750 transition-colors duration-150 cursor-pointer" onclick="showMediaDetail('${escapedJellyfinId}', '${jsEscapedTitle}')">
 						<td class="px-6 py-4 whitespace-nowrap">
 							<div class="flex items-center">
 								<span class="mr-2">${mediaTypeIcon}</span>
 								<div>
-									<div class="text-sm font-medium text-gray-100">${escapeHtml(item.Title)}</div>
+									<div class="text-sm font-medium text-gray-100">${escapedTitle}</div>
 									<div class="text-xs text-gray-500">ID: ${item.JellyfinID}</div>
 								</div>
 							</div>
@@ -317,17 +347,19 @@ templ HistoryScript() {
 						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
 							${escapeHtml(item.LibraryName)}
 						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-							${item.RequestedBy ? escapeHtml(item.RequestedBy) : '-'}
-						</td>
 						<td class="px-6 py-4 whitespace-nowrap">
-							${deleteReasonBadge}
+							${eventBadge}
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+							${item.Username ? escapeHtml(item.Username) : '-'}
 						</td>
 						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
 							${formattedDate}
 						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-							${fileSize}
+						<td class="px-6 py-4 whitespace-nowrap text-sm">
+							<button onclick="event.stopPropagation(); showMediaDetail('${escapedJellyfinId}', '${jsEscapedTitle}')" class="text-blue-400 hover:text-blue-300">
+								View Details
+							</button>
 						</td>
 					</tr>
 				`;
@@ -366,22 +398,100 @@ templ HistoryScript() {
 			}, 500);
 		}
 
-		function formatFileSize(bytes) {
-			if (!bytes || bytes === 0) return '0 B';
-			const k = 1024;
-			const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-			const i = Math.floor(Math.log(bytes) / Math.log(k));
-			return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+		function showMediaDetail(jellyfinId, title) {
+			const modal = document.getElementById('media-detail-modal');
+			const modalTitle = document.getElementById('modal-title');
+			const modalContent = document.getElementById('modal-content');
+
+			modalTitle.textContent = 'History for: ' + title;
+			modalContent.innerHTML = '<div class="text-center text-gray-400">Loading...</div>';
+			modal.style.display = 'flex';
+
+			window.makeApiRequestEnhanced(`/admin/api/history?jellyfinId=${encodeURIComponent(jellyfinId)}&pageSize=100`, {
+				method: 'GET',
+				showProgress: false
+			})
+			.then(data => {
+				if (data.success && data.data.items && data.data.items.length > 0) {
+					const timeline = data.data.items.map(event => {
+						const eventTime = new Date(event.EventTime);
+						const formattedDate = eventTime.toLocaleString();
+						const eventBadge = getEventBadge(event.EventType);
+						const eventDescription = getEventDescription(event);
+						const userDiv = event.Username ? '<div class="text-xs text-gray-500 mt-1">By: ' + escapeHtml(event.Username) + '</div>' : '';
+
+						return `
+							<div class="border-l-2 border-gray-600 pl-4 pb-4">
+								<div class="flex items-center space-x-2 mb-2">
+									${eventBadge}
+									<span class="text-sm text-gray-400">${formattedDate}</span>
+								</div>
+								<div class="text-sm text-gray-300">${eventDescription}</div>
+								${userDiv}
+							</div>
+						`;
+					}).join('');
+
+					modalContent.innerHTML = `<div class="space-y-2">${timeline}</div>`;
+				} else {
+					modalContent.innerHTML = '<div class="text-center text-gray-400">No history found for this item.</div>';
+				}
+			})
+			.catch(error => {
+				console.error('Error loading media detail:', error);
+				modalContent.innerHTML = '<div class="text-center text-red-400">Failed to load history details.</div>';
+			});
 		}
 
-		function getDeleteReasonBadge(reason) {
+		function closeMediaDetail() {
+			const modal = document.getElementById('media-detail-modal');
+			modal.style.display = 'none';
+		}
+
+		function getEventBadge(eventType) {
 			const badges = {
-				'default': '<span class="px-2 py-1 text-xs rounded-full bg-red-900 text-red-200">Deleted</span>',
-				'streamed': '<span class="px-2 py-1 text-xs rounded-full bg-green-900 text-green-200">Streamed</span>',
-				'keep_forever': '<span class="px-2 py-1 text-xs rounded-full bg-blue-900 text-blue-200">Keep Forever</span>',
-				'protection_expired': '<span class="px-2 py-1 text-xs rounded-full bg-yellow-900 text-yellow-200">Protection Expired</span>'
+				'picked_up': '<span class="event-badge bg-green-900 text-green-200">📥 Picked Up</span>',
+				'protected': '<span class="event-badge bg-blue-900 text-blue-200">🛡️ Protected</span>',
+				'unprotected': '<span class="event-badge bg-yellow-900 text-yellow-200">⚠️ Unprotected</span>',
+				'protection_expired': '<span class="event-badge bg-orange-900 text-orange-200">⏰ Protection Expired</span>',
+				'deleted': '<span class="event-badge bg-red-900 text-red-200">🗑️ Deleted</span>',
+				'request_created': '<span class="event-badge bg-purple-900 text-purple-200">📝 Request Created</span>',
+				'request_approved': '<span class="event-badge bg-green-900 text-green-200">✅ Request Approved</span>',
+				'request_denied': '<span class="event-badge bg-red-900 text-red-200">❌ Request Denied</span>',
+				'keep_forever': '<span class="event-badge bg-indigo-900 text-indigo-200">♾️ Keep Forever</span>',
+				'admin_keep': '<span class="event-badge bg-cyan-900 text-cyan-200">👑 Admin Keep</span>',
+				'admin_unkeep': '<span class="event-badge bg-orange-900 text-orange-200">🚫 Admin Unkeep</span>'
 			};
-			return badges[reason] || badges['default'];
+			return badges[eventType] || `<span class="event-badge bg-gray-900 text-gray-200">${eventType}</span>`;
+		}
+
+		function getEventDescription(event) {
+			switch (event.EventType) {
+				case 'picked_up':
+					return 'Media item was discovered and tracked by jellysweep';
+				case 'protected':
+					return 'Media item was marked for protection';
+				case 'unprotected':
+					return 'Protection was manually removed from this media item';
+				case 'protection_expired':
+					return 'Protection period expired for this media item';
+				case 'deleted':
+					return 'Media item was deleted from the system';
+				case 'request_created':
+					return 'A keep request was submitted for this media item';
+				case 'request_approved':
+					return 'Keep request was approved';
+				case 'request_denied':
+					return 'Keep request was denied';
+				case 'keep_forever':
+					return 'Media item was set to keep forever';
+				case 'admin_keep':
+					return 'Media item was kept by an admin';
+				case 'admin_unkeep':
+					return 'Media item was marked as unkeepable by an admin';
+				default:
+					return event.EventType;
+			}
 		}
 
 		function escapeHtml(text) {

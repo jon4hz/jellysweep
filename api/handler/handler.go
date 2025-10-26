@@ -114,7 +114,7 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 		return
 	}
 
-	err = h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.Username)
+	err = h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.ID, user.Username)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

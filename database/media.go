@@ -146,7 +146,7 @@ func (c *Client) GetDeletedMediaByTVDBID(ctx context.Context, tvdbID int32) ([]M
 	return mediaItems, nil
 }
 
-func (c *Client) GetDeletedMedia(ctx context.Context, page, pageSize int, sortBy, sortOrder string) ([]Media, int64, error) {
+func (c *Client) GetDeletedMedia(ctx context.Context, page, pageSize int, sortBy string, sortOrder SortOrder) ([]Media, int64, error) {
 	var mediaItems []Media
 	var total int64
 
@@ -177,8 +177,8 @@ func (c *Client) GetDeletedMedia(ctx context.Context, page, pageSize int, sortBy
 	}
 
 	// Validate sort order
-	if sortOrder != "asc" && sortOrder != "desc" {
-		sortOrder = "desc" // default order
+	if sortOrder != SortOrderAsc && sortOrder != SortOrderDesc {
+		sortOrder = SortOrderDesc // default order
 	}
 
 	// Get paginated deleted items
@@ -187,7 +187,7 @@ func (c *Client) GetDeletedMedia(ctx context.Context, page, pageSize int, sortBy
 	}
 	offset := (page - 1) * pageSize
 
-	orderClause := sortField + " " + sortOrder
+	orderClause := sortField + " " + string(sortOrder)
 	result := c.db.WithContext(ctx).
 		Unscoped().
 		Where("deleted_at IS NOT NULL").
@@ -226,16 +226,16 @@ func (c *Client) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error 
 	return nil
 }
 
-func (c *Client) DeleteMediaItem(ctx context.Context, mediaID uint, deleteReason DBDeleteReason) error {
+func (c *Client) DeleteMediaItem(ctx context.Context, media *Media) error {
 	err := c.db.WithContext(ctx).Model(&Media{}).
-		Where("id = ?", mediaID).
-		Update("db_delete_reason", deleteReason).Error
+		Where("id = ?", media.ID).
+		Update("db_delete_reason", media.DBDeleteReason).Error
 	if err != nil {
 		log.Error("failed to set media delete reason", "error", err)
 		return err
 	}
 
-	result := c.db.WithContext(ctx).Delete(&Media{}, mediaID)
+	result := c.db.WithContext(ctx).Delete(&Media{}, media.ID)
 	if result.Error != nil {
 		log.Error("failed to delete media item", "error", result.Error)
 		return result.Error

@@ -155,7 +155,7 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI.POST("/scheduler/cache/clear", h.ClearSchedulerCache)
 
 	// History endpoints
-	adminAPI.GET("/history", h.GetDeletedMedia)
+	adminAPI.GET("/history", h.GetHistory)
 }
 
 func (s *Server) setupPluginRoutes() error {

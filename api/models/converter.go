@@ -124,3 +124,35 @@ func ToDeletedMediaItems(items []database.Media) []DeletedMediaItem {
 	}
 	return result
 }
+
+// ToHistoryEventItem converts a database.HistoryEvent to HistoryEventItem.
+func ToHistoryEventItem(e database.HistoryEvent) HistoryEventItem {
+	username := ""
+	if e.User != nil {
+		username = e.User.Username
+	}
+
+	return HistoryEventItem{
+		ID:          e.ID,
+		MediaID:     e.MediaID,
+		JellyfinID:  e.Media.JellyfinID,
+		ArrID:       e.Media.ArrID,
+		MediaType:   MediaType(e.Media.MediaType),
+		Title:       e.Media.Title,
+		Year:        e.Media.Year,
+		LibraryName: e.Media.LibraryName,
+		EventType:   string(e.EventType),
+		Username:    username,
+		EventTime:   e.EventTime,
+		CreatedAt:   e.CreatedAt,
+	}
+}
+
+// ToHistoryEventItems converts a slice of database.HistoryEvent to HistoryEventItems.
+func ToHistoryEventItems(items []database.HistoryEvent) []HistoryEventItem {
+	result := make([]HistoryEventItem, len(items))
+	for i, item := range items {
+		result[i] = ToHistoryEventItem(item)
+	}
+	return result
+}
