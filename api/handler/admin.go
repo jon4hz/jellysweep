@@ -526,18 +526,8 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 			return
 		}
 		total = int64(len(events))
-
-		// Apply manual pagination since GetHistoryEventsByJellyfinID doesn't paginate
-		start := (page - 1) * pageSize
-		end := start + pageSize
-		if start > len(events) {
-			events = []database.HistoryEvent{}
-		} else {
-			if end > len(events) {
-				end = len(events)
-			}
-			events = events[start:end]
-		}
+		pageSize = len(events) // overwrite pagination options
+		page = 1
 	} else {
 		// Get all history events
 		events, total, err = h.db.GetHistoryEvents(c.Request.Context(), page, pageSize, sortBy, database.SortOrder(sortOrder))

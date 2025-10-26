@@ -79,33 +79,6 @@ type AdminRequestInfo struct {
 	UpdatedAt time.Time `json:"UpdatedAt"`
 }
 
-// DeletedMediaItem represents a deleted media item in the history.
-type DeletedMediaItem struct {
-	ID             uint      `json:"ID"`
-	JellyfinID     string    `json:"JellyfinID"`
-	LibraryName    string    `json:"LibraryName"`
-	ArrID          int32     `json:"ArrID"`
-	Title          string    `json:"Title"`
-	TmdbId         *int32    `json:"TmdbId,omitempty"`
-	TvdbId         *int32    `json:"TvdbId,omitempty"`
-	Year           int32     `json:"Year"`
-	FileSize       int64     `json:"FileSize"`
-	MediaType      MediaType `json:"MediaType"`
-	RequestedBy    string    `json:"RequestedBy"`
-	DBDeleteReason string    `json:"DBDeleteReason"`
-	DeletedAt      time.Time `json:"DeletedAt"`
-	CreatedAt      time.Time `json:"CreatedAt"`
-}
-
-// DeletedMediaResponse represents the paginated response for deleted media.
-type DeletedMediaResponse struct {
-	Items      []DeletedMediaItem `json:"items"`
-	Total      int64              `json:"total"`
-	Page       int                `json:"page"`
-	PageSize   int                `json:"pageSize"`
-	TotalPages int                `json:"totalPages"`
-}
-
 // HistoryEventItem represents a history event for display.
 type HistoryEventItem struct {
 	ID          uint      `json:"ID"`
