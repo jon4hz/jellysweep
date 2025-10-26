@@ -67,7 +67,7 @@ func (s *Server) setupSession() {
 func (s *Server) setupRoutes() error {
 	s.setupSession()
 
-	h := handler.New(s.engine, s.db, s.cfg)
+	h := handler.New(s.engine, s.cfg)
 
 	staticSub, err := fs.Sub(static.StaticFS, "static")
 	if err != nil {
@@ -123,7 +123,7 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup := s.ginEngine.Group("/admin")
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
-	h := handler.NewAdmin(s.engine, s.db, s.cfg)
+	h := handler.NewAdmin(s.engine, s.cfg)
 
 	// Admin panel page
 	adminGroup.GET("", h.AdminPanel)
@@ -168,7 +168,7 @@ func (s *Server) setupPluginRoutes() error {
 	tokenAuth := auth.NewAPIKeyProvider(s.cfg.APIKey)
 	pluginAPI.Use(tokenAuth.RequireAuth())
 
-	h := handler.NewPlugin(s.db)
+	h := handler.NewPlugin(s.engine)
 
 	pluginAPI.GET("/health", h.GetHealth)
 	pluginAPI.POST("/check", h.CheckMediaItem)

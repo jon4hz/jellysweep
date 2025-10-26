@@ -747,6 +747,117 @@ func (e *Engine) AddIgnoreTag(ctx context.Context, media *database.Media) error 
 	return nil
 }
 
+// GetMediaItems retrieves all media items from the database.
+func (e *Engine) GetMediaItems(ctx context.Context, includeProtected bool) ([]database.Media, error) {
+	return e.db.GetMediaItems(ctx, includeProtected)
+}
+
+// GetMediaWithPendingRequest retrieves all media items with pending keep requests.
+func (e *Engine) GetMediaWithPendingRequest(ctx context.Context) ([]database.Media, error) {
+	return e.db.GetMediaWithPendingRequest(ctx)
+}
+
+// GetMediaItemByID retrieves a specific media item by ID.
+func (e *Engine) GetMediaItemByID(ctx context.Context, id uint) (*database.Media, error) {
+	return e.db.GetMediaItemByID(ctx, id)
+}
+
+// GetMediaItemsByMediaType retrieves all media items of a specific type.
+func (e *Engine) GetMediaItemsByMediaType(ctx context.Context, mediaType database.MediaType) ([]database.Media, error) {
+	return e.db.GetMediaItemsByMediaType(ctx, mediaType)
+}
+
+// MarkMediaAsProtected marks a media item as protected for the configured duration.
+func (e *Engine) MarkMediaAsProtected(ctx context.Context, mediaID uint, adminID uint) error {
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Error("Failed to get media item by ID", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	libraryConfig := e.cfg.GetLibraryConfig(media.LibraryName)
+	if libraryConfig == nil {
+		log.Error("No library configuration found", "library", media.LibraryName)
+		return fmt.Errorf("no library configuration found")
+	}
+
+	protectedUntil := time.Now().Add(time.Hour * 24 * time.Duration(libraryConfig.GetProtectionPeriod()))
+	if err := e.db.SetMediaProtectedUntil(ctx, media.ID, &protectedUntil); err != nil {
+		log.Error("Failed to set media protected until", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("failed to set media protected until: %w", err)
+	}
+
+	if err := e.CreateAdminKeepEvent(ctx, adminID, media); err != nil {
+		log.Error("Failed to create admin keep event", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("failed to create admin keep event: %w", err)
+	}
+
+	return nil
+}
+
+// MarkMediaAsUnkeepable marks a media item as unkeepable and denies all keep requests.
+func (e *Engine) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint, adminID uint) error {
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Error("Failed to get media item by ID", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	if err := e.db.MarkMediaAsUnkeepable(ctx, media.ID); err != nil {
+		log.Error("Failed to mark media as unkeepable", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("failed to mark media as unkeepable: %w", err)
+	}
+
+	if err := e.CreateAdminUnkeepEvent(ctx, adminID, media); err != nil {
+		log.Error("Failed to create admin unkeep event", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("failed to create admin unkeep event: %w", err)
+	}
+
+	return nil
+}
+
+// MarkMediaAsKeepForever removes the media item from the database and adds an ignore tag.
+func (e *Engine) MarkMediaAsKeepForever(ctx context.Context, mediaID uint, adminID uint) error {
+	media, err := e.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Error("Failed to get media item by ID", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	if err := e.AddIgnoreTag(ctx, media); err != nil {
+		log.Error("Failed to add ignore tag", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("engine error: %w", err)
+	}
+
+	media.DBDeleteReason = database.DBDeleteReasonKeepForever
+	if err := e.db.DeleteMediaItem(ctx, media); err != nil {
+		log.Error("Failed to delete media item", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	if err := e.CreateKeepForeverEvent(ctx, adminID, media); err != nil {
+		log.Error("Failed to create keep forever event", "mediaID", mediaID, "error", err)
+		return fmt.Errorf("database error: %w", err)
+	}
+
+	return nil
+}
+
+// GetHistoryEvents retrieves paginated history events.
+func (e *Engine) GetHistoryEvents(ctx context.Context, page, pageSize int, sortBy string, sortOrder database.SortOrder) ([]database.HistoryEvent, int64, error) {
+	return e.db.GetHistoryEvents(ctx, page, pageSize, sortBy, sortOrder)
+}
+
+// GetHistoryEventsByJellyfinID retrieves all history events for a specific Jellyfin ID.
+func (e *Engine) GetHistoryEventsByJellyfinID(ctx context.Context, jellyfinID string) ([]database.HistoryEvent, error) {
+	return e.db.GetHistoryEventsByJellyfinID(ctx, jellyfinID)
+}
+
+// GetHistoryEventsByEventType retrieves paginated history events filtered by event type.
+func (e *Engine) GetHistoryEventsByEventType(ctx context.Context, eventType database.HistoryEventType, page, pageSize int) ([]database.HistoryEvent, int64, error) {
+	return e.db.GetHistoryEventsByEventType(ctx, eventType, page, pageSize)
+}
+
 // migrateTagsToDatabase migrates existing jellysweep items to the database based on their tags in Sonarr and Radarr.
 func (e *Engine) migrateTagsToDatabase(ctx context.Context) error {
 	log.Info("Starting migration of jellysweep tags to database...")
