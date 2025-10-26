@@ -97,11 +97,9 @@ func (c *Client) GetHistoryEvents(ctx context.Context, page, pageSize int, sortB
 		"media_type": "media.media_type",
 		"library":    "media.library_name",
 		"event_type": "event_type",
-		"username":   "username",
+		"username":   "users.username",
 		"event_time": "event_time",
 	}
-
-	// TODO: fix sorting by username
 
 	sortField, ok := validSortFields[sortBy]
 	if !ok || sortField == "" {
@@ -129,6 +127,7 @@ func (c *Client) GetHistoryEvents(ctx context.Context, page, pageSize int, sortB
 		}).
 		Preload("User"). // Include user information
 		Joins("LEFT JOIN media ON media.id = history_events.media_id").
+		Joins("LEFT JOIN users ON users.id = history_events.user_id").
 		Order(orderClause).
 		Limit(pageSize).
 		Offset(offset).
