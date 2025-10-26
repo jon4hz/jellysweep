@@ -58,7 +58,6 @@ type HistoryEvent struct {
 type HistoryDB interface {
 	CreateHistoryEvent(ctx context.Context, event HistoryEvent) error
 	GetHistoryEvents(ctx context.Context, page, pageSize int, sortBy string, sortOrder SortOrder) ([]HistoryEvent, int64, error)
-	GetHistoryEventsByMediaID(ctx context.Context, mediaID uint) ([]HistoryEvent, error)
 	GetHistoryEventsByJellyfinID(ctx context.Context, jellyfinID string) ([]HistoryEvent, error)
 	GetHistoryEventsByEventType(ctx context.Context, eventType HistoryEventType, page, pageSize int) ([]HistoryEvent, int64, error)
 }
@@ -110,8 +109,11 @@ func (c *Client) GetHistoryEvents(ctx context.Context, page, pageSize int, sortB
 	}
 
 	// Validate sort order
-	if sortOrder != SortOrderAsc && sortOrder != SortOrderDesc {
-		sortOrder = SortOrderDesc
+	var order string
+	if sortOrder == SortOrderAsc {
+		order = string(SortOrderAsc)
+	} else {
+		order = string(SortOrderDesc)
 	}
 
 	// Get paginated events
@@ -120,7 +122,7 @@ func (c *Client) GetHistoryEvents(ctx context.Context, page, pageSize int, sortB
 	}
 	offset := (page - 1) * pageSize
 
-	orderClause := sortField + " " + string(sortOrder)
+	orderClause := sortField + " " + order
 	result := c.db.WithContext(ctx).
 		Preload("Media", func(db *gorm.DB) *gorm.DB {
 			return db.Unscoped() // Include soft-deleted media items
@@ -138,26 +140,6 @@ func (c *Client) GetHistoryEvents(ctx context.Context, page, pageSize int, sortB
 	}
 
 	return events, total, nil
-}
-
-// GetHistoryEventsByMediaID retrieves all history events for a specific media item.
-func (c *Client) GetHistoryEventsByMediaID(ctx context.Context, mediaID uint) ([]HistoryEvent, error) {
-	var events []HistoryEvent
-	result := c.db.WithContext(ctx).
-		Preload("Media", func(db *gorm.DB) *gorm.DB {
-			return db.Unscoped() // Include soft-deleted media items
-		}).
-		Preload("User"). // Include user information
-		Where("media_id = ?", mediaID).
-		Order("event_time DESC").
-		Find(&events)
-
-	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
-		log.Error("failed to get history events by media ID", "error", result.Error)
-		return nil, result.Error
-	}
-
-	return events, nil
 }
 
 // GetHistoryEventsByJellyfinID retrieves all history events for a specific Jellyfin ID.

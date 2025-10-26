@@ -559,3 +559,80 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 		"data":    response,
 	})
 }
+
+// GetHistoryByType returns paginated history events filtered by event type.
+func (h *AdminHandler) GetHistoryByType(c *gin.Context) {
+	eventType := c.Param("eventType")
+	if eventType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Event type is required",
+		})
+		return
+	}
+
+	page := 1
+	pageSize := 50
+
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := parseUintParam(pageStr); err == nil && p > 0 {
+			page, err = safecast.ToInt(p)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"success": false,
+					"error":   "Invalid page parameter",
+				})
+				return
+			}
+		}
+	}
+
+	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
+		if ps, err := parseUintParam(pageSizeStr); err == nil && ps > 0 && ps <= 100 {
+			pageSize, err = safecast.ToInt(ps)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"success": false,
+					"error":   "Invalid pageSize parameter",
+				})
+				return
+			}
+		}
+	}
+
+	// Get history events by type
+	events, total, err := h.db.GetHistoryEventsByEventType(
+		c.Request.Context(),
+		database.HistoryEventType(eventType),
+		page,
+		pageSize,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get history by type",
+		})
+		return
+	}
+
+	// Convert to history event items
+	items := models.ToHistoryEventItems(events)
+
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize != 0 {
+		totalPages++
+	}
+
+	response := models.HistoryResponse{
+		Items:      items,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
+	})
+}
