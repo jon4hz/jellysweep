@@ -90,7 +90,6 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 			continue
 		}
 
-		// Create history event before deletion
 		if err := e.CreateDeletedEvent(ctx, &item); err != nil {
 			log.Errorf("failed to create deletion event for %s: %v", item.Title, err)
 		}
