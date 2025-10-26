@@ -146,64 +146,6 @@ func (c *Client) GetDeletedMediaByTVDBID(ctx context.Context, tvdbID int32) ([]M
 	return mediaItems, nil
 }
 
-func (c *Client) GetDeletedMedia(ctx context.Context, page, pageSize int, sortBy string, sortOrder SortOrder) ([]Media, int64, error) {
-	var mediaItems []Media
-	var total int64
-
-	// Count total deleted items
-	if err := c.db.WithContext(ctx).
-		Unscoped().
-		Model(&Media{}).
-		Where("deleted_at IS NOT NULL").
-		Count(&total).Error; err != nil {
-		log.Error("failed to count deleted media", "error", err)
-		return nil, 0, err
-	}
-
-	// Validate and set sort field
-	validSortFields := map[string]string{
-		"title":        "title",
-		"year":         "year",
-		"media_type":   "media_type",
-		"library":      "library_name",
-		"deleted_at":   "deleted_at",
-		"file_size":    "file_size",
-		"requested_by": "requested_by",
-	}
-
-	sortField, ok := validSortFields[sortBy]
-	if !ok || sortField == "" {
-		sortField = "deleted_at" // default sort
-	}
-
-	// Validate sort order
-	if sortOrder != SortOrderAsc && sortOrder != SortOrderDesc {
-		sortOrder = SortOrderDesc // default order
-	}
-
-	// Get paginated deleted items
-	if page < 1 {
-		page = 1
-	}
-	offset := (page - 1) * pageSize
-
-	orderClause := sortField + " " + string(sortOrder)
-	result := c.db.WithContext(ctx).
-		Unscoped().
-		Where("deleted_at IS NOT NULL").
-		Order(orderClause).
-		Limit(pageSize).
-		Offset(offset).
-		Find(&mediaItems)
-
-	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
-		log.Error("failed to get deleted media", "error", result.Error)
-		return nil, 0, result.Error
-	}
-
-	return mediaItems, total, nil
-}
-
 func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error {
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).

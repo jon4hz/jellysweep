@@ -54,7 +54,6 @@ type MediaDB interface {
 	GetMediaExpiredProtection(ctx context.Context, asOf time.Time) ([]Media, error)
 	GetDeletedMediaByTMDBID(ctx context.Context, tmdbID int32) ([]Media, error)
 	GetDeletedMediaByTVDBID(ctx context.Context, tvdbID int32) ([]Media, error)
-	GetDeletedMedia(ctx context.Context, page, pageSize int, sortBy string, sortOrder SortOrder) ([]Media, int64, error)
 	SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error
 	MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error
 	DeleteMediaItem(ctx context.Context, media *Media) error
