@@ -43,7 +43,17 @@ templ HistoryPanel(user *models.User) {
 						View the complete history of all jellysweep actions.
 					</p>
 				</div>
-				<div class="mt-4 sm:mt-0">
+				<div class="mt-4 sm:mt-0 flex gap-3">
+					<button
+						id="open-filter-btn"
+						class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+						</svg>
+						<span id="filter-button-text">Filter Events</span>
+						<span id="filter-count-badge" style="display: none;" class="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-600 text-white"></span>
+					</button>
 					<button
 						id="refresh-history-btn"
 						class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
@@ -180,6 +190,88 @@ templ HistoryTable() {
 			</div>
 		</div>
 	</div>
+	<!-- Filter Modal -->
+	<div id="filter-modal" style="display: none;" class="fixed inset-0 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20" onclick="if(event.target === this) closeFilterModal()">
+		<div class="absolute inset-0 bg-black/50" onclick="closeFilterModal()"></div>
+		<div class="relative p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-gray-800 border-gray-700 z-10" onclick="event.stopPropagation()">
+			<div class="flex justify-between items-center mb-4">
+				<h3 class="text-xl font-semibold text-gray-100">Filter Events</h3>
+				<button onclick="closeFilterModal()" class="text-gray-400 hover:text-gray-200">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+				</button>
+			</div>
+			<div class="space-y-3 max-h-[60vh] overflow-y-auto">
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="picked_up" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">📥 Picked Up</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="protected" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">🛡️ Protected</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="unprotected" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">⚠️ Unprotected</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="protection_expired" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">⏰ Protection Expired</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="deleted" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">🗑️ Deleted</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="request_created" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">📝 Request Created</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="request_approved" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">✅ Request Approved</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="request_denied" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">❌ Request Denied</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="keep_forever" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">♾️ Keep Forever</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="admin_keep" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">👑 Admin Keep</span>
+				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="admin_unkeep" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">🚫 Admin Unkeep</span>
+				</label>
+			</div>
+			<div class="mt-6 flex justify-between items-center">
+				<button
+					id="clear-all-filters-btn"
+					class="px-4 py-2 text-sm font-medium text-gray-300 hover:text-gray-100 transition-colors"
+				>
+					Clear All
+				</button>
+				<div class="flex gap-2">
+					<button
+						onclick="closeFilterModal()"
+						class="px-4 py-2 border border-gray-600 rounded-md text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 transition-colors"
+					>
+						Cancel
+					</button>
+					<button
+						id="apply-filter-btn"
+						class="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+					>
+						Apply Filters
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
 }
 
 templ HistoryScript() {
@@ -189,10 +281,33 @@ templ HistoryScript() {
 		let totalPages = 1;
 		let currentSort = 'event_time';
 		let currentSortOrder = 'desc';
+		let currentEventTypes = [];
 
 		document.addEventListener('DOMContentLoaded', function() {
 			updateSortIcons();
 			loadHistory();
+
+			// Open filter modal
+			document.getElementById('open-filter-btn').addEventListener('click', function() {
+				openFilterModal();
+			});
+
+			// Clear all filters in modal
+			document.getElementById('clear-all-filters-btn').addEventListener('click', function() {
+				document.querySelectorAll('.event-type-checkbox').forEach(checkbox => {
+					checkbox.checked = false;
+				});
+			});
+
+			// Apply filters
+			document.getElementById('apply-filter-btn').addEventListener('click', function() {
+				const checkedBoxes = document.querySelectorAll('.event-type-checkbox:checked');
+				currentEventTypes = Array.from(checkedBoxes).map(cb => cb.value);
+				currentPage = 1; // Reset to first page when filtering
+				updateFilterBadge();
+				closeFilterModal();
+				loadHistory();
+			});
 
 			// Refresh button
 			document.getElementById('refresh-history-btn').addEventListener('click', function() {
@@ -258,7 +373,15 @@ templ HistoryScript() {
 				loading.style.display = '';
 			}
 
-			window.makeApiRequestEnhanced(`/admin/api/history?page=${currentPage}&pageSize=${pageSize}&sortBy=${currentSort}&sortOrder=${currentSortOrder}`, {
+			// Build API URL
+			let apiUrl = `/admin/api/history?page=${currentPage}&pageSize=${pageSize}&sortBy=${currentSort}&sortOrder=${currentSortOrder}`;
+
+			// Add event type filter if any types are selected
+			if (currentEventTypes.length > 0) {
+				apiUrl += `&includeEventTypes=${currentEventTypes.join(',')}`;
+			}
+
+			window.makeApiRequestEnhanced(apiUrl, {
 				method: 'GET',
 				showProgress: false
 			})
@@ -448,6 +571,34 @@ templ HistoryScript() {
 		function closeMediaDetail() {
 			const modal = document.getElementById('media-detail-modal');
 			modal.style.display = 'none';
+		}
+
+		function openFilterModal() {
+			const modal = document.getElementById('filter-modal');
+			// Update checkboxes to reflect current filters
+			document.querySelectorAll('.event-type-checkbox').forEach(checkbox => {
+				checkbox.checked = currentEventTypes.includes(checkbox.value);
+			});
+			modal.style.display = 'flex';
+		}
+
+		function closeFilterModal() {
+			const modal = document.getElementById('filter-modal');
+			modal.style.display = 'none';
+		}
+
+		function updateFilterBadge() {
+			const badge = document.getElementById('filter-count-badge');
+			const buttonText = document.getElementById('filter-button-text');
+
+			if (currentEventTypes.length > 0) {
+				badge.textContent = currentEventTypes.length;
+				badge.style.display = 'inline-block';
+				buttonText.textContent = 'Filter Events';
+			} else {
+				badge.style.display = 'none';
+				buttonText.textContent = 'Filter Events';
+			}
 		}
 
 		function getEventBadge(eventType) {

@@ -719,8 +719,8 @@ func (e *Engine) GetWebPushClient() *webpush.Client {
 	return e.webpush
 }
 
-// AddIgnoreTag adds a jellysweep-ignore tag to the specified media item.
-func (e *Engine) AddIgnoreTag(ctx context.Context, media *database.Media) error {
+// addIgnoreTag adds a jellysweep-ignore tag to the specified media item.
+func (e *Engine) addIgnoreTag(ctx context.Context, media *database.Media) error {
 	switch media.MediaType {
 	case database.MediaTypeMovie:
 		if e.radarr == nil {
@@ -824,7 +824,7 @@ func (e *Engine) MarkMediaAsKeepForever(ctx context.Context, mediaID uint, admin
 		return fmt.Errorf("database error: %w", err)
 	}
 
-	if err := e.AddIgnoreTag(ctx, media); err != nil {
+	if err := e.addIgnoreTag(ctx, media); err != nil {
 		log.Error("Failed to add ignore tag", "mediaID", mediaID, "error", err)
 		return fmt.Errorf("engine error: %w", err)
 	}
@@ -844,18 +844,14 @@ func (e *Engine) MarkMediaAsKeepForever(ctx context.Context, mediaID uint, admin
 }
 
 // GetHistoryEvents retrieves paginated history events.
-func (e *Engine) GetHistoryEvents(ctx context.Context, page, pageSize int, sortBy string, sortOrder database.SortOrder) ([]database.HistoryEvent, int64, error) {
-	return e.db.GetHistoryEvents(ctx, page, pageSize, sortBy, sortOrder)
+// If eventTypes is provided and not empty, only events of those types will be returned.
+func (e *Engine) GetHistoryEvents(ctx context.Context, page, pageSize int, sortBy string, sortOrder database.SortOrder, eventTypes []database.HistoryEventType) ([]database.HistoryEvent, int64, error) {
+	return e.db.GetHistoryEvents(ctx, page, pageSize, sortBy, sortOrder, eventTypes)
 }
 
 // GetHistoryEventsByJellyfinID retrieves all history events for a specific Jellyfin ID.
 func (e *Engine) GetHistoryEventsByJellyfinID(ctx context.Context, jellyfinID string) ([]database.HistoryEvent, error) {
 	return e.db.GetHistoryEventsByJellyfinID(ctx, jellyfinID)
-}
-
-// GetHistoryEventsByEventType retrieves paginated history events filtered by event type.
-func (e *Engine) GetHistoryEventsByEventType(ctx context.Context, eventType database.HistoryEventType, page, pageSize int) ([]database.HistoryEvent, int64, error) {
-	return e.db.GetHistoryEventsByEventType(ctx, eventType, page, pageSize)
 }
 
 // migrateTagsToDatabase migrates existing jellysweep items to the database based on their tags in Sonarr and Radarr.

@@ -156,7 +156,6 @@ func (s *Server) setupAdminRoutes() {
 
 	// History endpoints
 	adminAPI.GET("/history", h.GetHistory)
-	adminAPI.GET("/history/type/:eventType", h.GetHistoryByType)
 }
 
 func (s *Server) setupPluginRoutes() error {

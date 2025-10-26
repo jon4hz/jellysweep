@@ -57,9 +57,8 @@ type HistoryEvent struct {
 // HistoryDB defines the interface for history-related database operations.
 type HistoryDB interface {
 	CreateHistoryEvent(ctx context.Context, event HistoryEvent) error
-	GetHistoryEvents(ctx context.Context, page, pageSize int, sortBy string, sortOrder SortOrder) ([]HistoryEvent, int64, error)
+	GetHistoryEvents(ctx context.Context, page, pageSize int, sortBy string, sortOrder SortOrder, eventTypes []HistoryEventType) ([]HistoryEvent, int64, error)
 	GetHistoryEventsByJellyfinID(ctx context.Context, jellyfinID string) ([]HistoryEvent, error)
-	GetHistoryEventsByEventType(ctx context.Context, eventType HistoryEventType, page, pageSize int) ([]HistoryEvent, int64, error)
 }
 
 // CreateHistoryEvent creates a new history event.
@@ -78,14 +77,21 @@ func (c *Client) CreateHistoryEvent(ctx context.Context, event HistoryEvent) err
 }
 
 // GetHistoryEvents retrieves paginated history events.
-func (c *Client) GetHistoryEvents(ctx context.Context, page, pageSize int, sortBy string, sortOrder SortOrder) ([]HistoryEvent, int64, error) {
+// If eventTypes is provided and not empty, only events of those types will be returned.
+func (c *Client) GetHistoryEvents(ctx context.Context, page, pageSize int, sortBy string, sortOrder SortOrder, eventTypes []HistoryEventType) ([]HistoryEvent, int64, error) {
 	var events []HistoryEvent
 	var total int64
 
+	// Build base query
+	query := c.db.WithContext(ctx).Model(&HistoryEvent{})
+
+	// Apply event type filter if provided
+	if len(eventTypes) > 0 {
+		query = query.Where("event_type IN ?", eventTypes)
+	}
+
 	// Count total events
-	if err := c.db.WithContext(ctx).
-		Model(&HistoryEvent{}).
-		Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		log.Error("failed to count history events", "error", err)
 		return nil, 0, err
 	}
@@ -121,13 +127,22 @@ func (c *Client) GetHistoryEvents(ctx context.Context, page, pageSize int, sortB
 	offset := (page - 1) * pageSize
 
 	orderClause := sortField + " " + order
-	result := c.db.WithContext(ctx).
+
+	// Build the query with joins
+	dataQuery := c.db.WithContext(ctx).
 		Preload("Media", func(db *gorm.DB) *gorm.DB {
 			return db.Unscoped() // Include soft-deleted media items
 		}).
 		Preload("User"). // Include user information
 		Joins("LEFT JOIN media ON media.id = history_events.media_id").
-		Joins("LEFT JOIN users ON users.id = history_events.user_id").
+		Joins("LEFT JOIN users ON users.id = history_events.user_id")
+
+	// Apply event type filter if provided
+	if len(eventTypes) > 0 {
+		dataQuery = dataQuery.Where("history_events.event_type IN ?", eventTypes)
+	}
+
+	result := dataQuery.
 		Order(orderClause).
 		Limit(pageSize).
 		Offset(offset).
@@ -177,43 +192,4 @@ func (c *Client) GetHistoryEventsByJellyfinID(ctx context.Context, jellyfinID st
 	}
 
 	return events, nil
-}
-
-// GetHistoryEventsByEventType retrieves paginated history events filtered by event type.
-func (c *Client) GetHistoryEventsByEventType(ctx context.Context, eventType HistoryEventType, page, pageSize int) ([]HistoryEvent, int64, error) {
-	var events []HistoryEvent
-	var total int64
-
-	// Count total events of this type
-	if err := c.db.WithContext(ctx).
-		Model(&HistoryEvent{}).
-		Where("event_type = ?", eventType).
-		Count(&total).Error; err != nil {
-		log.Error("failed to count history events by type", "error", err)
-		return nil, 0, err
-	}
-
-	// Get paginated events
-	if page < 1 {
-		page = 1
-	}
-	offset := (page - 1) * pageSize
-
-	result := c.db.WithContext(ctx).
-		Preload("Media", func(db *gorm.DB) *gorm.DB {
-			return db.Unscoped() // Include soft-deleted media items
-		}).
-		Preload("User"). // Include user information
-		Where("event_type = ?", eventType).
-		Order("event_time DESC").
-		Limit(pageSize).
-		Offset(offset).
-		Find(&events)
-
-	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
-		log.Error("failed to get history events by type", "error", result.Error)
-		return nil, 0, result.Error
-	}
-
-	return events, total, nil
 }

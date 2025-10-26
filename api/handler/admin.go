@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/ccoveille/go-safecast"
 	"github.com/charmbracelet/log"
@@ -398,6 +399,18 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 	sortOrder := c.DefaultQuery("sortOrder", "desc")
 	jellyfinID := c.Query("jellyfinId")
 
+	// Parse includeEventTypes parameter (comma-separated list)
+	var eventTypes []database.HistoryEventType
+	if eventTypesStr := c.Query("includeEventTypes"); eventTypesStr != "" {
+		eventTypeStrings := strings.SplitSeq(eventTypesStr, ",")
+		for et := range eventTypeStrings {
+			et = strings.TrimSpace(et)
+			if et != "" {
+				eventTypes = append(eventTypes, database.HistoryEventType(et))
+			}
+		}
+	}
+
 	if pageStr := c.Query("page"); pageStr != "" {
 		p, err := parseUintParam(pageStr)
 		if err != nil || p == 0 {
@@ -453,8 +466,8 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 		pageSize = len(events) // overwrite pagination options
 		page = 1
 	} else {
-		// Get all history events
-		events, total, err = h.engine.GetHistoryEvents(c.Request.Context(), page, pageSize, sortBy, database.SortOrder(sortOrder))
+		// Get all history events, optionally filtered by event types
+		events, total, err = h.engine.GetHistoryEvents(c.Request.Context(), page, pageSize, sortBy, database.SortOrder(sortOrder), eventTypes)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
@@ -462,95 +475,6 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 			})
 			return
 		}
-	}
-
-	// Convert to history event items
-	items := models.ToHistoryEventItems(events)
-
-	totalPages := int(total) / pageSize
-	if int(total)%pageSize != 0 {
-		totalPages++
-	}
-
-	response := models.HistoryResponse{
-		Items:      items,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    response,
-	})
-}
-
-// GetHistoryByType returns paginated history events filtered by event type.
-func (h *AdminHandler) GetHistoryByType(c *gin.Context) {
-	eventType := c.Param("eventType")
-	if eventType == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Event type is required",
-		})
-		return
-	}
-
-	page := 1
-	pageSize := 50
-
-	if pageStr := c.Query("page"); pageStr != "" {
-		p, err := parseUintParam(pageStr)
-		if err != nil || p == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "Invalid page parameter",
-			})
-			return
-		}
-		page, err = safecast.ToInt(p)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "Invalid page parameter",
-			})
-			return
-		}
-	}
-
-	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
-		ps, err := parseUintParam(pageSizeStr)
-		if err != nil || ps == 0 || ps > 100 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "Invalid pageSize parameter",
-			})
-			return
-		}
-		pageSize, err = safecast.ToInt(ps)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "Invalid pageSize parameter",
-			})
-			return
-		}
-	}
-
-	// Get history events by type
-	events, total, err := h.engine.GetHistoryEventsByEventType(
-		c.Request.Context(),
-		database.HistoryEventType(eventType),
-		page,
-		pageSize,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get history by type",
-		})
-		return
 	}
 
 	// Convert to history event items
