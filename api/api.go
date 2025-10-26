@@ -132,6 +132,9 @@ func (s *Server) setupAdminRoutes() {
 	// Scheduler panel page
 	adminGroup.GET("/scheduler", h.SchedulerPanel)
 
+	// History panel page
+	adminGroup.GET("/history", h.HistoryPanel)
+
 	// Admin API routes
 	adminAPI := adminGroup.Group("/api")
 	adminAPI.POST("/keep-requests/:id/accept", h.AcceptKeepRequest)
@@ -150,6 +153,9 @@ func (s *Server) setupAdminRoutes() {
 	adminAPI.POST("/scheduler/jobs/:id/disable", h.DisableSchedulerJob)
 	adminAPI.GET("/scheduler/cache/stats", h.GetSchedulerCacheStats)
 	adminAPI.POST("/scheduler/cache/clear", h.ClearSchedulerCache)
+
+	// History endpoints
+	adminAPI.GET("/history", h.GetDeletedMedia)
 }
 
 func (s *Server) setupPluginRoutes() error {

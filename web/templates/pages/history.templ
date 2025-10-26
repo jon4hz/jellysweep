@@ -1,0 +1,394 @@
+package pages
+
+import (
+	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/web/templates"
+)
+
+templ HistoryPanel(user *models.User) {
+	@templates.Layout("Deletion History", user) {
+		<style>
+			.sort-icon {
+				opacity: 0.3;
+				transition: opacity 0.2s, transform 0.2s;
+			}
+			th[data-sort]:hover .sort-icon {
+				opacity: 0.6;
+			}
+			.sort-icon.sort-active {
+				opacity: 1;
+				color: #60a5fa;
+			}
+			.sort-icon.sort-desc {
+				transform: rotate(0deg);
+			}
+			.sort-icon.sort-asc {
+				transform: rotate(180deg);
+			}
+		</style>
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h1 class="text-3xl font-bold text-gray-100">Deletion History</h1>
+					<p class="mt-1 text-sm text-gray-400">
+						View the complete history of jellysweep actions.
+					</p>
+				</div>
+				<div class="mt-4 sm:mt-0">
+					<button
+						id="refresh-history-btn"
+						class="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+						</svg>
+						Refresh
+					</button>
+				</div>
+			</div>
+			<!-- History Table -->
+			@HistoryTable()
+		</div>
+		<!-- Include shared utility scripts -->
+		@templates.ToastScript()
+		@templates.ButtonLoadingUtils()
+		@templates.ApiUtils()
+		@templates.SmoothNavigationUtils()
+		<!-- Include history-specific scripts -->
+		@HistoryScript()
+	}
+}
+
+templ HistoryTable() {
+	<div class="bg-gray-800 rounded-lg border border-gray-700">
+		<div class="overflow-x-auto">
+			<table class="min-w-full divide-y divide-gray-700">
+				<thead class="bg-gray-900">
+					<tr>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="title">
+							<div class="flex items-center space-x-1">
+								<span>Title</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="year">
+							<div class="flex items-center space-x-1">
+								<span>Year</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="media_type">
+							<div class="flex items-center space-x-1">
+								<span>Type</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="library">
+							<div class="flex items-center space-x-1">
+								<span>Library</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="requested_by">
+							<div class="flex items-center space-x-1">
+								<span>Requested By</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+							Action
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="deleted_at">
+							<div class="flex items-center space-x-1">
+								<span>Date</span>
+								<svg class="w-4 h-4 sort-icon sort-active" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800 transition-colors" data-sort="file_size">
+							<div class="flex items-center space-x-1">
+								<span>File Size</span>
+								<svg class="w-4 h-4 sort-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+								</svg>
+							</div>
+						</th>
+					</tr>
+				</thead>
+				<tbody id="history-table-body" class="bg-gray-800 divide-y divide-gray-700">
+					<!-- Table rows will be populated by JavaScript -->
+					<tr id="history-loading">
+						<td colspan="8" class="px-6 py-12 text-center">
+							<div class="flex items-center justify-center">
+								<svg class="animate-spin h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+								</svg>
+								<span class="ml-3 text-gray-400">Loading history...</span>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<!-- Pagination -->
+		<div id="pagination-container" class="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+			<div class="flex items-center">
+				<span class="text-sm text-gray-400">
+					Showing <span id="showing-from">0</span> to <span id="showing-to">0</span> of <span id="total-items">0</span> items
+				</span>
+			</div>
+			<div class="flex items-center space-x-2">
+				<button
+					id="prev-page-btn"
+					disabled
+					class="px-3 py-2 border border-gray-600 rounded-md text-sm font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+				>
+					Previous
+				</button>
+				<span class="text-sm text-gray-400">
+					Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+				</span>
+				<button
+					id="next-page-btn"
+					disabled
+					class="px-3 py-2 border border-gray-600 rounded-md text-sm font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+				>
+					Next
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
+templ HistoryScript() {
+	<script>
+		let currentPage = 1;
+		let pageSize = 50;
+		let totalPages = 1;
+		let currentSort = 'deleted_at';
+		let currentSortOrder = 'desc';
+
+		document.addEventListener('DOMContentLoaded', function() {
+			updateSortIcons();
+			loadHistory();
+
+			// Refresh button
+			document.getElementById('refresh-history-btn').addEventListener('click', function() {
+				refreshHistory();
+			});
+
+			// Pagination buttons
+			document.getElementById('prev-page-btn').addEventListener('click', function() {
+				if (currentPage > 1) {
+					currentPage--;
+					loadHistory();
+				}
+			});
+
+			document.getElementById('next-page-btn').addEventListener('click', function() {
+				if (currentPage < totalPages) {
+					currentPage++;
+					loadHistory();
+				}
+			});
+
+			// Sorting
+			document.querySelectorAll('th[data-sort]').forEach(header => {
+				header.addEventListener('click', function() {
+					const sortBy = this.getAttribute('data-sort');
+
+					// Toggle sort order if clicking the same column
+					if (currentSort === sortBy) {
+						currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+					} else {
+						currentSort = sortBy;
+						currentSortOrder = 'desc'; // Default to descending for new column
+					}
+
+					currentPage = 1; // Reset to first page when sorting
+					updateSortIcons();
+					loadHistory();
+				});
+			});
+		});
+
+		function updateSortIcons() {
+			// Remove active class from all icons
+			document.querySelectorAll('.sort-icon').forEach(icon => {
+				icon.classList.remove('sort-active', 'sort-asc', 'sort-desc');
+			});
+
+			// Add active class to current sort column
+			const activeHeader = document.querySelector(`th[data-sort="${currentSort}"]`);
+			if (activeHeader) {
+				const icon = activeHeader.querySelector('.sort-icon');
+				if (icon) {
+					icon.classList.add('sort-active', `sort-${currentSortOrder}`);
+				}
+			}
+		}
+
+		function loadHistory() {
+			const tbody = document.getElementById('history-table-body');
+			const loading = document.getElementById('history-loading');
+
+			if (loading) {
+				loading.style.display = '';
+			}
+
+			window.makeApiRequestEnhanced(`/admin/api/history?page=${currentPage}&pageSize=${pageSize}&sortBy=${currentSort}&sortOrder=${currentSortOrder}`, {
+				method: 'GET',
+				showProgress: false
+			})
+			.then(data => {
+				if (data.success) {
+					updateTable(data.data);
+					updatePagination(data.data);
+				} else {
+					throw new Error(data.error || 'Failed to load history');
+				}
+			})
+			.catch(error => {
+				console.error('Error loading history:', error);
+				window.showToast('Failed to load history: ' + error.message, 'error');
+				tbody.innerHTML = `
+					<tr>
+						<td colspan="8" class="px-6 py-12 text-center text-gray-400">
+							Failed to load history. Please try again.
+						</td>
+					</tr>
+				`;
+			});
+		}
+
+		function updateTable(historyData) {
+			const tbody = document.getElementById('history-table-body');
+
+			if (!historyData.items || historyData.items.length === 0) {
+				tbody.innerHTML = `
+					<tr>
+						<td colspan="8" class="px-6 py-12 text-center text-gray-400">
+							No deletion history found.
+						</td>
+					</tr>
+				`;
+				return;
+			}
+
+			tbody.innerHTML = historyData.items.map(item => {
+				const deletedAt = new Date(item.DeletedAt);
+				const formattedDate = deletedAt.toLocaleString();
+				const mediaTypeIcon = item.MediaType === 'tv' ? '📺' : '🎬';
+				const fileSize = formatFileSize(item.FileSize);
+				const deleteReasonBadge = getDeleteReasonBadge(item.DBDeleteReason);
+
+				return `
+					<tr class="hover:bg-gray-750 transition-colors duration-150">
+						<td class="px-6 py-4 whitespace-nowrap">
+							<div class="flex items-center">
+								<span class="mr-2">${mediaTypeIcon}</span>
+								<div>
+									<div class="text-sm font-medium text-gray-100">${escapeHtml(item.Title)}</div>
+									<div class="text-xs text-gray-500">ID: ${item.JellyfinID}</div>
+								</div>
+							</div>
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+							${item.Year}
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap">
+							<span class="px-2 py-1 text-xs rounded-full ${item.MediaType === 'tv' ? 'bg-purple-900 text-purple-200' : 'bg-blue-900 text-blue-200'}">
+								${item.MediaType.toUpperCase()}
+							</span>
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+							${escapeHtml(item.LibraryName)}
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+							${item.RequestedBy ? escapeHtml(item.RequestedBy) : '-'}
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap">
+							${deleteReasonBadge}
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+							${formattedDate}
+						</td>
+						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+							${fileSize}
+						</td>
+					</tr>
+				`;
+			}).join('');
+		}
+
+		function updatePagination(historyData) {
+			totalPages = historyData.totalPages || 1;
+			const total = historyData.total || 0;
+			const from = total > 0 ? ((currentPage - 1) * pageSize) + 1 : 0;
+			const to = Math.min(currentPage * pageSize, total);
+
+			document.getElementById('showing-from').textContent = from;
+			document.getElementById('showing-to').textContent = to;
+			document.getElementById('total-items').textContent = total;
+			document.getElementById('current-page').textContent = currentPage;
+			document.getElementById('total-pages').textContent = totalPages;
+
+			const prevBtn = document.getElementById('prev-page-btn');
+			const nextBtn = document.getElementById('next-page-btn');
+
+			prevBtn.disabled = currentPage <= 1;
+			nextBtn.disabled = currentPage >= totalPages;
+		}
+
+		function refreshHistory() {
+			const buttonId = 'refresh-history-btn';
+			const originalContent = window.setButtonLoading(buttonId, 'Refreshing...');
+			if (!originalContent) return;
+
+			loadHistory();
+
+			setTimeout(() => {
+				window.restoreButton(buttonId, originalContent);
+				window.showToast('History refreshed successfully', 'success');
+			}, 500);
+		}
+
+		function formatFileSize(bytes) {
+			if (!bytes || bytes === 0) return '0 B';
+			const k = 1024;
+			const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+			const i = Math.floor(Math.log(bytes) / Math.log(k));
+			return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+		}
+
+		function getDeleteReasonBadge(reason) {
+			const badges = {
+				'default': '<span class="px-2 py-1 text-xs rounded-full bg-red-900 text-red-200">Deleted</span>',
+				'streamed': '<span class="px-2 py-1 text-xs rounded-full bg-green-900 text-green-200">Streamed</span>',
+				'keep_forever': '<span class="px-2 py-1 text-xs rounded-full bg-blue-900 text-blue-200">Keep Forever</span>',
+				'protection_expired': '<span class="px-2 py-1 text-xs rounded-full bg-yellow-900 text-yellow-200">Protection Expired</span>'
+			};
+			return badges[reason] || badges['default'];
+		}
+
+		function escapeHtml(text) {
+			if (!text) return '';
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	</script>
+}

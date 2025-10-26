@@ -95,3 +95,32 @@ func ToAdminMediaItems(items []database.Media, cfg *config.Config) []AdminMediaI
 	}
 	return result
 }
+
+// ToDeletedMediaItem converts a database.Media to DeletedMediaItem for history display.
+func ToDeletedMediaItem(m database.Media) DeletedMediaItem {
+	return DeletedMediaItem{
+		ID:             m.ID,
+		JellyfinID:     m.JellyfinID,
+		LibraryName:    m.LibraryName,
+		ArrID:          m.ArrID,
+		Title:          m.Title,
+		TmdbId:         m.TmdbId,
+		TvdbId:         m.TvdbId,
+		Year:           m.Year,
+		FileSize:       m.FileSize,
+		MediaType:      MediaType(m.MediaType),
+		RequestedBy:    m.RequestedBy,
+		DBDeleteReason: string(m.DBDeleteReason),
+		DeletedAt:      m.DeletedAt.Time,
+		CreatedAt:      m.CreatedAt,
+	}
+}
+
+// ToDeletedMediaItems converts a slice of database.Media to DeletedMediaItems.
+func ToDeletedMediaItems(items []database.Media) []DeletedMediaItem {
+	result := make([]DeletedMediaItem, len(items))
+	for i, item := range items {
+		result[i] = ToDeletedMediaItem(item)
+	}
+	return result
+}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/api/models"
@@ -416,4 +417,78 @@ func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
 	if err := pages.SchedulerPanel(user, jobs, cacheStats).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Error("Failed to render scheduler panel", "error", err)
 	}
+}
+
+// HistoryPanel shows the deletion history panel.
+func (h *AdminHandler) HistoryPanel(c *gin.Context) {
+	user := c.MustGet("user").(*models.User)
+
+	c.Header("Content-Type", "text/html")
+	if err := pages.HistoryPanel(user).Render(c.Request.Context(), c.Writer); err != nil {
+		log.Error("Failed to render history panel", "error", err)
+	}
+}
+
+// GetDeletedMedia returns paginated deleted media items.
+func (h *AdminHandler) GetDeletedMedia(c *gin.Context) {
+	page := 1
+	pageSize := 50
+	sortBy := c.DefaultQuery("sortBy", "deleted_at")
+	sortOrder := c.DefaultQuery("sortOrder", "desc")
+
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := parseUintParam(pageStr); err == nil && p > 0 {
+			page, err = safecast.ToInt(p)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"success": false,
+					"error":   "Invalid page parameter",
+				})
+				return
+			}
+		}
+	}
+
+	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
+		if ps, err := parseUintParam(pageSizeStr); err == nil && ps > 0 && ps <= 100 {
+			pageSize, err = safecast.ToInt(ps)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"success": false,
+					"error":   "Invalid pageSize parameter",
+				})
+				return
+			}
+		}
+	}
+
+	deletedMedia, total, err := h.db.GetDeletedMedia(c.Request.Context(), page, pageSize, sortBy, sortOrder)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get deleted media",
+		})
+		return
+	}
+
+	// Convert to deleted media items
+	items := models.ToDeletedMediaItems(deletedMedia)
+
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize != 0 {
+		totalPages++
+	}
+
+	response := models.DeletedMediaResponse{
+		Items:      items,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
+	})
 }
