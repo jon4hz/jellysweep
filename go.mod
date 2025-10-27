@@ -34,7 +34,7 @@ require (
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/oauth2 v0.32.0
 	golang.org/x/sync v0.17.0
-	gorm.io/gorm v1.25.12
+	gorm.io/gorm v1.31.0
 )
 
 require (
