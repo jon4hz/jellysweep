@@ -413,7 +413,9 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 	}
 
 	for _, item := range mediaItems {
-		e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
+		if item.RequestedBy != "" {
+			e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
+		}
 		log.Info("Marking media item for deletion", "name", item.Title, "library", item.LibraryName)
 	}
 
@@ -432,7 +434,7 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 	log.Info("Media items saved to database successfully")
 
 	// Send email notifications before marking for deletion
-	e.sendEmailNotifications(mediaItems)
+	e.sendEmailNotifications()
 
 	// Send ntfy deletion summary notification
 	if err := e.sendNtfyDeletionSummary(ctx, mediaItems); err != nil {

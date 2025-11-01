@@ -13,7 +13,7 @@ import (
 )
 
 // sendEmailNotifications sends email notifications to users about their media being marked for deletion.
-func (e *Engine) sendEmailNotifications(mediaItems []arr.MediaItem) {
+func (e *Engine) sendEmailNotifications() {
 	if e.email == nil || !e.cfg.Email.Enabled {
 		log.Debug("Email service not configured or disabled, skipping notifications")
 		return
@@ -24,19 +24,18 @@ func (e *Engine) sendEmailNotifications(mediaItems []arr.MediaItem) {
 		return
 	}
 
-	for userEmail, emailMediaItems := range e.data.userNotifications {
-		if len(emailMediaItems) == 0 {
+	for userEmail, mediaItems := range e.data.userNotifications {
+		if len(mediaItems) == 0 {
 			continue
 		}
 
 		// Convert engine MediaItems to email MediaItems
-		emailMediaItems := make([]email.MediaItem, 0, len(emailMediaItems))
-		for _, item := range emailMediaItems {
+		emailMediaItems := make([]email.MediaItem, 0, len(mediaItems))
+		for _, item := range mediaItems {
 			emailMediaItems = append(emailMediaItems, email.MediaItem{
 				Title:       item.Title,
-				MediaType:   item.MediaType,
+				MediaType:   string(item.MediaType),
 				RequestedBy: item.RequestedBy,
-				RequestDate: item.RequestDate,
 			})
 		}
 

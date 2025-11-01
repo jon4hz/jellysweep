@@ -7,7 +7,7 @@ import (
 	"github.com/jon4hz/jellysweep/engine/arr"
 )
 
-// populateRequesterInfo populates the RequestedBy and RequestDate fields for media items using Jellyseerr data.
+// populateRequesterInfo populates the RequestedBy field for media items using Jellyseerr data.
 func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.MediaItem) []arr.MediaItem {
 	if e.jellyseerr == nil {
 		log.Debug("Jellyseerr client not available, skipping requester info population")

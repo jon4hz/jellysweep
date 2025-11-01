@@ -23,7 +23,6 @@ type MediaItem struct {
 	Title       string
 	MediaType   string
 	RequestedBy string
-	RequestDate time.Time
 }
 
 // UserNotification contains the data for a user's notification email.
