@@ -24,4 +24,4 @@ js:
 # Clean generated files
 clean:
 	rm -rf web/templates/**/*_templ.go
-	rm -rf static/static/dist/
+	rm -rf internal/static/static/dist/

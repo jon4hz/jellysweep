@@ -4,7 +4,7 @@
 [![release](https://github.com/jon4hz/jellysweep/actions/workflows/release.yml/badge.svg)](https://github.com/jon4hz/jellysweep/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jon4hz/jellysweep)](https://goreportcard.com/report/github.com/jon4hz/jellysweep)
 
-<img src="static/static/jellysweep.png" alt="Jellysweep Logo" width="20%">
+<img src="internal/static/static/jellysweep.png" alt="Jellysweep Logo" width="20%">
 
 Jellysweep is a smart cleanup tool for your Jellyfin media server.
 It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests.

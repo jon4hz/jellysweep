@@ -6,9 +6,9 @@
         "tailwindcss": "^4.1.16"
     },
     "scripts": {
-        "build-css": "npx @tailwindcss/cli -i input.css -o static/static/dist/style.css --minify",
-        "build-js": "esbuild src/chart.js --bundle --outfile=static/static/dist/chart.js --format=iife --global-name=ChartBundle --minify",
-        "build-js-watch": "esbuild src/chart.js --bundle --outfile=static/static/dist/chart.js --format=iife --global-name=ChartBundle --watch",
+        "build-css": "npx @tailwindcss/cli -i input.css -o internal/static/static/dist/style.css --minify",
+        "build-js": "esbuild src/chart.js --bundle --outfile=internal/static/static/dist/chart.js --format=iife --global-name=ChartBundle --minify",
+        "build-js-watch": "esbuild src/chart.js --bundle --outfile=internal/static/static/dist/chart.js --format=iife --global-name=ChartBundle --watch",
         "build": "npm run build-css && npm run build-js",
         "dev": "npm run build-js && npm run build-css"
     },
