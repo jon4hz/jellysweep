@@ -607,13 +607,14 @@ templ HistoryScript() {
 				'protected': '<span class="event-badge bg-blue-900 text-blue-200">🛡️ Protected</span>',
 				'unprotected': '<span class="event-badge bg-yellow-900 text-yellow-200">⚠️ Unprotected</span>',
 				'protection_expired': '<span class="event-badge bg-orange-900 text-orange-200">⏰ Protection Expired</span>',
+				'streamed': '<span class="event-badge bg-teal-900 text-teal-200">▶️ Streamed</span>',
+				'keep_forever': '<span class="event-badge bg-indigo-900 text-indigo-200">♾️ Keep Forever</span>',
+				'admin_keep': '<span class="event-badge bg-cyan-900 text-cyan-200">👑 Admin Keep</span>',
+				'admin_unkeep': '<span class="event-badge bg-orange-900 text-orange-200">🚫 Admin Unkeep</span>',
 				'deleted': '<span class="event-badge bg-red-900 text-red-200">🗑️ Deleted</span>',
 				'request_created': '<span class="event-badge bg-purple-900 text-purple-200">📝 Request Created</span>',
 				'request_approved': '<span class="event-badge bg-green-900 text-green-200">✅ Request Approved</span>',
-				'request_denied': '<span class="event-badge bg-red-900 text-red-200">❌ Request Denied</span>',
-				'keep_forever': '<span class="event-badge bg-indigo-900 text-indigo-200">♾️ Keep Forever</span>',
-				'admin_keep': '<span class="event-badge bg-cyan-900 text-cyan-200">👑 Admin Keep</span>',
-				'admin_unkeep': '<span class="event-badge bg-orange-900 text-orange-200">🚫 Admin Unkeep</span>'
+				'request_denied': '<span class="event-badge bg-red-900 text-red-200">❌ Request Denied</span>'
 			};
 			return badges[eventType] || `<span class="event-badge bg-gray-900 text-gray-200">${eventType}</span>`;
 		}
@@ -628,6 +629,14 @@ templ HistoryScript() {
 					return 'Protection was manually removed from this media item';
 				case 'protection_expired':
 					return 'Protection period expired for this media item';
+				case 'streamed':
+					return 'Media item was streamed by a user';
+				case 'keep_forever':
+					return 'Media item was set to keep forever';
+				case 'admin_keep':
+					return 'Media item was kept by an admin';
+				case 'admin_unkeep':
+					return 'Media item was marked as unkeepable by an admin';
 				case 'deleted':
 					return 'Media item was deleted from the system';
 				case 'request_created':
@@ -636,12 +645,6 @@ templ HistoryScript() {
 					return 'Keep request was approved';
 				case 'request_denied':
 					return 'Keep request was denied';
-				case 'keep_forever':
-					return 'Media item was set to keep forever';
-				case 'admin_keep':
-					return 'Media item was kept by an admin';
-				case 'admin_unkeep':
-					return 'Media item was marked as unkeepable by an admin';
 				default:
 					return event.EventType;
 			}
