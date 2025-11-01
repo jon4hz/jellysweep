@@ -46,16 +46,16 @@ func (h *Handler) Home(c *gin.Context) {
 		requests, err := h.engine.GetMediaWithPendingRequest(c.Request.Context())
 		if err != nil {
 			// Log error but continue without pending count
-			if err := pages.Dashboard(user, userMediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+			if err := pages.Dashboard(user, userMediaItems, h.config.DryRun).Render(c.Request.Context(), c.Writer); err != nil {
 				log.Error("Failed to render dashboard", "error", err)
 			}
 			return
 		}
-		if err := pages.DashboardWithPendingRequests(user, userMediaItems, len(requests)).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := pages.DashboardWithPendingRequests(user, userMediaItems, len(requests), h.config.DryRun).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Error("Failed to render dashboard with pending requests", "error", err)
 		}
 	} else {
-		if err := pages.Dashboard(user, userMediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+		if err := pages.Dashboard(user, userMediaItems, h.config.DryRun).Render(c.Request.Context(), c.Writer); err != nil {
 			log.Error("Failed to render dashboard", "error", err)
 		}
 	}

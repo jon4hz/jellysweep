@@ -5,8 +5,8 @@ import (
 	"github.com/jon4hz/jellysweep/web/templates"
 )
 
-templ HistoryPanel(user *models.User) {
-	@templates.Layout("Activity History", user) {
+templ HistoryPanel(user *models.User, isDryRun bool) {
+	@templates.Layout("Activity History", user, isDryRun) {
 		<style>
 			.sort-icon {
 				opacity: 0.3;
