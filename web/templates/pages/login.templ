@@ -6,7 +6,7 @@ import (
 )
 
 templ Login(authConfig *config.AuthConfig) {
-	@templates.Layout("Login", nil) {
+	@templates.Layout("Login", nil, false) {
 		<div class="min-h-screen flex items-start justify-center pt-16 pb-4 px-4 sm:px-6 lg:px-8">
 			<div class="max-w-md w-full space-y-6">
 				<div class="text-center">

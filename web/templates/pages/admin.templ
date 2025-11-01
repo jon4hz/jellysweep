@@ -6,8 +6,8 @@ import (
 	"github.com/jon4hz/jellysweep/web/templates/components"
 )
 
-templ AdminPanel(user *models.User, requestedMedia []models.AdminMediaItem, mediaItems []models.AdminMediaItem) {
-	@templates.LayoutWithPendingRequests("Admin Panel", user, len(requestedMedia)) {
+templ AdminPanel(user *models.User, requestedMedia []models.AdminMediaItem, mediaItems []models.AdminMediaItem, isDryRun bool) {
+	@templates.LayoutWithPendingRequests("Admin Panel", user, len(requestedMedia), isDryRun) {
 		<div class="space-y-6">
 			<!-- Header -->
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">

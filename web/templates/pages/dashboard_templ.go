@@ -85,7 +85,7 @@ func getSeasonTooltip(keepCount int) string {
 	return b.String()
 }
 
-func Dashboard(user *models.User, mediaItems []models.UserMediaItem) templ.Component {
+func Dashboard(user *models.User, mediaItems []models.UserMediaItem, isDryRun bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -106,7 +106,7 @@ func Dashboard(user *models.User, mediaItems []models.UserMediaItem) templ.Compo
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = DashboardWithPendingRequests(user, mediaItems, 0).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = DashboardWithPendingRequests(user, mediaItems, 0, isDryRun).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -114,7 +114,7 @@ func Dashboard(user *models.User, mediaItems []models.UserMediaItem) templ.Compo
 	})
 }
 
-func DashboardWithPendingRequests(user *models.User, mediaItems []models.UserMediaItem, pendingRequestsCount int) templ.Component {
+func DashboardWithPendingRequests(user *models.User, mediaItems []models.UserMediaItem, pendingRequestsCount int, isDryRun bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -154,7 +154,7 @@ func DashboardWithPendingRequests(user *models.User, mediaItems []models.UserMed
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = templates.LayoutWithPendingRequests("Dashboard", user, pendingRequestsCount).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templates.LayoutWithPendingRequests("Dashboard", user, pendingRequestsCount, isDryRun).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -177,7 +177,7 @@ func DashboardWithPendingRequests(user *models.User, mediaItems []models.UserMed
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = templates.Layout("Dashboard", user).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templates.Layout("Dashboard", user, isDryRun).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

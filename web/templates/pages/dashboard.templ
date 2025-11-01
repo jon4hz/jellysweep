@@ -77,17 +77,17 @@ func getSeasonTooltip(keepCount int) string {
 	return b.String()
 }
 
-templ Dashboard(user *models.User, mediaItems []models.UserMediaItem) {
-	@DashboardWithPendingRequests(user, mediaItems, 0)
+templ Dashboard(user *models.User, mediaItems []models.UserMediaItem, isDryRun bool) {
+	@DashboardWithPendingRequests(user, mediaItems, 0, isDryRun)
 }
 
-templ DashboardWithPendingRequests(user *models.User, mediaItems []models.UserMediaItem, pendingRequestsCount int) {
+templ DashboardWithPendingRequests(user *models.User, mediaItems []models.UserMediaItem, pendingRequestsCount int, isDryRun bool) {
 	if user != nil && user.IsAdmin {
-		@templates.LayoutWithPendingRequests("Dashboard", user, pendingRequestsCount) {
+		@templates.LayoutWithPendingRequests("Dashboard", user, pendingRequestsCount, isDryRun) {
 			@DashboardContent(user, mediaItems)
 		}
 	} else {
-		@templates.Layout("Dashboard", user) {
+		@templates.Layout("Dashboard", user, isDryRun) {
 			@DashboardContent(user, mediaItems)
 		}
 	}

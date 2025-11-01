@@ -49,7 +49,7 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 	adminMediaItems := models.ToAdminMediaItems(mediaItems, h.config)
 
 	c.Header("Content-Type", "text/html")
-	if err := pages.AdminPanel(user, adminRequests, adminMediaItems).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := pages.AdminPanel(user, adminRequests, adminMediaItems, h.config.DryRun).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Error("Failed to render admin panel", "error", err)
 	}
 }
@@ -376,7 +376,7 @@ func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "text/html")
-	if err := pages.SchedulerPanel(user, jobs, cacheStats).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := pages.SchedulerPanel(user, jobs, cacheStats, h.config.DryRun).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Error("Failed to render scheduler panel", "error", err)
 	}
 }
@@ -386,7 +386,7 @@ func (h *AdminHandler) HistoryPanel(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
 	c.Header("Content-Type", "text/html")
-	if err := pages.HistoryPanel(user).Render(c.Request.Context(), c.Writer); err != nil {
+	if err := pages.HistoryPanel(user, h.config.DryRun).Render(c.Request.Context(), c.Writer); err != nil {
 		log.Error("Failed to render history panel", "error", err)
 	}
 }
