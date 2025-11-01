@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/internal/api/models"
 )
 
 // AdminKeepRequestGrid creates a media grid specifically for keep requests in admin panel

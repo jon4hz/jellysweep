@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/web/templates"
 	"github.com/jon4hz/jellysweep/web/templates/components"
 	"strings"

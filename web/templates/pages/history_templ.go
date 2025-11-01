@@ -9,7 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/jon4hz/jellysweep/api/models"
+	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/web/templates"
 )
 
