@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
-	"github.com/jon4hz/jellysweep/api"
-	"github.com/jon4hz/jellysweep/config"
-	"github.com/jon4hz/jellysweep/database"
-	"github.com/jon4hz/jellysweep/engine"
+	"github.com/jon4hz/jellysweep/internal/api"
+	"github.com/jon4hz/jellysweep/internal/config"
+	"github.com/jon4hz/jellysweep/internal/database"
+	"github.com/jon4hz/jellysweep/internal/engine"
 	"github.com/spf13/cobra"
 )
 

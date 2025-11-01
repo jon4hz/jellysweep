@@ -29,10 +29,10 @@ builds:
     ldflags:
       - -s
       - -w
-      - -X github.com/jon4hz/{{ .ProjectName }}/version.Version={{ .Version }}
-      - -X github.com/jon4hz/{{ .ProjectName }}/version.Commit={{ .Commit }}
-      - -X github.com/jon4hz/{{ .ProjectName }}/version.Date={{ .Date }}
-      - -X github.com/jon4hz/{{ .ProjectName }}/version.BuiltBy=goreleaser
+      - -X github.com/jon4hz/{{ .ProjectName }}/internal/version.Version={{ .Version }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/internal/version.Commit={{ .Commit }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/internal/version.Date={{ .Date }}
+      - -X github.com/jon4hz/{{ .ProjectName }}/internal/version.BuiltBy=goreleaser
     flags:
       - -trimpath
     goos:

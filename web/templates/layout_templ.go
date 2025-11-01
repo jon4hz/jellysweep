@@ -8,7 +8,7 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/jon4hz/jellysweep/api/models"
+import "github.com/jon4hz/jellysweep/internal/api/models"
 import "github.com/jon4hz/jellysweep/web/templates/components"
 
 func Layout(title string, user *models.User) templ.Component {

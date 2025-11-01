@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/jon4hz/jellysweep/notify/webpush"
+	"github.com/jon4hz/jellysweep/internal/notify/webpush"
 	"github.com/spf13/cobra"
 )
 
