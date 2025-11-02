@@ -394,6 +394,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_JELLYSTAT_API_KEY` | *(optional)* | Jellystat API key |
 | `JELLYSWEEP_STREAMYSTATS_URL` | *(optional)* | Streamystats server URL |
 | `JELLYSWEEP_STREAMYSTATS_SERVER_ID` | *(optional)* | Streamystats Jellyfin server ID |
+| `JELLYSWEEP_TUNARR_URL` | *(optional)* | Tunarr server URL |
 | **Cache Configuration** | | |
 | `JELLYSWEEP_CACHE_TYPE` | `memory` | Cache type: `memory` or `redis` |
 | `JELLYSWEEP_CACHE_REDIS_URL` | `localhost:6379` | Redis server URL (when using redis cache) |
@@ -467,6 +468,7 @@ libraries:
       content_age_threshold: 120        # Content must be at least 120 days old
       last_stream_threshold: 90         # Last watched at least 90 days ago
       content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
+      tunarr_enabled: true              # Protect items used by Tunarr channels (requires tunarr config)
       exclude_tags:
         - "jellysweep-exclude"
         - "keep"
@@ -491,6 +493,7 @@ libraries:
       content_age_threshold: 120
       last_stream_threshold: 90
       content_size_threshold: 2147483648  # 2GB minimum
+      tunarr_enabled: false             # Disable Tunarr filter for this library
       exclude_tags:
         - "jellysweep-exclude"
         - "ongoing"
@@ -557,6 +560,14 @@ jellystat:
 streamystats:
   url: "http://localhost:3001"
   server_id: 1                         # Jellyfin server ID in Streamystats
+
+# Tunarr (optional)
+# Protect items that are used by Tunarr TV channels. When configured, Jellysweep will
+# fetch channel programming and skip deletion for any movie or series that is
+# currently used by a Tunarr program.
+#
+tunarr:
+  url: "http://localhost:8000"
 
 # Cache configuration (optional - improves performance for large libraries)
 cache:

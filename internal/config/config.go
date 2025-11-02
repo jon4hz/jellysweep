@@ -73,6 +73,8 @@ type Config struct {
 	Jellyfin *JellyfinConfig `yaml:"jellyfin" mapstructure:"jellyfin"`
 	// Streamystats holds the configuration for the Streamystats server.
 	Streamystats *StreamystatsConfig `yaml:"streamystats" mapstructure:"streamystats"`
+	// Tunarr holds the configuration for the Tunarr server.
+	Tunarr *TunarrConfig `yaml:"tunarr" mapstructure:"tunarr"`
 }
 
 // AuthConfig holds the authentication configuration for the Jellysweep server.
@@ -200,6 +202,8 @@ type FilterConfig struct {
 	ContentSizeThreshold int64 `yaml:"content_size_threshold" mapstructure:"content_size_threshold"`
 	// ExcludeTags is a list of tags to exclude from deletion.
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
+	// TunarrEnabled enables the Tunarr filter for this library to protect items used in Tunarr channels.
+	TunarrEnabled bool `yaml:"tunarr_enabled" mapstructure:"tunarr_enabled"`
 }
 
 // DiskUsageThreshold holds the disk usage thresholds for cleanup.
@@ -256,6 +260,12 @@ type StreamystatsConfig struct {
 	URL string `yaml:"url" mapstructure:"url"`
 	// ServerID is the Jellyfin server ID.
 	ServerID int `yaml:"server_id" mapstructure:"server_id"`
+}
+
+// TunarrConfig holds the configuration for the Tunarr server.
+type TunarrConfig struct {
+	// URL is the base URL of the Tunarr server.
+	URL string `yaml:"url" mapstructure:"url"`
 }
 
 // JellyfinConfig holds the configuration for the Jellyfin server.
@@ -515,12 +525,19 @@ func validateConfig(c *Config) error {
 			return fmt.Errorf("jellystat API key is required when jellystat is configured")
 		}
 	}
+
 	if c.Streamystats != nil {
 		if c.Streamystats.URL == "" {
 			return fmt.Errorf("streamystats URL is required when streamystats is configured")
 		}
 		if c.Streamystats.ServerID == 0 {
 			return fmt.Errorf("streamystats server ID is required when streamystats is configured")
+		}
+	}
+
+	if c.Tunarr != nil {
+		if c.Tunarr.URL == "" {
+			return fmt.Errorf("tunarr URL is required when tunarr is configured")
 		}
 	}
 
@@ -557,6 +574,10 @@ func sanitizeConfig(c *Config) {
 
 	if c.Streamystats != nil {
 		c.Streamystats.URL = urlSanitize(c.Streamystats.URL)
+	}
+
+	if c.Tunarr != nil {
+		c.Tunarr.URL = urlSanitize(c.Tunarr.URL)
 	}
 
 	if c.ServerURL != "" {
