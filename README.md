@@ -328,8 +328,9 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_LISTEN` | `0.0.0.0:3002` | Address and port for the web interface |
 | `JELLYSWEEP_CLEANUP_SCHEDULE` | `0 */12 * * *` | Cron schedule for cleanup runs |
 | `JELLYSWEEP_CLEANUP_MODE` | `all` | Cleanup mode: `all`, `keep_episodes`, or `keep_seasons` |
-| `JELLYSWEEP_KEEP_COUNT` | `5` | Number of episodes/seasons to keep (when using `keep_episodes` or `keep_seasons` mode) |
-| `JELLYSWEEP_DRY_RUN` | `false` | Run in dry-run mode (no actual deletions) |
+| `JELLYSWEEP_KEEP_COUNT` | `1` | Number of episodes/seasons to keep (when using `keep_episodes` or `keep_seasons` mode) |
+| `JELLYSWEEP_DRY_RUN` | `true` | Run in dry-run mode (no actual deletions) |
+| `JELLYSWEEP_API_KEY` | *(optional)* | API key for the Jellysweep server (used by the Jellyfin plugin) |
 | `JELLYSWEEP_SESSION_KEY` | *(required)* | Random string for session encryption (`openssl rand -base64 32`) |
 | `JELLYSWEEP_SESSION_MAX_AGE` | `172800` | Session maximum age in seconds (48 hours) |
 | `JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the Jellysweep server |
@@ -375,10 +376,11 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_WEBPUSH_PRIVATE_KEY` | *(required if webpush enabled)* | VAPID private key |
 | **Default Library Settings** | | |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_ENABLED` | `true` | Enable cleanup for default library |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_CONTENT_AGE_THRESHOLD` | `120` | Min age in days for content to be eligible |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_LAST_STREAM_THRESHOLD` | `90` | Min days since last stream for cleanup |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_CONTENT_SIZE_THRESHOLD` | `0` | Min size in bytes for content to be eligible (0 = no minimum) |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_FILTER_CONTENT_AGE_THRESHOLD` | `30` | Min age in days for content to be eligible |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_FILTER_LAST_STREAM_THRESHOLD` | `30` | Min days since last stream for cleanup |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_FILTER_CONTENT_SIZE_THRESHOLD` | `0` | Min size in bytes for content to be eligible (0 = no minimum) |
 | `JELLYSWEEP_LIBRARIES_DEFAULT_CLEANUP_DELAY` | `30` | Days before deletion after marking |
+| `JELLYSWEEP_LIBRARIES_DEFAULT_PROTECTION_PERIOD` | `90` | Days to protect media after accepting a keep request |
 | **External Services** | | |
 | `JELLYSWEEP_JELLYSEERR_URL` | *(required)* | Jellyseerr server URL |
 | `JELLYSWEEP_JELLYSEERR_API_KEY` | *(required)* | Jellyseerr API key |
@@ -413,6 +415,7 @@ listen: "0.0.0.0:3002"           # Web interface address and port
 cleanup_schedule: "0 */12 * * *" # Every 12 hours
 cleanup_mode: "keep_seasons"     # Cleanup mode: "all", "keep_episodes", or "keep_seasons"
 keep_count: 1                    # Number of episodes/seasons to keep (when using keep_episodes or keep_seasons)
+api_key: ""                      # Optional: API key for Jellyfin plugin integration
 session_key: "your-session-key"  # Random string for session encryption
 session_max_age: 172800          # Session max age in seconds (48 hours)
 server_url: "http://localhost:3002"
@@ -457,14 +460,17 @@ libraries:
 
   "Movies":
     enabled: true
-    content_age_threshold: 120
-    last_stream_threshold: 90
-    content_size_threshold: 1073741824  # 1GB minimum
     cleanup_delay: 60
-    exclude_tags:
-      - "jellysweep-exclude"
-      - "keep"
-      - "favorites"
+    protection_period: 90         # Protect requested content for 90 days
+    # Filter configuration
+    filter:
+      content_age_threshold: 120        # Content must be at least 120 days old
+      last_stream_threshold: 90         # Last watched at least 90 days ago
+      content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
+      exclude_tags:
+        - "jellysweep-exclude"
+        - "keep"
+        - "favorites"
     # Disk usage-based cleanup for movies
     disk_usage_thresholds:
       - usage_percent: 70.0       # When disk usage reaches 70%
@@ -478,14 +484,17 @@ libraries:
 
   "TV Shows":
     enabled: true
-    content_age_threshold: 120
-    last_stream_threshold: 90
-    content_size_threshold: 2147483648  # 2GB minimum
     cleanup_delay: 60
-    exclude_tags:
-      - "jellysweep-exclude"
-      - "ongoing"
-      - "keep"
+    protection_period: 90
+    # Filter configuration
+    filter:
+      content_age_threshold: 120
+      last_stream_threshold: 90
+      content_size_threshold: 2147483648  # 2GB minimum
+      exclude_tags:
+        - "jellysweep-exclude"
+        - "ongoing"
+        - "keep"
     # Disk usage-based cleanup for TV shows
     disk_usage_thresholds:
       - usage_percent: 70.0

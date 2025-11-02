@@ -1,21 +1,41 @@
-package engine
+package seriesfilter
 
 import (
+	"context"
+
 	"github.com/charmbracelet/log"
-	sonarr "github.com/devopsarr/sonarr-go/sonarr"
+	"github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
+	"github.com/jon4hz/jellysweep/internal/filter"
 )
 
-// filterSeriesAlreadyMeetingKeepCriteria filters out series that already meet the keep criteria.
-func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria(mediaItems []arr.MediaItem) []arr.MediaItem {
-	cleanupMode := e.cfg.GetCleanupMode()
-	keepCount := e.cfg.GetKeepCount()
+// Filter implements the filter.Filterer interface.
+type Filter struct {
+	cfg *config.Config
+}
+
+var _ filter.Filterer = (*Filter)(nil)
+
+// New creates a new series Filter instance.
+func New(cfg *config.Config) *Filter {
+	return &Filter{
+		cfg: cfg,
+	}
+}
+
+// String returns the name of the filter.
+func (f *Filter) String() string { return "Series Filter" }
+
+// Apply filters media items based on series-specific keep criteria.
+func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
+	cleanupMode := f.cfg.GetCleanupMode()
+	keepCount := f.cfg.GetKeepCount()
 
 	// If cleanup mode is "all", no filtering needed
 	if cleanupMode == config.CleanupModeAll {
-		return mediaItems
+		return mediaItems, nil
 	}
 
 	skippedCount := 0
@@ -27,7 +47,7 @@ func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria(mediaItems []arr.MediaIt
 			continue
 		}
 
-		if e.shouldSkipSeriesForDeletion(item.SeriesResource, cleanupMode, keepCount) {
+		if f.shouldSkipSeriesForDeletion(item.SeriesResource, cleanupMode, keepCount) {
 			log.Debugf("Excluded series %s - already meets keep criteria (%s: %d)", item.Title, cleanupMode, keepCount)
 			skippedCount++
 		} else {
@@ -40,11 +60,11 @@ func (e *Engine) filterSeriesAlreadyMeetingKeepCriteria(mediaItems []arr.MediaIt
 		log.Infof("Total filtered out: %d series that already meet keep criteria", skippedCount)
 	}
 
-	return filteredItems
+	return filteredItems, nil
 }
 
 // shouldSkipSeriesForDeletion checks if a series already meets the keep criteria and should not be marked for deletion.
-func (e *Engine) shouldSkipSeriesForDeletion(series sonarr.SeriesResource, cleanupMode config.CleanupMode, keepCount int) bool {
+func (f *Filter) shouldSkipSeriesForDeletion(series sonarr.SeriesResource, cleanupMode config.CleanupMode, keepCount int) bool {
 	if cleanupMode == config.CleanupModeAll {
 		// For "all" mode, we always want to delete the entire series, so never skip
 		return false
