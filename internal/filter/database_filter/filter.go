@@ -1,4 +1,4 @@
-package engine
+package databasefilter
 
 import (
 	"context"
@@ -7,12 +7,31 @@ import (
 	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/internal/database"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
+	"github.com/jon4hz/jellysweep/internal/filter"
 )
 
-func (e *Engine) filterAlreadyMarkedForDeletion(mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
+// Filter implements the filter.Filterer interface.
+type Filter struct {
+	db database.MediaDB
+}
+
+var _ filter.Filterer = (*Filter)(nil)
+
+// New creates a new database Filter instance.
+func New(db database.MediaDB) *Filter {
+	return &Filter{
+		db: db,
+	}
+}
+
+// String returns the name of the filter.
+func (f *Filter) String() string { return "Database Filter" }
+
+// Apply filters out media items that are already marked for deletion in the database.
+func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
 	filteredItems := make([]arr.MediaItem, 0)
 
-	dbItems, err := e.db.GetMediaItems(context.Background(), true)
+	dbItems, err := f.db.GetMediaItems(ctx, true)
 	if err != nil {
 		return nil, err
 	}

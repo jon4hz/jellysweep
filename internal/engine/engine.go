@@ -21,6 +21,13 @@ import (
 	"github.com/jon4hz/jellysweep/internal/engine/stats"
 	"github.com/jon4hz/jellysweep/internal/engine/stats/jellystat"
 	"github.com/jon4hz/jellysweep/internal/engine/stats/streamystats"
+	"github.com/jon4hz/jellysweep/internal/filter"
+	agefilter "github.com/jon4hz/jellysweep/internal/filter/age_filter"
+	databasefilter "github.com/jon4hz/jellysweep/internal/filter/database_filter"
+	seriesfilter "github.com/jon4hz/jellysweep/internal/filter/series_filter"
+	sizefilter "github.com/jon4hz/jellysweep/internal/filter/size_filter"
+	streamfilter "github.com/jon4hz/jellysweep/internal/filter/stream_filter"
+	tagsfilter "github.com/jon4hz/jellysweep/internal/filter/tags_filter"
 	"github.com/jon4hz/jellysweep/internal/notify/email"
 	"github.com/jon4hz/jellysweep/internal/notify/ntfy"
 	"github.com/jon4hz/jellysweep/internal/notify/webpush"
@@ -44,6 +51,7 @@ var (
 type Engine struct {
 	cfg        *config.Config
 	db         database.DB
+	filters    *filter.Filter
 	policy     *policy.Engine
 	jellyfin   *jellyfin.Client
 	stats      stats.Statser
@@ -114,6 +122,15 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		log.Warn("Radarr configuration is missing, some features will be disabled")
 	}
 
+	filters := filter.New(
+		databasefilter.New(db),
+		seriesfilter.New(cfg),
+		tagsfilter.New(cfg),
+		sizefilter.New(cfg),
+		agefilter.New(cfg, db, sonarrClient, radarrClient),
+		streamfilter.New(cfg, statsClient),
+	)
+
 	var jellyseerrClient *jellyseerr.Client
 	if cfg.Jellyseerr != nil {
 		jellyseerrClient = jellyseerr.New(cfg.Jellyseerr)
@@ -149,6 +166,7 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		cfg:                cfg,
 		db:                 db,
 		initialDBMigration: initialDBMigration,
+		filters:            filters,
 		policy:             policy.NewEngine(),
 		jellyfin:           jellyfinClient,
 		stats:              statsClient,
@@ -366,40 +384,8 @@ func (e *Engine) markForDeletion(ctx context.Context) error {
 	}
 	log.Info("Media items gathered successfully")
 
-	// Filter out items that are already marked for deletion in the database
-	log.Info("Filtering out items already marked for deletion in the database")
-	mediaItems, err = e.filterAlreadyMarkedForDeletion(mediaItems)
+	mediaItems, err = e.filters.ApplyAll(ctx, mediaItems)
 	if err != nil {
-		log.Errorf("failed to filter already marked for deletion: %v", err)
-		return err
-	}
-
-	// Filter out series that already meet the keep criteria (if cleanup mode is set to keep episodes or seasons)
-	log.Info("Filtering series that already meet keep criteria")
-	mediaItems = e.filterSeriesAlreadyMeetingKeepCriteria(mediaItems)
-
-	// Filter media items based on tags
-	log.Info("Filtering media items based on tags")
-	mediaItems = e.filterMediaTags(mediaItems)
-
-	log.Info("Checking content age")
-	mediaItems, err = e.filterContentAgeThreshold(ctx, mediaItems)
-	if err != nil {
-		log.Errorf("failed to filter content age threshold: %v", err)
-		return err
-	}
-
-	log.Info("Checking content size")
-	mediaItems, err = e.filterContentSizeThreshold(ctx, mediaItems)
-	if err != nil {
-		log.Errorf("failed to filter content size threshold: %v", err)
-		return err
-	}
-
-	log.Info("Checking for streaming history")
-	mediaItems, err = e.filterLastStreamThreshold(ctx, mediaItems)
-	if err != nil {
-		log.Errorf("failed to filter last stream threshold: %v", err)
 		return err
 	}
 

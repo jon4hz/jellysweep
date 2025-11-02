@@ -1,4 +1,4 @@
-package engine
+package sizefilter
 
 import (
 	"context"
@@ -6,19 +6,30 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/dustin/go-humanize"
 	"github.com/jon4hz/jellysweep/internal/api/models"
+	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
+	"github.com/jon4hz/jellysweep/internal/filter"
 )
 
-// safeUint64 safely converts int64 to uint64, returning 0 for negative values.
-func safeUint64(value int64) uint64 {
-	if value < 0 {
-		return 0
-	}
-	return uint64(value)
+// Filter implements the filter.Filterer interface.
+type Filter struct {
+	cfg *config.Config
 }
 
-// filterContentSizeThreshold filters out media items that are smaller than the configured threshold.
-func (e *Engine) filterContentSizeThreshold(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
+var _ filter.Filterer = (*Filter)(nil)
+
+// New creates a new size Filter instance.
+func New(cfg *config.Config) *Filter {
+	return &Filter{
+		cfg: cfg,
+	}
+}
+
+// String returns the name of the filter.
+func (f *Filter) String() string { return "Size Filter" }
+
+// Apply filters media items based on size-specific keep criteria.
+func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
 	filteredItems := make([]arr.MediaItem, 0)
 	for _, item := range mediaItems {
 		select {
@@ -45,7 +56,7 @@ func (e *Engine) filterContentSizeThreshold(ctx context.Context, mediaItems []ar
 		}
 
 		// Check if the content size meets the configured threshold
-		libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
+		libraryConfig := f.cfg.GetLibraryConfig(item.LibraryName)
 		if libraryConfig != nil && libraryConfig.GetContentSizeThreshold() > 0 {
 			if fileSize >= libraryConfig.GetContentSizeThreshold() {
 				filteredItems = append(filteredItems, item)
@@ -67,4 +78,12 @@ func (e *Engine) filterContentSizeThreshold(ctx context.Context, mediaItems []ar
 	}
 
 	return filteredItems, nil
+}
+
+// safeUint64 safely converts int64 to uint64, returning 0 for negative values.
+func safeUint64(value int64) uint64 {
+	if value < 0 {
+		return 0
+	}
+	return uint64(value)
 }

@@ -1,4 +1,4 @@
-package engine
+package agefilter
 
 import (
 	"context"
@@ -6,24 +6,37 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/api/models"
+	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/database"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
+	"github.com/jon4hz/jellysweep/internal/filter"
 )
 
-// getMediaItemAddedDate returns the first date when media content was added/imported for a given media item.
-func (e *Engine) getMediaItemAddedDate(ctx context.Context, item arr.MediaItem, since time.Time) (*time.Time, error) {
-	switch item.MediaType {
-	case models.MediaTypeMovie:
-		return e.radarr.GetItemAddedDate(ctx, item.MovieResource.GetId(), since)
-	case models.MediaTypeTV:
-		return e.sonarr.GetItemAddedDate(ctx, item.SeriesResource.GetId(), since)
-	default:
-		return nil, nil
+// Filter implements the filter.Filterer interface.
+type Filter struct {
+	cfg    *config.Config
+	db     database.MediaDB
+	sonarr arr.Arrer
+	radarr arr.Arrer
+}
+
+var _ filter.Filterer = (*Filter)(nil)
+
+// New creates a new history Filter instance.
+func New(cfg *config.Config, db database.MediaDB, sonarr arr.Arrer, radarr arr.Arrer) *Filter {
+	return &Filter{
+		cfg:    cfg,
+		db:     db,
+		sonarr: sonarr,
+		radarr: radarr,
 	}
 }
 
-// filterContentAgeThreshold filters out media items that have been added within the configured threshold.
-func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
+// String returns the name of the filter.
+func (f *Filter) String() string { return "Age Filter" }
+
+// Apply filters out media items based on their deletion history.
+func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
 	filteredItems := make([]arr.MediaItem, 0)
 
 	for _, item := range mediaItems {
@@ -37,9 +50,9 @@ func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems []arr
 		var deletedMedia []database.Media
 		var err error
 		if item.TmdbId != 0 {
-			deletedMedia, err = e.db.GetDeletedMediaByTMDBID(ctx, item.TmdbId)
+			deletedMedia, err = f.db.GetDeletedMediaByTMDBID(ctx, item.TmdbId)
 		} else if item.TvdbId != 0 {
-			deletedMedia, err = e.db.GetDeletedMediaByTVDBID(ctx, item.TvdbId)
+			deletedMedia, err = f.db.GetDeletedMediaByTVDBID(ctx, item.TvdbId)
 		}
 		if err != nil {
 			log.Warn("Failed to check deleted media history", "title", item.Title, "error", err)
@@ -58,7 +71,7 @@ func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems []arr
 			log.Debug("Item was previously deleted", "title", item.Title, "last_deleted", lastDeleted)
 		}
 
-		addedDate, err := e.getMediaItemAddedDate(ctx, item, lastDeleted)
+		addedDate, err := f.getMediaItemAddedDate(ctx, item, lastDeleted)
 		if err != nil {
 			log.Errorf("Failed to get added date for item %s: %v", item.Title, err)
 			// If we can't get the added date, continue processing but mark for deletion
@@ -75,7 +88,7 @@ func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems []arr
 		}
 
 		// Check if the content has been added longer ago than the configured threshold
-		libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
+		libraryConfig := f.cfg.GetLibraryConfig(item.LibraryName)
 		if libraryConfig != nil {
 			contentAgeThreshold := time.Duration(libraryConfig.GetContentAgeThreshold()) * 24 * time.Hour
 			timeSinceAdded := time.Since(*addedDate)
@@ -96,4 +109,16 @@ func (e *Engine) filterContentAgeThreshold(ctx context.Context, mediaItems []arr
 	}
 
 	return filteredItems, nil
+}
+
+// getMediaItemAddedDate returns the first date when media content was added/imported for a given media item.
+func (f *Filter) getMediaItemAddedDate(ctx context.Context, item arr.MediaItem, since time.Time) (*time.Time, error) {
+	switch item.MediaType {
+	case models.MediaTypeMovie:
+		return f.radarr.GetItemAddedDate(ctx, item.MovieResource.GetId(), since)
+	case models.MediaTypeTV:
+		return f.sonarr.GetItemAddedDate(ctx, item.SeriesResource.GetId(), since)
+	default:
+		return nil, nil
+	}
 }
