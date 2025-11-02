@@ -180,7 +180,7 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		data: &data{
 			userNotifications: make(map[string][]arr.MediaItem),
 		},
-		imageCache: cache.NewImageCache("./data/cache/images"),
+		imageCache: cache.NewImageCache("./data/cache/images", db),
 		cache:      engineCache,
 	}
 

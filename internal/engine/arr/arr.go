@@ -3,8 +3,6 @@ package arr
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/devopsarr/radarr-go/radarr"
@@ -48,13 +46,3 @@ type JellyfinItem struct {
 }
 
 var ErrRequestAlreadyProcessed = errors.New("request already processed")
-
-// GetCachedImageURL converts a direct image URL to a cached URL.
-func GetCachedImageURL(imageURL string) string {
-	if imageURL == "" {
-		return ""
-	}
-	// Encode the original URL and return a cache endpoint URL
-	encoded := url.QueryEscape(imageURL)
-	return fmt.Sprintf("/api/images/cache?url=%s", encoded)
-}

@@ -13,18 +13,20 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/disintegration/imaging"
+	"github.com/jon4hz/jellysweep/internal/database"
 )
 
 type ImageCache struct {
 	cacheDir  string
 	client    *http.Client
+	db        database.MediaDB
 	maxWidth  int // Maximum width for scaled images
 	maxHeight int // Maximum height for scaled images
 	quality   int // JPEG quality (1-100)
 }
 
 // NewImageCache creates a new image cache manager with scaling options.
-func NewImageCache(cacheDir string) *ImageCache {
+func NewImageCache(cacheDir string, db database.MediaDB) *ImageCache {
 	// Create cache directory if it doesn't exist
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil { //nolint:gosec
 		log.Errorf("Failed to create cache directory: %v", err)
@@ -38,6 +40,7 @@ func NewImageCache(cacheDir string) *ImageCache {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		db: db,
 	}
 }
 
@@ -192,28 +195,30 @@ func (ic *ImageCache) GetCachedImageURL(imageURL string) string {
 }
 
 // ServeImage serves a cached image or downloads it if not cached.
-func (ic *ImageCache) ServeImage(ctx context.Context, imageURL string, w http.ResponseWriter, r *http.Request) error {
-	if imageURL == "" {
+func (ic *ImageCache) ServeImage(ctx context.Context, mediaID uint, w http.ResponseWriter, r *http.Request) error {
+	if mediaID == 0 {
 		http.NotFound(w, r)
 		return nil
 	}
 
-	cacheFilePath, err := ic.GetCachedImagePath(ctx, imageURL)
+	media, err := ic.db.GetMediaItemByID(ctx, mediaID)
+	if err != nil {
+		log.Errorf("Failed to get media item: %v", err)
+		http.NotFound(w, r)
+		return err
+	}
+
+	if media.PosterURL == "" {
+		http.NotFound(w, r)
+		return nil
+	}
+
+	cacheFilePath, err := ic.GetCachedImagePath(ctx, media.PosterURL)
 	if err != nil {
 		log.Errorf("Failed to get cached image: %v", err)
 		http.Error(w, "Failed to get image", http.StatusInternalServerError)
 		return err
 	}
-
-	/* 	// make sure the path is absolute. This should never be false because we hash the image URL from http request.
-	   	// But owasp and other scanners complain about possible relative paths.
-	   	if !filepath.IsAbs(imageURL) {
-	   		log.Errorf("Invalid image URL: %s", imageURL)
-	   		http.Error(w, "Invalid image URL", http.StatusBadRequest)
-	   		return fmt.Errorf("invalid image URL: %s", imageURL)
-	   	} */
-	// Doesnt work an breaks some url.
-	// TODO: maybe predownload all images when we get the sonarr items and then serve them from the cache?
 
 	// Open the cached file
 	file, err := os.Open(cacheFilePath)
