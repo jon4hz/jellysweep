@@ -36,6 +36,7 @@ templ AdminPanel(user *models.User, requestedMedia []models.AdminMediaItem, medi
 		@components.MediaGridScript()
 		@components.AdminKeepRequestGridScript()
 		@components.AdminMediaGridScript()
+		@components.UsersGridScript()
 		<!-- Include admin utility functions -->
 		@AdminUtilityScripts()
 		<script>
@@ -68,6 +69,7 @@ templ AdminTabs(requestedMedia []models.AdminMediaItem, mediaItems []models.Admi
 	@components.TabContainer("admin-tabs") {
 		@components.TabButton("approval-queue", "Approval Queue", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`, true)
 		@components.TabButton("keep-sweep", "Keep or Sweep", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path></svg>`, false)
+		@components.TabButton("users", "Users", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>`, false)
 	}
 	@components.TabContentContainer() {
 		@components.TabContent("approval-queue", true) {
@@ -75,6 +77,9 @@ templ AdminTabs(requestedMedia []models.AdminMediaItem, mediaItems []models.Admi
 		}
 		@components.TabContent("keep-sweep", false) {
 			@KeepSweepTab(mediaItems)
+		}
+		@components.TabContent("users", false) {
+			@UsersTab()
 		}
 	}
 }
@@ -97,6 +102,10 @@ templ KeepSweepTab(mediaItems []models.AdminMediaItem) {
 		<!-- Pass data to JavaScript -->
 		@templ.JSONScript("media-items-data", mediaItems)
 	}
+}
+
+templ UsersTab() {
+	@components.UsersGrid()
 }
 
 templ AdminEmptyState() {

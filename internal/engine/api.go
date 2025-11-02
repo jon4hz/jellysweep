@@ -22,30 +22,41 @@ func (e *Engine) GetEngineCache() *cache.EngineCache {
 }
 
 // RequestKeepMedia creates a new keep request for the specified media item in the database and sends a notification to admins.
-func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint, username string) error {
+// If the user has auto-approval permission, the request is automatically approved.
+// Returns true if the request was auto-approved, false otherwise.
+func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint, username string) (bool, error) {
+	// Fetch user from database to get current permissions
+	user, err := e.db.GetUserByID(ctx, userID)
+	if err != nil {
+		log.Errorf("failed to get user by ID: %v", err)
+		return false, err
+	}
+
+	hasAutoApproval := user.UserPermissions.HasAutoApproval
+
 	// Parse media ID to determine if it's a Sonarr or Radarr item
-	log.Debug("Requesting to keep media", "mediaID", mediaID, "userID", userID)
+	log.Debug("Requesting to keep media", "mediaID", mediaID, "userID", userID, "hasAutoApproval", hasAutoApproval)
 
 	media, err := e.db.GetMediaItemByID(ctx, mediaID)
 	if err != nil {
-		log.Errorf("failed to get user by username: %v", err)
-		return err
+		log.Errorf("failed to get media item by ID: %v", err)
+		return false, err
 	}
 
 	if media.Unkeepable {
 		log.Warn("Media is marked as unkeepable", "mediaID", mediaID, "type", media.MediaType, "title", media.Title)
-		return ErrUnkeepableMedia
+		return false, ErrUnkeepableMedia
 	}
 
 	if media.Request.ID != 0 {
 		log.Warn("Media already requested", "mediaID", mediaID, "type", media.MediaType, "title", media.Title)
-		return ErrRequestAlreadyProcessed
+		return false, ErrRequestAlreadyProcessed
 	}
 
 	_, err = e.db.CreateRequest(ctx, media.ID, userID)
 	if err != nil {
 		log.Errorf("failed to create keep request in database: %v", err)
-		return err
+		return false, err
 	}
 
 	// Create history event for request creation
@@ -53,14 +64,25 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint
 		log.Errorf("failed to create request created event for %s: %v", media.Title, err)
 	}
 
-	// Send ntfy notification if the tag was added successfully
+	// If user has auto-approval permission, automatically approve the request
+	if hasAutoApproval {
+		log.Info("Auto-approving keep request for user with auto-approval permission", "username", username, "mediaID", mediaID, "title", media.Title)
+		if err := e.HandleKeepRequest(ctx, userID, mediaID, true); err != nil {
+			log.Errorf("failed to auto-approve request: %v", err)
+			return false, err
+		}
+
+		return true, nil
+	}
+
+	// Send ntfy notification to admins if the request needs manual approval
 	if e.ntfy != nil {
 		if ntfyErr := e.ntfy.SendKeepRequest(ctx, media.Title, string(media.MediaType), username); ntfyErr != nil {
 			log.Errorf("Failed to send ntfy keep request notification: %v", ntfyErr)
 		}
 	}
 
-	return err
+	return false, nil
 }
 
 // HandleKeepRequest accepts or declines a keep request for the specified media item.
@@ -271,4 +293,14 @@ func (e *Engine) GetHistoryEvents(ctx context.Context, page, pageSize int, sortB
 // GetHistoryEventsByJellyfinID retrieves all history events for a specific Jellyfin ID.
 func (e *Engine) GetHistoryEventsByJellyfinID(ctx context.Context, jellyfinID string) ([]database.HistoryEvent, error) {
 	return e.db.GetHistoryEventsByJellyfinID(ctx, jellyfinID)
+}
+
+// GetAllUsers retrieves all users from the database.
+func (e *Engine) GetAllUsers(ctx context.Context) ([]database.User, error) {
+	return e.db.GetAllUsers(ctx)
+}
+
+// UpdateUserAutoApproval updates a user's auto-approval permission.
+func (e *Engine) UpdateUserAutoApproval(ctx context.Context, userID uint, hasAutoApproval bool) error {
+	return e.db.UpdateUserAutoApproval(ctx, userID, hasAutoApproval)
 }
