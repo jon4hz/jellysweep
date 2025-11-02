@@ -71,4 +71,6 @@ type UserDB interface {
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	GetUserByID(ctx context.Context, id uint) (*User, error)
 	GetOrCreateUser(ctx context.Context, username string) (*User, error)
+	GetAllUsers(ctx context.Context) ([]User, error)
+	UpdateUserAutoApproval(ctx context.Context, userID uint, hasAutoApproval bool) error
 }
