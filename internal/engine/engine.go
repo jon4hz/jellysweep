@@ -28,6 +28,7 @@ import (
 	sizefilter "github.com/jon4hz/jellysweep/internal/filter/size_filter"
 	streamfilter "github.com/jon4hz/jellysweep/internal/filter/stream_filter"
 	tagsfilter "github.com/jon4hz/jellysweep/internal/filter/tags_filter"
+	tunarrfilter "github.com/jon4hz/jellysweep/internal/filter/tunarr_filter"
 	"github.com/jon4hz/jellysweep/internal/notify/email"
 	"github.com/jon4hz/jellysweep/internal/notify/ntfy"
 	"github.com/jon4hz/jellysweep/internal/notify/webpush"
@@ -122,14 +123,25 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		log.Warn("Radarr configuration is missing, some features will be disabled")
 	}
 
-	filters := filter.New(
+	filterList := []filter.Filterer{
 		databasefilter.New(db),
 		seriesfilter.New(cfg),
 		tagsfilter.New(cfg),
 		sizefilter.New(cfg),
 		agefilter.New(cfg, db, sonarrClient, radarrClient),
 		streamfilter.New(cfg, statsClient),
-	)
+	}
+
+	if cfg.Tunarr != nil {
+		tunarrF, err := tunarrfilter.New(cfg)
+		if err != nil {
+			log.Warnf("Failed to create Tunarr filter: %v", err)
+		} else {
+			filterList = append(filterList, tunarrF)
+		}
+	}
+
+	filters := filter.New(filterList...)
 
 	var jellyseerrClient *jellyseerr.Client
 	if cfg.Jellyseerr != nil {
