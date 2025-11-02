@@ -52,13 +52,21 @@ func (p *OIDCProvider) RequireAuth() gin.HandlerFunc {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
 		if userID == nil {
-			c.Redirect(http.StatusFound, "/auth/oidc/login")
+			c.Redirect(http.StatusFound, "/login")
 			c.Abort()
 			return
 		}
+
+		userIDUint, ok := userID.(uint)
+		if !ok {
+			c.Redirect(http.StatusFound, "/login")
+			c.Abort()
+			return
+		}
+
 		// create user model from session data
 		user := &models.User{
-			ID:       userID.(uint),
+			ID:       userIDUint,
 			Email:    getSessionString(session, "user_email"),
 			Name:     getSessionString(session, "user_name"),
 			Username: getSessionString(session, "user_username"),

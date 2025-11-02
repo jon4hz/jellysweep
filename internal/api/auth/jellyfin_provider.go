@@ -118,9 +118,16 @@ func (p *JellyfinProvider) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
+		userIDUint, ok := userID.(uint)
+		if !ok {
+			c.Redirect(http.StatusFound, "/login")
+			c.Abort()
+			return
+		}
+
 		// create user model from session data
 		user := &models.User{
-			ID:       userID.(uint), // Jellyfin user ID is an integer
+			ID:       userIDUint,
 			Email:    getSessionString(session, "user_email"),
 			Name:     getSessionString(session, "user_name"),
 			Username: getSessionString(session, "user_username"),

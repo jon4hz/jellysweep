@@ -224,6 +224,47 @@ func (s *JellyfinProviderTestSuite) TestRequireAdmin_IsAdmin() {
 	assert.False(s.T(), c.IsAborted())
 }
 
+func (s *JellyfinProviderTestSuite) Test_UserID_NotUint() {
+
+	// Create a custom router for this test to properly handle sessions
+	router := gin.New()
+	store := cookie.NewStore([]byte("test-secret"))
+	router.Use(sessions.Sessions("mysession", store))
+
+	// First, create a route to set up the session with invalid user_id type
+	router.POST("/setup-session", func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Set("user_id", "not-a-uint") // Invalid type
+		session.Save()
+		c.JSON(http.StatusOK, gin.H{"success": true})
+	})
+
+	// Then create the protected route
+	router.GET("/protected", s.provider.RequireAuth(), func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"success": true})
+	})
+
+	// First request to set up session with invalid user_id
+	req1 := httptest.NewRequest("POST", "/setup-session", nil)
+	w1 := httptest.NewRecorder()
+	router.ServeHTTP(w1, req1)
+
+	// Extract cookies from the first response
+	cookies := w1.Result().Cookies()
+
+	// Second request to access protected route with invalid session
+	req2 := httptest.NewRequest("GET", "/protected", nil)
+	for _, cookie := range cookies {
+		req2.AddCookie(cookie)
+	}
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+
+	// Should redirect to login since user_id is not a valid uint
+	assert.Equal(s.T(), http.StatusFound, w2.Code)
+	assert.Equal(s.T(), "/login", w2.Header().Get("Location"))
+}
+
 func (s *JellyfinProviderTestSuite) TestRequireAdmin_InvalidUser() {
 	s.router.GET("/admin", s.provider.RequireAdmin(), func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": true})
