@@ -129,14 +129,14 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 
 // ImageCache serves cached images or downloads them if not cached.
 func (h *Handler) ImageCache(c *gin.Context) {
-	imageURL := c.Query("url")
-	if imageURL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "url parameter is required"})
+	mediaID, err := parseUintParam(c.Query("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or missing id parameter"})
 		return
 	}
 
 	// Serve the cached image
-	err := h.engine.GetImageCache().ServeImage(c.Request.Context(), imageURL, c.Writer, c.Request)
+	err = h.engine.GetImageCache().ServeImage(c.Request.Context(), mediaID, c.Writer, c.Request)
 	if err != nil {
 		// Error is already handled in ServeImage
 		return

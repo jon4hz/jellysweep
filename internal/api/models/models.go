@@ -24,7 +24,6 @@ type UserMediaItem struct {
 	ID              uint      `json:"ID"`
 	Title           string    `json:"Title"`
 	Year            int32     `json:"Year"`
-	PosterURL       string    `json:"PosterURL"`
 	MediaType       MediaType `json:"MediaType"`
 	LibraryName     string    `json:"LibraryName"`
 	FileSize        int64     `json:"FileSize"`
@@ -55,7 +54,6 @@ type AdminMediaItem struct {
 	TvdbId          *int32     `json:"TvdbId,omitempty"`
 	Year            int32      `json:"Year"`
 	FileSize        int64      `json:"FileSize"`
-	PosterURL       string     `json:"PosterURL"`
 	MediaType       MediaType  `json:"MediaType"`
 	RequestedBy     string     `json:"RequestedBy"`
 	DefaultDeleteAt time.Time  `json:"DefaultDeleteAt"`

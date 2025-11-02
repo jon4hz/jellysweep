@@ -415,8 +415,8 @@ func getAdminMediaUniqueTypes(items []models.AdminMediaItem) []models.MediaType 
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_1784`,
-		Function: `function __templ_AdminKeepRequestGridScript_1784(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_044b`,
+		Function: `function __templ_AdminKeepRequestGridScript_044b(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -463,7 +463,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 						type: request.MediaType,
 						year: request.Year,
 						library: request.LibraryName,
-						posterURL: request.PosterURL,
 						deletionTimestamp: deletionTimestamp,
 						canRequest: false, // Already requested
 						hasRequested: true, // By definition
@@ -524,8 +523,10 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			const deletionDate = new Date(item.deletionTimestamp);
 			const deletionTime = this.formatRelativeTime(deletionDate);
 
-			const posterImg = item.posterURL
-				? ` + "`" + `<img src="${item.posterURL}" class="w-full h-64 object-cover" loading="lazy"/>` + "`" + `
+			// Use image cache API endpoint
+			const posterUrl = item.id ? ` + "`" + `/api/images/cache?id=${item.id}` + "`" + ` : '';
+			const posterImg = posterUrl
+				? ` + "`" + `<img src="${posterUrl}" class="w-full h-64 object-cover" loading="lazy"/>` + "`" + `
 				: ` + "`" + `<div class="w-full h-64 bg-gray-700 flex items-center justify-center">
 					<svg class="w-16 h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
@@ -608,8 +609,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 					<div class="card">
 						<div class="flex items-center p-4 gap-4">
 							<div class="shrink-0">
-								${item.posterURL
-									? ` + "`" + `<img src="${item.posterURL}" alt="${item.title}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
+								${posterUrl
+									? ` + "`" + `<img src="${posterUrl}" alt="${item.title}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
 									: ` + "`" + `<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
 										<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
@@ -885,7 +886,6 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 					id: item.ID || item.id,
 					title: item.Title || item.title,
 					library: item.LibraryName || item.library,
-					posterURL: item.PosterURL || item.posterURL,
 					fileSize: parseInt(item.FileSize || item.fileSize || 0),
 					deletionTimestamp: deletionTimestamp,
 					hasRequested: !!(item.Request && item.Request.ID) || !!item.hasRequested, // Check if Request exists and has ID
@@ -944,15 +944,15 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_1784`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_1784`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_044b`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_044b`),
 	}
 }
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_9916`,
-		Function: `function __templ_AdminMediaGridScript_9916(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_0680`,
+		Function: `function __templ_AdminMediaGridScript_0680(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -996,7 +996,6 @@ func AdminMediaGridScript() templ.ComponentScript {
 					type: item.MediaType,
 					year: item.Year,
 					library: item.LibraryName,
-					posterURL: item.PosterURL,
 					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
 					fileSize: item.FileSize || 0,
 					hasRequested: !!(item.Request && item.Request.ID), // Check if Request exists and has ID
@@ -1066,8 +1065,10 @@ func AdminMediaGridScript() templ.ComponentScript {
 			const deletionDate = new Date(item.deletionTimestamp);
 			const relativeTime = this.formatRelativeTime(deletionDate);
 
-			const posterImg = item.posterURL
-				? ` + "`" + `<img src="${item.posterURL}" class="w-full h-64 object-cover" loading="lazy"/>` + "`" + `
+			// Use image cache API endpoint
+			const posterUrl = item.id ? ` + "`" + `/api/images/cache?id=${item.id}` + "`" + ` : '';
+			const posterImg = posterUrl
+				? ` + "`" + `<img src="${posterUrl}" class="w-full h-64 object-cover" loading="lazy"/>` + "`" + `
 				: ` + "`" + `<div class="w-full h-64 bg-gray-700 flex items-center justify-center">
 					<svg class="w-16 h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
@@ -1187,8 +1188,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 					<div class="card">
 						<div class="flex items-center p-4 gap-4">
 							<div class="shrink-0">
-								${item.posterURL
-									? ` + "`" + `<img src="${item.posterURL}" alt="${item.title}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
+								${posterUrl
+									? ` + "`" + `<img src="${posterUrl}" alt="${item.title}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
 									: ` + "`" + `<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
 										<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
@@ -1573,8 +1574,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_9916`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_9916`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_0680`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_0680`),
 	}
 }
 
