@@ -253,7 +253,7 @@ Jellysweep supports multiple authentication methods to secure your web interface
 
 - **Tested Providers**: Authentik
 
-Make sure to add a `group` claim to your OIDC token containing the group name specified in `admin_group` for admin access.
+Make sure to add a `group` claim to your OIDC token.
 
 **Configuration:**
 ```yaml
@@ -265,8 +265,21 @@ auth:
     client_id: "your-client-id"
     client_secret: "your-client-secret"
     redirect_url: "http://localhost:3002/auth/oidc/callback"
-    admin_group: "jellyfin-admins"  # Users in this group get admin access
+    admin_group: "jellyfin-admins"       # Users in this group get admin access
+    auto_approve_group: "vip-users"      # (Optional) Users in this group get automatic approval for keep requests
 ```
+
+**User Permissions:**
+
+- **Admin Access**: Users who are members of the `admin_group` will have full administrative privileges in Jellysweep.
+
+- **Auto-Approve Permission**: Users who are members of the `auto_approve_group` will have their keep requests automatically approved.
+
+  The auto-approve permission is synchronized with the OIDC group membership on each login. This means:
+  - When a user logs in and is in the `auto_approve_group`, they get auto-approve permission
+  - When a user logs in and is NOT in the `auto_approve_group`, they lose auto-approve permission
+  - Admins can still manually grant/revoke auto-approve permission via the admin panel, but it will be overwritten on the user's next login if `auto_approve_group` is configured
+
 
 ### Jellyfin Authentication
 
@@ -279,6 +292,10 @@ auth:
     enabled: true
     url: "http://localhost:8096"  # Your Jellyfin server URL
 ```
+
+> [!NOTE]
+> When using Jellyfin authentication, user permissions must be managed manually by admins through the web interface.
+
 
 ---
 
@@ -341,6 +358,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_AUTH_OIDC_CLIENT_SECRET` | *(required if OIDC enabled)* | OIDC client secret |
 | `JELLYSWEEP_AUTH_OIDC_REDIRECT_URL` | *(required if OIDC enabled)* | OIDC redirect URL |
 | `JELLYSWEEP_AUTH_OIDC_ADMIN_GROUP` | *(required if OIDC enabled)* | Group with admin privileges |
+| `JELLYSWEEP_AUTH_OIDC_AUTO_APPROVE_GROUP` | *(optional)* | Group with auto-approval permission for keep requests |
 | **Jellyfin Authentication** | | |
 | `JELLYSWEEP_AUTH_JELLYFIN_ENABLED` | `true` | Enable Jellyfin authentication |
 | **Profile Pictures** | | |
@@ -433,6 +451,7 @@ auth:
     client_secret: "your-client-secret"
     redirect_url: "http://localhost:3002/auth/oidc/callback"
     admin_group: "jellyfin-admins"     # OIDC group for admin access
+    auto_approve_group: "vip-users"    # (Optional) OIDC group for auto-approval of keep requests
 
   # Jellyfin Authentication
   jellyfin:
