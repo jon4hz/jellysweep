@@ -156,6 +156,10 @@ func (s *Server) setupAdminRoutes() {
 
 	// History endpoints
 	adminAPI.GET("/history", h.GetHistory)
+
+	// User management endpoints
+	adminAPI.GET("/users", h.GetAllUsers)
+	adminAPI.PUT("/users/:id/permissions", h.UpdateUserPermissions)
 }
 
 func (s *Server) setupPluginRoutes() error {

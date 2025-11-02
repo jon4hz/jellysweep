@@ -1,0 +1,203 @@
+package components
+
+templ UsersGrid() {
+	<div class="space-y-4">
+		<!-- Header with refresh button -->
+		<div class="flex justify-between items-center">
+			<h3 class="text-lg font-semibold text-gray-200">User Permissions</h3>
+			<button
+				id="users-refresh-btn"
+				class="inline-flex items-center px-3 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+			>
+				<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+				</svg>
+				Refresh
+			</button>
+		</div>
+		<!-- Users table -->
+		<div class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+			<table class="min-w-full divide-y divide-gray-700">
+				<thead class="bg-gray-750">
+					<tr>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+							Username
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+							Created At
+						</th>
+						<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+							Auto-Approval
+						</th>
+						<th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+							Actions
+						</th>
+					</tr>
+				</thead>
+				<tbody id="users-table-body" class="bg-gray-800 divide-y divide-gray-700">
+					<!-- Users will be inserted here by JavaScript -->
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+script UsersGridScript() {
+	// Initialize users grid manager
+	window.usersGridManager = {
+		users: [],
+
+		init: function() {
+			this.loadUsers();
+			this.setupEventListeners();
+		},
+
+		setupEventListeners: function() {
+			const refreshBtn = document.getElementById('users-refresh-btn');
+			if (refreshBtn) {
+				refreshBtn.addEventListener('click', () => this.loadUsers());
+			}
+		},
+
+		loadUsers: function() {
+			const refreshBtn = document.getElementById('users-refresh-btn');
+			const originalContent = refreshBtn ? window.setButtonLoading('users-refresh-btn', 'Loading...') : null;
+
+			window.makeApiRequestEnhanced('/admin/api/users', {
+				method: 'GET',
+				showProgress: true,
+				onProgress: function(status, error) {
+					if (status === 'error') {
+						console.error('Failed to load users:', error);
+						window.showToast('Failed to load users: ' + error.message, 'error');
+						if (originalContent && refreshBtn) {
+							window.restoreButton('users-refresh-btn', originalContent);
+						}
+					}
+				}
+			})
+			.then(data => {
+				if (data.success) {
+					this.users = data.users || [];
+					this.render();
+					if (originalContent && refreshBtn) {
+						window.restoreButton('users-refresh-btn', originalContent);
+					}
+				} else {
+					throw new Error(data.error || 'Failed to load users');
+				}
+			})
+			.catch(error => {
+				console.error('Error loading users:', error);
+				window.showToast('Failed to load users: ' + error.message, 'error');
+				if (originalContent && refreshBtn) {
+					window.restoreButton('users-refresh-btn', originalContent);
+				}
+			});
+		},
+
+		render: function() {
+			const tbody = document.getElementById('users-table-body');
+			if (!tbody) return;
+
+			if (this.users.length === 0) {
+				tbody.innerHTML = `
+					<tr>
+						<td colspan="4" class="px-6 py-8 text-center text-gray-400">
+							No users found
+						</td>
+					</tr>
+				`;
+				return;
+			}
+
+			tbody.innerHTML = this.users.map(user => this.renderUserRow(user)).join('');
+		},
+
+		renderUserRow: function(user) {
+			const hasAutoApproval = user.hasAutoApproval || false;
+			const badgeClass = hasAutoApproval ? 'bg-green-900 text-green-200' : 'bg-gray-700 text-gray-300';
+			const badgeText = hasAutoApproval ? 'Enabled' : 'Disabled';
+			const buttonClass = hasAutoApproval ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700';
+			const buttonText = hasAutoApproval ? 'Disable' : 'Enable';
+
+			return `
+				<tr id="user-row-${user.id}">
+					<td class="px-6 py-4 whitespace-nowrap">
+						<div class="text-sm font-medium text-gray-200">${this.escapeHtml(user.username)}</div>
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap">
+						<div class="text-sm text-gray-400">${this.escapeHtml(user.createdAt)}</div>
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap">
+						<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}">
+							${badgeText}
+						</span>
+					</td>
+					<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+						<button
+							id="toggle-permission-${user.id}"
+							onclick="window.usersGridManager.togglePermission(${user.id}, ${!hasAutoApproval})"
+							class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white ${buttonClass} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors duration-200"
+						>
+							${buttonText} Auto-Approval
+						</button>
+					</td>
+				</tr>
+			`;
+		},
+
+		togglePermission: function(userID, newValue) {
+			const buttonId = `toggle-permission-${userID}`;
+			const originalContent = window.setButtonLoading(buttonId, 'Updating...');
+			if (!originalContent) return;
+
+			window.makeApiRequestEnhanced(`/admin/api/users/${userID}/permissions`, {
+				method: 'PUT',
+				body: { hasAutoApproval: newValue },
+				showProgress: true,
+				onProgress: function(status, error) {
+					if (status === 'error') {
+						console.error('Failed to update permission:', error);
+						window.showToast('Failed to update permission: ' + error.message, 'error');
+						window.restoreButton(buttonId, originalContent);
+					}
+				}
+			})
+			.then(data => {
+				if (data.success) {
+					window.showToast('Permission updated successfully', 'success');
+					// Update the user in our local data
+					const user = this.users.find(u => u.id === userID);
+					if (user) {
+						user.hasAutoApproval = newValue;
+					}
+					// Re-render to update the UI
+					this.render();
+				} else {
+					throw new Error(data.error || 'Failed to update permission');
+				}
+			})
+			.catch(error => {
+				console.error('Error updating permission:', error);
+				window.showToast('Failed to update permission: ' + error.message, 'error');
+				window.restoreButton(buttonId, originalContent);
+			});
+		},
+
+		escapeHtml: function(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	};
+
+	// Initialize when DOM is ready
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', function() {
+			window.usersGridManager.init();
+		});
+	} else {
+		window.usersGridManager.init();
+	}
+}

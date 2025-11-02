@@ -282,13 +282,63 @@ script dashboardScripts() {
 		})
 		.then(data => {
 			if (data.success) {
-				window.setButtonSuccess(buttonId, 'Request Submitted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+				// Use the message from the API response
+				const message = data.message || 'Request submitted successfully';
+				window.showToast(message, 'success');
 
-				// Update button styling
-				button.classList.remove('btn-primary');
-				button.classList.add('btn-secondary', 'opacity-50', 'cursor-not-allowed');
+				// Check if request was auto-approved by looking at the message
+				const wasAutoApproved = message.includes('auto-approved') || message.includes('protected');
 
-				window.showToast('Request submitted successfully', 'success');
+				if (wasAutoApproved) {
+					// Auto-approved: Remove the card with animation
+					window.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+
+					// Find and remove the media card
+					const card = button.closest('.media-card');
+					if (card) {
+						// Animate the card removal
+						card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+						card.style.opacity = '0';
+						card.style.transform = 'translateX(20px)';
+
+						setTimeout(() => {
+							// Remove from grid manager if available
+							if (window.dashboardMediaGridManager && window.dashboardMediaGridManager.removeItem) {
+								// Convert mediaId to number for proper comparison with item IDs
+								const numericMediaId = parseInt(mediaId);
+								window.dashboardMediaGridManager.removeItem(numericMediaId).then(() => {
+									// Check if we need to show empty state after removal
+									const remainingItems = window.dashboardMediaGridManager.allItems || [];
+									if (remainingItems.length === 0) {
+										// Reload to show empty state
+										setTimeout(() => {
+											window.location.reload();
+										}, 500);
+									}
+								});
+							} else {
+								// Fallback: just remove the DOM element
+								card.remove();
+
+								// Check if we need to show empty state
+								const remainingCards = document.querySelectorAll('.media-card');
+								if (remainingCards.length === 0) {
+									// Reload to show empty state
+									setTimeout(() => {
+										window.location.reload();
+									}, 500);
+								}
+							}
+						}, 300);
+					}
+				} else {
+					// Manual approval needed: Update button to show request submitted
+					window.setButtonSuccess(buttonId, 'Request Submitted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+
+					// Update button styling
+					button.classList.remove('btn-primary');
+					button.classList.add('btn-secondary', 'opacity-50', 'cursor-not-allowed');
+				}
 			} else {
 				throw new Error(data.message || 'Unknown error');
 			}
