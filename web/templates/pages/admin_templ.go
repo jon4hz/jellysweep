@@ -132,7 +132,15 @@ func AdminPanel(user *models.User, requestedMedia []models.AdminMediaItem, media
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " <!-- Include admin utility functions --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = components.UsersGridScript().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " <!-- Include admin utility functions --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -140,7 +148,7 @@ func AdminPanel(user *models.User, requestedMedia []models.AdminMediaItem, media
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " <script>\n\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t\tinitializeTabs('admin-tabs');\n\t\t\t\tinitializeAdminGrids();\n\t\t\t});\n\n\t\t\tfunction initializeAdminGrids() {\n\t\t\t\t// Admin grids are now initialized automatically by their components\n\t\t\t\t// Just set up refresh handlers\n\t\t\t\tsetupRefreshHandlers();\n\t\t\t}\n\n\t\t\tfunction setupRefreshHandlers() {\n\t\t\t\t// Setup refresh button handlers\n\t\t\t\tdocument.addEventListener('click', function(event) {\n\t\t\t\t\tif (event.target.id === 'request-refresh-btn' || event.target.closest('#request-refresh-btn')) {\n\t\t\t\t\t\trefreshApprovalQueue();\n\t\t\t\t\t} else if (event.target.id === 'media-refresh-btn' || event.target.closest('#media-refresh-btn')) {\n\t\t\t\t\t\trefreshKeepSweepMedia();\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t}\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " <script>\n\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t\tinitializeTabs('admin-tabs');\n\t\t\t\tinitializeAdminGrids();\n\t\t\t});\n\n\t\t\tfunction initializeAdminGrids() {\n\t\t\t\t// Admin grids are now initialized automatically by their components\n\t\t\t\t// Just set up refresh handlers\n\t\t\t\tsetupRefreshHandlers();\n\t\t\t}\n\n\t\t\tfunction setupRefreshHandlers() {\n\t\t\t\t// Setup refresh button handlers\n\t\t\t\tdocument.addEventListener('click', function(event) {\n\t\t\t\t\tif (event.target.id === 'request-refresh-btn' || event.target.closest('#request-refresh-btn')) {\n\t\t\t\t\t\trefreshApprovalQueue();\n\t\t\t\t\t} else if (event.target.id === 'media-refresh-btn' || event.target.closest('#media-refresh-btn')) {\n\t\t\t\t\t\trefreshKeepSweepMedia();\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t}\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -191,11 +199,19 @@ func AdminTabs(requestedMedia []models.AdminMediaItem, mediaItems []models.Admin
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = components.TabButton("keep-sweep", "Keep or Sweep", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path></svg>`, false).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = components.TabButton("users", "Users", `<svg class="w-4 h-4 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>`, false).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -239,7 +255,7 @@ func AdminTabs(requestedMedia []models.AdminMediaItem, mediaItems []models.Admin
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -262,6 +278,32 @@ func AdminTabs(requestedMedia []models.AdminMediaItem, mediaItems []models.Admin
 				return nil
 			})
 			templ_7745c5c3_Err = components.TabContent("keep-sweep", false).Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Var9 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+				if !templ_7745c5c3_IsBuffer {
+					defer func() {
+						templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err == nil {
+							templ_7745c5c3_Err = templ_7745c5c3_BufErr
+						}
+					}()
+				}
+				ctx = templ.InitializeContext(ctx)
+				templ_7745c5c3_Err = UsersTab().Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				return nil
+			})
+			templ_7745c5c3_Err = components.TabContent("users", false).Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -291,9 +333,9 @@ func ApprovalQueueTab(requestedMedia []models.AdminMediaItem) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var9 == nil {
-			templ_7745c5c3_Var9 = templ.NopComponent
+		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var10 == nil {
+			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(requestedMedia) == 0 {
@@ -306,7 +348,7 @@ func ApprovalQueueTab(requestedMedia []models.AdminMediaItem) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, " <!-- Pass data to JavaScript --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, " <!-- Pass data to JavaScript --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -335,9 +377,9 @@ func KeepSweepTab(mediaItems []models.AdminMediaItem) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var10 == nil {
-			templ_7745c5c3_Var10 = templ.NopComponent
+		templ_7745c5c3_Var11 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var11 == nil {
+			templ_7745c5c3_Var11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(mediaItems) == 0 {
@@ -350,7 +392,7 @@ func KeepSweepTab(mediaItems []models.AdminMediaItem) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " <!-- Pass data to JavaScript --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, " <!-- Pass data to JavaScript --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -358,6 +400,35 @@ func KeepSweepTab(mediaItems []models.AdminMediaItem) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+		}
+		return nil
+	})
+}
+
+func UsersTab() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var12 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var12 == nil {
+			templ_7745c5c3_Var12 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = components.UsersGrid().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
 		return nil
 	})
@@ -379,12 +450,12 @@ func AdminEmptyState() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var11 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var11 == nil {
-			templ_7745c5c3_Var11 = templ.NopComponent
+		templ_7745c5c3_Var13 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var13 == nil {
+			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"text-center py-12\"><div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\"><svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg></div><h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No pending keep requests</h3><p class=\"text-gray-500 mb-6\">All keep requests have been processed. Check back later for new requests.</p><button id=\"request-refresh-btn\" class=\"inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"text-center py-12\"><div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\"><svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg></div><h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No pending keep requests</h3><p class=\"text-gray-500 mb-6\">All keep requests have been processed. Check back later for new requests.</p><button id=\"request-refresh-btn\" class=\"inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -408,12 +479,12 @@ func KeepSweepEmptyState() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var12 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var12 == nil {
-			templ_7745c5c3_Var12 = templ.NopComponent
+		templ_7745c5c3_Var14 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var14 == nil {
+			templ_7745c5c3_Var14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"text-center py-12\"><div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\"><svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg></div><h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No media available for review</h3><p class=\"text-gray-500 mb-6\">All media has been reviewed or there are no items available for keep/delete decisions.</p><button id=\"media-refresh-btn\" class=\"inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"text-center py-12\"><div class=\"mx-auto w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6\"><svg class=\"w-12 h-12 text-gray-600\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg></div><h3 class=\"text-xl font-semibold text-gray-300 mb-2\">No media available for review</h3><p class=\"text-gray-500 mb-6\">All media has been reviewed or there are no items available for keep/delete decisions.</p><button id=\"media-refresh-btn\" class=\"inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200\"><svg class=\"w-4 h-4 mr-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15\"></path></svg> Refresh</button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -437,12 +508,12 @@ func AdminUtilityScripts() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var13 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var13 == nil {
-			templ_7745c5c3_Var13 = templ.NopComponent
+		templ_7745c5c3_Var15 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var15 == nil {
+			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<script>\n\t\t// Define all admin action functions and expose them globally\n\t\twindow.acceptKeepRequest = function(mediaID) {\n\t\t\tconst buttonId = 'accept-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/keep-requests/' + mediaID + '/accept', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Accept Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to accept request: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Accepted', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>');\n\t\t\t\t\tupdatePendingCount(-1);\n\t\t\t\t\twindow.showToast('Keep request accepted successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to accept request: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.declineKeepRequest = function(mediaID) {\n\t\t\tconst buttonId = 'decline-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/keep-requests/' + mediaID + '/decline', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Decline Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to decline request: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Declined', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path>');\n\t\t\t\t\tupdatePendingCount(-1);\n\t\t\t\t\twindow.showToast('Keep request declined successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to decline request: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.markAsKeep = function(mediaID) {\n\t\t\tconst buttonId = 'keep-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/media/' + mediaID + '/keep', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Keep Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to mark as keep: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Kept', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>');\n\t\t\t\t\twindow.showToast('Media marked as keep successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to mark as keep: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.markAsDelete = function(mediaID) {\n\t\t\tconst buttonId = 'delete-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/media/' + mediaID + '/delete', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Delete Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to mark for deletion: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Deleted', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>');\n\t\t\t\t\twindow.showToast('Media marked for deletion successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to mark for deletion: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.markAsKeepForever = function(mediaID) {\n\t\t\tconst buttonId = 'keep-forever-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequest('/admin/api/media/' + mediaID + '/keep-forever')\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z\"></path>');\n\t\t\t\t\twindow.showToast('Media protected forever successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to protect media: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\t// Utility functions\n\t\tfunction refreshApprovalQueue() {\n\t\t\tconst buttonId = 'request-refresh-btn';\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Refreshing...');\n\t\t\tif (!originalContent) return;\n\n\t\t\t// Use the consistent API approach - /admin/api/keep-requests to get fresh data\n\t\t\twindow.makeApiRequestEnhanced('/admin/api/keep-requests', {\n\t\t\t\tmethod: 'GET',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Queue Refresh Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to refresh queue: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\tconst hasItemsNow = data.keepRequests && data.keepRequests.length > 0;\n\t\t\t\t\tconst hadItemsBefore = window.adminKeepRequestGridManager && window.adminKeepRequestGridManager.getItems && window.adminKeepRequestGridManager.getItems().length > 0;\n\n\t\t\t\t\t// If we're transitioning from empty to having items, or vice versa, reload the page\n\t\t\t\t\tif (hasItemsNow !== hadItemsBefore) {\n\t\t\t\t\t\twindow.showToast('Queue refreshed successfully - reloading page', 'success');\n\t\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\t\twindow.location.reload();\n\t\t\t\t\t\t}, 1000);\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\t// Update the grid with new data\n\t\t\t\t\tif (window.adminKeepRequestGridManager && window.adminKeepRequestGridManager.setItems) {\n\t\t\t\t\t\twindow.adminKeepRequestGridManager.setItems(data.keepRequests);\n\t\t\t\t\t\twindow.adminKeepRequestGridManager.refresh();\n\t\t\t\t\t}\n\n\t\t\t\t\twindow.showToast('Queue refreshed successfully', 'success');\n\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.message || 'Failed to refresh queue');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to refresh queue: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t});\n\t\t}\n\n\t\tfunction refreshKeepSweepMedia() {\n\t\t\tconst buttonId = 'media-refresh-btn';\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Refreshing...');\n\t\t\tif (!originalContent) return;\n\n\t\t\t// Use the consistent API approach - /admin/api/media with refresh=true parameter\n\t\t\twindow.makeApiRequestEnhanced('/admin/api/media?refresh=true', {\n\t\t\t\tmethod: 'GET',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Media Refresh Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to refresh media: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\tconst hasItemsNow = data.mediaItems && data.mediaItems.length > 0;\n\t\t\t\t\tconst hadItemsBefore = window.adminMediaGridManager && window.adminMediaGridManager.getItems && window.adminMediaGridManager.getItems().length > 0;\n\n\t\t\t\t\t// If we're transitioning from empty to having items, or vice versa, reload the page\n\t\t\t\t\tif (hasItemsNow !== hadItemsBefore) {\n\t\t\t\t\t\twindow.showToast('Media refreshed successfully - reloading page', 'success');\n\t\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\t\twindow.location.reload();\n\t\t\t\t\t\t}, 1000);\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\t// Update the grid with new data\n\t\t\t\t\tif (window.adminMediaGridManager && window.adminMediaGridManager.setItems) {\n\t\t\t\t\t\twindow.adminMediaGridManager.setItems(data.mediaItems);\n\t\t\t\t\t\twindow.adminMediaGridManager.refresh();\n\t\t\t\t\t}\n\n\t\t\t\t\twindow.showToast('Media refreshed successfully', 'success');\n\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.message || 'Failed to refresh media');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to refresh media: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t});\n\t\t}\n\n\t\tfunction updatePendingCount(delta) {\n\t\t\tconst badge = document.querySelector('.bg-blue-900.text-blue-200');\n\t\t\tif (badge) {\n\t\t\t\tconst currentText = badge.textContent.trim();\n\t\t\t\tconst currentCount = parseInt(currentText.match(/\\d+/)[0]);\n\t\t\t\tconst newCount = Math.max(0, currentCount + delta);\n\t\t\t\tbadge.textContent = newCount + ' pending requests';\n\t\t\t}\n\t\t}\n\n\t\tfunction animateCardRemoval(cardElement, direction = 'right') {\n\t\t\tif (!cardElement) return Promise.resolve();\n\n\t\t\treturn new Promise((resolve) => {\n\t\t\t\tconst translateX = direction === 'right' ? '20px' : '-20px';\n\t\t\t\tcardElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';\n\t\t\t\tcardElement.style.opacity = '0';\n\t\t\t\tcardElement.style.transform = `translateX(${translateX})`;\n\n\t\t\t\tsetTimeout(() => {\n\t\t\t\t\tcardElement.remove();\n\t\t\t\t\tresolve();\n\t\t\t\t}, 300);\n\t\t\t});\n\t\t}\n\n\t\t// Legacy function for backward compatibility (not used by grid managers)\n\t\tfunction removeCardFromGrid(cardId) {\n\t\t\tconst card = document.getElementById(cardId);\n\t\t\tif (card) {\n\t\t\t\t// Fallback to simple animation for any legacy calls\n\t\t\t\tanimateCardRemoval(card);\n\t\t\t}\n\t\t}\n\n\t\t// Expose utility functions globally if needed\n\t\twindow.refreshApprovalQueue = refreshApprovalQueue;\n\t\twindow.refreshKeepSweepMedia = refreshKeepSweepMedia;\n\t\twindow.updatePendingCount = updatePendingCount;\n\t\twindow.removeCardFromGrid = removeCardFromGrid;\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<script>\n\t\t// Define all admin action functions and expose them globally\n\t\twindow.acceptKeepRequest = function(mediaID) {\n\t\t\tconst buttonId = 'accept-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/keep-requests/' + mediaID + '/accept', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Accept Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to accept request: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Accepted', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>');\n\t\t\t\t\tupdatePendingCount(-1);\n\t\t\t\t\twindow.showToast('Keep request accepted successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to accept request: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.declineKeepRequest = function(mediaID) {\n\t\t\tconst buttonId = 'decline-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/keep-requests/' + mediaID + '/decline', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Decline Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to decline request: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Declined', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path>');\n\t\t\t\t\tupdatePendingCount(-1);\n\t\t\t\t\twindow.showToast('Keep request declined successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to decline request: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.markAsKeep = function(mediaID) {\n\t\t\tconst buttonId = 'keep-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/media/' + mediaID + '/keep', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Keep Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to mark as keep: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Kept', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>');\n\t\t\t\t\twindow.showToast('Media marked as keep successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to mark as keep: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.markAsDelete = function(mediaID) {\n\t\t\tconst buttonId = 'delete-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequestEnhanced('/admin/api/media/' + mediaID + '/delete', {\n\t\t\t\tmethod: 'POST',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Delete Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to mark for deletion: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Deleted', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 13l4 4L19 7\"></path>');\n\t\t\t\t\twindow.showToast('Media marked for deletion successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to mark for deletion: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\twindow.markAsKeepForever = function(mediaID) {\n\t\t\tconst buttonId = 'keep-forever-' + mediaID;\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Processing...');\n\t\t\tif (!originalContent) return Promise.reject(new Error('Button not found'));\n\n\t\t\treturn window.makeApiRequest('/admin/api/media/' + mediaID + '/keep-forever')\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\twindow.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z\"></path>');\n\t\t\t\t\twindow.showToast('Media protected forever successfully', 'success');\n\t\t\t\t\treturn data;\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.error || 'Unknown error');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to protect media: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\tthrow error;\n\t\t\t});\n\t\t};\n\n\t\t// Utility functions\n\t\tfunction refreshApprovalQueue() {\n\t\t\tconst buttonId = 'request-refresh-btn';\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Refreshing...');\n\t\t\tif (!originalContent) return;\n\n\t\t\t// Use the consistent API approach - /admin/api/keep-requests to get fresh data\n\t\t\twindow.makeApiRequestEnhanced('/admin/api/keep-requests', {\n\t\t\t\tmethod: 'GET',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Queue Refresh Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to refresh queue: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\tconst hasItemsNow = data.keepRequests && data.keepRequests.length > 0;\n\t\t\t\t\tconst hadItemsBefore = window.adminKeepRequestGridManager && window.adminKeepRequestGridManager.getItems && window.adminKeepRequestGridManager.getItems().length > 0;\n\n\t\t\t\t\t// If we're transitioning from empty to having items, or vice versa, reload the page\n\t\t\t\t\tif (hasItemsNow !== hadItemsBefore) {\n\t\t\t\t\t\twindow.showToast('Queue refreshed successfully - reloading page', 'success');\n\t\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\t\twindow.location.reload();\n\t\t\t\t\t\t}, 1000);\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\t// Update the grid with new data\n\t\t\t\t\tif (window.adminKeepRequestGridManager && window.adminKeepRequestGridManager.setItems) {\n\t\t\t\t\t\twindow.adminKeepRequestGridManager.setItems(data.keepRequests);\n\t\t\t\t\t\twindow.adminKeepRequestGridManager.refresh();\n\t\t\t\t\t}\n\n\t\t\t\t\twindow.showToast('Queue refreshed successfully', 'success');\n\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.message || 'Failed to refresh queue');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to refresh queue: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t});\n\t\t}\n\n\t\tfunction refreshKeepSweepMedia() {\n\t\t\tconst buttonId = 'media-refresh-btn';\n\t\t\tconst originalContent = window.setButtonLoading(buttonId, 'Refreshing...');\n\t\t\tif (!originalContent) return;\n\n\t\t\t// Use the consistent API approach - /admin/api/media with refresh=true parameter\n\t\t\twindow.makeApiRequestEnhanced('/admin/api/media?refresh=true', {\n\t\t\t\tmethod: 'GET',\n\t\t\t\tshowProgress: true,\n\t\t\t\tonProgress: function(status, error) {\n\t\t\t\t\tif (status === 'error') {\n\t\t\t\t\t\tconsole.error('Media Refresh Error:', error);\n\t\t\t\t\t\twindow.showToast('Failed to refresh media: ' + error.message, 'error');\n\t\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t})\n\t\t\t.then(data => {\n\t\t\t\tif (data.success) {\n\t\t\t\t\tconst hasItemsNow = data.mediaItems && data.mediaItems.length > 0;\n\t\t\t\t\tconst hadItemsBefore = window.adminMediaGridManager && window.adminMediaGridManager.getItems && window.adminMediaGridManager.getItems().length > 0;\n\n\t\t\t\t\t// If we're transitioning from empty to having items, or vice versa, reload the page\n\t\t\t\t\tif (hasItemsNow !== hadItemsBefore) {\n\t\t\t\t\t\twindow.showToast('Media refreshed successfully - reloading page', 'success');\n\t\t\t\t\t\tsetTimeout(() => {\n\t\t\t\t\t\t\twindow.location.reload();\n\t\t\t\t\t\t}, 1000);\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\t// Update the grid with new data\n\t\t\t\t\tif (window.adminMediaGridManager && window.adminMediaGridManager.setItems) {\n\t\t\t\t\t\twindow.adminMediaGridManager.setItems(data.mediaItems);\n\t\t\t\t\t\twindow.adminMediaGridManager.refresh();\n\t\t\t\t\t}\n\n\t\t\t\t\twindow.showToast('Media refreshed successfully', 'success');\n\t\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t\t} else {\n\t\t\t\t\tthrow new Error(data.message || 'Failed to refresh media');\n\t\t\t\t}\n\t\t\t})\n\t\t\t.catch(error => {\n\t\t\t\tconsole.error('Error:', error);\n\t\t\t\twindow.showToast('Failed to refresh media: ' + error.message, 'error');\n\t\t\t\twindow.restoreButton(buttonId, originalContent);\n\t\t\t});\n\t\t}\n\n\t\tfunction updatePendingCount(delta) {\n\t\t\tconst badge = document.querySelector('.bg-blue-900.text-blue-200');\n\t\t\tif (badge) {\n\t\t\t\tconst currentText = badge.textContent.trim();\n\t\t\t\tconst currentCount = parseInt(currentText.match(/\\d+/)[0]);\n\t\t\t\tconst newCount = Math.max(0, currentCount + delta);\n\t\t\t\tbadge.textContent = newCount + ' pending requests';\n\t\t\t}\n\t\t}\n\n\t\tfunction animateCardRemoval(cardElement, direction = 'right') {\n\t\t\tif (!cardElement) return Promise.resolve();\n\n\t\t\treturn new Promise((resolve) => {\n\t\t\t\tconst translateX = direction === 'right' ? '20px' : '-20px';\n\t\t\t\tcardElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';\n\t\t\t\tcardElement.style.opacity = '0';\n\t\t\t\tcardElement.style.transform = `translateX(${translateX})`;\n\n\t\t\t\tsetTimeout(() => {\n\t\t\t\t\tcardElement.remove();\n\t\t\t\t\tresolve();\n\t\t\t\t}, 300);\n\t\t\t});\n\t\t}\n\n\t\t// Legacy function for backward compatibility (not used by grid managers)\n\t\tfunction removeCardFromGrid(cardId) {\n\t\t\tconst card = document.getElementById(cardId);\n\t\t\tif (card) {\n\t\t\t\t// Fallback to simple animation for any legacy calls\n\t\t\t\tanimateCardRemoval(card);\n\t\t\t}\n\t\t}\n\n\t\t// Expose utility functions globally if needed\n\t\twindow.refreshApprovalQueue = refreshApprovalQueue;\n\t\twindow.refreshKeepSweepMedia = refreshKeepSweepMedia;\n\t\twindow.updatePendingCount = updatePendingCount;\n\t\twindow.removeCardFromGrid = removeCardFromGrid;\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

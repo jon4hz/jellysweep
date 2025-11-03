@@ -112,7 +112,7 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 		return
 	}
 
-	err = h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.ID, user.Username)
+	autoApproved, err := h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.ID, user.Username)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -121,9 +121,14 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 		return
 	}
 
+	message := "Keep request submitted successfully"
+	if autoApproved {
+		message = "Media protected successfully"
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Keep request submitted successfully",
+		"message": message,
 	})
 }
 
