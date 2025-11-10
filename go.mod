@@ -20,7 +20,7 @@ require (
 	github.com/gin-contrib/sessions v1.0.4
 	github.com/gin-gonic/gin v1.11.0
 	github.com/glebarez/sqlite v1.11.0
-	github.com/go-co-op/gocron/v2 v2.17.0
+	github.com/go-co-op/gocron/v2 v2.18.0
 	github.com/google/uuid v1.6.0
 	github.com/mergestat/timediff v0.0.4
 	github.com/patrickmn/go-cache v2.1.0+incompatible
