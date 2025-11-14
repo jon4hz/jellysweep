@@ -44,6 +44,6 @@ func (p *DefaultDelete) ShouldTriggerDeletion(_ context.Context, media database.
 	return time.Now().After(media.DefaultDeleteAt) && !media.DefaultDeleteAt.IsZero(), nil
 }
 
-func (p *DefaultDelete) GetDeletionAt(_ context.Context, media database.Media) (time.Time, error) {
+func (p *DefaultDelete) GetEstimatedDeleteAt(_ context.Context, media database.Media) (time.Time, error) {
 	return media.DefaultDeleteAt, nil
 }

@@ -16,7 +16,7 @@ func (e *Engine) runEstimateDeletionsJob(ctx context.Context) error {
 	}
 
 	for _, item := range mediaItems {
-		estimatedDeleteAt, err := e.policy.GetDeleteAt(ctx, item)
+		estimatedDeleteAt, err := e.policy.GetEstimatedDeleteAt(ctx, item)
 		if err != nil {
 			log.Error("failed to estimate delete at for media item", "itemID", item.ID, "error", err)
 			continue
