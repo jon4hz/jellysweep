@@ -100,7 +100,7 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media datab
 	return false, nil
 }
 
-func (p *DiskUsageDelete) GetDeletionAt(ctx context.Context, media database.Media) (time.Time, error) {
+func (p *DiskUsageDelete) GetEstimatedDeleteAt(ctx context.Context, media database.Media) (time.Time, error) {
 	if len(media.DiskUsageDeletePolicies) == 0 {
 		return time.Time{}, nil
 	}
