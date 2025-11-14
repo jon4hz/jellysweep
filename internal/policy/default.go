@@ -43,3 +43,7 @@ func (p *DefaultDelete) Apply(media *database.Media) error {
 func (p *DefaultDelete) ShouldTriggerDeletion(_ context.Context, media database.Media) (bool, error) {
 	return time.Now().After(media.DefaultDeleteAt) && !media.DefaultDeleteAt.IsZero(), nil
 }
+
+func (p *DefaultDelete) GetDeletionAt(_ context.Context, media database.Media) (time.Time, error) {
+	return media.DefaultDeleteAt, nil
+}
