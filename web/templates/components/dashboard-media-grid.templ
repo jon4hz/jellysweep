@@ -167,7 +167,7 @@ script DashboardMediaGridScript() {
 				type: item.MediaType, // database.Media uses MediaType field
 				year: item.Year,
 				library: item.LibraryName, // database.Media uses LibraryName field
-				deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+				deletionTimestamp: item.EstimatedDeleteAt ? new Date(item.EstimatedDeleteAt).getTime() : 0, // database.Media uses EstimatedDeleteAt
 				fileSize: item.FileSize || 0,
 				hasRequested: item.Request && item.Request.ID ? true : false, // Check if Request exists and has ID
 				canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
