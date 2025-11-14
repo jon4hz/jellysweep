@@ -21,14 +21,15 @@ const (
 
 // UserMediaItem represents media information exposed to regular users.
 type UserMediaItem struct {
-	ID              uint      `json:"ID"`
-	Title           string    `json:"Title"`
-	Year            int32     `json:"Year"`
-	MediaType       MediaType `json:"MediaType"`
-	LibraryName     string    `json:"LibraryName"`
-	FileSize        int64     `json:"FileSize"`
-	DefaultDeleteAt time.Time `json:"DefaultDeleteAt"`
-	Unkeepable      bool      `json:"Unkeepable"`
+	ID                uint      `json:"ID"`
+	Title             string    `json:"Title"`
+	Year              int32     `json:"Year"`
+	MediaType         MediaType `json:"MediaType"`
+	LibraryName       string    `json:"LibraryName"`
+	FileSize          int64     `json:"FileSize"`
+	DefaultDeleteAt   time.Time `json:"DefaultDeleteAt"`
+	EstimatedDeleteAt time.Time `json:"EstimatedDeleteAt"`
+	Unkeepable        bool      `json:"Unkeepable"`
 	// Cleanup mode for TV series (only applies to MediaTypeTV)
 	CleanupMode string `json:"CleanupMode,omitempty"`
 	// Keep count for TV series cleanup (only applies to MediaTypeTV)
@@ -45,20 +46,21 @@ type UserRequestInfo struct {
 
 // AdminMediaItem represents media information exposed to admins.
 type AdminMediaItem struct {
-	ID              uint       `json:"ID"`
-	JellyfinID      string     `json:"JellyfinID"`
-	LibraryName     string     `json:"LibraryName"`
-	ArrID           int32      `json:"ArrID"`
-	Title           string     `json:"Title"`
-	TmdbId          *int32     `json:"TmdbId,omitempty"`
-	TvdbId          *int32     `json:"TvdbId,omitempty"`
-	Year            int32      `json:"Year"`
-	FileSize        int64      `json:"FileSize"`
-	MediaType       MediaType  `json:"MediaType"`
-	RequestedBy     string     `json:"RequestedBy"`
-	DefaultDeleteAt time.Time  `json:"DefaultDeleteAt"`
-	ProtectedUntil  *time.Time `json:"ProtectedUntil,omitempty"`
-	Unkeepable      bool       `json:"Unkeepable"`
+	ID                uint       `json:"ID"`
+	JellyfinID        string     `json:"JellyfinID"`
+	LibraryName       string     `json:"LibraryName"`
+	ArrID             int32      `json:"ArrID"`
+	Title             string     `json:"Title"`
+	TmdbId            *int32     `json:"TmdbId,omitempty"`
+	TvdbId            *int32     `json:"TvdbId,omitempty"`
+	Year              int32      `json:"Year"`
+	FileSize          int64      `json:"FileSize"`
+	MediaType         MediaType  `json:"MediaType"`
+	RequestedBy       string     `json:"RequestedBy"`
+	DefaultDeleteAt   time.Time  `json:"DefaultDeleteAt"`
+	EstimatedDeleteAt time.Time  `json:"EstimatedDeleteAt"`
+	ProtectedUntil    *time.Time `json:"ProtectedUntil,omitempty"`
+	Unkeepable        bool       `json:"Unkeepable"`
 	// Cleanup mode for TV series (only applies to MediaTypeTV)
 	CleanupMode string `json:"CleanupMode,omitempty"`
 	// Keep count for TV series cleanup (only applies to MediaTypeTV)
