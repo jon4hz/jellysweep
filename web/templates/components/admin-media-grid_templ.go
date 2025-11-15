@@ -415,8 +415,8 @@ func getAdminMediaUniqueTypes(items []models.AdminMediaItem) []models.MediaType 
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_044b`,
-		Function: `function __templ_AdminKeepRequestGridScript_044b(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_140a`,
+		Function: `function __templ_AdminKeepRequestGridScript_140a(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -456,7 +456,7 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 				// Transform database.Media (with Request) to MediaItem format for the grid
 				const transformedItems = rawKeepRequests.map(request => {
 					// database.Media has ID, not MediaID
-					const deletionTimestamp = request.DefaultDeleteAt ? new Date(request.DefaultDeleteAt).getTime() : 0;
+					const deletionTimestamp = request.EstimatedDeleteAt ? new Date(request.EstimatedDeleteAt).getTime() : 0;
 					return {
 						id: request.ID,
 						title: request.Title,
@@ -869,14 +869,14 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			// Transform MediaRequest objects to MediaItem format
 			const transformedItems = mediaRequests.map(item => {
 				// Check if data is already in client format (has deletionTimestamp)
-				// vs database.Media format (has DefaultDeleteAt)
+				// vs database.Media format (has EstimatedDeleteAt)
 				let deletionTimestamp;
 				if (item.deletionTimestamp !== undefined) {
 					// Already in client format, use as-is
 					deletionTimestamp = item.deletionTimestamp;
-				} else if (item.DefaultDeleteAt) {
+				} else if (item.EstimatedDeleteAt) {
 					// database.Media format, convert to timestamp
-					deletionTimestamp = new Date(item.DefaultDeleteAt).getTime();
+					deletionTimestamp = new Date(item.EstimatedDeleteAt).getTime();
 				} else {
 					// No deletion date available
 					deletionTimestamp = 0;
@@ -944,15 +944,15 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_044b`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_044b`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_140a`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_140a`),
 	}
 }
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_0680`,
-		Function: `function __templ_AdminMediaGridScript_0680(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_8b43`,
+		Function: `function __templ_AdminMediaGridScript_8b43(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -996,7 +996,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 					type: item.MediaType,
 					year: item.Year,
 					library: item.LibraryName,
-					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+					deletionTimestamp: item.EstimatedDeleteAt ? new Date(item.EstimatedDeleteAt).getTime() : 0, // database.Media uses EstimatedDeleteAt
 					fileSize: item.FileSize || 0,
 					hasRequested: !!(item.Request && item.Request.ID), // Check if Request exists and has ID
 					canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
@@ -1497,14 +1497,14 @@ func AdminMediaGridScript() templ.ComponentScript {
 			// Transform database.Media to client format
 			const clientItems = mediaItems.map(item => {
 				// Check if data is already in client format (has deletionTimestamp)
-				// vs database.Media format (has DefaultDeleteAt)
+				// vs database.Media format (has EstimatedDeleteAt)
 				let deletionTimestamp;
 				if (item.deletionTimestamp !== undefined) {
 					// Already in client format, use as-is
 					deletionTimestamp = item.deletionTimestamp;
-				} else if (item.DefaultDeleteAt) {
+				} else if (item.EstimatedDeleteAt) {
 					// database.Media format, convert to timestamp
-					deletionTimestamp = new Date(item.DefaultDeleteAt).getTime();
+					deletionTimestamp = new Date(item.EstimatedDeleteAt).getTime();
 				} else {
 					// No deletion date available
 					deletionTimestamp = 0;
@@ -1574,8 +1574,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_0680`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_0680`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_8b43`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_8b43`),
 	}
 }
 

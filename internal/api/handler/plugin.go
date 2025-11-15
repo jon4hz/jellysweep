@@ -79,7 +79,7 @@ func (h *PluginHandler) CheckMediaItem(c *gin.Context) {
 
 		// Found a match - return the deletion date
 		response := CheckMediaItemResponse{
-			DeletionDate: item.DefaultDeleteAt,
+			DeletionDate: item.EstimatedDeleteAt,
 		}
 		c.JSON(http.StatusOK, response)
 		return
