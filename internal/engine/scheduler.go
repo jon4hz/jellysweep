@@ -57,7 +57,7 @@ func (e *Engine) setupJobs() error {
 		"0 */6 * * *", // Every 6 hours
 		estimateDeletionJobDef,
 		e.runEstimateDeletionsJob,
-		true,
+		false,
 	); err != nil {
 		return fmt.Errorf("failed to add estimate deletions job: %w", err)
 	}
