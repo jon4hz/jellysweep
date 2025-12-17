@@ -21,6 +21,8 @@ import (
 
 type MockDB struct{}
 
+var _ database.UserDB = &MockDB{}
+
 func (m *MockDB) CreateUser(ctx context.Context, username string) (*database.User, error) {
 	return &database.User{
 		Username:     username,
@@ -59,6 +61,29 @@ func (m *MockDB) GetUserByID(ctx context.Context, id uint) (*database.User, erro
 			ID: id,
 		},
 	}, nil
+}
+
+func (m *MockDB) GetAllUsers(ctx context.Context) ([]database.User, error) {
+	return []database.User{
+		{
+			Username:     "testuser1",
+			UserSettings: database.UserSettings{},
+			Model: gorm.Model{
+				ID: 1,
+			},
+		},
+		{
+			Username:     "testuser2",
+			UserSettings: database.UserSettings{},
+			Model: gorm.Model{
+				ID: 2,
+			},
+		},
+	}, nil
+}
+
+func (m *MockDB) UpdateUserAutoApproval(ctx context.Context, id uint, autoApprove bool) error {
+	return nil
 }
 
 type FactoryTestSuite struct {
