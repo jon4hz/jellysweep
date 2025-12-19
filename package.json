@@ -2,7 +2,7 @@
     "devDependencies": {
         "@tailwindcss/cli": "^4.1.18",
         "@tailwindcss/forms": "^0.5.7",
-        "esbuild": "^0.25.12",
+        "esbuild": "^0.27.2",
         "tailwindcss": "^4.1.18"
     },
     "scripts": {
