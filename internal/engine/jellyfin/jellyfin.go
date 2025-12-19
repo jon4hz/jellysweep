@@ -191,7 +191,7 @@ func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 
 		// Check if we've gotten all items
 		totalRecordCount := itemsResp.GetTotalRecordCount()
-		itemsLen, err := safecast.ToInt32(len(items))
+		itemsLen, err := safecast.Convert[int32](len(items))
 		if err != nil {
 			return nil, fmt.Errorf("failed to cast items length: %w", err)
 		}
@@ -201,7 +201,7 @@ func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 		}
 
 		// Move to next batch
-		itemsCount, err := safecast.ToInt32(len(items))
+		itemsCount, err := safecast.Convert[int32](len(items))
 		if err != nil {
 			return nil, fmt.Errorf("failed to cast items count: %w", err)
 		}
@@ -289,7 +289,7 @@ func (c *Client) GetEpisodes(ctx context.Context, seriesID string) ([]jellyfin.B
 
 			// Check if we've gotten all episodes from this season
 			totalRecordCount := episodesResp.GetTotalRecordCount()
-			episodesCount, err := safecast.ToInt32(len(episodes))
+			episodesCount, err := safecast.Convert[int32](len(episodes))
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to cast episodes length: %w", err)
 			}

@@ -420,7 +420,7 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 			})
 			return
 		}
-		page, err = safecast.ToInt(p)
+		page, err = safecast.Convert[int](p)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
@@ -439,7 +439,7 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 			})
 			return
 		}
-		pageSize, err = safecast.ToInt(ps)
+		pageSize, err = safecast.Convert[int](ps)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
