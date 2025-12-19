@@ -162,9 +162,6 @@ Let's say today is 2025-07-26:
   - Jellystat or Streamystats
   - Jellyseerr
 
-> [!WARNING]
-> Streamystats doesnt handle re-added content well. I recommend using Jellystat for now.
-
 
 ### Docker Compose
 
