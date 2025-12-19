@@ -8,13 +8,15 @@ services:
     volumes:
       # cache for images
       - ./data:/app/data
-      - ./config.yml:/app/config.yml
+      # - ./config.yml:/app/config.yml
     networks:
       default:
     environment:
       TZ: Europe/Zurich
       JELLYSWEEP_CACHE_TYPE: redis
       JELLYSWEEP_CACHE_REDIS_URL: valkey:6379
+    env_file:
+      - .env.dev
 
   valkey:
     image: valkey/valkey:8-bookworm

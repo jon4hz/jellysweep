@@ -327,15 +327,17 @@ func Load(path string) (*Config, error) {
 		configFileFound = true
 	}
 
-	var c Config
-	if err := v.Unmarshal(&c); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-
 	// Print info about config file usage
 	if configFileFound {
 		log.Debug("Using config file", "file", v.ConfigFileUsed())
 		log.Debug("Environment variables with JELLYSWEEP_ prefix will override config file values")
+	}
+
+	bindNestedEnv(v)
+
+	var c Config
+	if err := v.Unmarshal(&c); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
 	// Sanitize config values
@@ -403,11 +405,42 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("webpush.ttl", 60)
 }
 
+func bindNestedEnv(v *viper.Viper) {
+	// Jellyseerr
+	v.MustBindEnv("jellyseerr.url", "JELLYSWEEP_JELLYSEERR_URL")
+	v.MustBindEnv("jellyseerr.api_key", "JELLYSWEEP_JELLYSEERR_API_KEY")
+
+	// Sonarr
+	v.MustBindEnv("sonarr.url", "JELLYSWEEP_SONARR_URL")
+	v.MustBindEnv("sonarr.api_key", "JELLYSWEEP_SONARR_API_KEY")
+
+	// Radarr
+	v.MustBindEnv("radarr.url", "JELLYSWEEP_RADARR_URL")
+	v.MustBindEnv("radarr.api_key", "JELLYSWEEP_RADARR_API_KEY")
+
+	// Jellystat
+	v.MustBindEnv("jellystat.url", "JELLYSWEEP_JELLYSTAT_URL")
+	v.MustBindEnv("jellystat.api_key", "JELLYSWEEP_JELLYSTAT_API_KEY")
+
+	// Streamystats
+	v.MustBindEnv("streamystats.url", "JELLYSWEEP_STREAMYSTATS_URL")
+	v.MustBindEnv("streamystats.server_id", "JELLYSWEEP_STREAMYSTATS_SERVER_ID")
+
+	// Tunarr
+	v.MustBindEnv("tunarr.url", "JELLYSWEEP_TUNARR_URL")
+
+	// Jellyfin
+	v.MustBindEnv("jellyfin.url", "JELLYSWEEP_JELLYFIN_URL")
+	v.MustBindEnv("jellyfin.api_key", "JELLYSWEEP_JELLYFIN_API_KEY")
+}
+
 // validateConfig validates the configuration.
 func validateConfig(c *Config) error {
 	if c == nil {
 		return fmt.Errorf("missing jellysweep config")
 	}
+
+	fmt.Printf("%+v\n", c)
 
 	// Validate cleanup schedule
 	if c.CleanupSchedule == "" {
