@@ -272,6 +272,10 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 			return err
 		}
 	}
+	err = e.runEstimateDeletionsJob(ctx)
+	if err != nil {
+		log.Error("An error occurred while estimating deletions")
+	}
 
 	log.Info("Scheduled cleanup job completed")
 	return err

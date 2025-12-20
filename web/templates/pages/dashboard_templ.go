@@ -456,8 +456,8 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_fe9e`,
-		Function: `function __templ_dashboardScripts_fe9e(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_fcb8`,
+		Function: `function __templ_dashboardScripts_fcb8(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
 		initializeDashboardGrid();
@@ -484,7 +484,7 @@ func dashboardScripts() templ.ComponentScript {
 					library: item.LibraryName || item.library, // database.Media uses LibraryName
 					posterURL: item.PosterURL || item.posterURL,
 					fileSize: parseInt(item.FileSize || item.fileSize || 0),
-					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+					deletionTimestamp: item.EstimatedDeleteAt ? new Date(item.EstimatedDeleteAt).getTime() : 0, // database.Media uses EstimatedDeleteAt
 					hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false, // Check if Request exists
 					canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
 					mustDelete: item.Unkeepable || item.mustDelete || false,
@@ -622,7 +622,7 @@ func dashboardScripts() templ.ComponentScript {
 						library: item.LibraryName || item.library, // database.Media uses LibraryName
 						posterURL: item.PosterURL || item.posterURL,
 						fileSize: parseInt(item.FileSize || item.fileSize || 0),
-						deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+						deletionTimestamp: item.EstimatedDeleteAt ? new Date(item.EstimatedDeleteAt).getTime() : 0, // database.Media uses EstimatedDeleteAt
 						hasRequested: (item.Request && item.Request.ID) || item.hasRequested || false,
 						canRequest: !item.Unkeepable && (item.canRequest !== false), // database.Media uses Unkeepable (inverted)
 						mustDelete: item.Unkeepable || item.mustDelete || false,
@@ -649,8 +649,8 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_fe9e`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_fe9e`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_fcb8`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_fcb8`),
 	}
 }
 
