@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -69,11 +70,23 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 		return nil, err
 	}
 
-	// Index series by title+year for quick lookup
-	byKey := make(map[string]sonarrAPI.SeriesResource, len(series))
-	for _, s := range series {
-		key := fmt.Sprintf("%s|%d", strings.ToLower(s.GetTitle()), s.GetYear())
-		byKey[key] = s
+	// Index series by TVDB ID (primary), TMDB ID (secondary), and title+year (fallback)
+	byTvdbId := make(map[int32]sonarrAPI.SeriesResource)
+	byTmdbId := make(map[int32]sonarrAPI.SeriesResource)
+	byTitleYear := make(map[string]sonarrAPI.SeriesResource)
+
+	for _, ser := range series {
+		// Index by TVDB ID if available
+		if tvdbId := ser.GetTvdbId(); tvdbId != 0 {
+			byTvdbId[tvdbId] = ser
+		}
+		// Index by TMDB ID if available
+		if tmdbId := ser.GetTmdbId(); tmdbId != 0 {
+			byTmdbId[tmdbId] = ser
+		}
+		// Also index by title+year for fallback
+		key := fmt.Sprintf("%s|%d", strings.ToLower(ser.GetTitle()), ser.GetYear())
+		byTitleYear[key] = ser
 	}
 
 	mediaItems := make([]arr.MediaItem, 0)
@@ -87,11 +100,57 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 			continue
 		}
 
-		key := fmt.Sprintf("%s|%d", strings.ToLower(jf.GetName()), jf.GetProductionYear())
-		sr, ok := byKey[key]
-		if !ok {
+		// Try to match by TVDB ID first
+		var sr sonarrAPI.SeriesResource
+		var matched bool
+
+		if providerIds := jf.GetProviderIds(); providerIds != nil {
+			// Try TVDB ID first
+			if tvdbIdStr, ok := providerIds["Tvdb"]; ok && tvdbIdStr != "" {
+				tvdbId, err := strconv.ParseInt(tvdbIdStr, 10, 32)
+				if err != nil {
+					log.Warn("Failed to parse TVDB ID from Jellyfin provider IDs", "tvdbId", tvdbIdStr, "error", err)
+				} else {
+					if series, found := byTvdbId[int32(tvdbId)]; found {
+						sr = series
+						matched = true
+						log.Debug("Matched Sonarr series by TVDB ID", "title", jf.GetName(), "tvdbId", tvdbId)
+					}
+				}
+			}
+
+			// Fallback to TMDB ID if TVDB didn't match
+			if !matched {
+				if tmdbIdStr, ok := providerIds["Tmdb"]; ok && tmdbIdStr != "" {
+					tmdbId, err := strconv.ParseInt(tmdbIdStr, 10, 32)
+					if err != nil {
+						log.Warn("Failed to parse TMDB ID from Jellyfin provider IDs", "tmdbId", tmdbIdStr, "error", err)
+					} else {
+						if series, found := byTmdbId[int32(tmdbId)]; found {
+							sr = series
+							matched = true
+							log.Debug("Matched Sonarr series by TMDB ID", "title", jf.GetName(), "tmdbId", tmdbId)
+						}
+					}
+				}
+			}
+		}
+
+		// Fallback to title+year matching
+		if !matched {
+			key := fmt.Sprintf("%s|%d", strings.ToLower(jf.GetName()), jf.GetProductionYear())
+			if series, ok := byTitleYear[key]; ok {
+				sr = series
+				matched = true
+				log.Debug("Matched Sonarr series by title+year", "title", jf.GetName(), "year", jf.GetProductionYear())
+			}
+		}
+
+		if !matched {
+			log.Warn("No matching Sonarr series found for Jellyfin item, skipping", "title", jf.GetName(), "year", jf.GetProductionYear())
 			continue
 		}
+
 		mediaItems = append(mediaItems, arr.MediaItem{
 			JellyfinID:     jf.GetId(),
 			LibraryName:    libraryName,

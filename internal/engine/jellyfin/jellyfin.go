@@ -161,6 +161,7 @@ func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 				jellyfin.ITEMFIELDS_TAGS,
 				jellyfin.ITEMFIELDS_PARENT_ID,
 				jellyfin.ITEMFIELDS_MEDIA_SOURCES,
+				jellyfin.ITEMFIELDS_PROVIDER_IDS,
 			}).
 			IncludeItemTypes([]jellyfin.BaseItemKind{
 				jellyfin.BASEITEMKIND_MOVIE,

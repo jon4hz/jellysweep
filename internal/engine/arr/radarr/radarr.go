@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -70,11 +71,18 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 		return nil, fmt.Errorf("failed to get Radarr items: %w", err)
 	}
 
-	// Index movies by title+year for quick lookup
-	byKey := make(map[string]radarrAPI.MovieResource, len(movies))
+	// Index movies by TMDB ID (primary) and title+year (fallback)
+	byTmdbId := make(map[int32]radarrAPI.MovieResource)
+	byTitleYear := make(map[string]radarrAPI.MovieResource)
+
 	for _, m := range movies {
+		// Index by TMDB ID if available
+		if tmdbId := m.GetTmdbId(); tmdbId != 0 {
+			byTmdbId[tmdbId] = m
+		}
+		// Also index by title+year for fallback
 		key := fmt.Sprintf("%s|%d", strings.ToLower(m.GetTitle()), m.GetYear())
-		byKey[key] = m
+		byTitleYear[key] = m
 	}
 
 	mediaItems := make([]arr.MediaItem, 0)
@@ -88,9 +96,38 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 		if jf.GetType() != jellyfin.BASEITEMKIND_MOVIE {
 			continue
 		}
-		key := fmt.Sprintf("%s|%d", strings.ToLower(jf.GetName()), jf.GetProductionYear())
-		mr, ok := byKey[key]
-		if !ok {
+
+		// Try to match by TMDB ID first
+		var mr radarrAPI.MovieResource
+		var matched bool
+
+		if providerIds := jf.GetProviderIds(); providerIds != nil {
+			if tmdbIdStr, ok := providerIds["Tmdb"]; ok && tmdbIdStr != "" {
+				tmdbId, err := strconv.ParseInt(tmdbIdStr, 10, 32)
+				if err != nil {
+					log.Warn("Failed to parse TMDB ID from Jellyfin provider IDs", "tmdbId", tmdbIdStr, "error", err)
+				} else {
+					if movie, found := byTmdbId[int32(tmdbId)]; found {
+						mr = movie
+						matched = true
+						log.Debug("Matched Radarr movie by TMDB ID", "title", jf.GetName(), "tmdbId", tmdbId)
+					}
+				}
+			}
+		}
+
+		// Fallback to title+year matching
+		if !matched {
+			key := fmt.Sprintf("%s|%d", strings.ToLower(jf.GetName()), jf.GetProductionYear())
+			if movie, ok := byTitleYear[key]; ok {
+				mr = movie
+				matched = true
+				log.Debug("Matched Radarr movie by title+year", "title", jf.GetName(), "year", jf.GetProductionYear())
+			}
+		}
+
+		if !matched {
+			log.Warn("No matching Radarr movie found for Jellyfin item, skipping", "title", jf.GetName(), "year", jf.GetProductionYear())
 			continue
 		}
 
