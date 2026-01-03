@@ -5,6 +5,7 @@ _devel/
 .ansible/
 .vscode/
 config.yml
+config_env.yml
 /data
 jellysweep.log
 /dist/
