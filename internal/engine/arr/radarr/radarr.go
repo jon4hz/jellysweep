@@ -28,23 +28,28 @@ type Radarr struct {
 	tagsCache *cache.PrefixedCache[cache.TagMap]
 }
 
-func radarrAuthCtx(ctx context.Context, cfg *config.RadarrConfig) context.Context {
+func (r *Radarr) radarrAuthCtx(ctx context.Context) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
-	}
-	if cfg == nil {
-		return ctx
 	}
 	return context.WithValue(
 		ctx,
 		radarrAPI.ContextAPIKeys,
 		map[string]radarrAPI.APIKey{
-			"X-Api-Key": {Key: cfg.APIKey},
+			"X-Api-Key": {Key: r.cfg.Radarr.APIKey},
 		},
 	)
 }
 
-func NewRadarr(client *radarrAPI.APIClient, cfg *config.Config, stats stats.Statser, tagsCache *cache.PrefixedCache[cache.TagMap]) *Radarr {
+func NewRadarr(cfg *config.Config, stats stats.Statser, tagsCache *cache.PrefixedCache[cache.TagMap]) *Radarr {
+	rcfg := radarrAPI.NewConfiguration()
+	rcfg.Servers = radarrAPI.ServerConfigurations{
+		{
+			URL: cfg.Radarr.URL,
+		},
+	}
+	client := radarrAPI.NewAPIClient(rcfg)
+
 	return &Radarr{
 		client:    client,
 		cfg:       cfg,
@@ -106,7 +111,7 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 }
 
 func (r *Radarr) getItems(ctx context.Context) ([]radarrAPI.MovieResource, error) {
-	movies, resp, err := r.client.MovieAPI.ListMovie(radarrAuthCtx(ctx, r.cfg.Radarr)).Execute()
+	movies, resp, err := r.client.MovieAPI.ListMovie(r.radarrAuthCtx(ctx)).Execute()
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +134,7 @@ func (r *Radarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, 
 		return cachedTags, nil
 	}
 
-	tagList, resp, err := r.client.TagAPI.ListTag(radarrAuthCtx(ctx, r.cfg.Radarr)).Execute()
+	tagList, resp, err := r.client.TagAPI.ListTag(r.radarrAuthCtx(ctx)).Execute()
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +181,7 @@ func (r *Radarr) ensureTagExists(ctx context.Context, label string) error {
 	tag := radarrAPI.TagResource{
 		Label: *radarrAPI.NewNullableString(&label),
 	}
-	newTag, resp, err := r.client.TagAPI.CreateTag(radarrAuthCtx(ctx, r.cfg.Radarr)).TagResource(tag).Execute()
+	newTag, resp, err := r.client.TagAPI.CreateTag(r.radarrAuthCtx(ctx)).TagResource(tag).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create Radarr tag %s: %w", label, err)
 	}
@@ -197,7 +202,7 @@ func (r *Radarr) DeleteMedia(ctx context.Context, movieID int32, title string) e
 		return nil
 	}
 
-	resp, err := r.client.MovieAPI.DeleteMovie(radarrAuthCtx(ctx, r.cfg.Radarr), movieID).
+	resp, err := r.client.MovieAPI.DeleteMovie(r.radarrAuthCtx(ctx), movieID).
 		DeleteFiles(true).
 		Execute()
 	if err != nil {
@@ -243,7 +248,7 @@ func (r *Radarr) ResetTags(ctx context.Context, additionalTags []string) error {
 
 		if hasJellysweepTags {
 			m.Tags = newTags
-			_, resp, err := r.client.MovieAPI.UpdateMovie(radarrAuthCtx(ctx, r.cfg.Radarr), fmt.Sprintf("%d", m.GetId())).
+			_, resp, err := r.client.MovieAPI.UpdateMovie(r.radarrAuthCtx(ctx), fmt.Sprintf("%d", m.GetId())).
 				MovieResource(m).
 				Execute()
 			if err != nil {
@@ -261,7 +266,7 @@ func (r *Radarr) ResetTags(ctx context.Context, additionalTags []string) error {
 }
 
 func (r *Radarr) CleanupAllTags(ctx context.Context, additionalTags []string) error {
-	tagsList, resp, err := r.client.TagDetailsAPI.ListTagDetail(radarrAuthCtx(ctx, r.cfg.Radarr)).Execute()
+	tagsList, resp, err := r.client.TagDetailsAPI.ListTagDetail(r.radarrAuthCtx(ctx)).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to list Radarr tags: %w", err)
 	}
@@ -277,7 +282,7 @@ func (r *Radarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 			slices.Contains(additionalTags, name)
 
 		if isJellysweepTag {
-			resp, err := r.client.TagAPI.DeleteTag(radarrAuthCtx(ctx, r.cfg.Radarr), t.GetId()).Execute()
+			resp, err := r.client.TagAPI.DeleteTag(r.radarrAuthCtx(ctx), t.GetId()).Execute()
 			if err != nil {
 				log.Errorf("Failed to delete Radarr tag %s: %v", name, err)
 				continue
@@ -299,7 +304,7 @@ func (r *Radarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 }
 
 func (r *Radarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
-	movie, _, err := r.client.MovieAPI.GetMovieById(radarrAuthCtx(ctx, r.cfg.Radarr), id).Execute()
+	movie, _, err := r.client.MovieAPI.GetMovieById(r.radarrAuthCtx(ctx), id).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to get radarr movie: %w", err)
 	}
@@ -333,7 +338,7 @@ func (r *Radarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
 	}
 
 	movie.Tags = newTags
-	_, resp, err := r.client.MovieAPI.UpdateMovie(radarrAuthCtx(ctx, r.cfg.Radarr), fmt.Sprintf("%d", id)).
+	_, resp, err := r.client.MovieAPI.UpdateMovie(r.radarrAuthCtx(ctx), fmt.Sprintf("%d", id)).
 		MovieResource(*movie).
 		Execute()
 	if err != nil {
@@ -358,7 +363,7 @@ func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32, since time
 		default:
 		}
 
-		historyResp, resp, err := r.client.HistoryAPI.GetHistory(radarrAuthCtx(ctx, r.cfg.Radarr)).
+		historyResp, resp, err := r.client.HistoryAPI.GetHistory(r.radarrAuthCtx(ctx)).
 			Page(page).
 			PageSize(pageSize).
 			MovieIds([]int32{movieID}).

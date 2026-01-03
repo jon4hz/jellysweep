@@ -28,23 +28,28 @@ type Sonarr struct {
 	tagsCache *cache.PrefixedCache[cache.TagMap]
 }
 
-func sonarrAuthCtx(ctx context.Context, cfg *config.SonarrConfig) context.Context {
+func (s *Sonarr) sonarrAuthCtx(ctx context.Context) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
-	}
-	if cfg == nil {
-		return ctx
 	}
 	return context.WithValue(
 		ctx,
 		sonarrAPI.ContextAPIKeys,
 		map[string]sonarrAPI.APIKey{
-			"X-Api-Key": {Key: cfg.APIKey},
+			"X-Api-Key": {Key: s.cfg.Sonarr.APIKey},
 		},
 	)
 }
 
-func NewSonarr(client *sonarrAPI.APIClient, cfg *config.Config, stats stats.Statser, tagsCache *cache.PrefixedCache[cache.TagMap]) *Sonarr {
+func NewSonarr(cfg *config.Config, stats stats.Statser, tagsCache *cache.PrefixedCache[cache.TagMap]) *Sonarr {
+	scfg := sonarrAPI.NewConfiguration()
+	scfg.Servers = sonarrAPI.ServerConfigurations{
+		{
+			URL: cfg.Sonarr.URL,
+		},
+	}
+	client := sonarrAPI.NewAPIClient(scfg)
+
 	return &Sonarr{
 		client:    client,
 		cfg:       cfg,
@@ -105,7 +110,7 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 }
 
 func (s *Sonarr) getItems(ctx context.Context) ([]sonarrAPI.SeriesResource, error) {
-	series, resp, err := s.client.SeriesAPI.ListSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr)).IncludeSeasonImages(false).Execute()
+	series, resp, err := s.client.SeriesAPI.ListSeries(s.sonarrAuthCtx(ctx)).IncludeSeasonImages(false).Execute()
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +133,7 @@ func (s *Sonarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, 
 		return cachedTags, nil
 	}
 
-	tagList, resp, err := s.client.TagAPI.ListTag(sonarrAuthCtx(ctx, s.cfg.Sonarr)).Execute()
+	tagList, resp, err := s.client.TagAPI.ListTag(s.sonarrAuthCtx(ctx)).Execute()
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +180,7 @@ func (s *Sonarr) ensureTagExists(ctx context.Context, deleteTagLabel string) err
 	tag := sonarrAPI.TagResource{
 		Label: *sonarrAPI.NewNullableString(&deleteTagLabel),
 	}
-	newTag, resp, err := s.client.TagAPI.CreateTag(sonarrAuthCtx(ctx, s.cfg.Sonarr)).TagResource(tag).Execute()
+	newTag, resp, err := s.client.TagAPI.CreateTag(s.sonarrAuthCtx(ctx)).TagResource(tag).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create Sonarr tag %s: %w", deleteTagLabel, err)
 	}
@@ -227,7 +232,7 @@ func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
 		// Update series if it had jellysweep tags
 		if hasJellysweepTags {
 			serie.Tags = newTags
-			_, _, err = s.client.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), fmt.Sprintf("%d", serie.GetId())).
+			_, _, err = s.client.SeriesAPI.UpdateSeries(s.sonarrAuthCtx(ctx), fmt.Sprintf("%d", serie.GetId())).
 				SeriesResource(serie).
 				Execute()
 			if err != nil {
@@ -245,7 +250,7 @@ func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
 
 // CleanupAllTags deletes all unused jellysweep tags from Sonarr.
 func (s *Sonarr) CleanupAllTags(ctx context.Context, additionalTags []string) error {
-	tagsList, resp, err := s.client.TagDetailsAPI.ListTagDetail(sonarrAuthCtx(ctx, s.cfg.Sonarr)).Execute()
+	tagsList, resp, err := s.client.TagDetailsAPI.ListTagDetail(s.sonarrAuthCtx(ctx)).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to list sonarr tags: %w", err)
 	}
@@ -261,7 +266,7 @@ func (s *Sonarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 			slices.Contains(additionalTags, name)
 
 		if isJellysweepTag {
-			resp, err := s.client.TagAPI.DeleteTag(sonarrAuthCtx(ctx, s.cfg.Sonarr), td.GetId()).Execute()
+			resp, err := s.client.TagAPI.DeleteTag(s.sonarrAuthCtx(ctx), td.GetId()).Execute()
 			if err != nil {
 				log.Errorf("Failed to delete sonarr tag %s: %v", name, err)
 				continue
@@ -284,7 +289,7 @@ func (s *Sonarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 
 // ResetAllTagsAndAddIgnore removes all jellysweep tags and adds ignore tag to a single series.
 func (s *Sonarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
-	series, _, err := s.client.SeriesAPI.GetSeriesById(sonarrAuthCtx(ctx, s.cfg.Sonarr), id).Execute()
+	series, _, err := s.client.SeriesAPI.GetSeriesById(s.sonarrAuthCtx(ctx), id).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to get sonarr series: %w", err)
 	}
@@ -318,7 +323,7 @@ func (s *Sonarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
 	}
 
 	series.Tags = newTags
-	_, resp, err := s.client.SeriesAPI.UpdateSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), fmt.Sprintf("%d", id)).
+	_, resp, err := s.client.SeriesAPI.UpdateSeries(s.sonarrAuthCtx(ctx), fmt.Sprintf("%d", id)).
 		SeriesResource(*series).
 		Execute()
 	if err != nil {
@@ -343,7 +348,7 @@ func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32, since tim
 		default:
 		}
 
-		historyResp, resp, err := s.client.HistoryAPI.GetHistory(sonarrAuthCtx(ctx, s.cfg.Sonarr)).
+		historyResp, resp, err := s.client.HistoryAPI.GetHistory(s.sonarrAuthCtx(ctx)).
 			Page(page).
 			PageSize(pageSize).
 			SeriesIds([]int32{seriesID}).

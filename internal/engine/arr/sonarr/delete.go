@@ -26,7 +26,7 @@ func (s *Sonarr) DeleteMedia(ctx context.Context, seriesID int32, title string) 
 	switch cleanupMode {
 	case config.CleanupModeAll:
 		// Delete the entire series (original behavior)
-		resp, err := s.client.SeriesAPI.DeleteSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), seriesID).
+		resp, err := s.client.SeriesAPI.DeleteSeries(s.sonarrAuthCtx(ctx), seriesID).
 			DeleteFiles(true).
 			Execute()
 		if err != nil {
@@ -86,7 +86,7 @@ func (s *Sonarr) DeleteMedia(ctx context.Context, seriesID int32, title string) 
 	default:
 		log.Warnf("Unknown cleanup mode %s for series %s, using default 'all' mode", cleanupMode, title)
 		// Fallback to deleting entire series
-		resp, err := s.client.SeriesAPI.DeleteSeries(sonarrAuthCtx(ctx, s.cfg.Sonarr), seriesID).
+		resp, err := s.client.SeriesAPI.DeleteSeries(s.sonarrAuthCtx(ctx), seriesID).
 			DeleteFiles(true).
 			Execute()
 		if err != nil {
@@ -217,7 +217,7 @@ func (s *Sonarr) getEpisodeFilesToKeep(ctx context.Context, seriesID int32, titl
 
 // getEpisodes retrieves all episodes for a specific series.
 func (s *Sonarr) getEpisodes(ctx context.Context, seriesID int32) ([]sonarrAPI.EpisodeResource, error) {
-	episodes, resp, err := s.client.EpisodeAPI.ListEpisode(sonarrAuthCtx(ctx, s.cfg.Sonarr)).
+	episodes, resp, err := s.client.EpisodeAPI.ListEpisode(s.sonarrAuthCtx(ctx)).
 		SeriesId(seriesID).
 		Execute()
 	if err != nil {
@@ -229,7 +229,7 @@ func (s *Sonarr) getEpisodes(ctx context.Context, seriesID int32) ([]sonarrAPI.E
 
 // getEpisodeFiles retrieves all episode files for a specific series.
 func (s *Sonarr) getEpisodeFiles(ctx context.Context, seriesID int32) ([]sonarrAPI.EpisodeFileResource, error) {
-	episodeFiles, resp, err := s.client.EpisodeFileAPI.ListEpisodeFile(sonarrAuthCtx(ctx, s.cfg.Sonarr)).
+	episodeFiles, resp, err := s.client.EpisodeFileAPI.ListEpisodeFile(s.sonarrAuthCtx(ctx)).
 		SeriesId(seriesID).
 		Execute()
 	if err != nil {
@@ -246,7 +246,7 @@ func (s *Sonarr) deleteEpisodeFiles(ctx context.Context, episodeFileIDs []int32)
 	}
 
 	for _, fileID := range episodeFileIDs {
-		resp, err := s.client.EpisodeFileAPI.DeleteEpisodeFile(sonarrAuthCtx(ctx, s.cfg.Sonarr), fileID).Execute()
+		resp, err := s.client.EpisodeFileAPI.DeleteEpisodeFile(s.sonarrAuthCtx(ctx), fileID).Execute()
 		if err != nil {
 			return fmt.Errorf("failed to delete episode file %d: %w", fileID, err)
 		}
@@ -347,7 +347,7 @@ func (s *Sonarr) unmonitorDeletedEpisodes(ctx context.Context, seriesID int32, t
 		resource.SetEpisodeIds(episodesToUnmonitor)
 		resource.SetMonitored(monitored)
 
-		_, err := s.client.EpisodeAPI.PutEpisodeMonitor(sonarrAuthCtx(ctx, s.cfg.Sonarr)).
+		_, err := s.client.EpisodeAPI.PutEpisodeMonitor(s.sonarrAuthCtx(ctx)).
 			EpisodesMonitoredResource(*resource).
 			Execute()
 		if err != nil {

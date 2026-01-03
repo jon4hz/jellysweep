@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -109,16 +108,14 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 
 	var sonarrClient arr.Arrer
 	if cfg.Sonarr != nil {
-		rawSonarrClient := newSonarrClient(cfg.Sonarr)
-		sonarrClient = sonarrImpl.NewSonarr(rawSonarrClient, cfg, statsClient, engineCache.SonarrTagsCache)
+		sonarrClient = sonarrImpl.NewSonarr(cfg, statsClient, engineCache.SonarrTagsCache)
 	} else {
 		log.Warn("Sonarr configuration is missing, some features will be disabled")
 	}
 
 	var radarrClient arr.Arrer
 	if cfg.Radarr != nil {
-		rawRadarrClient := newRadarrClient(cfg.Radarr)
-		radarrClient = radarrImpl.NewRadarr(rawRadarrClient, cfg, statsClient, engineCache.RadarrTagsCache)
+		radarrClient = radarrImpl.NewRadarr(cfg, statsClient, engineCache.RadarrTagsCache)
 	} else {
 		log.Warn("Radarr configuration is missing, some features will be disabled")
 	}
@@ -202,44 +199,6 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 	}
 
 	return engine, nil
-}
-
-func newSonarrClient(cfg *config.SonarrConfig) *sonarrAPI.APIClient {
-	scfg := sonarrAPI.NewConfiguration()
-
-	// Don't modify the original config URL, work with a copy
-	url := cfg.URL
-
-	if strings.HasPrefix(url, "http://") {
-		scfg.Scheme = "http"
-		url = strings.TrimPrefix(url, "http://")
-	} else if strings.HasPrefix(url, "https://") {
-		scfg.Scheme = "https"
-		url = strings.TrimPrefix(url, "https://")
-	}
-
-	scfg.Host = url
-
-	return sonarrAPI.NewAPIClient(scfg)
-}
-
-func newRadarrClient(cfg *config.RadarrConfig) *radarrAPI.APIClient {
-	rcfg := radarrAPI.NewConfiguration()
-
-	// Don't modify the original config URL, work with a copy
-	url := cfg.URL
-
-	if strings.HasPrefix(url, "http://") {
-		rcfg.Scheme = "http"
-		url = strings.TrimPrefix(url, "http://")
-	} else if strings.HasPrefix(url, "https://") {
-		rcfg.Scheme = "https"
-		url = strings.TrimPrefix(url, "https://")
-	}
-
-	rcfg.Host = url
-
-	return radarrAPI.NewAPIClient(rcfg)
 }
 
 // runCleanupJob is the main cleanup job function.
