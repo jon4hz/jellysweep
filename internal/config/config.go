@@ -294,7 +294,10 @@ type GravatarConfig struct {
 // If path is empty, it will use default search paths for config files.
 // If no config file is found, it will generate a default one in the current directory.
 func Load(path string) (*Config, error) {
-	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
+	v := viper.New()
+
+	// bind some weirdly unsupported nested env vars
+	bindNestedEnv(v)
 
 	// Set default values
 	setDefaults(v)
@@ -327,15 +330,15 @@ func Load(path string) (*Config, error) {
 		configFileFound = true
 	}
 
-	var c Config
-	if err := v.Unmarshal(&c); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-
 	// Print info about config file usage
 	if configFileFound {
 		log.Debug("Using config file", "file", v.ConfigFileUsed())
-		log.Debug("Environment variables with JELLYSWEEP_ prefix will override config file values")
+		log.Debug("Some environment variables can be set with the JELLYSWEEP_ prefix to override config file values")
+	}
+
+	var c Config
+	if err := v.Unmarshal(&c); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
 	// Sanitize config values
@@ -362,6 +365,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("dry_run", true)
 	v.SetDefault("server_url", "http://localhost:3002")
 	v.SetDefault("session_max_age", 172800) // 48 hour
+	v.SetDefault("session_key", "")
+	v.SetDefault("api_key", "")
+	v.SetDefault("enable_leaving_collections", false)
 
 	// Auth defaults
 	v.SetDefault("auth.oidc.enabled", false)
@@ -377,12 +383,15 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.path", "./data/jellysweep.db")
 
 	// Cache defaults
-	v.SetDefault("cache.enabled", true)
 	v.SetDefault("cache.type", CacheTypeMemory) // Default to in-memory
+	v.SetDefault("cache.redis_url", "")
 
 	// Email defaults
 	v.SetDefault("email.enabled", false)
+	v.SetDefault("email.smtp_host", "")
 	v.SetDefault("email.smtp_port", 587)
+	v.SetDefault("email.username", "")
+	v.SetDefault("email.password", "")
 	v.SetDefault("email.from_name", "Jellysweep")
 	v.SetDefault("email.use_tls", true)
 	v.SetDefault("email.use_ssl", false)
@@ -391,6 +400,10 @@ func setDefaults(v *viper.Viper) {
 	// Ntfy defaults
 	v.SetDefault("ntfy.enabled", false)
 	v.SetDefault("ntfy.server_url", "https://ntfy.sh")
+	v.SetDefault("ntfy.topic", "jellysweep")
+	v.SetDefault("ntfy.username", "")
+	v.SetDefault("ntfy.password", "")
+	v.SetDefault("ntfy.token", "")
 
 	// Gravatar defaults
 	v.SetDefault("gravatar.enabled", false)
@@ -400,7 +413,41 @@ func setDefaults(v *viper.Viper) {
 
 	// WebPush defaults
 	v.SetDefault("webpush.enabled", false)
-	v.SetDefault("webpush.ttl", 60)
+	v.SetDefault("webpush.vapid_email", "")
+	v.SetDefault("webpush.public_key", "")
+	v.SetDefault("webpush.private_key", "")
+}
+
+// the auto env function from viper only works for nested structs, if the struct to which a value binds isn't nil.
+// If we explicitly don't want a default value (e.g. because a struct value should be nil on purpose)
+// we have to bind the env var manually.
+func bindNestedEnv(v *viper.Viper) {
+	// Jellyseerr
+	v.MustBindEnv("jellyseerr.url", "JELLYSWEEP_JELLYSEERR_URL")
+	v.MustBindEnv("jellyseerr.api_key", "JELLYSWEEP_JELLYSEERR_API_KEY")
+
+	// Sonarr
+	v.MustBindEnv("sonarr.url", "JELLYSWEEP_SONARR_URL")
+	v.MustBindEnv("sonarr.api_key", "JELLYSWEEP_SONARR_API_KEY")
+
+	// Radarr
+	v.MustBindEnv("radarr.url", "JELLYSWEEP_RADARR_URL")
+	v.MustBindEnv("radarr.api_key", "JELLYSWEEP_RADARR_API_KEY")
+
+	// Jellystat
+	v.MustBindEnv("jellystat.url", "JELLYSWEEP_JELLYSTAT_URL")
+	v.MustBindEnv("jellystat.api_key", "JELLYSWEEP_JELLYSTAT_API_KEY")
+
+	// Streamystats
+	v.MustBindEnv("streamystats.url", "JELLYSWEEP_STREAMYSTATS_URL")
+	v.MustBindEnv("streamystats.server_id", "JELLYSWEEP_STREAMYSTATS_SERVER_ID")
+
+	// Tunarr
+	v.MustBindEnv("tunarr.url", "JELLYSWEEP_TUNARR_URL")
+
+	// Jellyfin
+	v.MustBindEnv("jellyfin.url", "JELLYSWEEP_JELLYFIN_URL")
+	v.MustBindEnv("jellyfin.api_key", "JELLYSWEEP_JELLYFIN_API_KEY")
 }
 
 // validateConfig validates the configuration.
@@ -417,6 +464,24 @@ func validateConfig(c *Config) error {
 	cronFields := strings.Fields(c.CleanupSchedule)
 	if len(cronFields) != 5 {
 		return fmt.Errorf("cleanup schedule must be a valid cron expression with 5 fields (minute hour day month weekday)")
+	}
+
+	if c.CleanupMode == "" {
+		return fmt.Errorf("cleanup mode is required")
+	}
+
+	if c.CleanupMode == CleanupModeKeepEpisodes || c.CleanupMode == CleanupModeKeepSeasons {
+		if c.KeepCount <= 0 {
+			return fmt.Errorf("keep count must be greater than 0 when using keep_episodes or keep_seasons mode")
+		}
+	}
+
+	if c.SessionKey == "" {
+		return fmt.Errorf("session key is required")
+	}
+
+	if len(c.Libraries) == 0 {
+		return fmt.Errorf("at least one library must be configured")
 	}
 
 	// Validate auth configuration
