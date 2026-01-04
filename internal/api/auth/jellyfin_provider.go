@@ -50,8 +50,8 @@ func (p *JellyfinProvider) Login(c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 
-	if username == "" || password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password are required"})
+	if username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
 		return
 	}
 
