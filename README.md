@@ -374,6 +374,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_AUTH_OIDC_CLIENT_ID` | *(required if OIDC enabled)* | OIDC client ID |
 | `JELLYSWEEP_AUTH_OIDC_CLIENT_SECRET` | *(required if OIDC enabled)* | OIDC client secret |
 | `JELLYSWEEP_AUTH_OIDC_REDIRECT_URL` | *(required if OIDC enabled)* | OIDC redirect URL |
+| `JELLYSWEEP_AUTH_OIDC_USE_PKCE` | `false` | Enable PKCE for enhanced security |
 | `JELLYSWEEP_AUTH_OIDC_ADMIN_GROUP` | *(required if OIDC enabled)* | Group with admin privileges |
 | `JELLYSWEEP_AUTH_OIDC_AUTO_APPROVE_GROUP` | *(optional)* | Group with auto-approval permission for keep requests |
 | **Jellyfin Authentication** | | |
@@ -460,6 +461,7 @@ auth:
     client_id: "your-client-id"
     client_secret: "your-client-secret"
     redirect_url: "http://localhost:3002/auth/oidc/callback"
+    use_pkce: true                     # Use PKCE for enhanced security
     admin_group: "jellyfin-admins"     # OIDC group for admin access
     auto_approve_group: "vip-users"    # (Optional) OIDC group for auto-approval of keep requests
 

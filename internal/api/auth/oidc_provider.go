@@ -43,7 +43,7 @@ func NewOIDCProvider(ctx context.Context, cfg *config.OIDCConfig, gravatarCfg *c
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups"},
 	}
 
-	p.verifier = p.provider.Verifier(&oidc.Config{ClientID: cfg.ClientID})
+	p.verifier = p.provider.VerifierContext(ctx, &oidc.Config{ClientID: cfg.ClientID})
 	return &p, nil
 }
 

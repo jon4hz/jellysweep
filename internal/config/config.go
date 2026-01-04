@@ -105,6 +105,8 @@ type OIDCConfig struct {
 	// Members of this group will have their keep requests automatically approved without admin intervention.
 	// This setting overrides the database value for auto-approval permission on each login.
 	AutoApproveGroup string `yaml:"auto_approve_group" mapstructure:"auto_approve_group"`
+	// UsePKCE enables PKCE (Proof Key for Code Exchange) for the OAuth 2.0 flow.
+	UsePKCE bool `yaml:"use_pkce" mapstructure:"use_pkce"`
 }
 
 // JellyfinAuthConfig holds the Jellyfin authentication configuration for the Jellysweep server.
@@ -380,6 +382,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.oidc.client_id", "")
 	v.SetDefault("auth.oidc.client_secret", "")
 	v.SetDefault("auth.oidc.redirect_url", "")
+	v.SetDefault("auth.oidc.use_pkce", false)
 	v.SetDefault("auth.oidc.admin_group", "")
 	v.SetDefault("auth.oidc.auto_approve_group", "")
 	v.SetDefault("auth.jellyfin.enabled", true)
