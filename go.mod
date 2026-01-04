@@ -16,7 +16,7 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/eko/gocache/lib/v4 v4.2.3
-	github.com/eko/gocache/store/go_cache/v4 v4.2.3
+	github.com/eko/gocache/store/go_cache/v4 v4.2.4
 	github.com/eko/gocache/store/redis/v4 v4.2.6
 	github.com/gin-contrib/gzip v1.2.5
 	github.com/gin-contrib/sessions v1.0.4
