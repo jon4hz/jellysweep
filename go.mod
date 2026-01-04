@@ -10,7 +10,7 @@ require (
 	github.com/ccoveille/go-safecast v1.8.2
 	github.com/charmbracelet/fang v0.4.3
 	github.com/charmbracelet/log v0.4.2
-	github.com/coreos/go-oidc/v3 v3.16.0
+	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/devopsarr/radarr-go v1.2.1
 	github.com/devopsarr/sonarr-go v1.1.1
 	github.com/disintegration/imaging v1.6.2
