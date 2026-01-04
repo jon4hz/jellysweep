@@ -70,7 +70,7 @@ func (s *JellyfinProviderTestSuite) TestLogin_MissingCredentials() {
 	s.router.ServeHTTP(w, req)
 
 	assert.Equal(s.T(), http.StatusBadRequest, w.Code)
-	assert.Contains(s.T(), w.Body.String(), "Username and password are required")
+	assert.Contains(s.T(), w.Body.String(), "Username is required")
 }
 
 func (s *JellyfinProviderTestSuite) TestLogin_EmptyCredentials() {
@@ -88,7 +88,7 @@ func (s *JellyfinProviderTestSuite) TestLogin_EmptyCredentials() {
 	s.router.ServeHTTP(w, req)
 
 	assert.Equal(s.T(), http.StatusBadRequest, w.Code)
-	assert.Contains(s.T(), w.Body.String(), "Username and password are required")
+	assert.Contains(s.T(), w.Body.String(), "Username is required")
 }
 
 func (s *JellyfinProviderTestSuite) TestLogin_InvalidCredentials() {
@@ -225,7 +225,6 @@ func (s *JellyfinProviderTestSuite) TestRequireAdmin_IsAdmin() {
 }
 
 func (s *JellyfinProviderTestSuite) Test_UserID_NotUint() {
-
 	// Create a custom router for this test to properly handle sessions
 	router := gin.New()
 	store := cookie.NewStore([]byte("test-secret"))
