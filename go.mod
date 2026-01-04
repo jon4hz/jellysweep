@@ -6,7 +6,7 @@ tool github.com/a-h/templ/cmd/templ
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
-	github.com/a-h/templ v0.3.960
+	github.com/a-h/templ v0.3.977
 	github.com/ccoveille/go-safecast v1.8.2
 	github.com/charmbracelet/fang v0.4.3
 	github.com/charmbracelet/log v0.4.2
