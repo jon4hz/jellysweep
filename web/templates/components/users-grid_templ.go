@@ -39,8 +39,8 @@ func UsersGrid() templ.Component {
 
 func UsersGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_UsersGridScript_a8e2`,
-		Function: `function __templ_UsersGridScript_a8e2(){// Initialize users grid manager
+		Name: `__templ_UsersGridScript_78b6`,
+		Function: `function __templ_UsersGridScript_78b6(){// Initialize users grid manager
 	window.usersGridManager = {
 		users: [],
 
@@ -53,6 +53,21 @@ func UsersGridScript() templ.ComponentScript {
 			const refreshBtn = document.getElementById('users-refresh-btn');
 			if (refreshBtn) {
 				refreshBtn.addEventListener('click', () => this.loadUsers());
+			}
+
+			// Use event delegation for toggle permission buttons
+			const tbody = document.getElementById('users-table-body');
+			if (tbody) {
+				tbody.addEventListener('click', (e) => {
+					const button = e.target.closest('.toggle-permission-btn');
+					if (button) {
+						const userId = parseInt(button.dataset.userId, 10);
+						const hasAutoApproval = button.dataset.hasAutoApproval === 'true';
+						if (!isNaN(userId)) {
+							this.togglePermission(userId, !hasAutoApproval);
+						}
+					}
+				});
 			}
 		},
 
@@ -119,7 +134,7 @@ func UsersGridScript() templ.ComponentScript {
 			const buttonText = hasAutoApproval ? 'Disable' : 'Enable';
 
 			return ` + "`" + `
-				<tr id="user-row-${user.id}">
+				<tr id="user-row-${this.escapeHtml(user.id.toString())}">
 					<td class="px-6 py-4 whitespace-nowrap">
 						<div class="text-sm font-medium text-gray-200">${this.escapeHtml(user.username)}</div>
 					</td>
@@ -133,9 +148,10 @@ func UsersGridScript() templ.ComponentScript {
 					</td>
 					<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
 						<button
-							id="toggle-permission-${user.id}"
-							onclick="window.usersGridManager.togglePermission(${user.id}, ${!hasAutoApproval})"
-							class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white ${buttonClass} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors duration-200"
+							id="toggle-permission-${this.escapeHtml(user.id.toString())}"
+							data-user-id="${this.escapeHtml(user.id.toString())}"
+							data-has-auto-approval="${hasAutoApproval}"
+							class="toggle-permission-btn inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white ${buttonClass} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors duration-200"
 						>
 							${buttonText} Auto-Approval
 						</button>
@@ -198,8 +214,8 @@ func UsersGridScript() templ.ComponentScript {
 		window.usersGridManager.init();
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_UsersGridScript_a8e2`),
-		CallInline: templ.SafeScriptInline(`__templ_UsersGridScript_a8e2`),
+		Call:       templ.SafeScript(`__templ_UsersGridScript_78b6`),
+		CallInline: templ.SafeScriptInline(`__templ_UsersGridScript_78b6`),
 	}
 }
 
