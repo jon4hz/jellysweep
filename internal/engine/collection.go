@@ -12,7 +12,7 @@ import (
 // These collections show users which media items are scheduled for deletion.
 // There are separate collections for movies and TV shows.
 func (e *Engine) createJellyfinLeavingCollections(ctx context.Context) error {
-	if !e.cfg.EnableLeavingCollections {
+	if !e.cfg.LeavingCollectionsEnabled {
 		log.Debug("Leaving collections feature is disabled, skipping")
 		return nil
 	}
@@ -117,7 +117,7 @@ func (e *Engine) createOrUpdateLeavingCollection(ctx context.Context, collection
 
 // removeItemsFromLeavingCollections removes items from the leaving collections if they are no longer marked for deletion.
 func (e *Engine) removeItemsFromLeavingCollections(ctx context.Context) {
-	if !e.cfg.EnableLeavingCollections {
+	if !e.cfg.LeavingCollectionsEnabled {
 		log.Debug("Leaving collections feature is disabled, skipping cleanup")
 		return
 	}

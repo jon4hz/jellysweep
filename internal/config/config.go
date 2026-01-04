@@ -58,8 +58,8 @@ type Config struct {
 	ServerURL string `yaml:"server_url" mapstructure:"server_url"`
 	// Cache holds the cache engine configuration.
 	Cache *CacheConfig `yaml:"cache" mapstructure:"cache"`
-	// EnableLeavingCollections controls whether "Leaving Soon" collections are created in Jellyfin.
-	EnableLeavingCollections bool `yaml:"enable_leaving_collections" mapstructure:"enable_leaving_collections"`
+	// LeavingCollectionsEnabled controls whether "Leaving Soon" collections are created in Jellyfin.
+	LeavingCollectionsEnabled bool `yaml:"leaving_collections_enabled" mapstructure:"leaving_collections_enabled"`
 	// Name of the "Leaving Movies" collection in Jellyfin.
 	LeavingCollectionsMovieName string `yaml:"leaving_collections_movie_name" mapstructure:"leaving_collections_movie_name"`
 	// Name of the "Leaving TV Shows" collection in Jellyfin.
@@ -379,7 +379,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("session_max_age", 172800) // 48 hour
 	v.SetDefault("session_key", "")
 	v.SetDefault("api_key", "")
-	v.SetDefault("enable_leaving_collections", false)
 
 	// Auth defaults
 	v.SetDefault("auth.oidc.enabled", false)
@@ -401,7 +400,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cache.redis_url", "")
 
 	// Leaving collections default
-	v.SetDefault("enable_leaving_collections", false) // Disabled by default
+	v.SetDefault("enable_leaving_collections", false)
 	v.SetDefault("leaving_collections_movie_name", "Leaving Movies")
 	v.SetDefault("leaving_collections_tv_name", "Leaving TV Shows")
 
