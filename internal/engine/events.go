@@ -131,3 +131,13 @@ func (e *Engine) CreateAdminUnkeepEvent(ctx context.Context, adminID uint, media
 
 	return e.db.CreateHistoryEvent(ctx, event)
 }
+
+// CreateNotFoundAnymoreEvent creates a history event when a media item is not found anymore.
+func (e *Engine) CreateNotFoundAnymoreEvent(ctx context.Context, media *database.Media) error {
+	event := database.HistoryEvent{
+		MediaID:   media.ID,
+		EventType: database.HistoryEventNotFoundAnymore,
+	}
+
+	return e.db.CreateHistoryEvent(ctx, event)
+}

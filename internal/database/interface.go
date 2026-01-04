@@ -34,6 +34,8 @@ const (
 	DBDeleteReasonKeepForever DBDeleteReason = "keep_forever"
 	// DBDeleteReasonProtectionExpired indicates the media was deleted in the database only because its protection period expired.
 	DBDeleteReasonProtectionExpired DBDeleteReason = "protection_expired"
+	// DBDeleteReasonMissingInJellyfin indicates the media was deleted in the database only because it was missing in Jellyfin.
+	DBDeleteReasonMissingInJellyfin DBDeleteReason = "missing_in_jellyfin"
 )
 
 // DB defines the interface for database operations.

@@ -329,3 +329,129 @@ func (c *Client) GetSeasons(ctx context.Context, seriesID string) ([]jellyfin.Ba
 	log.Info("Retrieved all seasons for series", "seriesID", seriesID, "total", len(allSeasons))
 	return allSeasons, nil
 }
+
+// FindCollectionByName searches for a collection by name and returns its ID.
+func (c *Client) FindCollectionByName(ctx context.Context, name string) (string, error) {
+	// Get all collections
+	result, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+		IncludeItemTypes([]jellyfin.BaseItemKind{jellyfin.BASEITEMKIND_BOX_SET}).
+		Recursive(true).
+		Execute()
+	if err != nil {
+		return "", fmt.Errorf("failed to get collections: %w", err)
+	}
+
+	// Search for collection by name
+	items := result.GetItems()
+	for _, item := range items {
+		if item.GetName() == name {
+			return item.GetId(), nil
+		}
+	}
+
+	return "", nil // Collection not found
+}
+
+// GetCollectionItems returns a map of item IDs currently in the collection.
+func (c *Client) GetCollectionItems(ctx context.Context, collectionID string) (map[string]bool, error) {
+	// Get items in the collection
+	result, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+		ParentId(collectionID).
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get collection items: %w", err)
+	}
+
+	// Create a set of current item IDs
+	currentItems := make(map[string]bool)
+	items := result.GetItems()
+	for _, item := range items {
+		currentItems[item.GetId()] = true
+	}
+
+	return currentItems, nil
+}
+
+// CreateCollection creates a new collection with the given name and item IDs.
+// Items are added in batches to avoid URL length limitations.
+func (c *Client) CreateCollection(ctx context.Context, name string, itemIDs []string) error {
+	const batchSize = 50
+
+	// Create the collection with the first batch of items
+	var initialItems []string
+	if len(itemIDs) > 0 {
+		if len(itemIDs) <= batchSize {
+			initialItems = itemIDs
+		} else {
+			initialItems = itemIDs[:batchSize]
+		}
+	}
+
+	collectionResp, _, err := c.jellyfin.CollectionAPI.CreateCollection(ctx).
+		Name(name).
+		Ids(initialItems).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to create collection %s: %w", name, err)
+	}
+
+	// If there are more items, add them in batches
+	if len(itemIDs) > batchSize {
+		collectionID := collectionResp.GetId()
+		for i := batchSize; i < len(itemIDs); i += batchSize {
+			end := min(i+batchSize, len(itemIDs))
+			batch := itemIDs[i:end]
+
+			_, err := c.jellyfin.CollectionAPI.AddToCollection(ctx, collectionID).
+				Ids(batch).
+				Execute()
+			if err != nil {
+				return fmt.Errorf("failed to add items to collection %s (batch %d-%d): %w", name, i, end, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddItemsToCollection adds items to an existing collection.
+// Items are added in batches to avoid URL length limitations.
+func (c *Client) AddItemsToCollection(ctx context.Context, collectionID string, itemIDs []string) error {
+	const batchSize = 50
+
+	// Process items in batches
+	for i := 0; i < len(itemIDs); i += batchSize {
+		end := min(i+batchSize, len(itemIDs))
+		batch := itemIDs[i:end]
+
+		_, err := c.jellyfin.CollectionAPI.AddToCollection(ctx, collectionID).
+			Ids(batch).
+			Execute()
+		if err != nil {
+			return fmt.Errorf("failed to add items to collection %s (batch %d-%d): %w", collectionID, i, end, err)
+		}
+	}
+
+	return nil
+}
+
+// RemoveItemsFromCollection removes items from an existing collection.
+// Items are removed in batches to avoid URL length limitations.
+func (c *Client) RemoveItemsFromCollection(ctx context.Context, collectionID string, itemIDs []string) error {
+	const batchSize = 50
+
+	// Process items in batches
+	for i := 0; i < len(itemIDs); i += batchSize {
+		end := min(i+batchSize, len(itemIDs))
+		batch := itemIDs[i:end]
+
+		_, err := c.jellyfin.CollectionAPI.RemoveFromCollection(ctx, collectionID).
+			Ids(batch).
+			Execute()
+		if err != nil {
+			return fmt.Errorf("failed to remove items from collection %s (batch %d-%d): %w", collectionID, i, end, err)
+		}
+	}
+
+	return nil
+}

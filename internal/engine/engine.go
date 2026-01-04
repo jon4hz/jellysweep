@@ -218,7 +218,18 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 
 	e.removeProtectedExpiredItems(ctx)
 
-	if err = e.markForDeletion(ctx); err != nil {
+	mediaItems, err := e.gatherMediaItems(ctx)
+	if err != nil {
+		log.Errorf("failed to gather media items: %v", err)
+		return err
+	}
+	log.Info("Media items gathered successfully")
+
+	if err := e.removeItemsNotFoundAnymore(ctx, mediaItems); err != nil {
+		log.Error("An error occurred while removing items not found in Jellyfin")
+	}
+
+	if err = e.markForDeletion(ctx, mediaItems); err != nil {
 		log.Error("An error occurred while marking media for deletion")
 	}
 
@@ -231,6 +242,12 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 			return err
 		}
 	}
+
+	if err := e.createJellyfinLeavingCollections(ctx); err != nil {
+		log.Error("An error occurred while creating Jellyfin leaving collections")
+	}
+
+	e.removeItemsFromLeavingCollections(ctx)
 
 	log.Info("Scheduled cleanup job completed")
 	return err
@@ -315,15 +332,43 @@ func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
 	log.Info("Recently played items removal process completed")
 }
 
-func (e *Engine) markForDeletion(ctx context.Context) error {
-	mediaItems, err := e.gatherMediaItems(ctx)
+func (e *Engine) removeItemsNotFoundAnymore(ctx context.Context, mediaItems []arr.MediaItem) error {
+	log.Info("Removing items no longer present in Jellyfin from database")
+
+	dbMediaItems, err := e.db.GetMediaItems(ctx, false)
 	if err != nil {
-		log.Errorf("failed to gather media items: %v", err)
+		log.Error("Failed to get media items from database", "error", err)
 		return err
 	}
-	log.Info("Media items gathered successfully")
 
-	mediaItems, err = e.filters.ApplyAll(ctx, mediaItems)
+	jellyfinItemMap := make(map[string]struct{})
+	for _, item := range mediaItems {
+		jellyfinItemMap[item.JellyfinID] = struct{}{}
+	}
+
+	for _, dbItem := range dbMediaItems {
+		if _, exists := jellyfinItemMap[dbItem.JellyfinID]; !exists {
+			log.Info("Media item no longer present in Jellyfin, removing from database", "title", dbItem.Title, "jellyfinID", dbItem.JellyfinID)
+			dbItem.DBDeleteReason = database.DBDeleteReasonMissingInJellyfin
+
+			// Create deletion event for missing items
+			if err := e.CreateNotFoundAnymoreEvent(ctx, &dbItem); err != nil {
+				log.Errorf("failed to create not found anymore event for %s: %v", dbItem.Title, err)
+			}
+
+			if err := e.db.DeleteMediaItem(ctx, &dbItem); err != nil {
+				log.Error("Failed to remove media item no longer present in Jellyfin from database", "title", dbItem.Title, "jellyfinID", dbItem.JellyfinID, "error", err)
+				continue
+			}
+		}
+	}
+
+	log.Info("Removed items not found in Jellyfin from database successfully")
+	return nil
+}
+
+func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem) error {
+	mediaItems, err := e.filters.ApplyAll(ctx, mediaItems)
 	if err != nil {
 		return err
 	}
