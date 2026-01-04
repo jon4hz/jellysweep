@@ -366,6 +366,10 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_SESSION_KEY` | *(required)* | Random string for session encryption (`openssl rand -base64 32`) |
 | `JELLYSWEEP_SESSION_MAX_AGE` | `172800` | Session maximum age in seconds (48 hours) |
 | `JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the Jellysweep server |
+| **Leaving Collections** | | |
+| `JELLYSWEEP_LEAVING_COLLECTIONS_ENABLED` | `false` | | Enable leaving collections for media scheduled for deletion |
+| `JELLYSWEEP_LEAVING_COLLECTIONS_MOVIE_NAME` | `Leaving Movies` | Name of the leaving movies collection |
+| `JELLYSWEEP_LEAVING_COLLECTIONS_TV_NAME` | `Leaving TV Shows` | Name of the leaving TV shows collection |
 | **Database Configuration** | | |
 | `JELLYSWEEP_DATABASE_PATH` | `./data/jellysweep.db` | Path to the database file |
 | **OIDC Authentication** | | |
@@ -484,6 +488,10 @@ gravatar:
   rating: "g"                          # Maximum rating for images
                                        # Options: "g", "pg", "r", "x"
   size: 80                             # Image size in pixels (1-2048)
+
+leaving_collections_enabled: true      # Create collections for media scheduled for deletion
+leaving_collections_movie_name: "Leaving Movies"
+leaving_collections_tv_name: "Leaving TV Shows"
 
 # Library-specific settings
 libraries:
