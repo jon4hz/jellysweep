@@ -84,9 +84,15 @@ func (c *Client) GetAllUsers(ctx context.Context) ([]User, error) {
 }
 
 func (c *Client) UpdateUserAutoApproval(ctx context.Context, userID uint, hasAutoApproval bool) error {
+	// check if user with this ID exists
+	_, err := c.GetUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
 	// First, check if UserPermissions exists for this user, if not create it
 	var permissions UserPermissions
-	err := c.db.WithContext(ctx).Where("user_id = ?", userID).First(&permissions).Error
+	err = c.db.WithContext(ctx).Where("user_id = ?", userID).First(&permissions).Error
 	if err == gorm.ErrRecordNotFound {
 		// Create new permissions record
 		permissions = UserPermissions{
