@@ -456,8 +456,8 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_cb2b`,
-		Function: `function __templ_dashboardScripts_cb2b(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_8510`,
+		Function: `function __templ_dashboardScripts_8510(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
 		initializeDashboardGrid();
@@ -568,7 +568,7 @@ func dashboardScripts() templ.ComponentScript {
 				window.showToast(message, 'success');
 
 				// Check if request was auto-approved by looking at the message
-				const wasAutoApproved = message.includes('auto-approved') || message.includes('protected');
+				const wasAutoApproved = data.autoApproved === true;
 
 				if (wasAutoApproved) {
 					// Auto-approved: Remove the card with animation
@@ -699,8 +699,8 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_cb2b`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_cb2b`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_8510`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_8510`),
 	}
 }
 

@@ -127,8 +127,9 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": message,
+		"success":      true,
+		"message":      message,
+		"autoApproved": autoApproved,
 	})
 }
 

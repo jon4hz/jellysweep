@@ -287,7 +287,7 @@ script dashboardScripts() {
 				window.showToast(message, 'success');
 
 				// Check if request was auto-approved by looking at the message
-				const wasAutoApproved = message.includes('auto-approved') || message.includes('protected');
+				const wasAutoApproved = data.autoApproved === true;
 
 				if (wasAutoApproved) {
 					// Auto-approved: Remove the card with animation
