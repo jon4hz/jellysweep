@@ -456,8 +456,8 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_fe9e`,
-		Function: `function __templ_dashboardScripts_fe9e(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_8510`,
+		Function: `function __templ_dashboardScripts_8510(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
 		initializeDashboardGrid();
@@ -563,13 +563,63 @@ func dashboardScripts() templ.ComponentScript {
 		})
 		.then(data => {
 			if (data.success) {
-				window.setButtonSuccess(buttonId, 'Request Submitted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+				// Use the message from the API response
+				const message = data.message || 'Request submitted successfully';
+				window.showToast(message, 'success');
 
-				// Update button styling
-				button.classList.remove('btn-primary');
-				button.classList.add('btn-secondary', 'opacity-50', 'cursor-not-allowed');
+				// Check if request was auto-approved by looking at the message
+				const wasAutoApproved = data.autoApproved === true;
 
-				window.showToast('Request submitted successfully', 'success');
+				if (wasAutoApproved) {
+					// Auto-approved: Remove the card with animation
+					window.setButtonSuccess(buttonId, 'Protected', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+
+					// Find and remove the media card
+					const card = button.closest('.media-card');
+					if (card) {
+						// Animate the card removal
+						card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+						card.style.opacity = '0';
+						card.style.transform = 'translateX(20px)';
+
+						setTimeout(() => {
+							// Remove from grid manager if available
+							if (window.dashboardMediaGridManager && window.dashboardMediaGridManager.removeItem) {
+								// Convert mediaId to number for proper comparison with item IDs
+								const numericMediaId = parseInt(mediaId);
+								window.dashboardMediaGridManager.removeItem(numericMediaId).then(() => {
+									// Check if we need to show empty state after removal
+									const remainingItems = window.dashboardMediaGridManager.allItems || [];
+									if (remainingItems.length === 0) {
+										// Reload to show empty state
+										setTimeout(() => {
+											window.location.reload();
+										}, 500);
+									}
+								});
+							} else {
+								// Fallback: just remove the DOM element
+								card.remove();
+
+								// Check if we need to show empty state
+								const remainingCards = document.querySelectorAll('.media-card');
+								if (remainingCards.length === 0) {
+									// Reload to show empty state
+									setTimeout(() => {
+										window.location.reload();
+									}, 500);
+								}
+							}
+						}, 300);
+					}
+				} else {
+					// Manual approval needed: Update button to show request submitted
+					window.setButtonSuccess(buttonId, 'Request Submitted', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>');
+
+					// Update button styling
+					button.classList.remove('btn-primary');
+					button.classList.add('btn-secondary', 'opacity-50', 'cursor-not-allowed');
+				}
 			} else {
 				throw new Error(data.message || 'Unknown error');
 			}
@@ -649,8 +699,8 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_fe9e`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_fe9e`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_8510`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_8510`),
 	}
 }
 

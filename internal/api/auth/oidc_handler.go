@@ -66,6 +66,16 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 	}
 	session.Set("user_id", user.ID)
 
+	// Update auto-approval permission based on OIDC group membership
+	// Only update if auto_approve_group is configured
+	if p.cfg.AutoApproveGroup != "" {
+		hasAutoApprove := slices.Contains(claims.Groups, p.cfg.AutoApproveGroup)
+		if err := p.db.UpdateUserAutoApproval(c.Request.Context(), user.ID, hasAutoApprove); err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+			return
+		}
+	}
+
 	if err := session.Save(); err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
 		return

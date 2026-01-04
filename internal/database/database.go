@@ -27,6 +27,7 @@ func New(dbpath string) (*Client, error) {
 		&Request{},
 		&User{},
 		&UserSettings{},
+		&UserPermissions{},
 		&EmailSettings{},
 		&HistoryEvent{},
 	); err != nil {

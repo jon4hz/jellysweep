@@ -391,6 +391,81 @@ func (h *AdminHandler) HistoryPanel(c *gin.Context) {
 	}
 }
 
+// GetAllUsers returns all users with their permissions.
+func (h *AdminHandler) GetAllUsers(c *gin.Context) {
+	users, err := h.engine.GetAllUsers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get users",
+		})
+		return
+	}
+
+	// Convert database users to API response format
+	type UserResponse struct {
+		ID              uint   `json:"id"`
+		Username        string `json:"username"`
+		HasAutoApproval bool   `json:"hasAutoApproval"`
+		CreatedAt       string `json:"createdAt"`
+	}
+
+	userResponses := make([]UserResponse, len(users))
+	for i, user := range users {
+		userResponses[i] = UserResponse{
+			ID:              user.ID,
+			Username:        user.Username,
+			HasAutoApproval: user.UserPermissions.HasAutoApproval,
+			CreatedAt:       user.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"users":   userResponses,
+	})
+}
+
+// UpdateUserPermissions updates a user's auto-approval permission.
+func (h *AdminHandler) UpdateUserPermissions(c *gin.Context) {
+	userIDVal := c.Param("id")
+	userID, err := parseUintParam(userIDVal)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid user ID",
+		})
+		log.Error("Failed to parse user ID", "error", err)
+		return
+	}
+
+	var req struct {
+		HasAutoApproval bool `json:"hasAutoApproval"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body",
+		})
+		log.Error("Failed to bind JSON", "error", err)
+		return
+	}
+
+	if err := h.engine.UpdateUserAutoApproval(c.Request.Context(), userID, req.HasAutoApproval); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to update user permissions",
+		})
+		log.Error("Failed to update user permissions", "error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User permissions updated successfully",
+	})
+}
+
 // GetHistory returns paginated history events.
 func (h *AdminHandler) GetHistory(c *gin.Context) {
 	page := 1

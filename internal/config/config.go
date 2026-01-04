@@ -101,6 +101,10 @@ type OIDCConfig struct {
 	RedirectURL string `yaml:"redirect_url" mapstructure:"redirect_url"`
 	// AdminGroup is the group that has admin privileges.
 	AdminGroup string `yaml:"admin_group" mapstructure:"admin_group"`
+	// AutoApproveGroup is the group that gets automatic approval for keep requests.
+	// Members of this group will have their keep requests automatically approved without admin intervention.
+	// This setting overrides the database value for auto-approval permission on each login.
+	AutoApproveGroup string `yaml:"auto_approve_group" mapstructure:"auto_approve_group"`
 }
 
 // JellyfinAuthConfig holds the Jellyfin authentication configuration for the Jellysweep server.
@@ -377,6 +381,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.oidc.client_secret", "")
 	v.SetDefault("auth.oidc.redirect_url", "")
 	v.SetDefault("auth.oidc.admin_group", "")
+	v.SetDefault("auth.oidc.auto_approve_group", "")
 	v.SetDefault("auth.jellyfin.enabled", true)
 
 	// Database defaults
