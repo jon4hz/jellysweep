@@ -247,6 +247,10 @@ templ HistoryTable() {
 					<input type="checkbox" value="admin_unkeep" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
 					<span class="text-sm text-gray-300">🚫 Admin Unkeep</span>
 				</label>
+				<label class="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded cursor-pointer transition-colors">
+					<input type="checkbox" value="not_found_anymore" class="event-type-checkbox w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"/>
+					<span class="text-sm text-gray-300">❓ Not Found</span>
+				</label>
 			</div>
 			<div class="mt-6 flex justify-between items-center">
 				<button
@@ -614,7 +618,8 @@ templ HistoryScript() {
 				'deleted': '<span class="event-badge bg-red-900 text-red-200">🗑️ Deleted</span>',
 				'request_created': '<span class="event-badge bg-purple-900 text-purple-200">📝 Request Created</span>',
 				'request_approved': '<span class="event-badge bg-green-900 text-green-200">✅ Request Approved</span>',
-				'request_denied': '<span class="event-badge bg-red-900 text-red-200">❌ Request Denied</span>'
+				'request_denied': '<span class="event-badge bg-red-900 text-red-200">❌ Request Denied</span>',
+				'not_found_anymore': '<span class="event-badge bg-gray-900 text-gray-200">❓ Not Found</span>'
 			};
 			return badges[eventType] || `<span class="event-badge bg-gray-900 text-gray-200">${eventType}</span>`;
 		}
@@ -645,6 +650,8 @@ templ HistoryScript() {
 					return 'Keep request was approved';
 				case 'request_denied':
 					return 'Keep request was denied';
+				case 'not_found_anymore':
+					return 'Media item was not found anymore in Jellyfin';
 				default:
 					return event.EventType;
 			}
