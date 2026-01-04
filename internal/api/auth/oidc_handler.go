@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/charmbracelet/log"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,7 +24,9 @@ func (p *OIDCProvider) Login(c *gin.Context) {
 		// Generate PKCE code verifier and challenge
 		codeVerifier, err := generateCodeVerifier()
 		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+			log.Error("Failed to generate PKCE code verifier", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication initialization failed"})
+			c.Abort()
 			return
 		}
 
@@ -38,7 +41,9 @@ func (p *OIDCProvider) Login(c *gin.Context) {
 	}
 
 	if err := session.Save(); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+		log.Error("Failed to save session during login", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication initialization failed"})
+		c.Abort()
 		return
 	}
 
@@ -53,7 +58,9 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 
 	storedState := session.Get("oauth_state")
 	if storedState == nil || storedState.(string) != state {
-		c.AbortWithStatus(http.StatusUnauthorized)
+		log.Warn("OAuth state validation failed", "expected", storedState, "received", state)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
+		c.Abort()
 		return
 	}
 
@@ -65,7 +72,9 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 	if p.cfg.UsePKCE {
 		codeVerifier := session.Get("pkce_verifier")
 		if codeVerifier == nil {
-			c.AbortWithStatus(http.StatusBadRequest)
+			log.Error("PKCE code verifier not found in session")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Authentication failed"})
+			c.Abort()
 			return
 		}
 
@@ -75,7 +84,9 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 
 		session.Delete("pkce_verifier")
 		if err := session.Save(); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+			log.Error("Failed to save session after PKCE cleanup", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
+			c.Abort()
 			return
 		}
 	} else {
@@ -83,19 +94,25 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.AbortWithError(http.StatusUnauthorized, err) //nolint:errcheck
+		log.Error("Failed to exchange authorization code for token", "error", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
+		c.Abort()
 		return
 	}
 
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 	if !ok {
-		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+		log.Error("ID token not found in OAuth2 token response")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
+		c.Abort()
 		return
 	}
 
 	idToken, err := p.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		c.AbortWithError(http.StatusUnauthorized, err) //nolint:errcheck
+		log.Error("Failed to verify ID token", "error", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication failed"})
+		c.Abort()
 		return
 	}
 
@@ -107,7 +124,9 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 		Groups            []string `json:"groups"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+		log.Error("Failed to parse ID token claims", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
+		c.Abort()
 		return
 	}
 
@@ -122,7 +141,9 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 	// Get or create user in database
 	user, err := p.db.GetOrCreateUser(c.Request.Context(), claims.PreferredUsername)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+		log.Error("Failed to get or create user", "error", err, "username", claims.PreferredUsername)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
+		c.Abort()
 		return
 	}
 	session.Set("user_id", user.ID)
@@ -132,13 +153,17 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 	if p.cfg.AutoApproveGroup != "" {
 		hasAutoApprove := slices.Contains(claims.Groups, p.cfg.AutoApproveGroup)
 		if err := p.db.UpdateUserAutoApproval(c.Request.Context(), user.ID, hasAutoApprove); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+			log.Error("Failed to update user auto-approval permission", "error", err, "user_id", user.ID)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
+			c.Abort()
 			return
 		}
 	}
 
 	if err := session.Save(); err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+		log.Error("Failed to save session after authentication", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Authentication failed"})
+		c.Abort()
 		return
 	}
 
