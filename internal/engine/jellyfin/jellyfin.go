@@ -357,6 +357,7 @@ func (c *Client) GetCollectionItems(ctx context.Context, collectionID string) (m
 	// Get items in the collection
 	result, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
 		ParentId(collectionID).
+		Recursive(true).
 		Execute()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get collection items: %w", err)
