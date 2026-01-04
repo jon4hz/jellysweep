@@ -16,6 +16,8 @@ func (p *OIDCProvider) Login(c *gin.Context) {
 	state := uuid.New().String()
 	session := sessions.Default(c)
 
+	session.Set("oauth_state", state)
+
 	var url string
 	if p.cfg.UsePKCE {
 		// Generate PKCE code verifier and challenge
@@ -27,10 +29,6 @@ func (p *OIDCProvider) Login(c *gin.Context) {
 
 		// Store the code verifier in session for later use in callback
 		session.Set("pkce_verifier", codeVerifier)
-		if err := session.Save(); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
-			return
-		}
 
 		url = p.config.AuthCodeURL(state,
 			oauth2.S256ChallengeOption(codeVerifier),
@@ -39,13 +37,27 @@ func (p *OIDCProvider) Login(c *gin.Context) {
 		url = p.config.AuthCodeURL(state)
 	}
 
+	if err := session.Save(); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err) //nolint:errcheck
+		return
+	}
+
 	c.Redirect(http.StatusFound, url)
 }
 
 func (p *OIDCProvider) Callback(c *gin.Context) {
 	ctx := c.Request.Context()
 	code := c.Query("code")
+	state := c.Query("state")
 	session := sessions.Default(c)
+
+	storedState := session.Get("oauth_state")
+	if storedState == nil || storedState.(string) != state {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	session.Delete("oauth_state")
 
 	var oauth2Token *oauth2.Token
 	var err error
@@ -135,7 +147,7 @@ func (p *OIDCProvider) Callback(c *gin.Context) {
 
 // generateCodeVerifier creates a random code verifier for PKCE.
 func generateCodeVerifier() (string, error) {
-	b := make([]byte, 32)
+	b := make([]byte, 48)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
