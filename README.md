@@ -7,7 +7,8 @@
 <img src="internal/static/static/jellysweep.png" alt="Jellysweep Logo" width="20%">
 
 Jellysweep is a smart cleanup tool for your Jellyfin media server.
-It automatically removes old, unwatched movies and TV shows by analyzing your viewing history and user requests.
+It automatically removes old, unwatched movies and TV shows by analyzing your viewing stats and other criteria.
+It also supports user requests to keep specific content.
 
 > [!CAUTION]
 > Always test with dry-run mode first! And review the logs to see what jellysweep would've marked for deletion!
@@ -33,9 +34,9 @@ It automatically removes old, unwatched movies and TV shows by analyzing your vi
   - [✨ Key Features](#-key-features)
   - [📋 Table of Contents](#-table-of-contents)
   - [🚀 How It Works](#-how-it-works)
+  - [🔍️ Filters](#️-filters)
   - [🧹 Cleanup Modes](#-cleanup-modes)
   - [💾 Disk Usage-Based Cleanup](#-disk-usage-based-cleanup)
-    - [How It Works](#how-it-works)
     - [Configuration Example](#configuration-example)
     - [Behavior Examples](#behavior-examples)
   - [📸 Screenshots](#-screenshots)
@@ -69,6 +70,24 @@ Your users can then request to keep specific items via the web interface. Admins
 Users will receive an email notification, if content that they requested (in jellyseer) is marked for deletion.
 After a configurable grace period, the media items are then deleted. There is als an option to speed up the deletion process when disk space is running low.
 
+## 🔍️ Filters
+
+At the core of jellysweep are filters that allow you to define criteria which must be met for a media item to be eligible for deletion.
+If one of the filters is not met, the item will be skipped and not marked for deletion.
+
+Filters can be configured per library and include:
+
+| Filter | Description |
+|--------|-------------|
+| `content_age_threshold` | Minimum age of the content in days |
+| `last_stream_threshold` | Minimum days since the content was last streamed |
+| `content_size_threshold` | Minimum size of the content in bytes (0 = no minimum) |
+| `tunarr_enabled` | Whether to protect items used by Tunarr channels (requires Tunarr configuration) |
+| `exclude_tags` | List of Sonarr/Radarr tags that exclude content from deletion |
+
+> [!IMPORTANT]
+> Once a media item is marked for deletion, it wont go through the filters again. Filter changes will only affect new items that are being considered for deletion.
+
 ## 🧹 Cleanup Modes
 
 Jellysweep supports three different cleanup modes for TV series, configurable globally through the `cleanup_mode` setting. The mode determines how much content is removed when a series is marked for deletion. Movies are always deleted entirely regardless of the cleanup mode.
@@ -88,12 +107,6 @@ Both selective modes automatically unmonitor deleted episodes in Sonarr to preve
 
 Jellysweep monitors disk usage and speeds up cleanup when you're running low on storage. When disk space is tight, it reduces the grace period for deletions while still giving you time to save anything important during normal operation.
 
-### How It Works
-
-- **Cleanup-time Monitoring**: Checks disk usage for each library path during scheduled cleanup runs
-- **Multi-tier Thresholds**: Configure multiple usage percentage levels with different cleanup delays
-- **Adaptive Tagging**: Creates both standard and disk usage-based deletion tags
-- **Smart Triggering**: Uses the most restrictive applicable threshold based on current usage
 
 > [!IMPORTANT]
 > For disk usage monitoring to work in Docker containers, Jellyfin library paths must be mounted at the same locations inside the Jellysweep container. For example, if Jellyfin has `/data/movies` mapped to `/movies`, Jellysweep also needs `/data/movies` mapped to `/movies`
@@ -393,13 +406,6 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_WEBPUSH_VAPID_EMAIL` | *(required if webpush enabled)* | Contact email for VAPID keys |
 | `JELLYSWEEP_WEBPUSH_PUBLIC_KEY` | *(required if webpush enabled)* | VAPID public key |
 | `JELLYSWEEP_WEBPUSH_PRIVATE_KEY` | *(required if webpush enabled)* | VAPID private key |
-| **Default Library Settings** | | |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_ENABLED` | `true` | Enable cleanup for default library |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_FILTER_CONTENT_AGE_THRESHOLD` | `30` | Min age in days for content to be eligible |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_FILTER_LAST_STREAM_THRESHOLD` | `30` | Min days since last stream for cleanup |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_FILTER_CONTENT_SIZE_THRESHOLD` | `0` | Min size in bytes for content to be eligible (0 = no minimum) |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_CLEANUP_DELAY` | `30` | Days before deletion after marking |
-| `JELLYSWEEP_LIBRARIES_DEFAULT_PROTECTION_PERIOD` | `90` | Days to protect media after accepting a keep request |
 | **External Services** | | |
 | `JELLYSWEEP_JELLYSEERR_URL` | *(required)* | Jellyseerr server URL |
 | `JELLYSWEEP_JELLYSEERR_API_KEY` | *(required)* | Jellyseerr API key |
@@ -421,8 +427,8 @@ All configuration options can be set via environment variables with the `JELLYSW
 > [!TIP]
 > Either Sonarr or Radarr (or both) must be configured. Only one of Jellystat or Streamystats can be configured at a time.
 
-> [!NOTE]
-> Some complex library configuration options are not supported by environment variables. In that case, the library configuration must be done via the YAML configuration file. These options are: `disk_usage_thresholds`, `exclude_tags`
+> [!IMPORTANT]
+> The library configuration cannot be set via environment variables and must be defined in the configuration file.
 .
 
 ### Configuration File
