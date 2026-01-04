@@ -186,6 +186,10 @@ services:
       # You can also override config options with env vars
       - JELLYSWEEP_DRY_RUN=false
       - JELLYSWEEP_LISTEN=0.0.0.0:3002
+    # enable debug logs
+    # command:
+    #   - serve
+    #   - --log-level=debug
 ```
 
 You can either supply the configuration via a `config.yml` file or use environment variables. Your choice!
