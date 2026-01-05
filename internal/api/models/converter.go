@@ -20,6 +20,10 @@ func ToUserMediaItem(m database.Media, cfg *config.Config) UserMediaItem {
 		Unkeepable:        m.Unkeepable,
 	}
 
+	if item.EstimatedDeleteAt.IsZero() {
+		item.EstimatedDeleteAt = m.DefaultDeleteAt
+	}
+
 	// Add cleanup mode and keep count for TV series
 	if m.MediaType == database.MediaTypeTV && cfg != nil {
 		item.CleanupMode = string(cfg.GetCleanupMode())
@@ -64,6 +68,10 @@ func ToAdminMediaItem(m database.Media, cfg *config.Config) AdminMediaItem {
 		EstimatedDeleteAt: m.EstimatedDeleteAt,
 		ProtectedUntil:    m.ProtectedUntil,
 		Unkeepable:        m.Unkeepable,
+	}
+
+	if item.EstimatedDeleteAt.IsZero() {
+		item.EstimatedDeleteAt = m.DefaultDeleteAt
 	}
 
 	// Add cleanup mode and keep count for TV series
