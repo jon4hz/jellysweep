@@ -456,8 +456,8 @@ func EmptyState() templ.Component {
 
 func dashboardScripts() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_dashboardScripts_8510`,
-		Function: `function __templ_dashboardScripts_8510(){// Initialize all functionality when DOM loads
+		Name: `__templ_dashboardScripts_6172`,
+		Function: `function __templ_dashboardScripts_6172(){// Initialize all functionality when DOM loads
 	document.addEventListener('DOMContentLoaded', function() {
 		initializeTabs('dashboard-tabs');
 		initializeDashboardGrid();
@@ -699,8 +699,8 @@ func dashboardScripts() templ.ComponentScript {
 		});
 	}
 }`,
-		Call:       templ.SafeScript(`__templ_dashboardScripts_8510`),
-		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_8510`),
+		Call:       templ.SafeScript(`__templ_dashboardScripts_6172`),
+		CallInline: templ.SafeScriptInline(`__templ_dashboardScripts_6172`),
 	}
 }
 
