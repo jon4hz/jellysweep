@@ -496,6 +496,7 @@ leaving_collections_tv_name: "Leaving TV Shows"
 # Library-specific settings
 libraries:
 
+  # Name must match the Library name in Jellyfin
   "Movies":
     enabled: true
     cleanup_delay: 60
