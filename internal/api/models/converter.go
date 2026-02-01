@@ -9,14 +9,19 @@ import (
 // This excludes sensitive fields like RequestedBy.
 func ToUserMediaItem(m database.Media, cfg *config.Config) UserMediaItem {
 	item := UserMediaItem{
-		ID:              m.ID,
-		Title:           m.Title,
-		Year:            m.Year,
-		MediaType:       MediaType(m.MediaType),
-		LibraryName:     m.LibraryName,
-		FileSize:        m.FileSize,
-		DefaultDeleteAt: m.DefaultDeleteAt,
-		Unkeepable:      m.Unkeepable,
+		ID:                m.ID,
+		Title:             m.Title,
+		Year:              m.Year,
+		MediaType:         MediaType(m.MediaType),
+		LibraryName:       m.LibraryName,
+		FileSize:          m.FileSize,
+		DefaultDeleteAt:   m.DefaultDeleteAt,
+		EstimatedDeleteAt: m.EstimatedDeleteAt,
+		Unkeepable:        m.Unkeepable,
+	}
+
+	if item.EstimatedDeleteAt.IsZero() {
+		item.EstimatedDeleteAt = m.DefaultDeleteAt
 	}
 
 	// Add cleanup mode and keep count for TV series
@@ -48,20 +53,25 @@ func ToUserMediaItems(items []database.Media, cfg *config.Config) []UserMediaIte
 // ToAdminMediaItem converts a database.Media to AdminMediaItem for admins.
 func ToAdminMediaItem(m database.Media, cfg *config.Config) AdminMediaItem {
 	item := AdminMediaItem{
-		ID:              m.ID,
-		JellyfinID:      m.JellyfinID,
-		LibraryName:     m.LibraryName,
-		ArrID:           m.ArrID,
-		Title:           m.Title,
-		TmdbId:          m.TmdbId,
-		TvdbId:          m.TvdbId,
-		Year:            m.Year,
-		FileSize:        m.FileSize,
-		MediaType:       MediaType(m.MediaType),
-		RequestedBy:     m.RequestedBy,
-		DefaultDeleteAt: m.DefaultDeleteAt,
-		ProtectedUntil:  m.ProtectedUntil,
-		Unkeepable:      m.Unkeepable,
+		ID:                m.ID,
+		JellyfinID:        m.JellyfinID,
+		LibraryName:       m.LibraryName,
+		ArrID:             m.ArrID,
+		Title:             m.Title,
+		TmdbId:            m.TmdbId,
+		TvdbId:            m.TvdbId,
+		Year:              m.Year,
+		FileSize:          m.FileSize,
+		MediaType:         MediaType(m.MediaType),
+		RequestedBy:       m.RequestedBy,
+		DefaultDeleteAt:   m.DefaultDeleteAt,
+		EstimatedDeleteAt: m.EstimatedDeleteAt,
+		ProtectedUntil:    m.ProtectedUntil,
+		Unkeepable:        m.Unkeepable,
+	}
+
+	if item.EstimatedDeleteAt.IsZero() {
+		item.EstimatedDeleteAt = m.DefaultDeleteAt
 	}
 
 	// Add cleanup mode and keep count for TV series

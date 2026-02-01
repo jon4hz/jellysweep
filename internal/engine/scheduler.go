@@ -49,6 +49,19 @@ func (e *Engine) setupJobs() error {
 		return fmt.Errorf("failed to add cleanup job: %w", err)
 	}
 
+	estimateDeletionJobDef := gocron.CronJob("0 */6 * * *", false)
+	if err := e.scheduler.AddSingletonJob(
+		"estimate_deletions",
+		"Estimate Deletions",
+		"Estimates media deletions for reporting",
+		"0 */6 * * *", // Every 6 hours
+		estimateDeletionJobDef,
+		e.runEstimateDeletionsJob,
+		false,
+	); err != nil {
+		return fmt.Errorf("failed to add estimate deletions job: %w", err)
+	}
+
 	// Add job to clear image cache once a week
 	clearImageCacheJobDef := gocron.CronJob("0 0 * * 0", false) // Every Sunday at midnight
 	if err := e.scheduler.AddSingletonJob(
