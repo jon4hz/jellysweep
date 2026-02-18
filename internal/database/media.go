@@ -161,12 +161,7 @@ func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, prote
 func (c *Client) SetMediaEstimatedDeleteAt(ctx context.Context, mediaID uint, estimatedDeleteAt time.Time) error {
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).
-		Updates(Media{EstimatedDeleteAt: func() time.Time {
-			if !estimatedDeleteAt.IsZero() {
-				return estimatedDeleteAt
-			}
-			return time.Time{}
-		}()})
+		Updates(Media{EstimatedDeleteAt: estimatedDeleteAt})
 	if result.Error != nil {
 		log.Error("failed to set media estimated delete at", "error", result.Error)
 		return result.Error
