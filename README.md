@@ -400,6 +400,11 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_EMAIL_USE_TLS` | `true` | Use TLS for SMTP connection |
 | `JELLYSWEEP_EMAIL_USE_SSL` | `false` | Use SSL for SMTP connection |
 | `JELLYSWEEP_EMAIL_INSECURE_SKIP_VERIFY` | `false` | Skip TLS certificate verification |
+| **Discord Notifications** | | |
+| `JELLYSWEEP_DISCORD_ENABLED` | `false` | Enable Discord notifications |
+| `JELLYSWEEP_DISCORD_WEBHOOK_URL` | *(required if Discord enabled)* | Discord Webhook integration URL |
+| `JELLYSWEEP_DISCORD_USERNAME` | `Jellysweep` | The username seen in the Discord notification  |
+| `JELLYSWEEP_DISCORD_AVATAR_URL` | *(Uses the Jellysweep logo)* | The Avatar image seen in the Discord notification |
 | **Ntfy Notifications** | | |
 | `JELLYSWEEP_NTFY_ENABLED` | `false` | Enable ntfy notifications |
 | `JELLYSWEEP_NTFY_SERVER_URL` | `https://ntfy.sh` | Ntfy server URL |
@@ -560,6 +565,13 @@ email:
   use_ssl: false             # Use SSL/TLS
   insecure_skip_verify: false
 
+# Discord notifications for users about upcoming deletions
+discord:
+  enabled: false
+  webhook_url: ""
+  username: ""
+  avatar_url: ""
+
 # Ntfy notifications for admins about keep requests and deletions
 ntfy:
   enabled: false
@@ -630,6 +642,11 @@ jellysweep reset
 
 # Generate VAPID keys for web push notifications
 jellysweep generate-vapid-keys
+
+# Send a test notification
+jellysweep notify email --to you@example.com
+jellysweep notify discord
+jellysweep notify ntfy
 
 # Full command help
 jellysweep --help
