@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
+	"github.com/jon4hz/jellysweep/internal/notify/discord"
 	"github.com/jon4hz/jellysweep/internal/notify/email"
 	"github.com/jon4hz/jellysweep/internal/notify/ntfy"
 )
@@ -35,7 +36,7 @@ func (e *Engine) sendEmailNotifications() {
 			emailMediaItems = append(emailMediaItems, email.MediaItem{
 				Title:       item.Title,
 				MediaType:   string(item.MediaType),
-				RequestedBy: item.RequestedBy,
+				RequestedBy: item.RequestedBy.UserEmail,
 			})
 		}
 
@@ -44,7 +45,7 @@ func (e *Engine) sendEmailNotifications() {
 		if len(mediaItems) > 0 {
 			// Use the cleanup delay from the first item's library
 			for _, item := range mediaItems {
-				if item.RequestedBy == userEmail {
+				if item.RequestedBy.UserEmail == userEmail {
 					libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
 					if libraryConfig != nil {
 						cleanupDate = cleanupDate.Add(time.Duration(libraryConfig.GetCleanupDelay()) * 24 * time.Hour)
@@ -54,9 +55,11 @@ func (e *Engine) sendEmailNotifications() {
 			}
 		}
 
+		userName := mediaItems[0].RequestedBy.UserName
+
 		notification := email.UserNotification{
 			UserEmail:     userEmail,
-			UserName:      userEmail, // Use email as name for now, could be enhanced
+			UserName:      userName,
 			MediaItems:    emailMediaItems,
 			CleanupDate:   cleanupDate,
 			DryRun:        e.cfg.DryRun,
@@ -68,6 +71,52 @@ func (e *Engine) sendEmailNotifications() {
 		} else {
 			log.Infof("Sent cleanup notification to %s for %d media items", userEmail, len(emailMediaItems))
 		}
+	}
+}
+
+// sendDiscordNotifications sends a single Discord notification listing all media marked for deletion.
+func (e *Engine) sendDiscordNotifications() {
+	if e.discord == nil || !e.cfg.Discord.Enabled {
+		log.Debug("Discord service not configured or disabled, skipping notifications")
+		return
+	}
+
+	if len(e.data.allMediaItems) == 0 {
+		log.Debug("No media items to send Discord notification for")
+		return
+	}
+
+	discordItems := make([]discord.MediaItem, 0, len(e.data.allMediaItems))
+	for _, item := range e.data.allMediaItems {
+		cleanupDate := time.Now()
+		if libCfg := e.cfg.GetLibraryConfig(item.LibraryName); libCfg != nil {
+			cleanupDate = cleanupDate.Add(time.Duration(libCfg.GetCleanupDelay()) * 24 * time.Hour)
+		}
+
+		di := discord.MediaItem{
+			Title:       item.Title,
+			MediaType:   string(item.MediaType),
+			CleanupDate: cleanupDate,
+		}
+		if item.RequestedBy != nil {
+			di.RequestedBy = item.RequestedBy.UserName
+			if item.RequestedBy.NotificationSettings.DiscordEnabled {
+				di.DiscordID = item.RequestedBy.NotificationSettings.DiscordID
+			}
+		}
+		discordItems = append(discordItems, di)
+	}
+
+	notification := discord.UserNotification{
+		MediaItems:    discordItems,
+		JellysweepURL: e.cfg.ServerURL,
+		DryRun:        e.cfg.DryRun,
+	}
+
+	if err := e.discord.SendCleanupNotification(notification); err != nil {
+		log.Errorf("Failed to send Discord notification: %v", err)
+	} else {
+		log.Infof("Sent Discord cleanup notification (%d items)", len(discordItems))
 	}
 }
 
