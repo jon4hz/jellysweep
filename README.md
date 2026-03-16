@@ -360,86 +360,86 @@ Jellysweep supports configuration through YAML files and environment variables. 
 
 All configuration options can be set via environment variables with the `JELLYSWEEP_` prefix:
 
-| Environment Variable | Default Value | Description |
-|---------------------|---------------|-------------|
-| **Jellysweep Server** | | |
-| `JELLYSWEEP_LISTEN` | `0.0.0.0:3002` | Address and port for the web interface |
-| `JELLYSWEEP_CLEANUP_SCHEDULE` | `0 */12 * * *` | Cron schedule for cleanup runs |
-| `JELLYSWEEP_CLEANUP_MODE` | `all` | Cleanup mode: `all`, `keep_episodes`, or `keep_seasons` |
-| `JELLYSWEEP_KEEP_COUNT` | `1` | Number of episodes/seasons to keep (when using `keep_episodes` or `keep_seasons` mode) |
-| `JELLYSWEEP_DRY_RUN` | `true` | Run in dry-run mode (no actual deletions) |
-| `JELLYSWEEP_API_KEY` | *(optional)* | API key for the Jellysweep server (used by the Jellyfin plugin) |
-| `JELLYSWEEP_SESSION_KEY` | *(required)* | Random string for session encryption (`openssl rand -base64 32`) |
-| `JELLYSWEEP_SESSION_MAX_AGE` | `172800` | Session maximum age in seconds (48 hours) |
-| `JELLYSWEEP_SERVER_URL` | `http://localhost:3002` | Base URL of the Jellysweep server |
-| **Leaving Collections** | | |
-| `JELLYSWEEP_LEAVING_COLLECTIONS_ENABLED` | `false` | | Enable leaving collections for media scheduled for deletion |
-| `JELLYSWEEP_LEAVING_COLLECTIONS_MOVIE_NAME` | `Leaving Movies` | Name of the leaving movies collection |
-| `JELLYSWEEP_LEAVING_COLLECTIONS_TV_NAME` | `Leaving TV Shows` | Name of the leaving TV shows collection |
-| **Database Configuration** | | |
-| `JELLYSWEEP_DATABASE_PATH` | `./data/jellysweep.db` | Path to the database file |
-| **OIDC Authentication** | | |
-| `JELLYSWEEP_AUTH_OIDC_ENABLED` | `false` | Enable OIDC/SSO authentication |
-| `JELLYSWEEP_AUTH_OIDC_NAME` | OIDC | Display name on the login page |
-| `JELLYSWEEP_AUTH_OIDC_ISSUER` | *(required if OIDC enabled)* | OIDC issuer URL |
-| `JELLYSWEEP_AUTH_OIDC_CLIENT_ID` | *(required if OIDC enabled)* | OIDC client ID |
-| `JELLYSWEEP_AUTH_OIDC_CLIENT_SECRET` | *(required if OIDC enabled)* | OIDC client secret |
-| `JELLYSWEEP_AUTH_OIDC_REDIRECT_URL` | *(required if OIDC enabled)* | OIDC redirect URL |
-| `JELLYSWEEP_AUTH_OIDC_USE_PKCE` | `false` | Enable PKCE for enhanced security |
-| `JELLYSWEEP_AUTH_OIDC_ADMIN_GROUP` | *(required if OIDC enabled)* | Group with admin privileges |
-| `JELLYSWEEP_AUTH_OIDC_AUTO_APPROVE_GROUP` | *(optional)* | Group with auto-approval permission for keep requests |
-| **Jellyfin Authentication** | | |
-| `JELLYSWEEP_AUTH_JELLYFIN_ENABLED` | `true` | Enable Jellyfin authentication |
-| **Profile Pictures** | | |
-| `JELLYSWEEP_GRAVATAR_ENABLED` | `false` | Enable Gravatar profile pictures |
-| `JELLYSWEEP_GRAVATAR_DEFAULT_IMAGE` | `robohash` | Default image if no Gravatar found |
-| `JELLYSWEEP_GRAVATAR_RATING` | `g` | Maximum rating for images (g, pg, r, x) |
-| `JELLYSWEEP_GRAVATAR_SIZE` | `80` | Image size in pixels (1-2048) |
-| **Email Notifications** | | |
-| `JELLYSWEEP_EMAIL_ENABLED` | `false` | Enable email notifications |
-| `JELLYSWEEP_EMAIL_SMTP_HOST` | *(required if email enabled)* | SMTP server host |
-| `JELLYSWEEP_EMAIL_SMTP_PORT` | `587` | SMTP server port |
-| `JELLYSWEEP_EMAIL_USERNAME` | *(required if email enabled)* | SMTP username |
-| `JELLYSWEEP_EMAIL_PASSWORD` | *(required if email enabled)* | SMTP password |
-| `JELLYSWEEP_EMAIL_FROM_EMAIL` | *(required if email enabled)* | From email address |
-| `JELLYSWEEP_EMAIL_FROM_NAME` | `Jellysweep` | From name for emails |
-| `JELLYSWEEP_EMAIL_USE_TLS` | `true` | Use TLS for SMTP connection |
-| `JELLYSWEEP_EMAIL_USE_SSL` | `false` | Use SSL for SMTP connection |
-| `JELLYSWEEP_EMAIL_INSECURE_SKIP_VERIFY` | `false` | Skip TLS certificate verification |
-| **Discord Notifications** | | |
-| `JELLYSWEEP_DISCORD_ENABLED` | `false` | Enable Discord notifications |
-| `JELLYSWEEP_DISCORD_WEBHOOK_URL` | *(required if Discord enabled)* | Discord Webhook integration URL |
-| `JELLYSWEEP_DISCORD_USERNAME` | `Jellysweep` | The username seen in the Discord notification  |
-| `JELLYSWEEP_DISCORD_AVATAR_URL` | *(Uses the Jellysweep logo)* | The Avatar image seen in the Discord notification |
-| **Ntfy Notifications** | | |
-| `JELLYSWEEP_NTFY_ENABLED` | `false` | Enable ntfy notifications |
-| `JELLYSWEEP_NTFY_SERVER_URL` | `https://ntfy.sh` | Ntfy server URL |
-| `JELLYSWEEP_NTFY_TOPIC` | *(required if ntfy enabled)* | Ntfy topic to publish to |
-| `JELLYSWEEP_NTFY_USERNAME` | *(optional)* | Ntfy username for authentication |
-| `JELLYSWEEP_NTFY_PASSWORD` | *(optional)* | Ntfy password for authentication |
-| `JELLYSWEEP_NTFY_TOKEN` | *(optional)* | Ntfy token for authentication |
-| **Web Push Notifications** | | |
-| `JELLYSWEEP_WEBPUSH_ENABLED` | `false` | Enable web push notifications |
-| `JELLYSWEEP_WEBPUSH_VAPID_EMAIL` | *(required if webpush enabled)* | Contact email for VAPID keys |
-| `JELLYSWEEP_WEBPUSH_PUBLIC_KEY` | *(required if webpush enabled)* | VAPID public key |
-| `JELLYSWEEP_WEBPUSH_PRIVATE_KEY` | *(required if webpush enabled)* | VAPID private key |
-| **External Services** | | |
-| `JELLYSWEEP_JELLYSEERR_URL` | *(required)* | Jellyseerr server URL |
-| `JELLYSWEEP_JELLYSEERR_API_KEY` | *(required)* | Jellyseerr API key |
-| `JELLYSWEEP_SONARR_URL` | *(optional)* | Sonarr server URL |
-| `JELLYSWEEP_SONARR_API_KEY` | *(optional)* | Sonarr API key |
-| `JELLYSWEEP_RADARR_URL` | *(optional)* | Radarr server URL |
-| `JELLYSWEEP_RADARR_API_KEY` | *(optional)* | Radarr API key |
-| `JELLYSWEEP_JELLYFIN_URL` | *(required)* | Jellyfin server URL |
-| `JELLYSWEEP_JELLYFIN_API_KEY` | *(required)* | Jellyfin API key |
-| `JELLYSWEEP_JELLYSTAT_URL` | *(optional)* | Jellystat server URL |
-| `JELLYSWEEP_JELLYSTAT_API_KEY` | *(optional)* | Jellystat API key |
-| `JELLYSWEEP_STREAMYSTATS_URL` | *(optional)* | Streamystats server URL |
-| `JELLYSWEEP_STREAMYSTATS_SERVER_ID` | *(optional)* | Streamystats Jellyfin server ID |
-| `JELLYSWEEP_TUNARR_URL` | *(optional)* | Tunarr server URL |
-| **Cache Configuration** | | |
-| `JELLYSWEEP_CACHE_TYPE` | `memory` | Cache type: `memory` or `redis` |
-| `JELLYSWEEP_CACHE_REDIS_URL` | `localhost:6379` | Redis server URL (when using redis cache) |
+| Environment Variable                        | Default Value                   | Description                                                                            |
+| ------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
+| **Jellysweep Server**                       |                                 |                                                                                        |
+| `JELLYSWEEP_LISTEN`                         | `0.0.0.0:3002`                  | Address and port for the web interface                                                 |
+| `JELLYSWEEP_CLEANUP_SCHEDULE`               | `0 */12 * * *`                  | Cron schedule for cleanup runs                                                         |
+| `JELLYSWEEP_CLEANUP_MODE`                   | `all`                           | Cleanup mode: `all`, `keep_episodes`, or `keep_seasons`                                |
+| `JELLYSWEEP_KEEP_COUNT`                     | `1`                             | Number of episodes/seasons to keep (when using `keep_episodes` or `keep_seasons` mode) |
+| `JELLYSWEEP_DRY_RUN`                        | `true`                          | Run in dry-run mode (no actual deletions)                                              |
+| `JELLYSWEEP_API_KEY`                        | *(optional)*                    | API key for the Jellysweep server (used by the Jellyfin plugin)                        |
+| `JELLYSWEEP_SESSION_KEY`                    | *(required)*                    | Random string for session encryption (`openssl rand -base64 32`)                       |
+| `JELLYSWEEP_SESSION_MAX_AGE`                | `172800`                        | Session maximum age in seconds (48 hours)                                              |
+| `JELLYSWEEP_SERVER_URL`                     | `http://localhost:3002`         | Base URL of the Jellysweep server                                                      |
+| **Leaving Collections**                     |                                 |                                                                                        |
+| `JELLYSWEEP_LEAVING_COLLECTIONS_ENABLED`    | `false`                         |                                                                                        |
+| `JELLYSWEEP_LEAVING_COLLECTIONS_MOVIE_NAME` | `Leaving Movies`                | Name of the leaving movies collection                                                  |
+| `JELLYSWEEP_LEAVING_COLLECTIONS_TV_NAME`    | `Leaving TV Shows`              | Name of the leaving TV shows collection                                                |
+| **Database Configuration**                  |                                 |                                                                                        |
+| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file                                                              |
+| **OIDC Authentication**                     |                                 |                                                                                        |
+| `JELLYSWEEP_AUTH_OIDC_ENABLED`              | `false`                         | Enable OIDC/SSO authentication                                                         |
+| `JELLYSWEEP_AUTH_OIDC_NAME`                 | OIDC                            | Display name on the login page                                                         |
+| `JELLYSWEEP_AUTH_OIDC_ISSUER`               | *(required if OIDC enabled)*    | OIDC issuer URL                                                                        |
+| `JELLYSWEEP_AUTH_OIDC_CLIENT_ID`            | *(required if OIDC enabled)*    | OIDC client ID                                                                         |
+| `JELLYSWEEP_AUTH_OIDC_CLIENT_SECRET`        | *(required if OIDC enabled)*    | OIDC client secret                                                                     |
+| `JELLYSWEEP_AUTH_OIDC_REDIRECT_URL`         | *(required if OIDC enabled)*    | OIDC redirect URL                                                                      |
+| `JELLYSWEEP_AUTH_OIDC_USE_PKCE`             | `false`                         | Enable PKCE for enhanced security                                                      |
+| `JELLYSWEEP_AUTH_OIDC_ADMIN_GROUP`          | *(required if OIDC enabled)*    | Group with admin privileges                                                            |
+| `JELLYSWEEP_AUTH_OIDC_AUTO_APPROVE_GROUP`   | *(optional)*                    | Group with auto-approval permission for keep requests                                  |
+| **Jellyfin Authentication**                 |                                 |                                                                                        |
+| `JELLYSWEEP_AUTH_JELLYFIN_ENABLED`          | `true`                          | Enable Jellyfin authentication                                                         |
+| **Profile Pictures**                        |                                 |                                                                                        |
+| `JELLYSWEEP_GRAVATAR_ENABLED`               | `false`                         | Enable Gravatar profile pictures                                                       |
+| `JELLYSWEEP_GRAVATAR_DEFAULT_IMAGE`         | `robohash`                      | Default image if no Gravatar found                                                     |
+| `JELLYSWEEP_GRAVATAR_RATING`                | `g`                             | Maximum rating for images (g, pg, r, x)                                                |
+| `JELLYSWEEP_GRAVATAR_SIZE`                  | `80`                            | Image size in pixels (1-2048)                                                          |
+| **Email Notifications**                     |                                 |                                                                                        |
+| `JELLYSWEEP_EMAIL_ENABLED`                  | `false`                         | Enable email notifications                                                             |
+| `JELLYSWEEP_EMAIL_SMTP_HOST`                | *(required if email enabled)*   | SMTP server host                                                                       |
+| `JELLYSWEEP_EMAIL_SMTP_PORT`                | `587`                           | SMTP server port                                                                       |
+| `JELLYSWEEP_EMAIL_USERNAME`                 | *(required if email enabled)*   | SMTP username                                                                          |
+| `JELLYSWEEP_EMAIL_PASSWORD`                 | *(required if email enabled)*   | SMTP password                                                                          |
+| `JELLYSWEEP_EMAIL_FROM_EMAIL`               | *(required if email enabled)*   | From email address                                                                     |
+| `JELLYSWEEP_EMAIL_FROM_NAME`                | `Jellysweep`                    | From name for emails                                                                   |
+| `JELLYSWEEP_EMAIL_USE_TLS`                  | `true`                          | Use TLS for SMTP connection                                                            |
+| `JELLYSWEEP_EMAIL_USE_SSL`                  | `false`                         | Use SSL for SMTP connection                                                            |
+| `JELLYSWEEP_EMAIL_INSECURE_SKIP_VERIFY`     | `false`                         | Skip TLS certificate verification                                                      |
+| **Discord Notifications**                   |                                 |                                                                                        |
+| `JELLYSWEEP_DISCORD_ENABLED`                | `false`                         | Enable Discord notifications                                                           |
+| `JELLYSWEEP_DISCORD_WEBHOOK_URL`            | *(required if Discord enabled)* | Discord Webhook integration URL                                                        |
+| `JELLYSWEEP_DISCORD_USERNAME`               | `Jellysweep`                    | The username seen in the Discord notification                                          |
+| `JELLYSWEEP_DISCORD_AVATAR_URL`             | *(Uses the Jellysweep logo)*    | The Avatar image seen in the Discord notification                                      |
+| **Ntfy Notifications**                      |                                 |                                                                                        |
+| `JELLYSWEEP_NTFY_ENABLED`                   | `false`                         | Enable ntfy notifications                                                              |
+| `JELLYSWEEP_NTFY_SERVER_URL`                | `https://ntfy.sh`               | Ntfy server URL                                                                        |
+| `JELLYSWEEP_NTFY_TOPIC`                     | *(required if ntfy enabled)*    | Ntfy topic to publish to                                                               |
+| `JELLYSWEEP_NTFY_USERNAME`                  | *(optional)*                    | Ntfy username for authentication                                                       |
+| `JELLYSWEEP_NTFY_PASSWORD`                  | *(optional)*                    | Ntfy password for authentication                                                       |
+| `JELLYSWEEP_NTFY_TOKEN`                     | *(optional)*                    | Ntfy token for authentication                                                          |
+| **Web Push Notifications**                  |                                 |                                                                                        |
+| `JELLYSWEEP_WEBPUSH_ENABLED`                | `false`                         | Enable web push notifications                                                          |
+| `JELLYSWEEP_WEBPUSH_VAPID_EMAIL`            | *(required if webpush enabled)* | Contact email for VAPID keys                                                           |
+| `JELLYSWEEP_WEBPUSH_PUBLIC_KEY`             | *(required if webpush enabled)* | VAPID public key                                                                       |
+| `JELLYSWEEP_WEBPUSH_PRIVATE_KEY`            | *(required if webpush enabled)* | VAPID private key                                                                      |
+| **External Services**                       |                                 |                                                                                        |
+| `JELLYSWEEP_JELLYSEERR_URL`                 | *(required)*                    | Jellyseerr server URL                                                                  |
+| `JELLYSWEEP_JELLYSEERR_API_KEY`             | *(required)*                    | Jellyseerr API key                                                                     |
+| `JELLYSWEEP_SONARR_URL`                     | *(optional)*                    | Sonarr server URL                                                                      |
+| `JELLYSWEEP_SONARR_API_KEY`                 | *(optional)*                    | Sonarr API key                                                                         |
+| `JELLYSWEEP_RADARR_URL`                     | *(optional)*                    | Radarr server URL                                                                      |
+| `JELLYSWEEP_RADARR_API_KEY`                 | *(optional)*                    | Radarr API key                                                                         |
+| `JELLYSWEEP_JELLYFIN_URL`                   | *(required)*                    | Jellyfin server URL                                                                    |
+| `JELLYSWEEP_JELLYFIN_API_KEY`               | *(required)*                    | Jellyfin API key                                                                       |
+| `JELLYSWEEP_JELLYSTAT_URL`                  | *(optional)*                    | Jellystat server URL                                                                   |
+| `JELLYSWEEP_JELLYSTAT_API_KEY`              | *(optional)*                    | Jellystat API key                                                                      |
+| `JELLYSWEEP_STREAMYSTATS_URL`               | *(optional)*                    | Streamystats server URL                                                                |
+| `JELLYSWEEP_STREAMYSTATS_SERVER_ID`         | *(optional)*                    | Streamystats Jellyfin server ID                                                        |
+| `JELLYSWEEP_TUNARR_URL`                     | *(optional)*                    | Tunarr server URL                                                                      |
+| **Cache Configuration**                     |                                 |                                                                                        |
+| `JELLYSWEEP_CACHE_TYPE`                     | `memory`                        | Cache type: `memory` or `redis`                                                        |
+| `JELLYSWEEP_CACHE_REDIS_URL`                | `localhost:6379`                | Redis server URL (when using redis cache)                                              |
 
 > [!TIP]
 > Either Sonarr or Radarr (or both) must be configured. Only one of Jellystat or Streamystats can be configured at a time.
