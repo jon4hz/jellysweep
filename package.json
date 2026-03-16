@@ -1,9 +1,9 @@
 {
     "devDependencies": {
-        "@tailwindcss/cli": "^4.1.18",
+        "@tailwindcss/cli": "^4.2.1",
         "@tailwindcss/forms": "^0.5.11",
-        "esbuild": "^0.27.2",
-        "tailwindcss": "^4.1.18"
+        "esbuild": "^0.27.4",
+        "tailwindcss": "^4.2.1"
     },
     "scripts": {
         "build-css": "npx @tailwindcss/cli -i input.css -o internal/static/static/dist/style.css --minify",
