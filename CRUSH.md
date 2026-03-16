@@ -1,6 +1,7 @@
 # Jellysweep Development Guide
 
 ## Build/Test Commands
+
 - `make build` - Build all assets (templ, CSS, JS)
 - `make run` - Build and run with debug logging
 - `go test ./...` - Run all tests
@@ -10,6 +11,7 @@
 - `npm run build` - Build CSS and JS assets
 
 ## Code Style Guidelines
+
 - Use `gofmt` for formatting (already enforced)
 - Import order: stdlib, external, internal (github.com/jon4hz/jellysweep/...)
 - Use testify/assert and testify/require for tests
