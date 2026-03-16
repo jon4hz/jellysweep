@@ -566,7 +566,7 @@ func validateConfig(c *Config) error {
 		}
 	}
 
-	if c.Discord.Enabled {
+	if c.Discord != nil && c.Discord.Enabled {
 		if c.Discord.WebhookURL == "" {
 			return fmt.Errorf("discord webhook URL is required when Discord notifications are enabled")
 		}
