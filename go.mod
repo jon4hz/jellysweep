@@ -1,6 +1,6 @@
 module github.com/jon4hz/jellysweep
 
-go 1.25
+go 1.25.0
 
 tool github.com/a-h/templ/cmd/templ
 
@@ -35,7 +35,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/oauth2 v0.34.0
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	gorm.io/gorm v1.31.1
 )
 
