@@ -92,7 +92,7 @@ func BuildWebhookPayloads(items []MediaItem, jellysweepURL, username, avatarURL 
 
 	summary := buildSummary(items)
 	fields := buildFields(items, jellysweepURL)
-	embeds := packEmbeds(fields, len(items), jellysweepURL, summary)
+	embeds := packEmbeds(fields, jellysweepURL, summary)
 
 	var payloads []discordWebhookPayload
 	for i := 0; i < len(embeds); i += maxEmbedsPerMsg {
@@ -226,9 +226,8 @@ func buildSummary(items []MediaItem) string {
 
 // packEmbeds distributes fields across embeds, respecting the per-embed field count and
 // total character limits.
-func packEmbeds(fields []discordField, totalItems int, jellysweepURL, summary string) []discordRichEmbed {
+func packEmbeds(fields []discordField, jellysweepURL, summary string) []discordRichEmbed {
 	title := "Media Being Deleted Soon"
-	_ = totalItems // kept in signature for potential future use
 	// Fixed overhead per embed: title + author name + timestamp (rough estimate).
 	const fixedOverhead = 60
 

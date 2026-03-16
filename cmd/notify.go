@@ -86,11 +86,12 @@ func runNotifyDiscord(_ *cobra.Command, _ []string) error {
 	client := discord.New(discordCfg)
 
 	now := time.Now()
+	cleanupDate := now.AddDate(0, 0, 7)
 	notification := discord.UserNotification{
 		MediaItems: []discord.MediaItem{
-			{Title: "Breaking Bad", MediaType: "show", RequestedBy: "testuser", CleanupDate: now.AddDate(0, 0, 7)},
-			{Title: "Inception", MediaType: "movie", RequestedBy: "testuser2", CleanupDate: now.AddDate(0, 0, 7)},
-			{Title: "The Wire", MediaType: "show", RequestedBy: "testuser", CleanupDate: now.AddDate(0, 0, 16)},
+			{Title: "Breaking Bad", MediaType: "show", RequestedBy: "testuser", CleanupDate: cleanupDate},
+			{Title: "Inception", MediaType: "movie", RequestedBy: "testuser2", CleanupDate: cleanupDate},
+			{Title: "The Wire", MediaType: "show", RequestedBy: "testuser", CleanupDate: cleanupDate},
 		},
 		JellysweepURL: cfg.ServerURL,
 		DryRun:        notifyDiscordFlags.DryRun,

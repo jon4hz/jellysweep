@@ -115,8 +115,6 @@ func (e *Engine) sendDiscordNotifications() {
 
 	if err := e.discord.SendCleanupNotification(notification); err != nil {
 		log.Errorf("Failed to send Discord notification: %v", err)
-	} else {
-		log.Infof("Sent Discord cleanup notification (%d items)", len(discordItems))
 	}
 }
 
