@@ -127,7 +127,7 @@ jobs:
           GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           retention-days: 30
           name: dist
