@@ -2,10 +2,13 @@ package engine
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
 )
+
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 // populateRequesterInfo populates the RequestedBy field for media items using Jellyseerr data.
 func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.MediaItem) []arr.MediaItem {
@@ -25,6 +28,10 @@ func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.Med
 			continue
 		}
 
+		if !emailRegex.MatchString(requestInfo.UserEmail) {
+			log.Warnf("Invalid email address for item %s: %q, skipping", item.Title, requestInfo.UserEmail)
+			continue
+		}
 		item.RequestedBy = requestInfo.UserEmail
 		log.Debugf("Populated requester info for %s: requested by %s on %s",
 			item.Title, item.RequestedBy, requestInfo.RequestTime.Format("2006-01-02"))
