@@ -388,7 +388,6 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_AUTH_OIDC_USE_PKCE`             | `false`                         | Enable PKCE for enhanced security                                                      |
 | `JELLYSWEEP_AUTH_OIDC_ADMIN_GROUP`          | *(required if OIDC enabled)*    | Group with admin privileges                                                            |
 | `JELLYSWEEP_AUTH_OIDC_AUTO_APPROVE_GROUP`   | *(optional)*                    | Group with auto-approval permission for keep requests                                  |
-| `JELLYSWEEP_AUTH_OIDC_TIMEOUT`              | `30`                            | HTTP client timeout in seconds for OIDC requests                                       |
 | **Jellyfin Authentication**                 |                                 |                                                                                        |
 | `JELLYSWEEP_AUTH_JELLYFIN_ENABLED`          | `true`                          | Enable Jellyfin authentication                                                         |
 | **Profile Pictures**                        |                                 |                                                                                        |
@@ -414,34 +413,25 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_NTFY_USERNAME`                  | *(optional)*                    | Ntfy username for authentication                                                       |
 | `JELLYSWEEP_NTFY_PASSWORD`                  | *(optional)*                    | Ntfy password for authentication                                                       |
 | `JELLYSWEEP_NTFY_TOKEN`                     | *(optional)*                    | Ntfy token for authentication                                                          |
-| `JELLYSWEEP_NTFY_TIMEOUT`                   | `30`                            | HTTP client timeout in seconds                                                         |
 | **Web Push Notifications**                  |                                 |                                                                                        |
 | `JELLYSWEEP_WEBPUSH_ENABLED`                | `false`                         | Enable web push notifications                                                          |
 | `JELLYSWEEP_WEBPUSH_VAPID_EMAIL`            | *(required if webpush enabled)* | Contact email for VAPID keys                                                           |
 | `JELLYSWEEP_WEBPUSH_PUBLIC_KEY`             | *(required if webpush enabled)* | VAPID public key                                                                       |
 | `JELLYSWEEP_WEBPUSH_PRIVATE_KEY`            | *(required if webpush enabled)* | VAPID private key                                                                      |
-| `JELLYSWEEP_WEBPUSH_TIMEOUT`                | `30`                            | HTTP client timeout in seconds                                                         |
 | **External Services**                       |                                 |                                                                                        |
 | `JELLYSWEEP_JELLYSEERR_URL`                 | *(required)*                    | Jellyseerr server URL                                                                  |
 | `JELLYSWEEP_JELLYSEERR_API_KEY`             | *(required)*                    | Jellyseerr API key                                                                     |
-| `JELLYSWEEP_JELLYSEERR_TIMEOUT`             | `30`                            | HTTP client timeout in seconds for Jellyseerr requests                                 |
 | `JELLYSWEEP_SONARR_URL`                     | *(optional)*                    | Sonarr server URL                                                                      |
 | `JELLYSWEEP_SONARR_API_KEY`                 | *(optional)*                    | Sonarr API key                                                                         |
-| `JELLYSWEEP_SONARR_TIMEOUT`                 | `30`                            | HTTP client timeout in seconds for Sonarr requests                                     |
 | `JELLYSWEEP_RADARR_URL`                     | *(optional)*                    | Radarr server URL                                                                      |
 | `JELLYSWEEP_RADARR_API_KEY`                 | *(optional)*                    | Radarr API key                                                                         |
-| `JELLYSWEEP_RADARR_TIMEOUT`                 | `30`                            | HTTP client timeout in seconds for Radarr requests                                     |
 | `JELLYSWEEP_JELLYFIN_URL`                   | *(required)*                    | Jellyfin server URL                                                                    |
 | `JELLYSWEEP_JELLYFIN_API_KEY`               | *(required)*                    | Jellyfin API key                                                                       |
-| `JELLYSWEEP_JELLYFIN_TIMEOUT`               | `30`                            | HTTP client timeout in seconds for Jellyfin requests                                   |
 | `JELLYSWEEP_JELLYSTAT_URL`                  | *(optional)*                    | Jellystat server URL                                                                   |
 | `JELLYSWEEP_JELLYSTAT_API_KEY`              | *(optional)*                    | Jellystat API key                                                                      |
-| `JELLYSWEEP_JELLYSTAT_TIMEOUT`              | `30`                            | HTTP client timeout in seconds for Jellystat requests                                  |
 | `JELLYSWEEP_STREAMYSTATS_URL`               | *(optional)*                    | Streamystats server URL                                                                |
 | `JELLYSWEEP_STREAMYSTATS_SERVER_ID`         | *(optional)*                    | Streamystats Jellyfin server ID                                                        |
-| `JELLYSWEEP_STREAMYSTATS_TIMEOUT`           | `30`                            | HTTP client timeout in seconds for Streamystats requests                               |
 | `JELLYSWEEP_TUNARR_URL`                     | *(optional)*                    | Tunarr server URL                                                                      |
-| `JELLYSWEEP_TUNARR_TIMEOUT`                 | `30`                            | HTTP client timeout in seconds for Tunarr requests                                     |
 | **Cache Configuration**                     |                                 |                                                                                        |
 | `JELLYSWEEP_CACHE_TYPE`                     | `memory`                        | Cache type: `memory` or `redis`                                                        |
 | `JELLYSWEEP_CACHE_REDIS_URL`                | `localhost:6379`                | Redis server URL (when using redis cache)                                              |
@@ -485,7 +475,6 @@ auth:
     use_pkce: true                     # Use PKCE for enhanced security
     admin_group: "jellyfin-admins"     # OIDC group for admin access
     auto_approve_group: "vip-users"    # (Optional) OIDC group for auto-approval of keep requests
-    timeout: 30                        # HTTP client timeout in seconds (default: 30)
 
   # Jellyfin Authentication
   jellyfin:
@@ -495,7 +484,6 @@ auth:
 jellyfin:
   url: "http://localhost:8096"         # Your Jellyfin server URL
   api_key: "your-jellyfin-api-key"     # Jellyfin API key
-  timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
 # Profile Pictures (optional)
 gravatar:
@@ -587,7 +575,6 @@ ntfy:
   username: ""               # Username/password auth
   password: ""
   token: ""                  # Token auth (takes precedence)
-  timeout: 30                # HTTP client timeout in seconds (default: 30)
 
 # Web push notifications
 webpush:
