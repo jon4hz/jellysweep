@@ -951,8 +951,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_0680`,
-		Function: `function __templ_AdminMediaGridScript_0680(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_f26c`,
+		Function: `function __templ_AdminMediaGridScript_f26c(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -998,6 +998,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 					library: item.LibraryName,
 					deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
 					fileSize: item.FileSize || 0,
+					requestedBy: item.RequestedBy,
 					hasRequested: !!(item.Request && item.Request.ID), // Check if Request exists and has ID
 					canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
 					mustDelete: item.Unkeepable || false, // Unkeepable means it must be deleted
@@ -1077,7 +1078,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 
 			return ` + "`" + `
 				<!-- Desktop Card Layout -->
-				<div class="hidden sm:block">
+				<div class="hidden h-full sm:block">
 					<div class="card h-full flex flex-col">
 						<div class="aspect-w-2 aspect-h-3 bg-gray-800 overflow-hidden rounded-t-lg">
 							${posterImg}
@@ -1105,6 +1106,14 @@ func AdminMediaGridScript() templ.ComponentScript {
 											</svg>
 											${formattedSize}
 										</div>
+										${item.requestedBy ? ` + "`" + `
+										<div class="flex items-center text-sm text-blue-400">
+											<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+											</svg>
+											Requested by ${item.requestedBy}
+										</div>
+										` + "`" + ` : ''}
 									</div>
 									<div class="flex items-center text-sm text-red-400">
 										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1574,8 +1583,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_0680`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_0680`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_f26c`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_f26c`),
 	}
 }
 
