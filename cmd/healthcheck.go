@@ -16,7 +16,6 @@ var healthcheckFlags struct {
 
 func init() {
 	healthcheckCmd.Flags().StringVar(&healthcheckFlags.URL, "url", "http://localhost:3002/health", "URL to check")
-	healthcheckCmd.Flags().DurationVar(&healthcheckFlags.Timeout, "timeout", 3*time.Second, "HTTP client timeout")
 	rootCmd.AddCommand(healthcheckCmd)
 }
 
@@ -25,7 +24,7 @@ var healthcheckCmd = &cobra.Command{
 	Short: "Check if the Jellysweep server is healthy",
 	Long:  `Perform an HTTP health check against the running server. Exits 0 if healthy, 1 otherwise.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		client := &http.Client{Timeout: healthcheckFlags.Timeout}
+		client := &http.Client{}
 		resp, err := client.Get(healthcheckFlags.URL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "healthcheck failed: %v\n", err)
