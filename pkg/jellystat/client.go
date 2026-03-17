@@ -32,7 +32,7 @@ func New(cfg *config.JellystatConfig) *Client {
 		baseURL: cfg.URL,
 		apiKey:  cfg.APIKey,
 		client: &http.Client{
-			Timeout: 120 * time.Second,
+			Timeout: config.TimeoutDuration(cfg.Timeout),
 		},
 	}
 }

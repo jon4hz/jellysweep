@@ -36,6 +36,7 @@ func NewJellyfinProvider(cfg *config.JellyfinConfig, db database.UserDB, authCfg
 			version.Version,
 		),
 	}
+	clientConfig.HTTPClient = &http.Client{Timeout: config.TimeoutDuration(cfg.Timeout)}
 	return &JellyfinProvider{
 		db:          db,
 		client:      jellyfin.NewAPIClient(clientConfig),

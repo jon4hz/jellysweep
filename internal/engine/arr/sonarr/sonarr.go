@@ -3,6 +3,7 @@ package sonarr
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"slices"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
 	"github.com/jon4hz/jellysweep/internal/engine/stats"
 	"github.com/jon4hz/jellysweep/internal/tags"
+	"github.com/jon4hz/jellysweep/internal/version"
 	"github.com/samber/lo"
 	jellyfin "github.com/sj14/jellyfin-go/api"
 )
@@ -49,6 +51,8 @@ func NewSonarr(cfg *config.Config, stats stats.Statser, tagsCache *cache.Prefixe
 			URL: cfg.Sonarr.URL,
 		},
 	}
+	scfg.HTTPClient = &http.Client{Timeout: config.TimeoutDuration(cfg.Sonarr.Timeout)}
+	scfg.UserAgent = fmt.Sprintf("Jellysweep/%s", version.Version)
 	client := sonarrAPI.NewAPIClient(scfg)
 
 	return &Sonarr{

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -202,6 +203,7 @@ func (c *Client) SendNotification(ctx context.Context, userID string, payload *N
 			VAPIDPrivateKey: c.config.PrivateKey,
 			TTL:             30,
 			RecordSize:      3000, // higher caused issues with firefox on android :(
+			HTTPClient:      &http.Client{Timeout: config.TimeoutDuration(c.config.Timeout)},
 		})
 
 		if err != nil {

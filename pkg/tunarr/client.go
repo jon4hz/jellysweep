@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/jon4hz/jellysweep/internal/config"
 )
@@ -22,7 +21,7 @@ type Client struct {
 func New(cfg *config.TunarrConfig) *Client {
 	return &Client{
 		baseURL:    cfg.URL,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: config.TimeoutDuration(cfg.Timeout)},
 	}
 }
 

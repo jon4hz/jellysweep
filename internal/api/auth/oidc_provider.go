@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,8 @@ func NewOIDCProvider(ctx context.Context, cfg *config.OIDCConfig, gravatarCfg *c
 		db:          db,
 	}
 	var err error
+	httpClient := &http.Client{Timeout: config.TimeoutDuration(cfg.Timeout)}
+	ctx = oidc.ClientContext(ctx, httpClient)
 	p.provider, err = oidc.NewProvider(ctx, cfg.Issuer)
 	if err != nil {
 		return nil, err

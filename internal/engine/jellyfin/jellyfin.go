@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/ccoveille/go-safecast"
 	"github.com/charmbracelet/log"
@@ -37,6 +38,7 @@ func newJellyfinClient(cfg *config.JellyfinConfig) *jellyfin.APIClient {
 	}
 	clientConfig.DefaultHeader = map[string]string{"Authorization": fmt.Sprintf(`MediaBrowser Token="%s"`, cfg.APIKey)}
 	clientConfig.UserAgent = fmt.Sprintf("Jellysweep/%s", version.Version)
+	clientConfig.HTTPClient = &http.Client{Timeout: config.TimeoutDuration(cfg.Timeout)}
 	return jellyfin.NewAPIClient(clientConfig)
 }
 

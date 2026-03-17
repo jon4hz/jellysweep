@@ -154,15 +154,7 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 	// Initialize ntfy client
 	var ntfyClient *ntfy.Client
 	if cfg.Ntfy != nil && cfg.Ntfy.Enabled {
-		ntfyConfig := &ntfy.Config{
-			Enabled:   cfg.Ntfy.Enabled,
-			ServerURL: cfg.Ntfy.ServerURL,
-			Topic:     cfg.Ntfy.Topic,
-			Username:  cfg.Ntfy.Username,
-			Password:  cfg.Ntfy.Password,
-			Token:     cfg.Ntfy.Token,
-		}
-		ntfyClient = ntfy.NewClient(ntfyConfig)
+		ntfyClient = ntfy.NewClient(cfg.Ntfy)
 	}
 
 	// Initialize webpush client

@@ -24,7 +24,7 @@ func New(cfg *config.JellyseerrConfig) *Client {
 	return &Client{
 		baseURL:    cfg.URL,
 		apiKey:     cfg.APIKey,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: config.TimeoutDuration(cfg.Timeout)},
 	}
 }
 

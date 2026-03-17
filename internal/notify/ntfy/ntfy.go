@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/jon4hz/jellysweep/internal/config"
 )
 
 // Client represents a ntfy notification client.
@@ -21,16 +21,6 @@ type Client struct {
 	password   string
 	token      string
 	httpClient *http.Client
-}
-
-// Config holds the configuration for ntfy notifications.
-type Config struct {
-	Enabled   bool   `yaml:"enabled"`
-	ServerURL string `yaml:"server_url"`
-	Topic     string `yaml:"topic"`
-	Username  string `yaml:"username"`
-	Password  string `yaml:"password"`
-	Token     string `yaml:"token"`
 }
 
 // Message represents a ntfy message.
@@ -53,22 +43,22 @@ type Action struct {
 }
 
 // NewClient creates a new ntfy client.
-func NewClient(config *Config) *Client {
+func NewClient(cfg *config.NtfyConfig) *Client {
 	// Validate server URL
-	if config.ServerURL != "" {
-		if _, err := url.Parse(config.ServerURL); err != nil {
+	if cfg.ServerURL != "" {
+		if _, err := url.Parse(cfg.ServerURL); err != nil {
 			log.Error("invalid ntfy server URL", "error", err)
 		}
 	}
 
 	return &Client{
-		serverURL: config.ServerURL,
-		topic:     config.Topic,
-		username:  config.Username,
-		password:  config.Password,
-		token:     config.Token,
+		serverURL: cfg.ServerURL,
+		topic:     cfg.Topic,
+		username:  cfg.Username,
+		password:  cfg.Password,
+		token:     cfg.Token,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: config.TimeoutDuration(cfg.Timeout),
 		},
 	}
 }

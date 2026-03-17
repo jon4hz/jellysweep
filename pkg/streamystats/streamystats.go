@@ -32,7 +32,7 @@ func New(cfg *config.StreamystatsConfig, apiKey string) (*Client, error) {
 		cfg:        cfg,
 		apiKey:     apiKey,
 		baseURL:    baseURL,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: config.TimeoutDuration(cfg.Timeout)},
 	}, nil
 }
 
