@@ -127,19 +127,13 @@ func (h *Handler) RequestKeepMedia(c *gin.Context) {
 	// Convert mediaID to uint
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid media ID",
-		})
+		jsonError(c, http.StatusBadRequest, "Invalid media ID")
 		return
 	}
 
 	autoApproved, err := h.engine.RequestKeepMedia(c.Request.Context(), mediaID, user.ID, user.Username)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -188,10 +182,7 @@ func (h *Handler) Me(c *gin.Context) {
 func (h *Handler) GetMediaItems(c *gin.Context) {
 	mediaItems, err := h.engine.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get media items",
-		})
+		jsonError(c, http.StatusInternalServerError, "Failed to get media items")
 		return
 	}
 
