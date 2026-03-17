@@ -1,7 +1,7 @@
 # Development Dockerfile for Jellysweep
 FROM golang:1.25 AS base
 
-# Install Node.js 22 (from .nvmrc)
+# Install Node.js 25 (from .nvmrc)
 RUN curl -fsSL https://deb.nodesource.com/setup_25.x | bash - \
     && apt-get install -y nodejs
 
