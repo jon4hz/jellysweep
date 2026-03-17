@@ -269,13 +269,7 @@ func (r *Radarr) ResetTags(ctx context.Context, additionalTags []string) error {
 
 		for _, id := range m.GetTags() {
 			name := tagMap[id]
-			isJellysweepTag := strings.HasPrefix(name, tags.JellysweepTagPrefix) ||
-				strings.HasPrefix(name, tags.JellysweepKeepRequestPrefix) ||
-				strings.HasPrefix(name, tags.JellysweepKeepPrefix) ||
-				name == tags.JellysweepDeleteForSureTag ||
-				slices.Contains(additionalTags, name)
-
-			if isJellysweepTag {
+			if tags.IsJellysweepOrAdditionalTag(name, additionalTags) {
 				hasJellysweepTags = true
 				log.Debugf("Removing jellysweep tag '%s' from Radarr movie: %s", name, m.GetTitle())
 			} else {
@@ -312,13 +306,7 @@ func (r *Radarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 	deleted := 0
 	for _, t := range tagsList {
 		name := t.GetLabel()
-		isJellysweepTag := strings.HasPrefix(name, tags.JellysweepTagPrefix) ||
-			strings.HasPrefix(name, tags.JellysweepKeepRequestPrefix) ||
-			strings.HasPrefix(name, tags.JellysweepKeepPrefix) ||
-			name == tags.JellysweepDeleteForSureTag ||
-			slices.Contains(additionalTags, name)
-
-		if isJellysweepTag {
+		if tags.IsJellysweepOrAdditionalTag(name, additionalTags) {
 			resp, err := r.client.TagAPI.DeleteTag(r.radarrAuthCtx(ctx), t.GetId()).Execute()
 			if err != nil {
 				log.Errorf("Failed to delete Radarr tag %s: %v", name, err)

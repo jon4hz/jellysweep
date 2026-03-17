@@ -274,13 +274,7 @@ func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
 
 		for _, tagID := range serie.GetTags() {
 			tagName := tagMap[tagID]
-			isJellysweepTag := strings.HasPrefix(tagName, tags.JellysweepTagPrefix) ||
-				strings.HasPrefix(tagName, tags.JellysweepKeepRequestPrefix) ||
-				strings.HasPrefix(tagName, tags.JellysweepKeepPrefix) ||
-				tagName == tags.JellysweepDeleteForSureTag ||
-				slices.Contains(additionalTags, tagName)
-
-			if isJellysweepTag {
+			if tags.IsJellysweepOrAdditionalTag(tagName, additionalTags) {
 				hasJellysweepTags = true
 				log.Debugf("Removing jellysweep tag '%s' from Sonarr series: %s", tagName, serie.GetTitle())
 			} else {
@@ -318,13 +312,7 @@ func (s *Sonarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 	deleted := 0
 	for _, td := range tagsList {
 		name := td.GetLabel()
-		isJellysweepTag := strings.HasPrefix(name, tags.JellysweepTagPrefix) ||
-			strings.HasPrefix(name, tags.JellysweepKeepRequestPrefix) ||
-			strings.HasPrefix(name, tags.JellysweepKeepPrefix) ||
-			name == tags.JellysweepDeleteForSureTag ||
-			slices.Contains(additionalTags, name)
-
-		if isJellysweepTag {
+		if tags.IsJellysweepOrAdditionalTag(name, additionalTags) {
 			resp, err := s.client.TagAPI.DeleteTag(s.sonarrAuthCtx(ctx), td.GetId()).Execute()
 			if err != nil {
 				log.Errorf("Failed to delete sonarr tag %s: %v", name, err)
