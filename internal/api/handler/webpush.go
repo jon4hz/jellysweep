@@ -79,6 +79,20 @@ func (h *WebPushHandler) Subscribe(c *gin.Context) {
 		return
 	}
 
+	// Validate subscription fields
+	if subscribeReq.Subscription.Endpoint == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "subscription endpoint is required",
+		})
+		return
+	}
+	if subscribeReq.Subscription.Keys.P256dh == "" || subscribeReq.Subscription.Keys.Auth == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "subscription keys (p256dh and auth) are required",
+		})
+		return
+	}
+
 	// Get user from session for verification
 	user := getUser(c)
 	if user == nil {

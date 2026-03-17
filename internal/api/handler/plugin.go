@@ -53,6 +53,11 @@ func (h *PluginHandler) CheckMediaItem(c *gin.Context) {
 		return
 	}
 
+	if strings.TrimSpace(request.Name) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name is required"})
+		return
+	}
+
 	// Get all media items marked for deletion
 	markedItems, err := h.engine.GetMediaItemsByMediaType(c.Request.Context(), request.MediaType)
 	if err != nil {
