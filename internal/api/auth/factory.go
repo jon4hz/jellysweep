@@ -98,6 +98,25 @@ func (mp *MultiProvider) Callback(c *gin.Context) {
 
 // RequireAuth returns middleware that works with both providers.
 func (mp *MultiProvider) RequireAuth() gin.HandlerFunc {
+	return requireAuth(mp.gravatarCfg)
+}
+
+// RequireAdmin returns middleware that checks for admin privileges.
+func (mp *MultiProvider) RequireAdmin() gin.HandlerFunc {
+	return requireAdmin()
+}
+
+// Helper methods for the MultiProvider.
+func (mp *MultiProvider) HasOIDC() bool {
+	return mp.oidcProvider != nil
+}
+
+func (mp *MultiProvider) HasJellyfin() bool {
+	return mp.jellyfinProvider != nil
+}
+
+// requireAuth is the shared implementation for RequireAuth middleware.
+func requireAuth(gravatarCfg *config.GravatarConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
@@ -124,8 +143,8 @@ func (mp *MultiProvider) RequireAuth() gin.HandlerFunc {
 		}
 
 		// Generate Gravatar URL if enabled and email is available
-		if mp.gravatarCfg != nil && user.Email != "" {
-			user.GravatarURL = gravatar.GenerateURL(user.Email, mp.gravatarCfg)
+		if gravatarCfg != nil && user.Email != "" {
+			user.GravatarURL = gravatar.GenerateURL(user.Email, gravatarCfg)
 		}
 
 		c.Set("user_id", userID)
@@ -134,26 +153,23 @@ func (mp *MultiProvider) RequireAuth() gin.HandlerFunc {
 	}
 }
 
-// RequireAdmin returns middleware that checks for admin privileges.
-func (mp *MultiProvider) RequireAdmin() gin.HandlerFunc {
+// requireAdmin is the shared implementation for RequireAdmin middleware.
+func requireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		user, ok := c.MustGet("user").(*models.User)
-		if !ok || !user.IsAdmin {
+		user, ok := c.Get("user")
+		if !ok {
+			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+			c.Abort()
+			return
+		}
+		u, ok := user.(*models.User)
+		if !ok || !u.IsAdmin {
 			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 			c.Abort()
 			return
 		}
 		c.Next()
 	}
-}
-
-// Helper methods for the MultiProvider.
-func (mp *MultiProvider) HasOIDC() bool {
-	return mp.oidcProvider != nil
-}
-
-func (mp *MultiProvider) HasJellyfin() bool {
-	return mp.jellyfinProvider != nil
 }
 
 // Helper functions to safely get session values.

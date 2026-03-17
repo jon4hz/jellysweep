@@ -2,15 +2,11 @@ package auth
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/database"
-	"github.com/jon4hz/jellysweep/internal/gravatar"
 	"golang.org/x/oauth2"
 )
 
@@ -48,50 +44,9 @@ func NewOIDCProvider(ctx context.Context, cfg *config.OIDCConfig, gravatarCfg *c
 }
 
 func (p *OIDCProvider) RequireAuth() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		session := sessions.Default(c)
-		userID := session.Get("user_id")
-		if userID == nil {
-			c.Redirect(http.StatusFound, "/login")
-			c.Abort()
-			return
-		}
-
-		userIDUint, ok := userID.(uint)
-		if !ok {
-			c.Redirect(http.StatusFound, "/login")
-			c.Abort()
-			return
-		}
-
-		// create user model from session data
-		user := &models.User{
-			ID:       userIDUint,
-			Email:    getSessionString(session, "user_email"),
-			Name:     getSessionString(session, "user_name"),
-			Username: getSessionString(session, "user_username"),
-			IsAdmin:  getSessionBool(session, "user_is_admin"),
-		}
-
-		// Generate Gravatar URL if enabled and email is available
-		if p.gravatarCfg != nil && user.Email != "" {
-			user.GravatarURL = gravatar.GenerateURL(user.Email, p.gravatarCfg)
-		}
-
-		c.Set("user_id", userID)
-		c.Set("user", user)
-		c.Next()
-	}
+	return requireAuth(p.gravatarCfg)
 }
 
 func (p *OIDCProvider) RequireAdmin() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user, ok := c.MustGet("user").(*models.User)
-		if !ok || !user.IsAdmin {
-			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
+	return requireAdmin()
 }
