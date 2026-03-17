@@ -273,6 +273,16 @@ func (ic *ImageCache) ServeImage(ctx context.Context, mediaID uint, w http.Respo
 
 // Clear clears the image cache directory without removing the directory itself.
 func (ic *ImageCache) Clear(ctx context.Context) error {
+	root, err := os.OpenRoot(ic.cacheDir)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := root.Close(); closeErr != nil {
+			log.Warnf("failed to close image cache root: %v", closeErr)
+		}
+	}()
+
 	return filepath.Walk(ic.cacheDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -287,8 +297,12 @@ func (ic *ImageCache) Clear(ctx context.Context) error {
 		}
 
 		if !info.IsDir() {
+			relPath, relErr := filepath.Rel(ic.cacheDir, path)
+			if relErr != nil {
+				return relErr
+			}
 			log.Debugf("Clearing cached image: %s", path)
-			return os.Remove(path)
+			return root.Remove(relPath)
 		}
 
 		return nil

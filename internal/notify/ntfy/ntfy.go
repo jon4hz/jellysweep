@@ -130,9 +130,9 @@ func (c *Client) SendKeepRequest(ctx context.Context, mediaTitle, mediaType, use
 		emoji = "🎬" //nolint:goconst
 	}
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("🛡️ **User:** %s\n", username))
-	b.WriteString(fmt.Sprintf("📋 **Type:** %s\n", mediaType))
-	b.WriteString(fmt.Sprintf("🎯 **Title:** %s\n\n", mediaTitle))
+	fmt.Fprintf(&b, "🛡️ **User:** %s\n", username)
+	fmt.Fprintf(&b, "📋 **Type:** %s\n", mediaType)
+	fmt.Fprintf(&b, "🎯 **Title:** %s\n\n", mediaTitle)
 	b.WriteString("⚠️ Please review this keep request in the admin panel.")
 
 	msg := Message{
@@ -164,9 +164,10 @@ func (c *Client) SendDeletionSummary(ctx context.Context, totalItems int, librar
 
 	for library, items := range libraries {
 		emoji := "📚"
-		if library == "Movies" { //nolint:staticcheck
+		switch library {
+		case "Movies":
 			emoji = "🎬"
-		} else if library == "TV Shows" {
+		case "TV Shows":
 			emoji = "📺"
 		}
 
@@ -183,14 +184,14 @@ func (c *Client) SendDeletionSummary(ctx context.Context, totalItems int, librar
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("🗑️ **Total Items:** %d\n\n", totalItems))
+	fmt.Fprintf(&b, "🗑️ **Total Items:** %d\n\n", totalItems)
 	b.WriteString("📊 **Summary:**\n")
 	for _, detail := range libraryDetails {
-		b.WriteString(fmt.Sprintf("%s\n", detail))
+		fmt.Fprintf(&b, "%s\n", detail)
 	}
 	b.WriteString("\n📋 **Details:**")
 	for _, detail := range mediaDetails {
-		b.WriteString(fmt.Sprintf("%s\n", detail))
+		fmt.Fprintf(&b, "%s\n", detail)
 	}
 	b.WriteString("\n⏰ Media will be deleted after the cleanup delay period.")
 
@@ -216,9 +217,10 @@ func (c *Client) SendDeletionCompletedSummary(ctx context.Context, totalItems in
 
 	for library, items := range libraries {
 		emoji := "📚"
-		if library == "Movies" { //nolint:staticcheck
+		switch library {
+		case "Movies":
 			emoji = "🎬"
-		} else if library == "TV Shows" {
+		case "TV Shows":
 			emoji = "📺"
 		}
 
@@ -235,14 +237,14 @@ func (c *Client) SendDeletionCompletedSummary(ctx context.Context, totalItems in
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("✅ **Total Items Deleted:** %d\n\n", totalItems))
+	fmt.Fprintf(&b, "✅ **Total Items Deleted:** %d\n\n", totalItems)
 	b.WriteString("📊 **Summary:**\n")
 	for _, detail := range libraryDetails {
-		b.WriteString(fmt.Sprintf("%s\n", detail))
+		fmt.Fprintf(&b, "%s\n", detail)
 	}
 	b.WriteString("\n📋 **Deleted Media:**")
 	for _, detail := range mediaDetails {
-		b.WriteString(fmt.Sprintf("%s\n", detail))
+		fmt.Fprintf(&b, "%s\n", detail)
 	}
 	b.WriteString("\n🎉 Cleanup completed successfully!")
 
