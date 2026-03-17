@@ -492,6 +492,19 @@ func validateConfig(c *Config) error {
 		return fmt.Errorf("cleanup mode is required")
 	}
 
+	switch c.CleanupMode {
+	case CleanupModeAll, CleanupModeKeepEpisodes, CleanupModeKeepSeasons:
+		// valid
+	default:
+		return fmt.Errorf(
+			"invalid cleanup mode %q: must be one of %q, %q, %q",
+			c.CleanupMode,
+			CleanupModeAll,
+			CleanupModeKeepEpisodes,
+			CleanupModeKeepSeasons,
+		)
+	}
+
 	if c.CleanupMode == CleanupModeKeepEpisodes || c.CleanupMode == CleanupModeKeepSeasons {
 		if c.KeepCount <= 0 {
 			return fmt.Errorf("keep count must be greater than 0 when using keep_episodes or keep_seasons mode")
@@ -625,6 +638,30 @@ func validateConfig(c *Config) error {
 	if c.Tunarr != nil {
 		if c.Tunarr.URL == "" {
 			return fmt.Errorf("tunarr URL is required when tunarr is configured")
+		}
+	}
+
+	if c.Email != nil && c.Email.Enabled {
+		if c.Email.SMTPHost == "" {
+			return fmt.Errorf("SMTP host is required when email notifications are enabled")
+		}
+		if c.Email.FromEmail == "" {
+			return fmt.Errorf("from email is required when email notifications are enabled")
+		}
+	}
+
+	if c.Ntfy != nil && c.Ntfy.Enabled {
+		if c.Ntfy.ServerURL == "" {
+			return fmt.Errorf("ntfy server URL is required when ntfy notifications are enabled")
+		}
+		if c.Ntfy.Topic == "" {
+			return fmt.Errorf("ntfy topic is required when ntfy notifications are enabled")
+		}
+	}
+
+	if c.WebPush != nil && c.WebPush.Enabled {
+		if c.WebPush.PublicKey == "" || c.WebPush.PrivateKey == "" {
+			return fmt.Errorf("VAPID public and private keys are required when webpush is enabled")
 		}
 	}
 
