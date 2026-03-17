@@ -377,10 +377,8 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 	log.Info("Populating requester information")
 	mediaItems = e.populateRequesterInfo(ctx, mediaItems)
 
-	// Populate user notifications for email sending
-	if e.data.userNotifications == nil {
-		e.data.userNotifications = make(map[string][]arr.MediaItem)
-	}
+	// Reset and populate user notifications for email sending
+	e.data.userNotifications = make(map[string][]arr.MediaItem)
 
 	for _, item := range mediaItems {
 		if item.RequestedBy != "" {
