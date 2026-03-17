@@ -44,10 +44,17 @@ func New(ctx context.Context, cfg *config.Config, db database.DB, e *engine.Engi
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	ginEngine := gin.Default()
+	if cfg.TrustedProxies != nil {
+		if err := ginEngine.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+			return nil, fmt.Errorf("failed to set trusted proxies: %w", err)
+		}
+	}
+
 	return &Server{
 		cfg:          cfg,
 		db:           db,
-		ginEngine:    gin.Default(),
+		ginEngine:    ginEngine,
 		authProvider: authProvider,
 		engine:       e,
 	}, nil

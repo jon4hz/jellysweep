@@ -63,6 +63,9 @@ type Config struct {
 	// SecureCookies sets the Secure flag on session cookies. Defaults to true.
 	// Set to false only for local development without TLS.
 	SecureCookies bool `yaml:"secure_cookies" mapstructure:"secure_cookies"`
+	// TrustedProxies is a list of trusted proxy IP addresses or CIDR ranges.
+	// Set to null to trust all proxies.
+	TrustedProxies []string `yaml:"trusted_proxies" mapstructure:"trusted_proxies"`
 	// Email holds the email notification configuration.
 	Email *EmailConfig `yaml:"email" mapstructure:"email"`
 	// Ntfy holds the ntfy notification configuration.
