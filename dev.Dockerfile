@@ -32,7 +32,7 @@ RUN go build -o jellysweep .
 EXPOSE 3002
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["/usr/local/bin/jellysweep", "healthcheck"]
+    CMD ["./jellysweep", "healthcheck"]
 
 # Run the application
 CMD ["./jellysweep", "serve", "--log-level", "debug"]
