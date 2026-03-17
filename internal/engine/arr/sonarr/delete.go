@@ -17,7 +17,7 @@ func (s *Sonarr) DeleteMedia(ctx context.Context, seriesID int32, title string) 
 	keepCount := s.cfg.GetKeepCount()
 
 	if s.cfg.DryRun {
-		log.Infof("Dry run: Would delete Sonarr series %s using cleanup mode: %s", title, cleanupMode)
+		log.Info("dry run: would delete Sonarr series", "title", title, "cleanupMode", cleanupMode)
 		return nil
 	}
 
@@ -39,14 +39,14 @@ func (s *Sonarr) DeleteMedia(ctx context.Context, seriesID int32, title string) 
 		// Get episode files to keep
 		filesToKeep, err := s.getEpisodeFilesToKeep(ctx, seriesID, title, cleanupMode, keepCount)
 		if err != nil {
-			log.Errorf("Failed to determine episode files to keep for series %s: %v", title, err)
+			log.Error("failed to determine episode files to keep", "title", title, "error", err)
 			return err
 		}
 
 		// Get all episode files for the series
 		allEpisodeFiles, err := s.getEpisodeFiles(ctx, seriesID)
 		if err != nil {
-			log.Errorf("Failed to get episode files for series %s: %v", title, err)
+			log.Error("failed to get episode files", "title", title, "error", err)
 			return err
 		}
 
@@ -62,14 +62,14 @@ func (s *Sonarr) DeleteMedia(ctx context.Context, seriesID int32, title string) 
 		if len(filesToDelete) > 0 {
 			err := s.deleteEpisodeFiles(ctx, filesToDelete)
 			if err != nil {
-				log.Errorf("Failed to delete episode files for series %s: %v", title, err)
+				log.Error("failed to delete episode files", "title", title, "error", err)
 				return err
 			}
 
 			// Unmonitor episodes that had their files deleted to prevent redownload
 			err = s.unmonitorDeletedEpisodes(ctx, seriesID, title, cleanupMode, keepCount)
 			if err != nil {
-				log.Warnf("Failed to unmonitor deleted episodes for series %s: %v", title, err)
+				log.Warn("failed to unmonitor deleted episodes", "title", title, "error", err)
 				// continue with execution even when unmonitoring fails
 			}
 
@@ -79,25 +79,25 @@ func (s *Sonarr) DeleteMedia(ctx context.Context, seriesID int32, title string) 
 				deletionDescription = fmt.Sprintf("all but first %d seasons (and unmonitored deleted episodes)", keepCount)
 			}
 		} else {
-			log.Infof("No episode files to delete for series %s (all files are marked to keep)", title)
+			log.Info("no episode files to delete, all files are marked to keep", "title", title)
 			return nil
 		}
 
 	default:
-		log.Warnf("Unknown cleanup mode %s for series %s, using default 'all' mode", cleanupMode, title)
+		log.Warn("unknown cleanup mode, using default 'all' mode", "cleanupMode", cleanupMode, "title", title)
 		// Fallback to deleting entire series
 		resp, err := s.client.SeriesAPI.DeleteSeries(s.sonarrAuthCtx(ctx), seriesID).
 			DeleteFiles(true).
 			Execute()
 		if err != nil {
-			log.Errorf("Failed to delete Sonarr series %s: %v", title, err)
+			log.Error("failed to delete Sonarr series", "title", title, "error", err)
 			return err
 		}
 		defer resp.Body.Close() //nolint: errcheck
 		deletionDescription = "entire series (fallback)"
 	}
 
-	log.Infof("Deleted from Sonarr series %s: %s", title, deletionDescription)
+	log.Info("deleted from Sonarr series", "title", title, "description", deletionDescription)
 	return nil
 }
 
@@ -192,17 +192,17 @@ func (s *Sonarr) getEpisodeFilesToKeep(ctx context.Context, seriesID int32, titl
 		})
 
 		// Keep files for the first keepCount regular seasons (lowest-numbered)
-		log.Debugf("Series %s: Total regular seasons found: %d, seasons to keep: %d (excluding specials)", title, len(seasons), keepCount)
-		log.Debugf("Series %s: Regular season numbers in order: %v", title, seasons)
+		log.Debug("series regular seasons found", "title", title, "totalSeasons", len(seasons), "seasonsToKeep", keepCount)
+		log.Debug("series regular season numbers in order", "title", title, "seasons", seasons)
 
 		keptSeasons := 0
 		for _, seasonNum := range seasons {
 			if keptSeasons >= keepCount {
-				log.Debugf("Series %s: Season %d will be deleted (already kept %d seasons)", title, seasonNum, keptSeasons)
+				log.Debug("season will be deleted", "title", title, "season", seasonNum, "keptSeasons", keptSeasons)
 				break
 			}
 
-			log.Debugf("Series %s: Season %d will be kept (keeping season %d of %d)", title, seasonNum, keptSeasons+1, keepCount)
+			log.Debug("season will be kept", "title", title, "season", seasonNum, "keeping", keptSeasons+1, "of", keepCount)
 			for _, episode := range seasonEpisodes[seasonNum] {
 				if episode.HasFile != nil && *episode.HasFile && episode.HasEpisodeFileId() {
 					filesToKeep = append(filesToKeep, episode.GetEpisodeFileId())
@@ -322,19 +322,19 @@ func (s *Sonarr) unmonitorDeletedEpisodes(ctx context.Context, seriesID int32, t
 		slices.Sort(seasons)
 
 		// Unmonitor episodes from regular seasons beyond the first keepCount seasons
-		log.Debugf("Series %s (unmonitor): Total regular seasons found: %d, seasons to keep: %d (excluding specials)", title, len(seasons), keepCount)
-		log.Debugf("Series %s (unmonitor): Regular season numbers in order: %v", title, seasons)
+		log.Debug("series unmonitor: regular seasons found", "title", title, "totalSeasons", len(seasons), "seasonsToKeep", keepCount)
+		log.Debug("series unmonitor: regular season numbers in order", "title", title, "seasons", seasons)
 
 		keptSeasons := 0
 		for _, seasonNum := range seasons {
 			if keptSeasons >= keepCount {
-				log.Debugf("Series %s (unmonitor): Season %d episodes will be unmonitored (already kept %d seasons)", title, seasonNum, keptSeasons)
+				log.Debug("season episodes will be unmonitored", "title", title, "season", seasonNum, "keptSeasons", keptSeasons)
 				for _, episode := range seasonEpisodes[seasonNum] {
 					episodesToUnmonitor = append(episodesToUnmonitor, episode.GetId())
 				}
 				continue
 			} else {
-				log.Debugf("Series %s (unmonitor): Season %d episodes will remain monitored (keeping season %d of %d)", title, seasonNum, keptSeasons+1, keepCount)
+				log.Debug("season episodes will remain monitored", "title", title, "season", seasonNum, "keeping", keptSeasons+1, "of", keepCount)
 			}
 			keptSeasons++
 		}
@@ -354,7 +354,7 @@ func (s *Sonarr) unmonitorDeletedEpisodes(ctx context.Context, seriesID int32, t
 			return fmt.Errorf("failed to unmonitor %d episodes for series %s: %w", len(episodesToUnmonitor), title, err)
 		}
 
-		log.Infof("Unmonitored %d episodes for series %s to prevent redownload", len(episodesToUnmonitor), title)
+		log.Info("unmonitored episodes to prevent redownload", "count", len(episodesToUnmonitor), "title", title)
 	}
 
 	return nil

@@ -272,7 +272,7 @@ func (c *Client) GetEpisodes(ctx context.Context, seriesID string) ([]jellyfin.B
 				}).
 				Execute()
 			if err != nil {
-				log.Warnf("Failed to get episodes for season %s (%s): %v", seasonName, seasonID, err)
+				log.Warn("failed to get episodes for season", "season", seasonName, "seasonID", seasonID, "error", err)
 				break
 			}
 

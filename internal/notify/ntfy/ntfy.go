@@ -57,7 +57,7 @@ func NewClient(config *Config) *Client {
 	// Validate server URL
 	if config.ServerURL != "" {
 		if _, err := url.Parse(config.ServerURL); err != nil {
-			log.Errorf("Invalid ntfy server URL: %v", err)
+			log.Error("invalid ntfy server URL", "error", err)
 		}
 	}
 

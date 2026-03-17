@@ -132,7 +132,7 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 	if cfg.Tunarr != nil {
 		tunarrF, err := tunarrfilter.New(cfg)
 		if err != nil {
-			log.Warnf("Failed to create Tunarr filter: %v", err)
+			log.Warn("failed to create Tunarr filter", "error", err)
 		} else {
 			filterList = append(filterList, tunarrF)
 		}
@@ -220,7 +220,7 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 
 	mediaItems, err := e.gatherMediaItems(ctx)
 	if err != nil {
-		log.Errorf("failed to gather media items: %v", err)
+		log.Error("failed to gather media items", "error", err)
 		return err
 	}
 	log.Info("Media items gathered successfully")
@@ -273,7 +273,7 @@ func (e *Engine) removeProtectedExpiredItems(ctx context.Context) {
 
 		// Create history event for protection expiration before deletion
 		if err := e.CreateProtectionExpiredEvent(ctx, &item); err != nil {
-			log.Errorf("failed to create protection expired event for %s: %v", item.Title, err)
+			log.Error("failed to create protection expired event", "title", item.Title, "error", err)
 		}
 	}
 	log.Info("Media items with expired protection removal process completed")
@@ -320,7 +320,7 @@ func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
 		item.DBDeleteReason = database.DBDeleteReasonStreamed
 		// Create deletion event for streamed items
 		if err := e.CreateStreamedEvent(ctx, &item); err != nil {
-			log.Errorf("failed to create deletion event for %s: %v", item.Title, err)
+			log.Error("failed to create deletion event", "title", item.Title, "error", err)
 		}
 
 		if err := e.db.DeleteMediaItem(ctx, &item); err != nil {
@@ -353,7 +353,7 @@ func (e *Engine) removeItemsNotFoundAnymore(ctx context.Context, mediaItems []ar
 
 			// Create deletion event for missing items
 			if err := e.CreateNotFoundAnymoreEvent(ctx, &dbItem); err != nil {
-				log.Errorf("failed to create not found anymore event for %s: %v", dbItem.Title, err)
+				log.Error("failed to create not found anymore event", "title", dbItem.Title, "error", err)
 			}
 
 			if err := e.db.DeleteMediaItem(ctx, &dbItem); err != nil {
@@ -396,7 +396,7 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 
 	// save items to database
 	if err := e.saveMediaItemsToDatabase(mediaItems); err != nil {
-		log.Errorf("failed to save media items to database: %v", err)
+		log.Error("failed to save media items to database", "error", err)
 		return err
 	}
 	log.Info("Media items saved to database successfully")
@@ -406,7 +406,7 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 
 	// Send ntfy deletion summary notification
 	if err := e.sendNtfyDeletionSummary(ctx, mediaItems); err != nil {
-		log.Errorf("failed to send ntfy deletion summary: %v", err)
+		log.Error("failed to send ntfy deletion summary", "error", err)
 		// Don't return here, continue with the cleanup process
 	}
 	return nil
@@ -499,7 +499,7 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
 	for _, item := range mediaItems {
 		dbItem := arrMediaToDBMediaItem(item)
 		if err := e.policy.ApplyAll(&dbItem); err != nil {
-			log.Errorf("failed to apply policies to media item %s: %v", dbItem.Title, err)
+			log.Error("failed to apply policies to media item", "title", dbItem.Title, "error", err)
 			continue
 		}
 		dbMediaItems = append(dbMediaItems, dbItem)
@@ -512,7 +512,7 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
 	// Create history events for newly picked up items
 	for i := range dbMediaItems {
 		if err := e.CreatePickedUpEvent(context.Background(), &dbMediaItems[i]); err != nil {
-			log.Errorf("failed to create picked up event for %s: %v", dbMediaItems[i].Title, err)
+			log.Error("failed to create picked up event", "title", dbMediaItems[i].Title, "error", err)
 		}
 	}
 

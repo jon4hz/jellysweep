@@ -108,7 +108,7 @@ func (c *Client) Subscribe(userID string, subscription *Subscription) error {
 
 	c.subscriptions[userID][subscriptionID] = subscription
 
-	log.Infof("Added push subscription %s for user %s", subscriptionID, userID)
+	log.Info("added push subscription", "subscriptionID", subscriptionID, "userID", userID)
 	return nil
 }
 
@@ -121,7 +121,7 @@ func (c *Client) UnsubscribeByID(userID, subscriptionID string) error {
 
 	if userSubs, exists := c.subscriptions[userID]; exists {
 		delete(userSubs, subscriptionID)
-		log.Infof("Removed push subscription %s for user %s", subscriptionID, userID)
+		log.Info("removed push subscription", "subscriptionID", subscriptionID, "userID", userID)
 
 		// Clean up empty user map
 		if len(userSubs) == 0 {
@@ -143,7 +143,7 @@ func (c *Client) UnsubscribeByEndpoint(userID, endpoint string) error {
 		for subID, sub := range userSubs {
 			if sub.Endpoint == endpoint {
 				delete(userSubs, subID)
-				log.Infof("Removed push subscription %s (endpoint match) for user %s", subID, userID)
+				log.Info("removed push subscription by endpoint", "subscriptionID", subID, "userID", userID)
 
 				// Clean up empty user map
 				if len(userSubs) == 0 {
@@ -205,7 +205,7 @@ func (c *Client) SendNotification(ctx context.Context, userID string, payload *N
 		})
 
 		if err != nil {
-			log.Errorf("Failed to send push notification to subscription %s for user %s: %v", subscriptionID, userID, err)
+			log.Error("failed to send push notification", "subscriptionID", subscriptionID, "userID", userID, "error", err)
 			lastError = err
 
 			// If the subscription is invalid, remove it and count it
@@ -220,9 +220,9 @@ func (c *Client) SendNotification(ctx context.Context, userID string, payload *N
 				_ = resp.Body.Close()
 				if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 					successCount++
-					log.Debugf("Sent push notification to subscription %s for user %s (status: %d)", subscriptionID, userID, resp.StatusCode)
+					log.Debug("sent push notification", "subscriptionID", subscriptionID, "userID", userID, "status", resp.StatusCode)
 				} else {
-					log.Warnf("Push notification to subscription %s for user %s failed with status: %d", subscriptionID, userID, resp.StatusCode)
+					log.Warn("push notification failed", "subscriptionID", subscriptionID, "userID", userID, "status", resp.StatusCode)
 
 					// Check if this is an invalid subscription response
 					if resp.StatusCode == 410 || resp.StatusCode == 404 {
@@ -246,7 +246,7 @@ func (c *Client) SendNotification(ctx context.Context, userID string, payload *N
 	}
 
 	if successCount > 0 {
-		log.Infof("Sent push notification to user %s (%d/%d subscriptions successful)", userID, successCount, totalCount)
+		log.Info("sent push notification", "userID", userID, "successful", successCount, "total", totalCount)
 		return nil
 	}
 
@@ -342,7 +342,7 @@ func (c *Client) SendNotificationToAll(ctx context.Context, payload *Notificatio
 
 	for _, userID := range userIDs {
 		if err := c.SendNotification(ctx, userID, payload); err != nil {
-			log.Errorf("Failed to send notification to user %s: %v", userID, err)
+			log.Error("failed to send notification to user", "userID", userID, "error", err)
 			lastError = err
 		} else {
 			successCount++
@@ -350,7 +350,7 @@ func (c *Client) SendNotificationToAll(ctx context.Context, payload *Notificatio
 	}
 
 	if successCount > 0 {
-		log.Infof("Sent push notification to %d/%d users", successCount, len(userIDs))
+		log.Info("sent push notification to users", "successful", successCount, "total", len(userIDs))
 		return nil
 	}
 

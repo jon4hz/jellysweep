@@ -20,13 +20,13 @@ func (c *Client) RemoveItemWithCleanupMode(ctx context.Context, itemID, title st
 			log.Error("failed to remove jellyfin item", "jellyfinID", itemID, "error", err)
 			return err
 		}
-		log.Infof("Removed entire item from Jellyfin: %s", title)
+		log.Info("removed entire item from Jellyfin", "title", title)
 		return nil
 	}
 
 	// For TV series, handle keep_episodes and keep_seasons modes
 	if itemType != jellyfin.BASEITEMKIND_SERIES {
-		log.Warnf("Unsupported item type for cleanup mode %s: %s", cleanupMode, itemType)
+		log.Warn("unsupported item type for cleanup mode", "cleanupMode", cleanupMode, "itemType", itemType)
 		return fmt.Errorf("unsupported item type for cleanup mode %s: %s", cleanupMode, itemType)
 	}
 
@@ -45,7 +45,7 @@ func (c *Client) RemoveItemWithCleanupMode(ctx context.Context, itemID, title st
 		// Get all episodes for the series
 		allEpisodes, seasonsWithoutEpisodes, err := c.GetEpisodes(ctx, itemID)
 		if err != nil {
-			log.Errorf("Failed to get episodes for series %s: %v", title, err)
+			log.Error("failed to get episodes for series", "title", title, "error", err)
 			return err
 		}
 
@@ -73,7 +73,7 @@ func (c *Client) RemoveItemWithCleanupMode(ctx context.Context, itemID, title st
 		if len(episodesToDelete) > 0 {
 			err := c.deleteEpisodes(ctx, episodesToDelete)
 			if err != nil {
-				log.Errorf("Failed to delete episodes for series %s: %v", title, err)
+				log.Error("failed to delete episodes for series", "title", title, "error", err)
 				return err
 			}
 
@@ -86,25 +86,25 @@ func (c *Client) RemoveItemWithCleanupMode(ctx context.Context, itemID, title st
 				deletionDescription = fmt.Sprintf("all but first %d seasons from Jellyfin", keepCount)
 			}
 		} else {
-			log.Infof("No episodes to delete for series %s (all episodes are marked to keep)", title)
+			log.Info("no episodes to delete, all episodes are marked to keep", "title", title)
 			return nil
 		}
 
 		if len(seasonsWithoutEpisodes) > 0 {
-			log.Infof("Deleting %d seasons without episodes for series %s", len(seasonsWithoutEpisodes), title)
+			log.Info("deleting seasons without episodes", "count", len(seasonsWithoutEpisodes), "title", title)
 			for _, seasonID := range seasonsWithoutEpisodes {
 				_, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, seasonID).Execute()
 				if err != nil {
-					log.Warnf("Failed to delete season %s without episodes for series %s: %v", seasonID, title, err)
+					log.Warn("failed to delete season without episodes", "seasonID", seasonID, "title", title, "error", err)
 					// Continue deleting other seasons even if one fails
 					continue
 				}
-				log.Debugf("Deleted season %s without episodes for series %s", seasonID, title)
+				log.Debug("deleted season without episodes", "seasonID", seasonID, "title", title)
 			}
 		}
 
 	default:
-		log.Warnf("Unknown cleanup mode %s for series %s, using default 'all' mode", cleanupMode, title)
+		log.Warn("unknown cleanup mode, using default 'all' mode", "cleanupMode", cleanupMode, "title", title)
 		// Fallback to removing entire series
 		if err := c.RemoveItem(ctx, itemID); err != nil {
 			log.Error("failed to remove jellyfin item", "jellyfinID", itemID, "error", err)
@@ -113,7 +113,7 @@ func (c *Client) RemoveItemWithCleanupMode(ctx context.Context, itemID, title st
 		deletionDescription = "entire series (fallback)"
 	}
 
-	log.Infof("Deleted from Jellyfin series %s: %s", title, deletionDescription)
+	log.Info("deleted from Jellyfin series", "title", title, "description", deletionDescription)
 	return nil
 }
 
@@ -177,17 +177,17 @@ func (c *Client) filterEpisodesToKeep(episodes []jellyfin.BaseItemDto, title str
 		})
 
 		// Keep episodes for the first keepCount seasons (lowest-numbered)
-		log.Debugf("Series %s: Total seasons found: %d, seasons to keep: %d", title, len(seasons), keepCount)
-		log.Debugf("Series %s: Season numbers in order: %v", title, seasons)
+		log.Debug("series total seasons found", "title", title, "totalSeasons", len(seasons), "seasonsToKeep", keepCount)
+		log.Debug("series season numbers in order", "title", title, "seasons", seasons)
 
 		keptSeasons := 0
 		for _, seasonNum := range seasons {
 			if keptSeasons >= keepCount {
-				log.Debugf("Series %s: Season %d will be deleted (already kept %d seasons)", title, seasonNum, keptSeasons)
+				log.Debug("season will be deleted", "title", title, "season", seasonNum, "keptSeasons", keptSeasons)
 				break
 			}
 
-			log.Debugf("Series %s: Season %d will be kept (keeping season %d of %d)", title, seasonNum, keptSeasons+1, keepCount)
+			log.Debug("season will be kept", "title", title, "season", seasonNum, "keeping", keptSeasons+1, "of", keepCount)
 			for _, episode := range seasonEpisodes[seasonNum] {
 				if episode.Id != nil {
 					episodesToKeep = append(episodesToKeep, episode.GetId())
@@ -244,15 +244,15 @@ func (c *Client) deleteEmptySeasons(ctx context.Context, title string, episodesB
 
 	// Delete the empty seasons
 	if len(seasonsToDelete) > 0 {
-		log.Infof("Deleting %d empty season(s) for series %s", len(seasonsToDelete), title)
+		log.Info("deleting empty seasons", "count", len(seasonsToDelete), "title", title)
 		for _, seasonID := range seasonsToDelete {
 			_, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, seasonID).Execute()
 			if err != nil {
-				log.Warnf("Failed to delete empty season %s for series %s: %v", seasonID, title, err)
+				log.Warn("failed to delete empty season", "seasonID", seasonID, "title", title, "error", err)
 				// Continue deleting other seasons even if one fails
 				continue
 			}
-			log.Debugf("Deleted empty season %s for series %s", seasonID, title)
+			log.Debug("deleted empty season", "seasonID", seasonID, "title", title)
 		}
 	}
 }

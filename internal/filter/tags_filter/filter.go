@@ -36,7 +36,7 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 		hasExcludedTag := false
 		for _, tagName := range item.Tags {
 			if tagName == tags.JellysweepIgnoreTag {
-				log.Debugf("Ignoring item %s due to jellysweep-ignore tag", item.Title)
+				log.Debug("ignoring item due to jellysweep-ignore tag", "title", item.Title)
 				hasExcludedTag = true
 				break
 			}
@@ -45,7 +45,7 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 			if libraryConfig != nil {
 				if slices.Contains(libraryConfig.GetExcludeTags(), tagName) {
 					hasExcludedTag = true
-					log.Debugf("Excluding item %s due to tag: %s", item.Title, tagName)
+					log.Debug("excluding item due to tag", "title", item.Title, "tag", tagName)
 					break
 				}
 			}

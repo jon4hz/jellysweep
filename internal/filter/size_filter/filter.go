@@ -51,7 +51,7 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 		case models.MediaTypeMovie:
 			fileSize = item.MovieResource.GetSizeOnDisk()
 		default:
-			log.Warnf("Unknown media type %s for item %s", item.MediaType, item.Title)
+			log.Warn("unknown media type for item", "mediaType", item.MediaType, "title", item.Title)
 			continue
 		}
 
@@ -60,19 +60,17 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 		if libraryConfig != nil && libraryConfig.GetContentSizeThreshold() > 0 {
 			if fileSize >= libraryConfig.GetContentSizeThreshold() {
 				filteredItems = append(filteredItems, item)
-				log.Debugf("Including item %s for deletion, size %s (threshold: %s)",
-					item.Title, humanize.Bytes(safeUint64(fileSize)), humanize.Bytes(safeUint64(libraryConfig.GetContentSizeThreshold())))
+				log.Debug("including item for deletion", "title", item.Title, "size", humanize.Bytes(safeUint64(fileSize)), "threshold", humanize.Bytes(safeUint64(libraryConfig.GetContentSizeThreshold())))
 			} else {
-				log.Debugf("Excluding item %s due to small size: %s (threshold: %s)",
-					item.Title, humanize.Bytes(safeUint64(fileSize)), humanize.Bytes(safeUint64(libraryConfig.GetContentSizeThreshold())))
+				log.Debug("excluding item due to small size", "title", item.Title, "size", humanize.Bytes(safeUint64(fileSize)), "threshold", humanize.Bytes(safeUint64(libraryConfig.GetContentSizeThreshold())))
 			}
 		} else {
 			// No size threshold configured or threshold is 0, include the item
 			filteredItems = append(filteredItems, item)
 			if libraryConfig == nil {
-				log.Debugf("No library config for %s, including %s for deletion", item.LibraryName, item.Title)
+				log.Debug("no library config, including for deletion", "library", item.LibraryName, "title", item.Title)
 			} else {
-				log.Debugf("No size threshold configured for %s, including %s for deletion", item.LibraryName, item.Title)
+				log.Debug("no size threshold configured, including for deletion", "library", item.LibraryName, "title", item.Title)
 			}
 		}
 	}

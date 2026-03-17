@@ -182,7 +182,7 @@ func (r *Radarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, 
 		tagMap[t.GetId()] = t.GetLabel()
 	}
 	if err := r.tagsCache.Set(ctx, "all", tagMap); err != nil {
-		log.Warnf("Failed to cache Radarr tags: %v", err)
+		log.Warn("failed to cache Radarr tags", "error", err)
 	}
 
 	return tagMap, nil
@@ -224,18 +224,18 @@ func (r *Radarr) ensureTagExists(ctx context.Context, label string) error {
 	}
 	defer resp.Body.Close() //nolint: errcheck
 
-	log.Infof("Created Radarr tag: %s", label)
+	log.Info("created Radarr tag", "label", label)
 
 	tagMap[newTag.GetId()] = newTag.GetLabel()
 	if err := r.tagsCache.Set(ctx, "all", tagMap); err != nil {
-		log.Warnf("Failed to cache new Radarr tag %s: %v", label, err)
+		log.Warn("failed to cache new Radarr tag", "label", label, "error", err)
 	}
 	return nil
 }
 
 func (r *Radarr) DeleteMedia(ctx context.Context, movieID int32, title string) error {
 	if r.cfg.DryRun {
-		log.Infof("Dry run: Would delete Radarr movie %s", title)
+		log.Info("dry run: would delete Radarr movie", "title", title)
 		return nil
 	}
 
@@ -247,7 +247,7 @@ func (r *Radarr) DeleteMedia(ctx context.Context, movieID int32, title string) e
 	}
 	defer resp.Body.Close() //nolint: errcheck
 
-	log.Infof("Deleted Radarr movie %s", title)
+	log.Info("deleted Radarr movie", "title", title)
 	return nil
 }
 
@@ -271,7 +271,7 @@ func (r *Radarr) ResetTags(ctx context.Context, additionalTags []string) error {
 			name := tagMap[id]
 			if tags.IsJellysweepOrAdditionalTag(name, additionalTags) {
 				hasJellysweepTags = true
-				log.Debugf("Removing jellysweep tag '%s' from Radarr movie: %s", name, m.GetTitle())
+				log.Debug("removing jellysweep tag from Radarr movie", "tag", name, "title", m.GetTitle())
 			} else {
 				newTags = append(newTags, id)
 			}
@@ -283,16 +283,16 @@ func (r *Radarr) ResetTags(ctx context.Context, additionalTags []string) error {
 				MovieResource(m).
 				Execute()
 			if err != nil {
-				log.Errorf("Failed to update Radarr movie %s: %v", m.GetTitle(), err)
+				log.Error("failed to update Radarr movie", "title", m.GetTitle(), "error", err)
 				continue
 			}
 			defer resp.Body.Close() //nolint: errcheck
-			log.Infof("Removed jellysweep tags from Radarr movie: %s", m.GetTitle())
+			log.Info("removed jellysweep tags from Radarr movie", "title", m.GetTitle())
 			updated++
 		}
 	}
 
-	log.Infof("Updated %d Radarr movies", updated)
+	log.Info("updated Radarr movies", "count", updated)
 	return nil
 }
 
@@ -309,22 +309,22 @@ func (r *Radarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 		if tags.IsJellysweepOrAdditionalTag(name, additionalTags) {
 			resp, err := r.client.TagAPI.DeleteTag(r.radarrAuthCtx(ctx), t.GetId()).Execute()
 			if err != nil {
-				log.Errorf("Failed to delete Radarr tag %s: %v", name, err)
+				log.Error("failed to delete Radarr tag", "tag", name, "error", err)
 				continue
 			}
 			defer resp.Body.Close() //nolint: errcheck
-			log.Infof("Deleted Radarr tag: %s", name)
+			log.Info("deleted Radarr tag", "tag", name)
 			deleted++
 		}
 	}
 
 	if deleted > 0 {
 		if err := r.tagsCache.Clear(ctx); err != nil {
-			log.Warn("Failed to clear radarr tags cache: %v", err)
+			log.Warn("failed to clear Radarr tags cache", "error", err)
 		}
 	}
 
-	log.Infof("Deleted %d Radarr tags", deleted)
+	log.Info("deleted Radarr tags", "count", deleted)
 	return nil
 }
 
@@ -352,7 +352,7 @@ func (r *Radarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
 	for _, tid := range movie.GetTags() {
 		name := tagMap[tid]
 		if tags.IsJellysweepTag(name) {
-			log.Debugf("Removing jellysweep tag '%s' from Radarr movie: %s", name, movie.GetTitle())
+			log.Debug("removing jellysweep tag from Radarr movie", "tag", name, "title", movie.GetTitle())
 		} else {
 			newTags = append(newTags, tid)
 		}
@@ -371,7 +371,7 @@ func (r *Radarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
 	}
 	defer resp.Body.Close() //nolint: errcheck
 
-	log.Infof("Removed all jellysweep tags and added ignore tag to Radarr movie: %s", movie.GetTitle())
+	log.Info("removed all jellysweep tags and added ignore tag to Radarr movie", "title", movie.GetTitle())
 	return nil
 }
 
@@ -394,7 +394,7 @@ func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32, since time
 			MovieIds([]int32{movieID}).
 			Execute()
 		if err != nil {
-			log.Warnf("Failed to get Radarr history for movie %d: %v", movieID, err)
+			log.Warn("failed to get Radarr history for movie", "movieID", movieID, "error", err)
 			return nil, err
 		}
 		_ = resp.Body.Close()
@@ -435,7 +435,7 @@ func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32, since time
 	}
 
 	if earliestTime != nil {
-		log.Debugf("Radarr movie %d first imported on: %s", movieID, earliestTime.Format(time.RFC3339))
+		log.Debug("Radarr movie first imported", "movieID", movieID, "importedAt", earliestTime.Format(time.RFC3339))
 	}
 
 	return earliestTime, nil

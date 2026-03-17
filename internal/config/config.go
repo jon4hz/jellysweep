@@ -726,22 +726,22 @@ func warnDeprecatedConfig(c *Config) {
 
 		// Check for deprecated ContentAgeThreshold
 		if libraryConfig.ContentAgeThreshold > 0 {
-			log.Warnf("Library '%s': 'content_age_threshold' is deprecated. Please use 'filter.content_age_threshold' instead.", libraryName)
+			log.Warn("'content_age_threshold' is deprecated, please use 'filter.content_age_threshold' instead", "library", libraryName)
 		}
 
 		// Check for deprecated LastStreamThreshold
 		if libraryConfig.LastStreamThreshold > 0 {
-			log.Warnf("Library '%s': 'last_stream_threshold' is deprecated. Please use 'filter.last_stream_threshold' instead.", libraryName)
+			log.Warn("'last_stream_threshold' is deprecated, please use 'filter.last_stream_threshold' instead", "library", libraryName)
 		}
 
 		// Check for deprecated ContentSizeThreshold
 		if libraryConfig.ContentSizeThreshold > 0 {
-			log.Warnf("Library '%s': 'content_size_threshold' is deprecated. Please use 'filter.content_size_threshold' instead.", libraryName)
+			log.Warn("'content_size_threshold' is deprecated, please use 'filter.content_size_threshold' instead", "library", libraryName)
 		}
 
 		// Check for deprecated ExcludeTags
 		if len(libraryConfig.ExcludeTags) > 0 {
-			log.Warnf("Library '%s': 'exclude_tags' is deprecated. Please use 'filter.exclude_tags' instead.", libraryName)
+			log.Warn("'exclude_tags' is deprecated, please use 'filter.exclude_tags' instead", "library", libraryName)
 		}
 	}
 }

@@ -29,7 +29,7 @@ type ImageCache struct {
 func NewImageCache(cacheDir string, db database.MediaDB) *ImageCache {
 	// Create cache directory if it doesn't exist
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil { //nolint:gosec
-		log.Errorf("Failed to create cache directory: %v", err)
+		log.Error("failed to create cache directory", "error", err)
 	}
 
 	return &ImageCache{
@@ -71,12 +71,12 @@ func (ic *ImageCache) GetCachedImagePath(ctx context.Context, imageURL string) (
 
 	// Check if file already exists
 	if _, err := os.Stat(cacheFilePath); err == nil {
-		log.Debugf("Using cached image: %s", cacheFilePath)
+		log.Debug("using cached image", "path", cacheFilePath)
 		return cacheFilePath, nil
 	}
 
 	// Download and cache the image
-	log.Debugf("Downloading image from: %s", imageURL)
+	log.Debug("downloading image", "url", imageURL)
 	return ic.downloadAndCache(ctx, imageURL, cacheFilePath)
 }
 
@@ -131,8 +131,7 @@ func (ic *ImageCache) downloadAndCache(ctx context.Context, imageURL, cacheFileP
 		// Resize the image using high-quality Lanczos resampling
 		processedImg = imaging.Resize(img, newWidth, newHeight, imaging.Lanczos)
 
-		log.Debugf("Resized image from %dx%d to %dx%d for: %s",
-			originalWidth, originalHeight, newWidth, newHeight, imageURL)
+		log.Debug("resized image", "from", fmt.Sprintf("%dx%d", originalWidth, originalHeight), "to", fmt.Sprintf("%dx%d", newWidth, newHeight), "url", imageURL)
 	}
 
 	// Create the temporary file
@@ -155,11 +154,9 @@ func (ic *ImageCache) downloadAndCache(ctx context.Context, imageURL, cacheFileP
 	}
 
 	if needsResize {
-		log.Infof("Cached and resized image: %s -> %s (original: %dx%d, cached: %dx%d)",
-			imageURL, cacheFilePath, originalWidth, originalHeight,
-			processedImg.Bounds().Dx(), processedImg.Bounds().Dy())
+		log.Info("cached and resized image", "url", imageURL, "path", cacheFilePath, "original", fmt.Sprintf("%dx%d", originalWidth, originalHeight), "cached", fmt.Sprintf("%dx%d", processedImg.Bounds().Dx(), processedImg.Bounds().Dy()))
 	} else {
-		log.Infof("Cached image: %s -> %s", imageURL, cacheFilePath)
+		log.Info("cached image", "url", imageURL, "path", cacheFilePath)
 	}
 
 	return cacheFilePath, nil
@@ -185,7 +182,7 @@ func (ic *ImageCache) ServeImage(ctx context.Context, mediaID uint, w http.Respo
 
 	media, err := ic.db.GetMediaItemByID(ctx, mediaID)
 	if err != nil {
-		log.Errorf("Failed to get media item: %v", err)
+		log.Error("failed to get media item", "mediaID", mediaID, "error", err)
 		http.NotFound(w, r)
 		return err
 	}
@@ -197,7 +194,7 @@ func (ic *ImageCache) ServeImage(ctx context.Context, mediaID uint, w http.Respo
 
 	cacheFilePath, err := ic.GetCachedImagePath(ctx, media.PosterURL)
 	if err != nil {
-		log.Errorf("Failed to get cached image: %v", err)
+		log.Error("failed to get cached image", "error", err)
 		http.Error(w, "Failed to get image", http.StatusInternalServerError)
 		return err
 	}
@@ -205,7 +202,7 @@ func (ic *ImageCache) ServeImage(ctx context.Context, mediaID uint, w http.Respo
 	// Open the cached file
 	file, err := os.Open(cacheFilePath)
 	if err != nil {
-		log.Errorf("Failed to open cached image: %v", err)
+		log.Error("failed to open cached image", "error", err)
 		http.Error(w, "Failed to open image", http.StatusInternalServerError)
 		return err
 	}
@@ -214,7 +211,7 @@ func (ic *ImageCache) ServeImage(ctx context.Context, mediaID uint, w http.Respo
 	// Get file info to set appropriate headers
 	fileInfo, err := file.Stat()
 	if err != nil {
-		log.Errorf("Failed to get file info: %v", err)
+		log.Error("failed to get file info", "error", err)
 		http.Error(w, "Failed to get file info", http.StatusInternalServerError)
 		return err
 	}
@@ -261,7 +258,7 @@ func (ic *ImageCache) Clear(ctx context.Context) error {
 	}
 	defer func() {
 		if closeErr := root.Close(); closeErr != nil {
-			log.Warnf("failed to close image cache root: %v", closeErr)
+			log.Warn("failed to close image cache root", "error", closeErr)
 		}
 	}()
 
@@ -283,7 +280,7 @@ func (ic *ImageCache) Clear(ctx context.Context) error {
 			if relErr != nil {
 				return relErr
 			}
-			log.Debugf("Clearing cached image: %s", path)
+			log.Debug("clearing cached image", "path", path)
 			return root.Remove(relPath)
 		}
 
@@ -330,13 +327,13 @@ func (ic *ImageCache) saveImage(img image.Image, file *os.File, filePath string)
 	case ".webp":
 		// Try to save as WebP, fallback to JPEG if not supported
 		if err := imaging.Save(img, file.Name()); err != nil {
-			log.Debugf("WebP save failed, falling back to JPEG: %v", err)
+			log.Debug("WebP save failed, falling back to JPEG", "error", err)
 			return imaging.Save(img, file.Name(), imaging.JPEGQuality(ic.quality))
 		}
 		return nil
 	default:
 		// For unknown formats, save as JPEG
-		log.Debugf("Unknown format %s, saving as JPEG", ext)
+		log.Debug("unknown format, saving as JPEG", "format", ext)
 		return imaging.Save(img, file.Name(), imaging.JPEGQuality(ic.quality))
 	}
 }

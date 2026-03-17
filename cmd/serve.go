@@ -31,17 +31,17 @@ func init() {
 func startServer(cmd *cobra.Command, _ []string) {
 	cfg, err := config.Load(rootCmdPersistentFlags.ConfigFile)
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		log.Fatal("failed to load config", "error", err)
 	}
 
 	exists, err := dbFileExists(cfg.Database.Path)
 	if err != nil {
-		log.Fatalf("failed to check database file: %v", err)
+		log.Fatal("failed to check database file", "error", err)
 	}
 
 	db, err := database.New(cfg.Database.Path)
 	if err != nil {
-		log.Fatalf("failed to initialize database: %v", err)
+		log.Fatal("failed to initialize database", "error", err)
 	}
 
 	ctx, cancel := context.WithCancel(cmd.Context())
@@ -49,12 +49,12 @@ func startServer(cmd *cobra.Command, _ []string) {
 
 	engine, err := engine.New(cfg, db, !exists)
 	if err != nil {
-		log.Fatalf("failed to create engine: %v", err)
+		log.Fatal("failed to create engine", "error", err)
 	}
 
 	server, err := api.New(ctx, cfg, db, engine, log.GetLevel() == log.DebugLevel)
 	if err != nil {
-		log.Fatalf("failed to create API server: %v", err)
+		log.Fatal("failed to create API server", "error", err)
 	}
 
 	// Start the engine in a goroutine

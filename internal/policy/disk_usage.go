@@ -80,7 +80,7 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media datab
 	}
 
 	if diskUsageError != nil && currentDiskUsage == 0 {
-		log.Warnf("Could not determine disk usage for library %s", media.LibraryName)
+		log.Warn("could not determine disk usage for library", "library", media.LibraryName)
 		// abort but dont return an error
 		return false, nil
 	}

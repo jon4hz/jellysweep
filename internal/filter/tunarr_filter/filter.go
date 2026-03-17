@@ -53,7 +53,7 @@ func (f *Filter) fetchAllChannelPrograms(ctx context.Context) (*ChannelPrograms,
 		return nil, fmt.Errorf("failed to get channels: %w", err)
 	}
 
-	log.Debugf("Found %d Tunarr channels", len(channels))
+	log.Debug("found Tunarr channels", "count", len(channels))
 
 	cp := &ChannelPrograms{
 		jellyfinMovies: make(map[string]bool),
@@ -62,15 +62,15 @@ func (f *Filter) fetchAllChannelPrograms(ctx context.Context) (*ChannelPrograms,
 
 	// Fetch programs from all channels
 	for _, channel := range channels {
-		log.Debugf("Fetching programs for channel: %s (ID: %s)", channel.Name, channel.ID)
+		log.Debug("fetching programs for channel", "name", channel.Name, "id", channel.ID)
 
 		programs, err := f.client.GetAllChannelPrograms(ctx, channel.ID)
 		if err != nil {
-			log.Warnf("Failed to get programs for channel %s: %v", channel.Name, err)
+			log.Warn("failed to get programs for channel", "name", channel.Name, "error", err)
 			continue
 		}
 
-		log.Debugf("Found %d programs in channel %s", len(programs), channel.Name)
+		log.Debug("found programs in channel", "count", len(programs), "channel", channel.Name)
 
 		// Index programs by their Jellyfin IDs
 		for _, program := range programs {
@@ -124,8 +124,7 @@ func (f *Filter) fetchAllChannelPrograms(ctx context.Context) (*ChannelPrograms,
 		}
 	}
 
-	log.Infof("Indexed %d movies and %d TV shows from Tunarr channels",
-		len(cp.jellyfinMovies), len(cp.jellyfinShows))
+	log.Info("indexed Tunarr channel content", "movies", len(cp.jellyfinMovies), "shows", len(cp.jellyfinShows))
 
 	return cp, nil
 }

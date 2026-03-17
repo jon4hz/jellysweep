@@ -203,7 +203,7 @@ func (s *Sonarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, 
 		tagMap[tag.GetId()] = tag.GetLabel()
 	}
 	if err := s.tagsCache.Set(ctx, "all", tagMap); err != nil {
-		log.Warnf("Failed to cache Sonarr tags: %v", err)
+		log.Warn("failed to cache Sonarr tags", "error", err)
 	}
 
 	return tagMap, nil
@@ -245,11 +245,11 @@ func (s *Sonarr) ensureTagExists(ctx context.Context, deleteTagLabel string) err
 	}
 	defer resp.Body.Close() //nolint: errcheck
 
-	log.Infof("Created Sonarr tag: %s", deleteTagLabel)
+	log.Info("created Sonarr tag", "label", deleteTagLabel)
 
 	tagMap[newTag.GetId()] = newTag.GetLabel()
 	if err := s.tagsCache.Set(ctx, "all", tagMap); err != nil {
-		log.Warnf("Failed to cache new Sonarr tag %s: %v", deleteTagLabel, err)
+		log.Warn("failed to cache new Sonarr tag", "label", deleteTagLabel, "error", err)
 	}
 	return nil
 }
@@ -276,7 +276,7 @@ func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
 			tagName := tagMap[tagID]
 			if tags.IsJellysweepOrAdditionalTag(tagName, additionalTags) {
 				hasJellysweepTags = true
-				log.Debugf("Removing jellysweep tag '%s' from Sonarr series: %s", tagName, serie.GetTitle())
+				log.Debug("removing jellysweep tag from Sonarr series", "tag", tagName, "title", serie.GetTitle())
 			} else {
 				newTags = append(newTags, tagID)
 			}
@@ -289,15 +289,15 @@ func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
 				SeriesResource(serie).
 				Execute()
 			if err != nil {
-				log.Errorf("Failed to update Sonarr series %s: %v", serie.GetTitle(), err)
+				log.Error("failed to update Sonarr series", "title", serie.GetTitle(), "error", err)
 				continue
 			}
-			log.Infof("Removed jellysweep tags from Sonarr series: %s", serie.GetTitle())
+			log.Info("removed jellysweep tags from Sonarr series", "title", serie.GetTitle())
 			seriesUpdated++
 		}
 	}
 
-	log.Infof("Updated %d Sonarr series", seriesUpdated)
+	log.Info("updated Sonarr series", "count", seriesUpdated)
 	return nil
 }
 
@@ -315,7 +315,7 @@ func (s *Sonarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 		if tags.IsJellysweepOrAdditionalTag(name, additionalTags) {
 			resp, err := s.client.TagAPI.DeleteTag(s.sonarrAuthCtx(ctx), td.GetId()).Execute()
 			if err != nil {
-				log.Errorf("Failed to delete sonarr tag %s: %v", name, err)
+				log.Error("failed to delete Sonarr tag", "tag", name, "error", err)
 				continue
 			}
 			defer resp.Body.Close() //nolint: errcheck
@@ -326,11 +326,11 @@ func (s *Sonarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 
 	if deleted > 0 {
 		if err := s.tagsCache.Clear(ctx); err != nil {
-			log.Warn("Failed to clear sonarr tags cache: %v", err)
+			log.Warn("failed to clear Sonarr tags cache", "error", err)
 		}
 	}
 
-	log.Infof("Deleted %d sonarr tags", deleted)
+	log.Info("deleted Sonarr tags", "count", deleted)
 	return nil
 }
 
@@ -401,7 +401,7 @@ func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32, since tim
 			SeriesIds([]int32{seriesID}).
 			Execute()
 		if err != nil {
-			log.Warnf("Failed to get Sonarr history for series %d: %v", seriesID, err)
+			log.Warn("failed to get Sonarr history for series", "seriesID", seriesID, "error", err)
 			return nil, err
 		}
 		defer resp.Body.Close() //nolint: errcheck
@@ -442,7 +442,7 @@ func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32, since tim
 	}
 
 	if earliestTime != nil {
-		log.Debugf("Sonarr series %d first imported on: %s", seriesID, earliestTime.Format(time.RFC3339))
+		log.Debug("Sonarr series first imported", "seriesID", seriesID, "importedAt", earliestTime.Format(time.RFC3339))
 	}
 
 	return earliestTime, nil

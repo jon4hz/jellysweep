@@ -60,7 +60,7 @@ func (e *EngineCache) ClearAll(ctx context.Context) {
 	}
 	for _, err := range errs {
 		if err != nil {
-			log.Errorf("failed to clear cache: %v", err)
+			log.Error("failed to clear cache", "error", err)
 		}
 	}
 }

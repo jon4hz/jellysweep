@@ -73,7 +73,7 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 
 		addedDate, err := f.getMediaItemAddedDate(ctx, item, lastDeleted)
 		if err != nil {
-			log.Errorf("Failed to get added date for item %s: %v", item.Title, err)
+			log.Error("failed to get added date for item", "title", item.Title, "error", err)
 			// If we can't get the added date, continue processing but mark for deletion
 			// This maintains the current behavior for items without history
 			filteredItems = append(filteredItems, item)
@@ -83,7 +83,7 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 		if addedDate == nil {
 			// No added date found, include for deletion (maintaining current behavior)
 			filteredItems = append(filteredItems, item)
-			log.Debugf("No added date for item %s, marking for deletion", item.Title)
+			log.Debug("no added date for item, marking for deletion", "title", item.Title)
 			continue
 		}
 
@@ -95,16 +95,14 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 
 			if timeSinceAdded > contentAgeThreshold {
 				filteredItems = append(filteredItems, item)
-				log.Debugf("Including item %s for deletion, added %d days ago (threshold: %d days)",
-					item.Title, int(timeSinceAdded.Hours()/24), libraryConfig.GetContentAgeThreshold())
+				log.Debug("including item for deletion", "title", item.Title, "daysAgo", int(timeSinceAdded.Hours()/24), "threshold", libraryConfig.GetContentAgeThreshold())
 			} else {
-				log.Debugf("Excluding item %s due to recent addition: %s (%d days ago, threshold: %d days)",
-					item.Title, addedDate.Format(time.RFC3339), int(timeSinceAdded.Hours()/24), libraryConfig.GetContentAgeThreshold())
+				log.Debug("excluding item due to recent addition", "title", item.Title, "addedDate", addedDate.Format(time.RFC3339), "daysAgo", int(timeSinceAdded.Hours()/24), "threshold", libraryConfig.GetContentAgeThreshold())
 			}
 		} else {
 			// No library config, include for deletion
 			filteredItems = append(filteredItems, item)
-			log.Debugf("No library config for %s, marking %s for deletion", item.LibraryName, item.Title)
+			log.Debug("no library config, marking for deletion", "library", item.LibraryName, "title", item.Title)
 		}
 	}
 
