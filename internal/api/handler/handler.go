@@ -27,7 +27,10 @@ func New(eng *engine.Engine, cfg *config.Config) *Handler {
 }
 
 func (h *Handler) Home(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaItems, err := h.engine.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
@@ -97,10 +100,29 @@ func parseUintParam(param string) (uint, error) {
 	return uint(id), nil
 }
 
+// getUser extracts the authenticated user from the gin context.
+// Returns nil and sends a 401 response if the user is not found.
+func getUser(c *gin.Context) *models.User {
+	val, exists := c.Get("user")
+	if !exists {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return nil
+	}
+	user, ok := val.(*models.User)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return nil
+	}
+	return user
+}
+
 // API endpoint for requesting to keep media.
 func (h *Handler) RequestKeepMedia(c *gin.Context) {
 	mediaIDVal := c.Param("id")
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	// Convert mediaID to uint
 	mediaID, err := parseUintParam(mediaIDVal)
@@ -151,7 +173,10 @@ func (h *Handler) ImageCache(c *gin.Context) {
 
 // Me returns the current user's information.
 func (h *Handler) Me(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"username": user.Username,

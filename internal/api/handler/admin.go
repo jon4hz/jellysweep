@@ -30,7 +30,10 @@ func NewAdmin(eng *engine.Engine, cfg *config.Config) *AdminHandler {
 
 // AdminPanel shows the admin panel with keep requests.
 func (h *AdminHandler) AdminPanel(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	requests, err := h.engine.GetMediaWithPendingRequest(c.Request.Context())
 	if err != nil {
@@ -56,7 +59,10 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 
 // AcceptKeepRequest accepts a keep request.
 func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
@@ -85,7 +91,10 @@ func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
 
 // DeclineKeepRequest declines a keep request.
 func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
@@ -114,7 +123,10 @@ func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
 
 // MarkMediaAsProtected marks a media item as protected for a set duration.
 func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
@@ -143,7 +155,10 @@ func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
 
 // MarkMediaAsUnkeepable marks a media item as unkeepable and deny all keep requests.
 func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
@@ -173,7 +188,10 @@ func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
 // MarkMediaAsKeepForever removes the media item from the database.
 // It also adds a "jellysweep-ignore" tag to the media item in Sonarr/Radarr to prevent it from being re-added.
 func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
@@ -364,7 +382,10 @@ func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
 
 // SchedulerPanel shows the scheduler management panel.
 func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	// Get scheduler jobs
 	jobs := h.engine.GetScheduler().GetJobs()
@@ -383,7 +404,10 @@ func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
 
 // HistoryPanel shows the deletion history panel.
 func (h *AdminHandler) HistoryPanel(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	c.Header("Content-Type", "text/html")
 	if err := pages.HistoryPanel(user, h.config.DryRun).Render(c.Request.Context(), c.Writer); err != nil {
