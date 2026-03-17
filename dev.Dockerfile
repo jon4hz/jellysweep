@@ -2,7 +2,7 @@
 FROM golang:1.25 AS base
 
 # Install Node.js 22 (from .nvmrc)
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+RUN curl -fsSL https://deb.nodesource.com/setup_25.x | bash - \
     && apt-get install -y nodejs
 
 # Set working directory
@@ -30,6 +30,9 @@ RUN go build -o jellysweep .
 
 # Expose the default port (adjust if needed)
 EXPOSE 3002
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["/usr/local/bin/jellysweep", "healthcheck"]
 
 # Run the application
 CMD ["./jellysweep", "serve", "--log-level", "debug"]

@@ -76,6 +76,10 @@ func (s *Server) setupRoutes() error {
 	}
 	s.ginEngine.StaticFS("/static", http.FS(staticSub))
 
+	s.ginEngine.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
 	// Serve robots.txt from root
 	s.ginEngine.GET("/robots.txt", func(c *gin.Context) {
 		data, err := static.StaticFS.ReadFile("static/robots.txt")
