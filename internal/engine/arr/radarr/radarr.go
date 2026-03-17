@@ -333,10 +333,11 @@ func (r *Radarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 }
 
 func (r *Radarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
-	movie, _, err := r.client.MovieAPI.GetMovieById(r.radarrAuthCtx(ctx), id).Execute()
+	movie, getResp, err := r.client.MovieAPI.GetMovieById(r.radarrAuthCtx(ctx), id).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to get radarr movie: %w", err)
 	}
+	defer getResp.Body.Close() //nolint: errcheck
 
 	if err := r.ensureTagExists(ctx, tags.JellysweepIgnoreTag); err != nil {
 		return fmt.Errorf("failed to create ignore tag: %w", err)

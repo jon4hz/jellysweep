@@ -63,10 +63,11 @@ func (c *Client) GetLibraryFoldersMap(ctx context.Context) (map[string][]string,
 	libraryFoldersMap := make(map[string][]string)
 
 	// fetch virtual folders (required for the thresholds based on disk usage)
-	virtualFolders, _, err := c.jellyfin.LibraryStructureAPI.GetVirtualFolders(ctx).Execute()
+	virtualFolders, resp, err := c.jellyfin.LibraryStructureAPI.GetVirtualFolders(ctx).Execute()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get virtual folders: %w", err)
 	}
+	defer resp.Body.Close() //nolint:errcheck
 	if len(virtualFolders) == 0 {
 		log.Warn("No virtual folders found")
 	}
@@ -91,10 +92,11 @@ func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, er
 	var allItems []arr.JellyfinItem
 
 	// First, get all media folders (libraries)
-	mediaFoldersResp, _, err := c.jellyfin.LibraryAPI.GetMediaFolders(ctx).Execute()
+	mediaFoldersResp, resp, err := c.jellyfin.LibraryAPI.GetMediaFolders(ctx).Execute()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get media folders: %w", err)
 	}
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Check if we have items in the response
 	mediaFolders := mediaFoldersResp.GetItems()
@@ -152,7 +154,7 @@ func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 
 	for {
 		// Get items from this library
-		itemsResp, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+		itemsResp, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
 			ParentId(libraryID).
 			Recursive(true).
 			StartIndex(startIndex).
@@ -173,6 +175,7 @@ func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 		if err != nil {
 			return nil, fmt.Errorf("failed to get items from library %s: %w", libraryName, err)
 		}
+		_ = resp.Body.Close()
 
 		items := itemsResp.GetItems()
 		if len(items) == 0 {
@@ -217,10 +220,11 @@ func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 
 // RemoveItem removes an item from Jellyfin by its ID.
 func (c *Client) RemoveItem(ctx context.Context, itemID string) error {
-	_, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, itemID).Execute()
+	resp, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, itemID).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to remove item %s: %w", itemID, err)
 	}
+	defer resp.Body.Close() //nolint:errcheck
 	return nil
 }
 
@@ -260,7 +264,7 @@ func (c *Client) GetEpisodes(ctx context.Context, seriesID string) ([]jellyfin.B
 		limit := int32(1000)
 
 		for {
-			episodesResp, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+			episodesResp, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
 				ParentId(seasonID).
 				StartIndex(startIndex).
 				Limit(limit).
@@ -277,6 +281,7 @@ func (c *Client) GetEpisodes(ctx context.Context, seriesID string) ([]jellyfin.B
 				log.Warn("failed to get episodes for season", "season", seasonName, "seasonID", seasonID, "error", err)
 				break
 			}
+			_ = resp.Body.Close()
 
 			episodes := episodesResp.GetItems()
 			if len(episodes) == 0 {
@@ -313,7 +318,7 @@ func (c *Client) GetSeasons(ctx context.Context, seriesID string) ([]jellyfin.Ba
 	var allSeasons []jellyfin.BaseItemDto
 
 	// Get seasons from this series
-	seasonsResp, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+	seasonsResp, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
 		ParentId(seriesID).
 		Fields([]jellyfin.ItemFields{
 			jellyfin.ITEMFIELDS_PATH,
@@ -326,6 +331,7 @@ func (c *Client) GetSeasons(ctx context.Context, seriesID string) ([]jellyfin.Ba
 	if err != nil {
 		return nil, fmt.Errorf("failed to get seasons for series %s: %w", seriesID, err)
 	}
+	defer resp.Body.Close() //nolint:errcheck
 
 	allSeasons = seasonsResp.GetItems()
 	log.Info("Retrieved all seasons for series", "seriesID", seriesID, "total", len(allSeasons))
@@ -335,13 +341,14 @@ func (c *Client) GetSeasons(ctx context.Context, seriesID string) ([]jellyfin.Ba
 // FindCollectionByName searches for a collection by name and returns its ID.
 func (c *Client) FindCollectionByName(ctx context.Context, name string) (string, error) {
 	// Get all collections
-	result, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+	result, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
 		IncludeItemTypes([]jellyfin.BaseItemKind{jellyfin.BASEITEMKIND_BOX_SET}).
 		Recursive(true).
 		Execute()
 	if err != nil {
 		return "", fmt.Errorf("failed to get collections: %w", err)
 	}
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Search for collection by name
 	items := result.GetItems()
@@ -357,13 +364,14 @@ func (c *Client) FindCollectionByName(ctx context.Context, name string) (string,
 // GetCollectionItems returns a map of item IDs currently in the collection.
 func (c *Client) GetCollectionItems(ctx context.Context, collectionID string) (map[string]bool, error) {
 	// Get items in the collection
-	result, _, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+	result, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
 		ParentId(collectionID).
 		Recursive(true).
 		Execute()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get collection items: %w", err)
 	}
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Create a set of current item IDs
 	currentItems := make(map[string]bool)
@@ -390,13 +398,14 @@ func (c *Client) CreateCollection(ctx context.Context, name string, itemIDs []st
 		}
 	}
 
-	collectionResp, _, err := c.jellyfin.CollectionAPI.CreateCollection(ctx).
+	collectionResp, resp, err := c.jellyfin.CollectionAPI.CreateCollection(ctx).
 		Name(name).
 		Ids(initialItems).
 		Execute()
 	if err != nil {
 		return fmt.Errorf("failed to create collection %s: %w", name, err)
 	}
+	defer resp.Body.Close() //nolint:errcheck
 
 	// If there are more items, add them in batches
 	if len(itemIDs) > batchSize {
@@ -405,12 +414,13 @@ func (c *Client) CreateCollection(ctx context.Context, name string, itemIDs []st
 			end := min(i+batchSize, len(itemIDs))
 			batch := itemIDs[i:end]
 
-			_, err := c.jellyfin.CollectionAPI.AddToCollection(ctx, collectionID).
+			batchResp, err := c.jellyfin.CollectionAPI.AddToCollection(ctx, collectionID).
 				Ids(batch).
 				Execute()
 			if err != nil {
 				return fmt.Errorf("failed to add items to collection %s (batch %d-%d): %w", name, i, end, err)
 			}
+			_ = batchResp.Body.Close()
 		}
 	}
 
@@ -427,12 +437,13 @@ func (c *Client) AddItemsToCollection(ctx context.Context, collectionID string, 
 		end := min(i+batchSize, len(itemIDs))
 		batch := itemIDs[i:end]
 
-		_, err := c.jellyfin.CollectionAPI.AddToCollection(ctx, collectionID).
+		batchResp, err := c.jellyfin.CollectionAPI.AddToCollection(ctx, collectionID).
 			Ids(batch).
 			Execute()
 		if err != nil {
 			return fmt.Errorf("failed to add items to collection %s (batch %d-%d): %w", collectionID, i, end, err)
 		}
+		_ = batchResp.Body.Close()
 	}
 
 	return nil
@@ -448,12 +459,13 @@ func (c *Client) RemoveItemsFromCollection(ctx context.Context, collectionID str
 		end := min(i+batchSize, len(itemIDs))
 		batch := itemIDs[i:end]
 
-		_, err := c.jellyfin.CollectionAPI.RemoveFromCollection(ctx, collectionID).
+		batchResp, err := c.jellyfin.CollectionAPI.RemoveFromCollection(ctx, collectionID).
 			Ids(batch).
 			Execute()
 		if err != nil {
 			return fmt.Errorf("failed to remove items from collection %s (batch %d-%d): %w", collectionID, i, end, err)
 		}
+		defer batchResp.Body.Close() //nolint:errcheck
 	}
 
 	return nil

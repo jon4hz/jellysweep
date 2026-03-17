@@ -93,12 +93,13 @@ func (c *Client) RemoveItemWithCleanupMode(ctx context.Context, itemID, title st
 		if len(seasonsWithoutEpisodes) > 0 {
 			log.Info("deleting seasons without episodes", "count", len(seasonsWithoutEpisodes), "title", title)
 			for _, seasonID := range seasonsWithoutEpisodes {
-				_, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, seasonID).Execute()
+				resp, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, seasonID).Execute()
 				if err != nil {
 					log.Warn("failed to delete season without episodes", "seasonID", seasonID, "title", title, "error", err)
 					// Continue deleting other seasons even if one fails
 					continue
 				}
+				resp.Body.Close() //nolint:errcheck,gosec
 				log.Debug("deleted season without episodes", "seasonID", seasonID, "title", title)
 			}
 		}
@@ -207,10 +208,11 @@ func (c *Client) deleteEpisodes(ctx context.Context, episodeIDs []string) error 
 	}
 
 	for _, episodeID := range episodeIDs {
-		_, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, episodeID).Execute()
+		resp, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, episodeID).Execute()
 		if err != nil {
 			return fmt.Errorf("failed to delete episode %s: %w", episodeID, err)
 		}
+		resp.Body.Close() //nolint:errcheck,gosec
 	}
 
 	return nil
@@ -246,12 +248,13 @@ func (c *Client) deleteEmptySeasons(ctx context.Context, title string, episodesB
 	if len(seasonsToDelete) > 0 {
 		log.Info("deleting empty seasons", "count", len(seasonsToDelete), "title", title)
 		for _, seasonID := range seasonsToDelete {
-			_, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, seasonID).Execute()
+			resp, err := c.jellyfin.LibraryAPI.DeleteItem(ctx, seasonID).Execute()
 			if err != nil {
 				log.Warn("failed to delete empty season", "seasonID", seasonID, "title", title, "error", err)
 				// Continue deleting other seasons even if one fails
 				continue
 			}
+			_ = resp.Body.Close()
 			log.Debug("deleted empty season", "seasonID", seasonID, "title", title)
 		}
 	}

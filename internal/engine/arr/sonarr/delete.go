@@ -347,12 +347,13 @@ func (s *Sonarr) unmonitorDeletedEpisodes(ctx context.Context, seriesID int32, t
 		resource.SetEpisodeIds(episodesToUnmonitor)
 		resource.SetMonitored(monitored)
 
-		_, err := s.client.EpisodeAPI.PutEpisodeMonitor(s.sonarrAuthCtx(ctx)).
+		resp, err := s.client.EpisodeAPI.PutEpisodeMonitor(s.sonarrAuthCtx(ctx)).
 			EpisodesMonitoredResource(*resource).
 			Execute()
 		if err != nil {
 			return fmt.Errorf("failed to unmonitor %d episodes for series %s: %w", len(episodesToUnmonitor), title, err)
 		}
+		defer resp.Body.Close() //nolint: errcheck
 
 		log.Info("unmonitored episodes to prevent redownload", "count", len(episodesToUnmonitor), "title", title)
 	}

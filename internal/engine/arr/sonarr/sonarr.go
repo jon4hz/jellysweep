@@ -289,13 +289,14 @@ func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
 		// Update series if it had jellysweep tags
 		if hasJellysweepTags {
 			serie.Tags = newTags
-			_, _, err = s.client.SeriesAPI.UpdateSeries(s.sonarrAuthCtx(ctx), fmt.Sprintf("%d", serie.GetId())).
+			_, seriesResp, err := s.client.SeriesAPI.UpdateSeries(s.sonarrAuthCtx(ctx), fmt.Sprintf("%d", serie.GetId())).
 				SeriesResource(serie).
 				Execute()
 			if err != nil {
 				log.Error("failed to update Sonarr series", "title", serie.GetTitle(), "error", err)
 				continue
 			}
+			defer seriesResp.Body.Close() //nolint: errcheck
 			log.Info("removed jellysweep tags from Sonarr series", "title", serie.GetTitle())
 			seriesUpdated++
 		}
@@ -340,10 +341,11 @@ func (s *Sonarr) CleanupAllTags(ctx context.Context, additionalTags []string) er
 
 // ResetAllTagsAndAddIgnore removes all jellysweep tags and adds ignore tag to a single series.
 func (s *Sonarr) ResetAllTagsAndAddIgnore(ctx context.Context, id int32) error {
-	series, _, err := s.client.SeriesAPI.GetSeriesById(s.sonarrAuthCtx(ctx), id).Execute()
+	series, getResp, err := s.client.SeriesAPI.GetSeriesById(s.sonarrAuthCtx(ctx), id).Execute()
 	if err != nil {
 		return fmt.Errorf("failed to get sonarr series: %w", err)
 	}
+	defer getResp.Body.Close() //nolint: errcheck
 
 	if err := s.ensureTagExists(ctx, tags.JellysweepIgnoreTag); err != nil {
 		return fmt.Errorf("failed to ensure ignore tag: %w", err)
