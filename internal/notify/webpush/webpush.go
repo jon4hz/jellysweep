@@ -3,7 +3,6 @@ package webpush
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -110,18 +109,6 @@ func (c *Client) Subscribe(userID string, subscription *Subscription) error {
 	c.subscriptions[userID][subscriptionID] = subscription
 
 	log.Infof("Added push subscription %s for user %s", subscriptionID, userID)
-	return nil
-}
-
-// Unsubscribe removes a push subscription for a user.
-func (c *Client) Unsubscribe(userID string) error {
-	userID = strings.ToLower(userID)
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.subscriptions, userID)
-	log.Infof("Removed all push subscriptions for user %s", userID)
 	return nil
 }
 
@@ -310,41 +297,6 @@ func (c *Client) SendKeepRequestNotification(ctx context.Context, userID, mediaT
 	return c.SendNotification(ctx, userID, payload)
 }
 
-// GetSubscriptions returns all subscriptions for a user.
-func (c *Client) GetSubscriptions(userID string) ([]*Subscription, bool) {
-	userID = strings.ToLower(userID)
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	userSubs, exists := c.subscriptions[userID]
-	if !exists || len(userSubs) == 0 {
-		return nil, false
-	}
-
-	subscriptions := make([]*Subscription, 0, len(userSubs))
-	for _, sub := range userSubs {
-		subscriptions = append(subscriptions, sub)
-	}
-
-	return subscriptions, true
-}
-
-// GetSubscription returns a specific subscription by ID for a user.
-func (c *Client) GetSubscription(userID, subscriptionID string) (*Subscription, bool) {
-	userID = strings.ToLower(userID)
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	if userSubs, exists := c.subscriptions[userID]; exists {
-		subscription, exists := userSubs[subscriptionID]
-		return subscription, exists
-	}
-
-	return nil, false
-}
-
 // GetAllUserIDs returns all user IDs that have active subscriptions.
 func (c *Client) GetAllUserIDs() []string {
 	c.mu.RLock()
@@ -409,18 +361,6 @@ func (c *Client) SendNotificationToAll(ctx context.Context, payload *Notificatio
 	return fmt.Errorf("failed to send push notification to any user")
 }
 
-// GetSubscriptionCount returns the total number of active subscriptions across all users.
-func (c *Client) GetSubscriptionCount() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	count := 0
-	for _, userSubs := range c.subscriptions {
-		count += len(userSubs)
-	}
-	return count
-}
-
 // GetUserSubscriptionCount returns the number of active subscriptions for a specific user.
 func (c *Client) GetUserSubscriptionCount(userID string) int {
 	userID = strings.ToLower(userID)
@@ -432,69 +372,4 @@ func (c *Client) GetUserSubscriptionCount(userID string) int {
 		return len(userSubs)
 	}
 	return 0
-}
-
-// CleanupExpiredSubscriptions removes old subscriptions (optional cleanup).
-func (c *Client) CleanupExpiredSubscriptions(maxAge time.Duration) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	cutoff := time.Now().Add(-maxAge)
-	for userID, userSubs := range c.subscriptions {
-		for subscriptionID, subscription := range userSubs {
-			if subscription.CreatedAt.Before(cutoff) {
-				delete(userSubs, subscriptionID)
-				log.Infof("Removed expired push subscription %s for user %s", subscriptionID, userID)
-			}
-		}
-
-		// Clean up empty user maps
-		if len(userSubs) == 0 {
-			delete(c.subscriptions, userID)
-		}
-	}
-}
-
-// TestNotification sends a test notification to verify the setup.
-func (c *Client) TestNotification(ctx context.Context, userID string) error {
-	userID = strings.ToLower(userID)
-
-	payload := &NotificationPayload{
-		Title: "🧹 Jellysweep Test",
-		Body:  "Push notifications are working correctly!",
-		Icon:  "/static/icons/icon-192x192.png",
-		Badge: "/static/icons/icon-192x192.png",
-		Data: map[string]interface{}{
-			"type":      "test",
-			"timestamp": time.Now().Unix(),
-		},
-	}
-
-	return c.SendNotification(ctx, userID, payload)
-}
-
-// ValidateConfig validates the webpush configuration.
-func (c *Client) ValidateConfig() error {
-	if !c.config.Enabled {
-		return nil
-	}
-
-	if c.config.VAPIDEmail == "" {
-		return fmt.Errorf("vapid_email is required when webpush is enabled")
-	}
-
-	if c.config.PublicKey == "" || c.config.PrivateKey == "" {
-		return fmt.Errorf("both public_key and private_key are required when webpush is enabled")
-	}
-
-	// Validate key format
-	if _, err := base64.RawURLEncoding.DecodeString(c.config.PublicKey); err != nil {
-		return fmt.Errorf("invalid public key format: %w", err)
-	}
-
-	if _, err := base64.RawURLEncoding.DecodeString(c.config.PrivateKey); err != nil {
-		return fmt.Errorf("invalid private key format: %w", err)
-	}
-
-	return nil
 }

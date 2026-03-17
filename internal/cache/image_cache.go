@@ -44,24 +44,6 @@ func NewImageCache(cacheDir string, db database.MediaDB) *ImageCache {
 	}
 }
 
-// NewImageCacheWithOptions creates a new image cache manager with custom scaling options.
-func NewImageCacheWithOptions(cacheDir string, maxWidth, maxHeight, quality int) *ImageCache {
-	// Create cache directory if it doesn't exist
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil { //nolint:gosec
-		log.Errorf("Failed to create cache directory: %v", err)
-	}
-
-	return &ImageCache{
-		cacheDir:  cacheDir,
-		maxWidth:  maxWidth,
-		maxHeight: maxHeight,
-		quality:   quality,
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
-	}
-}
-
 // getCacheKey generates a cache key from the image URL.
 func (ic *ImageCache) getCacheKey(imageURL string) string {
 	hash := md5.Sum([]byte(imageURL)) //nolint:gosec
