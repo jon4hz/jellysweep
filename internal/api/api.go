@@ -54,11 +54,10 @@ func New(ctx context.Context, cfg *config.Config, db database.DB, e *engine.Engi
 func (s *Server) setupSession() {
 	store := cookie.NewStore([]byte(s.cfg.SessionKey))
 	store.Options(sessions.Options{
-		Path:   "/",
-		MaxAge: s.cfg.SessionMaxAge,
-		// TODO: make this secure in production
+		Path:     "/",
+		MaxAge:   s.cfg.SessionMaxAge,
 		HttpOnly: true,
-		Secure:   false, // Set to true in production
+		Secure:   s.cfg.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
 	})
 	s.ginEngine.Use(sessions.Sessions("jellysweep_session", store))

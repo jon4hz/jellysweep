@@ -48,6 +48,9 @@ type Config struct {
 	SessionKey string `yaml:"session_key" mapstructure:"session_key"`
 	// SessionMaxAge is the maximum age of a session in seconds.
 	SessionMaxAge int `yaml:"session_max_age" mapstructure:"session_max_age"`
+	// SecureCookies sets the Secure flag on session cookies. Defaults to true.
+	// Set to false only for local development without TLS.
+	SecureCookies bool `yaml:"secure_cookies" mapstructure:"secure_cookies"`
 	// Email holds the email notification configuration.
 	Email *EmailConfig `yaml:"email" mapstructure:"email"`
 	// Ntfy holds the ntfy notification configuration.
@@ -378,6 +381,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server_url", "http://localhost:3002")
 	v.SetDefault("session_max_age", 172800) // 48 hour
 	v.SetDefault("session_key", "")
+	v.SetDefault("secure_cookies", true)
 	v.SetDefault("api_key", "")
 
 	// Auth defaults
