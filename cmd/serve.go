@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/api"
@@ -65,25 +64,39 @@ func startServer(cmd *cobra.Command, _ []string) {
 		}
 	}()
 
-	// Start the API server in a goroutine
-	go func() {
-		log.Info("starting API server", "listen", cfg.Listen)
-		if err := server.Run(); err != nil {
-			log.Error("API server error", "error", err)
-		}
-	}()
-
 	// Wait for interrupt signal to gracefully shutdown
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-	log.Info("jellysweep started successfully")
-	<-c
-	log.Info("shutting down gracefully...")
+	// Start the API server in a goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Info("starting API server", "listen", cfg.Listen)
+		serverErr <- server.Run(ctx)
+	}()
 
-	// Give time for graceful shutdown
-	cancel()
-	time.Sleep(2 * time.Second)
+	log.Info("jellysweep started successfully")
+
+	// Wait for signal or server error
+	select {
+	case <-c:
+		log.Info("shutting down gracefully...")
+		cancel()
+	case err := <-serverErr:
+		if err != nil {
+			log.Error("API server error", "error", err)
+		}
+		cancel()
+	}
+
+	// Wait for the server to finish shutting down
+	if err := <-serverErr; err != nil {
+		log.Error("API server shutdown error", "error", err)
+	}
+
+	if err := engine.Close(); err != nil {
+		log.Error("engine shutdown error", "error", err)
+	}
 }
 
 func dbFileExists(path string) (bool, error) {

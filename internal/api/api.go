@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/gin-contrib/gzip"
@@ -178,7 +180,7 @@ func (s *Server) setupPluginRoutes() error {
 	return nil
 }
 
-func (s *Server) Run() error {
+func (s *Server) Run(ctx context.Context) error {
 	s.ginEngine.Use(gin.Recovery())
 	s.ginEngine.Use(gzip.Gzip(gzip.DefaultCompression))
 
@@ -190,5 +192,26 @@ func (s *Server) Run() error {
 	}
 	s.setupAdminRoutes()
 
-	return s.ginEngine.Run(s.cfg.Listen)
+	srv := &http.Server{
+		Addr:              s.cfg.Listen,
+		Handler:           s.ginEngine,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	// Shutdown gracefully when context is cancelled
+	go func() {
+		<-ctx.Done()
+		log.Info("shutting down API server...")
+		// Use a fresh timeout context since ctx is already cancelled.
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Error("API server forced to shutdown", "error", err)
+		}
+	}()
+
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("API server error: %w", err)
+	}
+	return nil
 }
