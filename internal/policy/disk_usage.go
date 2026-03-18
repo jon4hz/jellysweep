@@ -33,6 +33,11 @@ func (p *DiskUsageDelete) Apply(media *database.Media) error {
 	if libraryConfig == nil {
 		return fmt.Errorf("no configuration found for library: %s", media.LibraryName)
 	}
+	if len(libraryConfig.DiskUsageThresholds) == 0 {
+		// Clear any stale disk usage policies from previous configurations.
+		media.DiskUsageDeletePolicies = nil
+		return nil
+	}
 	if len(libraryConfig.DiskUsageThresholds) > 0 {
 		media.DiskUsageDeletePolicies = make([]database.DiskUsageDeletePolicy, 0, len(libraryConfig.DiskUsageThresholds))
 		for _, threshold := range libraryConfig.DiskUsageThresholds {
@@ -55,6 +60,12 @@ func (p *DiskUsageDelete) Apply(media *database.Media) error {
 // ShouldTriggerDeletion checks if any disk usage policy thresholds are exceeded.
 func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media database.Media) (bool, error) {
 	if len(media.DiskUsageDeletePolicies) == 0 {
+		return false, nil
+	}
+
+	// Skip disk usage checks if no thresholds are configured for this library.
+	libraryConfig := p.cfg.GetLibraryConfig(media.LibraryName)
+	if libraryConfig == nil || len(libraryConfig.DiskUsageThresholds) == 0 {
 		return false, nil
 	}
 
