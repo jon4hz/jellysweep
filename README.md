@@ -371,6 +371,8 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_API_KEY`                        | *(optional)*                    | API key for the Jellysweep server (used by the Jellyfin plugin)                        |
 | `JELLYSWEEP_SESSION_KEY`                    | *(required)*                    | Random string for session encryption (`openssl rand -base64 32`)                       |
 | `JELLYSWEEP_SESSION_MAX_AGE`                | `172800`                        | Session maximum age in seconds (48 hours)                                              |
+| `JELLYSWEEP_SECURE_COOKIES`                 | `true`                          | Set the `Secure` flag on session cookies (disable only for local development)          |
+| `JELLYSWEEP_TRUSTED_PROXIES`                | *(unset — trust all)*           | Comma-separated list of trusted proxy IPs/CIDRs (e.g. `10.0.0.1,192.168.1.0/24`)       |
 | `JELLYSWEEP_SERVER_URL`                     | `http://localhost:3002`         | Base URL of the Jellysweep server                                                      |
 | **Leaving Collections**                     |                                 |                                                                                        |
 | `JELLYSWEEP_LEAVING_COLLECTIONS_ENABLED`    | `false`                         |                                                                                        |
@@ -461,6 +463,10 @@ keep_count: 1                    # Number of episodes/seasons to keep (when usin
 api_key: ""                      # Optional: API key for Jellyfin plugin integration
 session_key: "your-session-key"  # Random string for session encryption
 session_max_age: 172800          # Session max age in seconds (48 hours)
+secure_cookies: true             # Set Secure flag on session cookies (disable only for local development)
+# trusted_proxies:               # Optional: list of trusted reverse-proxy IPs/CIDRs
+#   - "10.0.0.1"                 # If unset, all proxies are trusted
+#   - "192.168.1.0/24"
 server_url: "http://localhost:3002"
 
 # Database configuration (optional)
@@ -594,28 +600,34 @@ webpush:
   vapid_email: "your-email@example.com"  # Contact email for VAPID keys
   public_key: ""                         # VAPID public key
   private_key: ""                        # VAPID private key
+  timeout: 30                            # HTTP client timeout in seconds (default: 30)
 
 # External service integrations
 jellyseerr:
   url: "http://localhost:5055"
   api_key: "your-jellyseerr-api-key"
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
 sonarr:
   url: "http://localhost:8989"
   api_key: "your-sonarr-api-key"
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
 radarr:
   url: "http://localhost:7878"
   api_key: "your-radarr-api-key"
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
 jellystat:
   url: "http://localhost:3001"
   api_key: "your-jellystat-api-key"
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
 # Alternative to Jellystat (configure only one)
 streamystats:
   url: "http://localhost:3001"
   server_id: 1                         # Jellyfin server ID in Streamystats
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
 # Tunarr (optional)
 # Protect items that are used by Tunarr TV channels. When configured, Jellysweep will
@@ -624,6 +636,7 @@ streamystats:
 #
 tunarr:
   url: "http://localhost:8000"
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
 # Cache configuration (optional - improves performance for large libraries)
 cache:

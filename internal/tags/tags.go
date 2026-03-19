@@ -7,6 +7,7 @@ package tags
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -101,6 +102,16 @@ func IsJellysweepTag(tagName string) bool {
 		strings.HasPrefix(tagName, jellysweepDiskUsageTagPrefix) ||
 		tagName == JellysweepDeleteForSureTag ||
 		tagName == JellysweepIgnoreTag
+}
+
+// IsJellysweepTagWithoutIgnore checks if a tag is a jellysweep tag excluding the ignore tag.
+func IsJellysweepTagWithoutIgnore(tagName string) bool {
+	return IsJellysweepTag(tagName) && tagName != JellysweepIgnoreTag
+}
+
+// IsJellysweepOrAdditionalTag checks if a tag is a jellysweep tag or in the additional tags list.
+func IsJellysweepOrAdditionalTag(tagName string, additionalTags []string) bool {
+	return IsJellysweepTagWithoutIgnore(tagName) || slices.Contains(additionalTags, tagName)
 }
 
 // parseKeepTagWithRequester extracts the date and requester from a jellysweep-must-keep tag.

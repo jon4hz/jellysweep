@@ -39,13 +39,13 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 		markedForDeletion := false
 		for _, dbItem := range dbItems {
 			if arrItemIsEqual(item, dbItem) {
-				log.Debugf("Excluding item %s already marked for deletion in database", item.Title)
+				log.Debug("excluding item already marked for deletion in database", "title", item.Title)
 				markedForDeletion = true
 				break
 			}
 		}
 		if !markedForDeletion {
-			log.Debugf("Including item %s not marked for deletion in database", item.Title)
+			log.Debug("including item not marked for deletion in database", "title", item.Title)
 			filteredItems = append(filteredItems, item)
 		}
 	}

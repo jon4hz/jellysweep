@@ -28,7 +28,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint
 	// Fetch user from database to get current permissions
 	user, err := e.db.GetUserByID(ctx, userID)
 	if err != nil {
-		log.Errorf("failed to get user by ID: %v", err)
+		log.Error("failed to get user by ID", "userID", userID, "error", err)
 		return false, err
 	}
 
@@ -39,7 +39,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint
 
 	media, err := e.db.GetMediaItemByID(ctx, mediaID)
 	if err != nil {
-		log.Errorf("failed to get media item by ID: %v", err)
+		log.Error("failed to get media item by ID", "mediaID", mediaID, "error", err)
 		return false, err
 	}
 
@@ -55,20 +55,20 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint
 
 	_, err = e.db.CreateRequest(ctx, media.ID, userID)
 	if err != nil {
-		log.Errorf("failed to create keep request in database: %v", err)
+		log.Error("failed to create keep request in database", "mediaID", media.ID, "error", err)
 		return false, err
 	}
 
 	// Create history event for request creation
 	if err := e.CreateRequestCreatedEvent(ctx, media, userID); err != nil {
-		log.Errorf("failed to create request created event for %s: %v", media.Title, err)
+		log.Error("failed to create request created event", "title", media.Title, "error", err)
 	}
 
 	// If user has auto-approval permission, automatically approve the request
 	if hasAutoApproval {
 		log.Info("Auto-approving keep request for user with auto-approval permission", "username", username, "mediaID", mediaID, "title", media.Title)
 		if err := e.HandleKeepRequest(ctx, userID, mediaID, true); err != nil {
-			log.Errorf("failed to auto-approve request: %v", err)
+			log.Error("failed to auto-approve request", "mediaID", mediaID, "error", err)
 			return false, err
 		}
 
@@ -78,7 +78,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint
 	// Send ntfy notification to admins if the request needs manual approval
 	if e.ntfy != nil {
 		if ntfyErr := e.ntfy.SendKeepRequest(ctx, media.Title, string(media.MediaType), username); ntfyErr != nil {
-			log.Errorf("Failed to send ntfy keep request notification: %v", ntfyErr)
+			log.Error("failed to send ntfy keep request notification", "error", ntfyErr)
 		}
 	}
 
@@ -89,7 +89,7 @@ func (e *Engine) RequestKeepMedia(ctx context.Context, mediaID uint, userID uint
 func (e *Engine) HandleKeepRequest(ctx context.Context, userID, mediaID uint, accept bool) error {
 	media, err := e.db.GetMediaItemByID(ctx, mediaID)
 	if err != nil {
-		log.Errorf("failed to get media item by ID: %v", err)
+		log.Error("failed to get media item by ID", "mediaID", mediaID, "error", err)
 		return err
 	}
 
@@ -105,55 +105,55 @@ func (e *Engine) HandleKeepRequest(ctx context.Context, userID, mediaID uint, ac
 
 	err = e.db.UpdateRequestStatus(ctx, media.Request.ID, newStatus)
 	if err != nil {
-		log.Errorf("failed to update request status in database: %v", err)
+		log.Error("failed to update request status in database", "requestID", media.Request.ID, "error", err)
 		return err
 	}
 
 	if accept {
 		libraryConfig := e.cfg.GetLibraryConfig(media.LibraryName)
 		if libraryConfig == nil {
-			log.Errorf("library config not found for library: %s", media.LibraryName)
+			log.Error("library config not found", "library", media.LibraryName)
 			return fmt.Errorf("library config not found for library: %s", media.LibraryName)
 		}
 
 		protectedUntil := time.Now().Add(time.Hour * 24 * time.Duration(libraryConfig.GetProtectionPeriod()))
 		err = e.db.SetMediaProtectedUntil(ctx, media.ID, &protectedUntil)
 		if err != nil {
-			log.Errorf("failed to set media protected until in database: %v", err)
+			log.Error("failed to set media protected until in database", "mediaID", media.ID, "error", err)
 			return err
 		}
 
 		// Create history event for request approval and protection
 		if err := e.CreateRequestApprovedEvent(ctx, userID, media); err != nil {
-			log.Errorf("failed to create request approved event for %s: %v", media.Title, err)
+			log.Error("failed to create request approved event", "title", media.Title, "error", err)
 		}
 
 		if err := e.CreateProtectedEvent(ctx, media); err != nil {
-			log.Errorf("failed to create protected event for %s: %v", media.Title, err)
+			log.Error("failed to create protected event", "title", media.Title, "error", err)
 		}
 	} else {
 		err = e.db.MarkMediaAsUnkeepable(ctx, media.ID)
 		if err != nil {
-			log.Errorf("failed to mark media as unkeepable in database: %v", err)
+			log.Error("failed to mark media as unkeepable in database", "mediaID", media.ID, "error", err)
 			return err
 		}
 
 		// Create history event for request denial
 		if err := e.CreateRequestDeniedEvent(ctx, userID, media); err != nil {
-			log.Errorf("failed to create request denied event for %s: %v", media.Title, err)
+			log.Error("failed to create request denied event", "title", media.Title, "error", err)
 		}
 	}
 
 	// get user who made the request
 	user, err := e.db.GetUserByID(ctx, media.Request.UserID)
 	if err != nil {
-		log.Errorf("failed to get user by ID: %v", err)
+		log.Error("failed to get user by ID", "userID", media.Request.UserID, "error", err)
 		return err
 	}
 
 	if e.webpush != nil && user.Username != "" {
 		if pushErr := e.webpush.SendKeepRequestNotification(ctx, user.Username, media.Title, string(media.MediaType), accept); pushErr != nil {
-			log.Errorf("Failed to send webpush notification: %v", pushErr)
+			log.Error("failed to send webpush notification", "error", pushErr)
 		}
 	}
 

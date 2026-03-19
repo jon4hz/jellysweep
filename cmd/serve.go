@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/api"
@@ -32,17 +31,17 @@ func init() {
 func startServer(cmd *cobra.Command, _ []string) {
 	cfg, err := config.Load(rootCmdPersistentFlags.ConfigFile)
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		log.Fatal("failed to load config", "error", err)
 	}
 
 	exists, err := dbFileExists(cfg.Database.Path)
 	if err != nil {
-		log.Fatalf("failed to check database file: %v", err)
+		log.Fatal("failed to check database file", "error", err)
 	}
 
 	db, err := database.New(cfg.Database.Path)
 	if err != nil {
-		log.Fatalf("failed to initialize database: %v", err)
+		log.Fatal("failed to initialize database", "error", err)
 	}
 
 	ctx, cancel := context.WithCancel(cmd.Context())
@@ -50,12 +49,12 @@ func startServer(cmd *cobra.Command, _ []string) {
 
 	engine, err := engine.New(cfg, db, !exists)
 	if err != nil {
-		log.Fatalf("failed to create engine: %v", err)
+		log.Fatal("failed to create engine", "error", err)
 	}
 
 	server, err := api.New(ctx, cfg, db, engine, log.GetLevel() == log.DebugLevel)
 	if err != nil {
-		log.Fatalf("failed to create API server: %v", err)
+		log.Fatal("failed to create API server", "error", err)
 	}
 
 	// Start the engine in a goroutine
@@ -65,25 +64,39 @@ func startServer(cmd *cobra.Command, _ []string) {
 		}
 	}()
 
-	// Start the API server in a goroutine
-	go func() {
-		log.Info("starting API server", "listen", cfg.Listen)
-		if err := server.Run(); err != nil {
-			log.Error("API server error", "error", err)
-		}
-	}()
-
 	// Wait for interrupt signal to gracefully shutdown
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-	log.Info("jellysweep started successfully")
-	<-c
-	log.Info("shutting down gracefully...")
+	// Start the API server in a goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Info("starting API server", "listen", cfg.Listen)
+		serverErr <- server.Run(ctx)
+	}()
 
-	// Give time for graceful shutdown
-	cancel()
-	time.Sleep(2 * time.Second)
+	log.Info("jellysweep started successfully")
+
+	// Wait for signal or server error
+	select {
+	case <-c:
+		log.Info("shutting down gracefully...")
+		cancel()
+	case err := <-serverErr:
+		if err != nil {
+			log.Error("API server error", "error", err)
+		}
+		cancel()
+	}
+
+	// Wait for the server to finish shutting down
+	if err := <-serverErr; err != nil {
+		log.Error("API server shutdown error", "error", err)
+	}
+
+	if err := engine.Close(); err != nil {
+		log.Error("engine shutdown error", "error", err)
+	}
 }
 
 func dbFileExists(path string) (bool, error) {

@@ -48,16 +48,16 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 		}
 
 		if f.shouldSkipSeriesForDeletion(item.SeriesResource, cleanupMode, keepCount) {
-			log.Debugf("Excluded series %s - already meets keep criteria (%s: %d)", item.Title, cleanupMode, keepCount)
+			log.Debug("excluded series - already meets keep criteria", "title", item.Title, "cleanupMode", cleanupMode, "keepCount", keepCount)
 			skippedCount++
 		} else {
-			log.Debugf("Included series for deletion %s", item.Title)
+			log.Debug("included series for deletion", "title", item.Title)
 			filteredItems = append(filteredItems, item)
 		}
 	}
 
 	if skippedCount > 0 {
-		log.Infof("Total filtered out: %d series that already meet keep criteria", skippedCount)
+		log.Info("total filtered out series that already meet keep criteria", "count", skippedCount)
 	}
 
 	return filteredItems, nil
@@ -108,8 +108,7 @@ func (f *Filter) shouldSkipSeriesForDeletion(series sonarr.SeriesResource, clean
 
 		// If the series has exactly the desired number of episodes (or fewer), skip marking for deletion
 		if regularEpisodesWithFiles <= keepCount {
-			log.Debugf("Series %s has %d regular episodes with files, which is <= keep count %d - skipping deletion",
-				series.GetTitle(), regularEpisodesWithFiles, keepCount)
+			log.Debug("series has episodes <= keep count, skipping deletion", "title", series.GetTitle(), "episodes", regularEpisodesWithFiles, "keepCount", keepCount)
 			return true
 		}
 
@@ -137,8 +136,7 @@ func (f *Filter) shouldSkipSeriesForDeletion(series sonarr.SeriesResource, clean
 
 		// If the series has exactly the desired number of seasons (or fewer), skip marking for deletion
 		if regularSeasonsWithFiles <= keepCount {
-			log.Debugf("Series %s has %d regular seasons with files, which is <= keep count %d - skipping deletion",
-				series.GetTitle(), regularSeasonsWithFiles, keepCount)
+			log.Debug("series has seasons <= keep count, skipping deletion", "title", series.GetTitle(), "seasons", regularSeasonsWithFiles, "keepCount", keepCount)
 			return true
 		}
 	}

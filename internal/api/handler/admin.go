@@ -30,7 +30,10 @@ func NewAdmin(eng *engine.Engine, cfg *config.Config) *AdminHandler {
 
 // AdminPanel shows the admin panel with keep requests.
 func (h *AdminHandler) AdminPanel(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	requests, err := h.engine.GetMediaWithPendingRequest(c.Request.Context())
 	if err != nil {
@@ -56,158 +59,125 @@ func (h *AdminHandler) AdminPanel(c *gin.Context) {
 
 // AcceptKeepRequest accepts a keep request.
 func (h *AdminHandler) AcceptKeepRequest(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid media ID",
-		})
+		jsonError(c, http.StatusBadRequest, "Invalid media ID")
 		return
 	}
 
 	err = h.engine.HandleKeepRequest(c.Request.Context(), user.ID, mediaID, true)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Keep request accepted successfully",
-	})
+	jsonSuccess(c, "Keep request accepted successfully")
 }
 
 // DeclineKeepRequest declines a keep request.
 func (h *AdminHandler) DeclineKeepRequest(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid media ID",
-		})
+		jsonError(c, http.StatusBadRequest, "Invalid media ID")
 		return
 	}
 
 	err = h.engine.HandleKeepRequest(c.Request.Context(), user.ID, mediaID, false)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Keep request declined successfully",
-	})
+	jsonSuccess(c, "Keep request declined successfully")
 }
 
 // MarkMediaAsProtected marks a media item as protected for a set duration.
 func (h *AdminHandler) MarkMediaAsProtected(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid media ID",
-		})
+		jsonError(c, http.StatusBadRequest, "Invalid media ID")
 		return
 	}
 
 	err = h.engine.MarkMediaAsProtected(c.Request.Context(), mediaID, user.ID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Media protected successfully",
-	})
+	jsonSuccess(c, "Media protected successfully")
 }
 
 // MarkMediaAsUnkeepable marks a media item as unkeepable and deny all keep requests.
 func (h *AdminHandler) MarkMediaAsUnkeepable(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid media ID",
-		})
+		jsonError(c, http.StatusBadRequest, "Invalid media ID")
 		return
 	}
 
 	err = h.engine.MarkMediaAsUnkeepable(c.Request.Context(), mediaID, user.ID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Media marked for deletion successfully",
-	})
+	jsonSuccess(c, "Media marked for deletion successfully")
 }
 
 // MarkMediaAsKeepForever removes the media item from the database.
 // It also adds a "jellysweep-ignore" tag to the media item in Sonarr/Radarr to prevent it from being re-added.
 func (h *AdminHandler) MarkMediaAsKeepForever(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	mediaIDVal := c.Param("id")
 	mediaID, err := parseUintParam(mediaIDVal)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid media ID",
-		})
+		jsonError(c, http.StatusBadRequest, "Invalid media ID")
 		return
 	}
 
 	err = h.engine.MarkMediaAsKeepForever(c.Request.Context(), mediaID, user.ID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Media protected forever",
-	})
+	jsonSuccess(c, "Media protected forever")
 }
 
 // GetKeepRequests returns keep requests as JSON.
 func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 	requests, err := h.engine.GetMediaWithPendingRequest(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get keep requests",
-		})
+		jsonError(c, http.StatusInternalServerError, "Failed to get keep requests")
 		return
 	}
 
@@ -224,10 +194,7 @@ func (h *AdminHandler) GetKeepRequests(c *gin.Context) {
 func (h *AdminHandler) GetAdminMediaItems(c *gin.Context) {
 	mediaItems, err := h.engine.GetMediaItems(c.Request.Context(), false)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get media items",
-		})
+		jsonError(c, http.StatusInternalServerError, "Failed to get media items")
 		return
 	}
 
@@ -256,17 +223,11 @@ func (h *AdminHandler) RunSchedulerJob(c *gin.Context) {
 
 	err := h.engine.GetScheduler().RunJobNow(jobID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Job triggered successfully",
-	})
+	jsonSuccess(c, "Job triggered successfully")
 }
 
 // EnableSchedulerJob enables a scheduler job.
@@ -275,17 +236,11 @@ func (h *AdminHandler) EnableSchedulerJob(c *gin.Context) {
 
 	err := h.engine.GetScheduler().EnableJob(jobID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Job enabled successfully",
-	})
+	jsonSuccess(c, "Job enabled successfully")
 }
 
 // DisableSchedulerJob disables a scheduler job.
@@ -294,17 +249,11 @@ func (h *AdminHandler) DisableSchedulerJob(c *gin.Context) {
 
 	err := h.engine.GetScheduler().DisableJob(jobID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		jsonError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Job disabled successfully",
-	})
+	jsonSuccess(c, "Job disabled successfully")
 }
 
 // GetSchedulerCacheStats returns cache statistics.
@@ -321,10 +270,7 @@ func (h *AdminHandler) GetSchedulerCacheStats(c *gin.Context) {
 func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
 	engineCache := h.engine.GetEngineCache()
 	if engineCache == nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"message": "Cache cleared successfully",
-		})
+		jsonSuccess(c, "Cache cleared successfully")
 		return
 	}
 
@@ -349,22 +295,19 @@ func (h *AdminHandler) ClearSchedulerCache(c *gin.Context) {
 
 	// Wait for all cache clearing operations to complete
 	if err := g.Wait(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to clear one or more caches",
-		})
+		jsonError(c, http.StatusInternalServerError, "Failed to clear one or more caches")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Cache cleared successfully",
-	})
+	jsonSuccess(c, "Cache cleared successfully")
 }
 
 // SchedulerPanel shows the scheduler management panel.
 func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	// Get scheduler jobs
 	jobs := h.engine.GetScheduler().GetJobs()
@@ -383,7 +326,10 @@ func (h *AdminHandler) SchedulerPanel(c *gin.Context) {
 
 // HistoryPanel shows the deletion history panel.
 func (h *AdminHandler) HistoryPanel(c *gin.Context) {
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	c.Header("Content-Type", "text/html")
 	if err := pages.HistoryPanel(user, h.config.DryRun).Render(c.Request.Context(), c.Writer); err != nil {
@@ -395,10 +341,7 @@ func (h *AdminHandler) HistoryPanel(c *gin.Context) {
 func (h *AdminHandler) GetAllUsers(c *gin.Context) {
 	users, err := h.engine.GetAllUsers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to get users",
-		})
+		jsonError(c, http.StatusInternalServerError, "Failed to get users")
 		return
 	}
 
@@ -431,10 +374,7 @@ func (h *AdminHandler) UpdateUserPermissions(c *gin.Context) {
 	userIDVal := c.Param("id")
 	userID, err := parseUintParam(userIDVal)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid user ID",
-		})
+		jsonError(c, http.StatusBadRequest, "Invalid user ID")
 		log.Error("Failed to parse user ID", "error", err)
 		return
 	}
@@ -443,27 +383,18 @@ func (h *AdminHandler) UpdateUserPermissions(c *gin.Context) {
 		HasAutoApproval bool `json:"hasAutoApproval"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request body",
-		})
+		jsonError(c, http.StatusBadRequest, "Invalid request body")
 		log.Error("Failed to bind JSON", "error", err)
 		return
 	}
 
 	if err := h.engine.UpdateUserAutoApproval(c.Request.Context(), userID, req.HasAutoApproval); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to update user permissions",
-		})
+		jsonError(c, http.StatusInternalServerError, "Failed to update user permissions")
 		log.Error("Failed to update user permissions", "error", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "User permissions updated successfully",
-	})
+	jsonSuccess(c, "User permissions updated successfully")
 }
 
 // GetHistory returns paginated history events.
@@ -489,18 +420,12 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 	if pageStr := c.Query("page"); pageStr != "" {
 		p, err := parseUintParam(pageStr)
 		if err != nil || p == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "Invalid page parameter",
-			})
+			jsonError(c, http.StatusBadRequest, "Invalid page parameter")
 			return
 		}
 		page, err = safecast.Convert[int](p)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "Invalid page parameter",
-			})
+			jsonError(c, http.StatusBadRequest, "Invalid page parameter")
 			return
 		}
 	}
@@ -508,18 +433,12 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
 		ps, err := parseUintParam(pageSizeStr)
 		if err != nil || ps == 0 || ps > 100 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "Invalid pageSize parameter",
-			})
+			jsonError(c, http.StatusBadRequest, "Invalid pageSize parameter")
 			return
 		}
 		pageSize, err = safecast.Convert[int](ps)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "Invalid pageSize parameter",
-			})
+			jsonError(c, http.StatusBadRequest, "Invalid pageSize parameter")
 			return
 		}
 	}
@@ -531,10 +450,7 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 	if jellyfinID != "" {
 		events, err = h.engine.GetHistoryEventsByJellyfinID(c.Request.Context(), jellyfinID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   "Failed to get history for media",
-			})
+			jsonError(c, http.StatusInternalServerError, "Failed to get history for media")
 			return
 		}
 		total = int64(len(events))
@@ -544,10 +460,7 @@ func (h *AdminHandler) GetHistory(c *gin.Context) {
 		// Get all history events, optionally filtered by event types
 		events, total, err = h.engine.GetHistoryEvents(c.Request.Context(), page, pageSize, sortBy, database.SortOrder(sortOrder), eventTypes)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   "Failed to get history",
-			})
+			jsonError(c, http.StatusInternalServerError, "Failed to get history")
 			return
 		}
 	}

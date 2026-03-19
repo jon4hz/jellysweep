@@ -15,17 +15,17 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 
 	mediaItems, err := e.db.GetMediaItems(ctx, false)
 	if err != nil {
-		log.Errorf("failed to get media items from database: %v", err)
+		log.Error("failed to get media items from database", "error", err)
 		return err
 	}
 
 	for _, item := range mediaItems {
 		// since the deletion policies were already set during the scaning phase, we can just use the existing policy engine.
 		if ok, err := e.policy.ShouldTriggerDeletion(ctx, item); err != nil {
-			log.Errorf("failed to check deletion policy for media item %s: %v", item.Title, err)
+			log.Error("failed to check deletion policy for media item", "title", item.Title, "error", err)
 			continue
 		} else if !ok {
-			log.Infof("Skipping deletion for media item %s, no policies triggered", item.Title)
+			log.Info("skipping deletion for media item, no policies triggered", "title", item.Title)
 			continue
 		}
 
@@ -37,17 +37,17 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 		switch item.MediaType {
 		case database.MediaTypeTV:
 			if e.sonarr == nil {
-				log.Warnf("Sonarr client not configured, cannot delete TV show %s", item.Title)
+				log.Warn("Sonarr client not configured, cannot delete TV show", "title", item.Title)
 				continue
 			}
 			if err := e.sonarr.DeleteMedia(ctx, item.ArrID, item.Title); err != nil {
-				log.Errorf("failed to delete Sonarr media %s: %v", item.Title, err)
+				log.Error("failed to delete Sonarr media", "title", item.Title, "error", err)
 				continue
 			}
 
 			// Also remove from Jellyfin according to cleanup mode
 			if err := e.removeJellyfinItem(ctx, item); err != nil {
-				log.Errorf("failed to remove Jellyfin item %s: %v", item.Title, err)
+				log.Error("failed to remove Jellyfin item", "title", item.Title, "error", err)
 				// Continue even if Jellyfin removal fails, as Sonarr deletion succeeded
 			}
 
@@ -59,17 +59,17 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 
 		case database.MediaTypeMovie:
 			if e.radarr == nil {
-				log.Warnf("Radarr client not configured, cannot delete movie %s", item.Title)
+				log.Warn("Radarr client not configured, cannot delete movie", "title", item.Title)
 				continue
 			}
 			if err := e.radarr.DeleteMedia(ctx, item.ArrID, item.Title); err != nil {
-				log.Errorf("failed to delete Radarr media %s: %v", item.Title, err)
+				log.Error("failed to delete Radarr media", "title", item.Title, "error", err)
 				continue
 			}
 
 			// Also remove from Jellyfin (always entire movie)
 			if err := e.removeJellyfinItem(ctx, item); err != nil {
-				log.Errorf("failed to remove Jellyfin item %s: %v", item.Title, err)
+				log.Error("failed to remove Jellyfin item", "title", item.Title, "error", err)
 				// Continue even if Jellyfin removal fails, as Radarr deletion succeeded
 			}
 
@@ -80,25 +80,25 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 			})
 
 		default:
-			log.Errorf("unsupported media type for deletion: %s", item.MediaType)
+			log.Error("unsupported media type for deletion", "mediaType", item.MediaType)
 			continue
 		}
 		item.DBDeleteReason = database.DBDeleteReasonDefault
 
 		if err := e.db.DeleteMediaItem(ctx, &item); err != nil {
-			log.Errorf("failed to delete media item %s from database: %v", item.Title, err)
+			log.Error("failed to delete media item from database", "title", item.Title, "error", err)
 			continue
 		}
 
 		if err := e.CreateDeletedEvent(ctx, &item); err != nil {
-			log.Errorf("failed to create deletion event for %s: %v", item.Title, err)
+			log.Error("failed to create deletion event", "title", item.Title, "error", err)
 		}
 	}
 
 	// Send completion notification if any items were deleted
 	if len(deletedItems) > 0 {
 		if err := e.sendNtfyDeletionCompletedNotification(ctx, deletedItems); err != nil {
-			log.Errorf("failed to send deletion completed notification: %v", err)
+			log.Error("failed to send deletion completed notification", "error", err)
 		}
 	}
 
@@ -114,7 +114,7 @@ func (e *Engine) removeJellyfinItem(ctx context.Context, item database.Media) er
 	case database.MediaTypeTV:
 		itemType = jellyfin.BASEITEMKIND_SERIES
 	default:
-		log.Warnf("Unknown media type for Jellyfin cleanup: %s", item.MediaType)
+		log.Warn("unknown media type for Jellyfin cleanup", "mediaType", item.MediaType)
 		return nil
 	}
 

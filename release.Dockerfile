@@ -9,6 +9,9 @@ ENV CI="1"
 
 EXPOSE 3002/tcp
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["/usr/local/bin/jellysweep", "healthcheck"]
+
 ENTRYPOINT [ "/usr/local/bin/jellysweep"]
 CMD [ "serve" ]
 

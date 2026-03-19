@@ -67,9 +67,9 @@ func (e *Engine) sendEmailNotifications() {
 		}
 
 		if err := e.email.SendCleanupNotification(notification); err != nil {
-			log.Errorf("Failed to send email notification to %s: %v", userEmail, err)
+			log.Error("failed to send email notification", "email", userEmail, "error", err)
 		} else {
-			log.Infof("Sent cleanup notification to %s for %d media items", userEmail, len(emailMediaItems))
+			log.Info("sent cleanup notification", "email", userEmail, "items", len(emailMediaItems))
 		}
 	}
 }
@@ -160,7 +160,7 @@ func (e *Engine) sendNtfyDeletionSummary(ctx context.Context, mediaItems []arr.M
 		return fmt.Errorf("failed to send deletion summary notification: %w", err)
 	}
 
-	log.Infof("Sent deletion summary notification: %d items across %d libraries", totalItems, len(libraries))
+	log.Info("sent deletion summary notification", "items", totalItems, "libraries", len(libraries))
 	return nil
 }
 
@@ -212,6 +212,6 @@ func (e *Engine) sendNtfyDeletionCompletedNotification(ctx context.Context, dele
 		return fmt.Errorf("failed to send deletion completed notification: %w", err)
 	}
 
-	log.Infof("Sent deletion completed notification: %d items across %d libraries", totalItems, len(libraries))
+	log.Info("sent deletion completed notification", "items", totalItems, "libraries", len(libraries))
 	return nil
 }

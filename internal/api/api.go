@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/gin-contrib/gzip"
@@ -42,10 +44,17 @@ func New(ctx context.Context, cfg *config.Config, db database.DB, e *engine.Engi
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	ginEngine := gin.Default()
+	if cfg.TrustedProxies != nil {
+		if err := ginEngine.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+			return nil, fmt.Errorf("failed to set trusted proxies: %w", err)
+		}
+	}
+
 	return &Server{
 		cfg:          cfg,
 		db:           db,
-		ginEngine:    gin.Default(),
+		ginEngine:    ginEngine,
 		authProvider: authProvider,
 		engine:       e,
 	}, nil
@@ -54,11 +63,10 @@ func New(ctx context.Context, cfg *config.Config, db database.DB, e *engine.Engi
 func (s *Server) setupSession() {
 	store := cookie.NewStore([]byte(s.cfg.SessionKey))
 	store.Options(sessions.Options{
-		Path:   "/",
-		MaxAge: s.cfg.SessionMaxAge,
-		// TODO: make this secure in production
+		Path:     "/",
+		MaxAge:   s.cfg.SessionMaxAge,
 		HttpOnly: true,
-		Secure:   false, // Set to true in production
+		Secure:   s.cfg.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
 	})
 	s.ginEngine.Use(sessions.Sessions("jellysweep_session", store))
@@ -74,6 +82,10 @@ func (s *Server) setupRoutes() error {
 		return fmt.Errorf("failed to create static FS sub: %w", err)
 	}
 	s.ginEngine.StaticFS("/static", http.FS(staticSub))
+
+	s.ginEngine.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 
 	// Serve robots.txt from root
 	s.ginEngine.GET("/robots.txt", func(c *gin.Context) {
@@ -179,7 +191,7 @@ func (s *Server) setupPluginRoutes() error {
 	return nil
 }
 
-func (s *Server) Run() error {
+func (s *Server) Run(ctx context.Context) error {
 	s.ginEngine.Use(gin.Recovery())
 	s.ginEngine.Use(gzip.Gzip(gzip.DefaultCompression))
 
@@ -191,5 +203,26 @@ func (s *Server) Run() error {
 	}
 	s.setupAdminRoutes()
 
-	return s.ginEngine.Run(s.cfg.Listen)
+	srv := &http.Server{
+		Addr:              s.cfg.Listen,
+		Handler:           s.ginEngine,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	// Shutdown gracefully when context is cancelled
+	go func() {
+		<-ctx.Done()
+		log.Info("shutting down API server...")
+		// Use a fresh timeout context since ctx is already cancelled.
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Error("API server forced to shutdown", "error", err)
+		}
+	}()
+
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("API server error: %w", err)
+	}
+	return nil
 }

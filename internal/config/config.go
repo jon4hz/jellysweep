@@ -3,10 +3,22 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/spf13/viper"
 )
+
+const defaultTimeout = 30 // seconds
+
+// TimeoutDuration returns the configured timeout as a time.Duration.
+// If the timeout is 0, it returns the default of 30 seconds.
+func TimeoutDuration(seconds int) time.Duration {
+	if seconds <= 0 {
+		return time.Duration(defaultTimeout) * time.Second
+	}
+	return time.Duration(seconds) * time.Second
+}
 
 type CacheType string
 
@@ -48,6 +60,12 @@ type Config struct {
 	SessionKey string `yaml:"session_key" mapstructure:"session_key"`
 	// SessionMaxAge is the maximum age of a session in seconds.
 	SessionMaxAge int `yaml:"session_max_age" mapstructure:"session_max_age"`
+	// SecureCookies sets the Secure flag on session cookies. Defaults to true.
+	// Set to false only for local development without TLS.
+	SecureCookies bool `yaml:"secure_cookies" mapstructure:"secure_cookies"`
+	// TrustedProxies is a list of trusted proxy IP addresses or CIDR ranges.
+	// Set to null to trust all proxies.
+	TrustedProxies []string `yaml:"trusted_proxies" mapstructure:"trusted_proxies"`
 	// Email holds the email notification configuration.
 	Email *EmailConfig `yaml:"email" mapstructure:"email"`
 	// Discord holds the Discord notification configuration.
@@ -115,6 +133,8 @@ type OIDCConfig struct {
 	AutoApproveGroup string `yaml:"auto_approve_group" mapstructure:"auto_approve_group"`
 	// UsePKCE enables PKCE (Proof Key for Code Exchange) for the OAuth 2.0 flow.
 	UsePKCE bool `yaml:"use_pkce" mapstructure:"use_pkce"`
+	// Timeout is the HTTP client timeout in seconds for OIDC provider requests.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // JellyfinAuthConfig holds the Jellyfin authentication configuration for the Jellysweep server.
@@ -179,6 +199,8 @@ type NtfyConfig struct {
 	Password string `yaml:"password" mapstructure:"password"`
 	// Token is the ntfy token for authentication.
 	Token string `yaml:"token" mapstructure:"token"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // WebPushConfig holds the webpush notification configuration.
@@ -191,6 +213,8 @@ type WebPushConfig struct {
 	PublicKey string `yaml:"public_key" mapstructure:"public_key"`
 	// PrivateKey is the VAPID private key.
 	PrivateKey string `yaml:"private_key" mapstructure:"private_key"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // CleanupConfig holds the configuration for the cleanup job.
@@ -254,6 +278,8 @@ type JellyseerrConfig struct {
 	URL string `yaml:"url" mapstructure:"url"`
 	// APIKey is the API key for the Jellyseerr server.
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // SonarrConfig holds the configuration for the Sonarr server.
@@ -262,6 +288,8 @@ type SonarrConfig struct {
 	URL string `yaml:"url" mapstructure:"url"`
 	// APIKey is the API key for the Sonarr server.
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // RadarrConfig holds the configuration for the Radarr server.
@@ -270,6 +298,8 @@ type RadarrConfig struct {
 	URL string `yaml:"url" mapstructure:"url"`
 	// APIKey is the API key for the Radarr server.
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // JellystatConfig holds the configuration for the Jellystat server.
@@ -278,6 +308,8 @@ type JellystatConfig struct {
 	URL string `yaml:"url" mapstructure:"url"`
 	// APIKey is the API key for the Jellystat server.
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // StreamystatsConfig holds the configuration for the Streamystats server.
@@ -286,12 +318,16 @@ type StreamystatsConfig struct {
 	URL string `yaml:"url" mapstructure:"url"`
 	// ServerID is the Jellyfin server ID.
 	ServerID int `yaml:"server_id" mapstructure:"server_id"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // TunarrConfig holds the configuration for the Tunarr server.
 type TunarrConfig struct {
 	// URL is the base URL of the Tunarr server.
 	URL string `yaml:"url" mapstructure:"url"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // JellyfinConfig holds the configuration for the Jellyfin server.
@@ -300,6 +336,8 @@ type JellyfinConfig struct {
 	URL string `yaml:"url" mapstructure:"url"`
 	// APIKey is the API key for the Jellyfin server.
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
 // GravatarConfig holds the configuration for Gravatar profile pictures.
@@ -392,6 +430,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server_url", "http://localhost:3002")
 	v.SetDefault("session_max_age", 172800) // 48 hour
 	v.SetDefault("session_key", "")
+	v.SetDefault("secure_cookies", true)
 	v.SetDefault("api_key", "")
 
 	// Auth defaults
@@ -404,6 +443,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.oidc.use_pkce", false)
 	v.SetDefault("auth.oidc.admin_group", "")
 	v.SetDefault("auth.oidc.auto_approve_group", "")
+	v.SetDefault("auth.oidc.timeout", 30)
 	v.SetDefault("auth.jellyfin.enabled", true)
 
 	// Database defaults
@@ -442,6 +482,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("ntfy.username", "")
 	v.SetDefault("ntfy.password", "")
 	v.SetDefault("ntfy.token", "")
+	v.SetDefault("ntfy.timeout", 30)
 
 	// Gravatar defaults
 	v.SetDefault("gravatar.enabled", false)
@@ -454,6 +495,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("webpush.vapid_email", "")
 	v.SetDefault("webpush.public_key", "")
 	v.SetDefault("webpush.private_key", "")
+	v.SetDefault("webpush.timeout", 30)
 }
 
 // the auto env function from viper only works for nested structs, if the struct to which a value binds isn't nil.
@@ -463,25 +505,31 @@ func bindNestedEnv(v *viper.Viper) {
 	// Jellyseerr
 	v.MustBindEnv("jellyseerr.url", "JELLYSWEEP_JELLYSEERR_URL")
 	v.MustBindEnv("jellyseerr.api_key", "JELLYSWEEP_JELLYSEERR_API_KEY")
+	v.MustBindEnv("jellyseerr.timeout", "JELLYSWEEP_JELLYSEERR_TIMEOUT")
 
 	// Sonarr
 	v.MustBindEnv("sonarr.url", "JELLYSWEEP_SONARR_URL")
 	v.MustBindEnv("sonarr.api_key", "JELLYSWEEP_SONARR_API_KEY")
+	v.MustBindEnv("sonarr.timeout", "JELLYSWEEP_SONARR_TIMEOUT")
 
 	// Radarr
 	v.MustBindEnv("radarr.url", "JELLYSWEEP_RADARR_URL")
 	v.MustBindEnv("radarr.api_key", "JELLYSWEEP_RADARR_API_KEY")
+	v.MustBindEnv("radarr.timeout", "JELLYSWEEP_RADARR_TIMEOUT")
 
 	// Jellystat
 	v.MustBindEnv("jellystat.url", "JELLYSWEEP_JELLYSTAT_URL")
 	v.MustBindEnv("jellystat.api_key", "JELLYSWEEP_JELLYSTAT_API_KEY")
+	v.MustBindEnv("jellystat.timeout", "JELLYSWEEP_JELLYSTAT_TIMEOUT")
 
 	// Streamystats
 	v.MustBindEnv("streamystats.url", "JELLYSWEEP_STREAMYSTATS_URL")
 	v.MustBindEnv("streamystats.server_id", "JELLYSWEEP_STREAMYSTATS_SERVER_ID")
+	v.MustBindEnv("streamystats.timeout", "JELLYSWEEP_STREAMYSTATS_TIMEOUT")
 
 	// Tunarr
 	v.MustBindEnv("tunarr.url", "JELLYSWEEP_TUNARR_URL")
+	v.MustBindEnv("tunarr.timeout", "JELLYSWEEP_TUNARR_TIMEOUT")
 
 	// Jellyfin
 	v.MustBindEnv("jellyfin.url", "JELLYSWEEP_JELLYFIN_URL")
@@ -492,6 +540,8 @@ func bindNestedEnv(v *viper.Viper) {
 	v.MustBindEnv("discord.webhook_url", "JELLYSWEEP_DISCORD_WEBHOOK_URL")
 	v.MustBindEnv("discord.username", "JELLYSWEEP_DISCORD_USERNAME")
 	v.MustBindEnv("discord.avatar_url", "JELLYSWEEP_DISCORD_AVATAR_URL")
+
+	v.MustBindEnv("jellyfin.timeout", "JELLYSWEEP_JELLYFIN_TIMEOUT")
 }
 
 // validateConfig validates the configuration.
@@ -512,6 +562,19 @@ func validateConfig(c *Config) error {
 
 	if c.CleanupMode == "" {
 		return fmt.Errorf("cleanup mode is required")
+	}
+
+	switch c.CleanupMode {
+	case CleanupModeAll, CleanupModeKeepEpisodes, CleanupModeKeepSeasons:
+		// valid
+	default:
+		return fmt.Errorf(
+			"invalid cleanup mode %q: must be one of %q, %q, %q",
+			c.CleanupMode,
+			CleanupModeAll,
+			CleanupModeKeepEpisodes,
+			CleanupModeKeepSeasons,
+		)
 	}
 
 	if c.CleanupMode == CleanupModeKeepEpisodes || c.CleanupMode == CleanupModeKeepSeasons {
@@ -656,6 +719,30 @@ func validateConfig(c *Config) error {
 		}
 	}
 
+	if c.Email != nil && c.Email.Enabled {
+		if c.Email.SMTPHost == "" {
+			return fmt.Errorf("SMTP host is required when email notifications are enabled")
+		}
+		if c.Email.FromEmail == "" {
+			return fmt.Errorf("from email is required when email notifications are enabled")
+		}
+	}
+
+	if c.Ntfy != nil && c.Ntfy.Enabled {
+		if c.Ntfy.ServerURL == "" {
+			return fmt.Errorf("ntfy server URL is required when ntfy notifications are enabled")
+		}
+		if c.Ntfy.Topic == "" {
+			return fmt.Errorf("ntfy topic is required when ntfy notifications are enabled")
+		}
+	}
+
+	if c.WebPush != nil && c.WebPush.Enabled {
+		if c.WebPush.PublicKey == "" || c.WebPush.PrivateKey == "" {
+			return fmt.Errorf("VAPID public and private keys are required when webpush is enabled")
+		}
+	}
+
 	return nil
 }
 
@@ -717,22 +804,22 @@ func warnDeprecatedConfig(c *Config) {
 
 		// Check for deprecated ContentAgeThreshold
 		if libraryConfig.ContentAgeThreshold > 0 {
-			log.Warnf("Library '%s': 'content_age_threshold' is deprecated. Please use 'filter.content_age_threshold' instead.", libraryName)
+			log.Warn("'content_age_threshold' is deprecated, please use 'filter.content_age_threshold' instead", "library", libraryName)
 		}
 
 		// Check for deprecated LastStreamThreshold
 		if libraryConfig.LastStreamThreshold > 0 {
-			log.Warnf("Library '%s': 'last_stream_threshold' is deprecated. Please use 'filter.last_stream_threshold' instead.", libraryName)
+			log.Warn("'last_stream_threshold' is deprecated, please use 'filter.last_stream_threshold' instead", "library", libraryName)
 		}
 
 		// Check for deprecated ContentSizeThreshold
 		if libraryConfig.ContentSizeThreshold > 0 {
-			log.Warnf("Library '%s': 'content_size_threshold' is deprecated. Please use 'filter.content_size_threshold' instead.", libraryName)
+			log.Warn("'content_size_threshold' is deprecated, please use 'filter.content_size_threshold' instead", "library", libraryName)
 		}
 
 		// Check for deprecated ExcludeTags
 		if len(libraryConfig.ExcludeTags) > 0 {
-			log.Warnf("Library '%s': 'exclude_tags' is deprecated. Please use 'filter.exclude_tags' instead.", libraryName)
+			log.Warn("'exclude_tags' is deprecated, please use 'filter.exclude_tags' instead", "library", libraryName)
 		}
 	}
 }

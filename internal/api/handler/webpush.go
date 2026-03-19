@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/internal/notify/webpush"
 )
 
@@ -80,8 +79,25 @@ func (h *WebPushHandler) Subscribe(c *gin.Context) {
 		return
 	}
 
+	// Validate subscription fields
+	if subscribeReq.Subscription.Endpoint == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "subscription endpoint is required",
+		})
+		return
+	}
+	if subscribeReq.Subscription.Keys.P256dh == "" || subscribeReq.Subscription.Keys.Auth == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "subscription keys (p256dh and auth) are required",
+		})
+		return
+	}
+
 	// Get user from session for verification
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 	if user.Username != subscribeReq.Username {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "unauthorized action",
@@ -146,7 +162,10 @@ func (h *WebPushHandler) UnsubscribeByEndpoint(c *gin.Context) {
 	}
 
 	// Get user from session
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	// Unsubscribe by endpoint
 	if err := h.webpush.UnsubscribeByEndpoint(user.Username, request.Endpoint); err != nil {
@@ -175,7 +194,10 @@ func (h *WebPushHandler) GetSubscriptionStatus(c *gin.Context) {
 	endpoint := c.Query("endpoint")
 
 	// Get user from session
-	user := c.MustGet("user").(*models.User)
+	user := getUser(c)
+	if user == nil {
+		return
+	}
 
 	// If we have a specific endpoint, check if that subscription exists
 	if endpoint != "" {

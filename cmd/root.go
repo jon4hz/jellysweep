@@ -54,7 +54,7 @@ func setLogLevel(level string) {
 	case "error":
 		log.SetLevel(log.ErrorLevel)
 	default:
-		log.Warnf("unknown log level %s, defaulting to info", level)
+		log.Warn("unknown log level, defaulting to info", "level", level)
 		log.SetLevel(log.InfoLevel)
 	}
 }
@@ -66,7 +66,7 @@ func logToFile() {
 	}
 	file, err := os.OpenFile(rootCmdPersistentFlags.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644) //nolint:gosec
 	if err != nil {
-		log.Errorf("failed to open log file: %v", err)
+		log.Error("failed to open log file", "error", err)
 		return
 	}
 
