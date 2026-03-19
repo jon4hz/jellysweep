@@ -8,12 +8,12 @@ on:
     paths-ignore:
       - 'docs/**'
       - '**.md'
-      - 'mkdocs.yml'
+      - 'zensical.toml'
   pull_request:
     paths-ignore:
       - 'docs/**'
       - '**.md'
-      - 'mkdocs.yml'
+      - 'zensical.toml'
 
 jobs:
   lint:
