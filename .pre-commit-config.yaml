@@ -41,6 +41,13 @@ repos:
         additional_dependencies:
           - mdformat-gfm
           - mdformat-frontmatter
+        exclude: "^docs/"
+      - id: mdformat
+        name: mdformat for docs
+        additional_dependencies:
+          - mdformat-mkdocs
+          - mdformat-frontmatter
+        files: "^docs/"
 
   # Custom build hook
   - repo: local
