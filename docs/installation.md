@@ -1,18 +1,37 @@
+---
+title: Installation Guide
+description: Guided installation — Prerequistites and Docker Compose
+---
+
 # Installation
+
+!!! abstract "Supported installation methods"
+
+```
+**Docker Compose is currently the only supported installation method**
+```
 
 ## Prerequisites
 
-- Access to your Jellyfin ecosystem including:
-  - Sonarr
-  - Radarr
-  - Jellystat or Streamystats
-  - Jellyseerr
+Admin access to your Jellyfin server, and a Jellyfin ecosystem
 
-## Docker Compose
+Required services:
 
-For a quick deployment using Docker/Podman, create a `compose.yml` file:
+- [x] **Jellyfin**
+- \*arr's
+  - [x] **Sonarr**
+  - [x] **Radarr**
+- Statistics app
+  - [x] **Jellystat** ^^or^^ **Streamystats**
+- [x] **Jellyseerr** / **Seerr**
 
-```yaml
+## Docker Compose installation
+
+### 1. Docker Compose file
+
+Create a Docker Compose file/service. Example:
+
+``` yaml
 services:
   jellysweep:
     image: ghcr.io/jon4hz/jellysweep:latest
@@ -37,58 +56,240 @@ services:
     #   - --log-level=debug
 ```
 
-You can either supply the configuration via a `config.yml` file or use environment variables. Your choice!
-If you want to use the config file, make sure to create it before starting the container.
+<!-- collapsed block -->
+??? example "Valkey Cache backend (advanced)"
 
-```bash
-vim ./config.yml  # or use emacs if you're one of those people.
+    Another configuration is using Valkey Cache as a cache backend
+
+    ```yaml
+    ```
+    
+
+### 2. Configuration
+
+!!! info "Title"
+
+  Configuration must be done prior to starting Jellysweep
+
+Configuration can be done with either:
+
+- **Configuration file** `config.yml` *(recommended)*
+
+- Docker **environmental variables**
+
+#### Using a configuration file
+
+1. **Create the the configuration file before starting the container!** Located in the container's directory:
+
+  ``` bash title="Jellysweep's Configuration file"
+  ./config.yml
+  ```
+
+1. Edit the configuration file. Here is a starting `config.yaml` template:
+
+  <!-- TODO -->
+  ``` yaml title="Template config.yaml"
+    dry_run: false                   # Set to true for testing
+    listen: "0.0.0.0:3002"           # Web interface address and port
+    cleanup_schedule: "0 */12 * * *" # Every 12 hours
+    cleanup_mode: "keep_seasons"     # Cleanup mode: "all", "keep_episodes", or "keep_seasons"
+    keep_count: 1                    # Number of episodes/seasons to keep (when using keep_episodes or keep_seasons)
+    api_key: ""                      # Optional: API key for Jellyfin plugin integration
+    session_key: "your-session-key"  # Random string for session encryption
+    session_max_age: 172800          # Session max age in seconds (48 hours)
+    secure_cookies: true             # Set Secure flag on session cookies (disable only for local development)
+    # trusted_proxies:               # Optional: list of trusted reverse-proxy IPs/CIDRs
+    #   - "10.0.0.1"                 # If unset, all proxies are trusted
+    #   - "192.168.1.0/24"
+    server_url: "http://localhost:3002"
+
+    # Database configuration (optional)
+    database:
+      path: "./data/jellysweep.db"
+
+    # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
+    auth:
+      # OpenID Connect (OIDC) Authentication
+      oidc:
+        enabled: false
+        name: OIDC
+        issuer: "https://login.mydomain.com/application/o/jellysweep/"
+        client_id: "your-client-id"
+        client_secret: "your-client-secret"
+        redirect_url: "http://localhost:3002/auth/oidc/callback"
+        use_pkce: true                     # Use PKCE for enhanced security
+        admin_group: "jellyfin-admins"     # OIDC group for admin access
+        auto_approve_group: "vip-users"    # (Optional) OIDC group for auto-approval of keep requests
+
+      # Jellyfin Authentication
+      jellyfin:
+        enabled: true                      # Default authentication method
+
+    # Jellyfin server configuration
+    jellyfin:
+      url: "http://localhost:8096"         # Your Jellyfin server URL
+      api_key: "your-jellyfin-api-key"     # Jellyfin API key
+
+    # Profile Pictures (optional)
+    gravatar:
+      enabled: false                       # Enable Gravatar profile pictures
+      default_image: "mp"                  # Default image if no Gravatar found
+                                          # Options: "404", "mp", "identicon", "monsterid",
+                                          #          "wavatar", "retro", "robohash", "blank"
+      rating: "g"                          # Maximum rating for images
+                                          # Options: "g", "pg", "r", "x"
+      size: 80                             # Image size in pixels (1-2048)
+
+    leaving_collections_enabled: true      # Create collections for media scheduled for deletion
+    leaving_collections_movie_name: "Leaving Movies"
+    leaving_collections_tv_name: "Leaving TV Shows"
+
+    # Library-specific settings
+    libraries:
+
+      # Name must match the Library name in Jellyfin
+      "Movies":
+        enabled: true
+        cleanup_delay: 60
+        protection_period: 90         # Protect requested content for 90 days
+        # Filter configuration
+        filter:
+          content_age_threshold: 120        # Content must be at least 120 days old
+          last_stream_threshold: 90         # Last watched at least 90 days ago
+          content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
+          tunarr_enabled: true              # Protect items used by Tunarr channels (requires tunarr config)
+          exclude_tags:
+            - "jellysweep-exclude"
+            - "keep"
+            - "favorites"
+        # Disk usage-based cleanup for movies
+        disk_usage_thresholds:
+          - usage_percent: 70.0       # When disk usage reaches 70%
+            max_cleanup_delay: 30     # Reduce grace period to 30 days
+          - usage_percent: 85.0       # When disk usage reaches 85%
+            max_cleanup_delay: 14      # Reduce grace period to 14 days
+          - usage_percent: 90.0       # When disk usage reaches 90%
+            max_cleanup_delay: 7      # Reduce grace period to 7 days
+          - usage_percent: 95.0       # When disk usage reaches 95%
+            max_cleanup_delay: 2      # Reduce grace period to 2 days
+
+      "TV Shows":
+        enabled: true
+        cleanup_delay: 60
+        protection_period: 90
+        # Filter configuration
+        filter:
+          content_age_threshold: 120
+          last_stream_threshold: 90
+          content_size_threshold: 2147483648  # 2GB minimum
+          tunarr_enabled: false             # Disable Tunarr filter for this library
+          exclude_tags:
+            - "jellysweep-exclude"
+            - "ongoing"
+            - "keep"
+        # Disk usage-based cleanup for TV shows
+        disk_usage_thresholds:
+          - usage_percent: 70.0
+            max_cleanup_delay: 30
+          - usage_percent: 85.0
+            max_cleanup_delay: 14
+          - usage_percent: 90.0
+            max_cleanup_delay: 7
+          - usage_percent: 95.0
+            max_cleanup_delay: 2
+
+    # Email notifications for users about upcoming deletions
+    email:
+      enabled: false
+      smtp_host: "mail.example.com"
+      smtp_port: 587
+      username: "your-smtp-username"
+      password: "your-smtp-password"
+      from_email: "jellysweep@example.com"
+      from_name: "Jellysweep"
+      use_tls: true              # Use STARTTLS
+      use_ssl: false             # Use SSL/TLS
+      insecure_skip_verify: false
+
+    # Ntfy notifications for admins about keep requests and deletions
+    ntfy:
+      enabled: false
+      server_url: "https://ntfy.sh"  # Or your own ntfy server
+      topic: "jellysweep"
+      # Authentication options (choose one):
+      username: ""               # Username/password auth
+      password: ""
+      token: ""                  # Token auth (takes precedence)
+
+    # Web push notifications
+    webpush:
+      enabled: false
+      vapid_email: "your-email@example.com"  # Contact email for VAPID keys
+      public_key: ""                         # VAPID public key
+      private_key: ""                        # VAPID private key
+      timeout: 30                            # HTTP client timeout in seconds (default: 30)
+
+    # External service integrations
+    jellyseerr:
+      url: "http://localhost:5055"
+      api_key: "your-jellyseerr-api-key"
+      timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+    sonarr:
+      url: "http://localhost:8989"
+      api_key: "your-sonarr-api-key"
+      timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+    radarr:
+      url: "http://localhost:7878"
+      api_key: "your-radarr-api-key"
+      timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+    jellystat:
+      url: "http://localhost:3001"
+      api_key: "your-jellystat-api-key"
+      timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+    # Alternative to Jellystat (configure only one)
+    streamystats:
+      url: "http://localhost:3001"
+      server_id: 1                         # Jellyfin server ID in Streamystats
+      timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+    # Tunarr (optional)
+    # Protect items that are used by Tunarr TV channels. When configured, Jellysweep will
+    # fetch channel programming and skip deletion for any movie or series that is
+    # currently used by a Tunarr program.
+    #
+    tunarr:
+      url: "http://localhost:8000"
+      timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+    # Cache configuration (optional - improves performance for large libraries)
+    cache:
+      enabled: true                  # Enable caching system
+      type: "memory"                 # Options: "memory", "redis"
+      redis_url: "localhost:6379"    # Redis server URL (when using redis cache)
+  ```
+
+
+Further configuration is discussed in [configuration](./configuration.md)
+
+
+### 3. Start the Jellysweep container
+
+Useful Docker Compose commands: 
+
+``` bash title="Start the Docker Compose service"
+docker compose up -d
 ```
 
-Then run:
-
-```bash
-
-# Start the service
-docker compose up -d
-
-# View logs
+``` bash title="View Jellysweep's logs"
 docker compose logs -f jellysweep
+```
 
-# Reset all tags (cleanup command)
+You can send commands to the Jellysweep Docker container: 
+``` bash title"Reset all tags (cleanup command) (ADVANCED)"
 docker compose exec jellysweep ./jellysweep reset
 ```
-
-### Docker Compose with Valkey Cache
-
-You can also configure valkey as caching backend:
-
-```yaml
-services:
-  jellysweep:
-    image: ghcr.io/jon4hz/jellysweep:latest
-    container_name: jellysweep
-    ports:
-      - "3002:3002"
-    volumes:
-      - ./config.yml:/app/config.yml:ro # create config file before starting the container!
-      - ./data:/app/data
-    environment:
-      # Cache configuration
-      - JELLYSWEEP_CACHE_TYPE=redis
-      - JELLYSWEEP_CACHE_REDIS_URL=valkey:6379
-      # Other configuration
-      - JELLYSWEEP_DRY_RUN=false
-      - JELLYSWEEP_LISTEN=0.0.0.0:3002
-      # ... add you config here or use the config file!
-    restart: unless-stopped
-    depends_on:
-      - valkey
-    networks:
-      - jellyfin-network
-
-  valkey:
-    image: valkey/valkey:8-alpine
-    container_name: jellysweep-valkey
-    restart: unless-stopped
-
-```
+<!-- todo: make sure that example is NOT a dangerous one -->
