@@ -53,6 +53,8 @@ This guide assumes these services are also running in Docker
 ### 1. Docker Compose file
 
 - [ ] Create a Docker Compose file/service
+- [ ] Edit the **volume mounts** to match the library mounts **in Jellyfin's library paths**
+
 
 ```yaml title="Example Docker Compose" hl_lines="14-18"
 services:
@@ -74,8 +76,6 @@ services:
       # - /data/movies:/data/movies:ro
       # - /data/tv:/data/tv:ro
 ```
-
-- [ ] Edit the **volume mounts** to match the library mounts **in Jellyfin's library paths**
 
 <!-- collapsed block -->
 
@@ -115,12 +115,10 @@ services:
 
 ### 2. Configuration
 
-!!! note
-
-    The configuration file must be created prior to starting the Jellysweep container!
+!!! note "The configuration file must be created prior to starting the Jellysweep container!"
 
 - Configuration is primarily done via a **configuration file**
-- Configuration is discussed further in [configuration](./configuration.md)
+- Configuration is discussed further in [Configuration](./configuration.md)
 
 <!-- collapsed block -->
 
@@ -163,7 +161,9 @@ services:
 
 <!-- TODO — all the admonitions + code blocks... this gets messy -->
 
-!!! tip "Services that *require* configuration for Jellysweep to work"
+!!! tip ""
+
+    Services that *require* configuration for Jellysweep to work:
 
     - [ ] **Jellyfin**
     - [ ] **Sonarr**
@@ -185,7 +185,7 @@ services:
 
 ???+ abstract "Full template of `config.yml`"
 
-    ```yaml title="Full template"
+    ```yaml title="Full template" hl_lines="33-36 48-50"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"           # Web interface address and port
     cleanup_schedule: "0 */12 * * *" # Every 12 hours
