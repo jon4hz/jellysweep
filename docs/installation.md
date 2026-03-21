@@ -163,7 +163,7 @@ services:
 
 <!-- TODO — all the admonitions + code blocks... this gets messy -->
 
-!!! note "Services that *require* configuration for Jellysweep to work"
+!!! tip "Services that *require* configuration for Jellysweep to work"
 
     - [ ] **Jellyfin**
     - [ ] **Sonarr**
@@ -173,7 +173,7 @@ services:
 
 **Here is a starting template. Use this as `config.yml`:**
 
-!!! tip
+!!! note
 
     Optional features requiring configuration are set to `false` in this template:
 
