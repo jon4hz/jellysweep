@@ -3,9 +3,9 @@ title: Installation Guide
 description: Guided installation — Prerequistites and Docker Compose
 ---
 
-# Installation
+# Installation with Docker Compose
 
-!!! abstract "Docker Compose installation"
+!!! abstract "Assumptions"
 
     This installation guide **assumes the following:**
 
