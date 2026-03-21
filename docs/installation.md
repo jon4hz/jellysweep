@@ -151,13 +151,13 @@ services:
           - JELLYSWEEP_LISTEN=0.0.0.0:3002
     ```
 
-##### 2-1. **Create the the configuration file before starting the container!** Located in the container's directory:
+#### 2-1. **Create the the configuration file before starting the container!** Located in the container's directory:
 
 ```bash title="Jellysweep's Configuration file"
 ./config.yml
 ```
 
-##### 2-2. Edit the configuration file. Here is a starting template
+#### 2-2. Edit the configuration file. Here is a starting template
 
 <!-- TODO -->
 
@@ -344,9 +344,9 @@ services:
       # fetch channel programming and skip deletion for any movie or series that is
       # currently used by a Tunarr program.
       #
-      tunarr:
-        url: "http://localhost:8000"
-        timeout: 30                          # HTTP client timeout in seconds (default: 30)
+      #tunarr:
+      #  url: "http://localhost:8000"
+      #  timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
       # Cache configuration (optional - improves performance for large libraries)
       cache:
@@ -355,23 +355,36 @@ services:
         redis_url: "localhost:6379"    # Redis server URL (when using redis cache)
     ```
 
-#### Required configurations
+!!! tip "Services that require configuration"
 
-- [ ] **Jellyfin**
-- [ ] **Sonarr**
-- [ ] **Radarr**
+    - [ ] **Jellyfin**
+    - [ ] **Sonarr**
+    - [ ] **Radarr**
 
-Everything else is 'optional' (just really awesome :grin:)
+    [Everything else](./configuration.md) is 'optional' (just really awesome :grin:)
 
-##### Jellyfin
+#### 2-3. Jellyfin — configuration
 
-##### Sonarr
+<!-- TODO -->
 
-##### Radarr
+#### 2.4. Sonarr — configuration
 
-### 3. Start the Jellysweep container
+<!-- TODO -->
 
-Useful Docker Compose commands:
+#### 2.5. Radarr — configuration
+
+<!-- TODO -->
+
+#### 2.6 Other services — configuration
+
+See our [configuration page](./configuration.md) for more details on services such as:
+
+- **Jellystat** ^^or^^ **Streamystats**
+- **Jellyseerr**/**Seerr**
+- **Ntfy**
+- **Tunarr**
+
+### 3. Start Jellysweep
 
 ```bash title="Start the Docker Compose service"
 docker compose up -d
@@ -381,10 +394,6 @@ docker compose up -d
 docker compose logs -f jellysweep
 ```
 
-You can send commands to the Jellysweep Docker container:
+Jellysweep should start, and you should be done!
 
-```bash title"Reset all tags (cleanup command) (ADVANCED)"
-docker compose exec jellysweep ./jellysweep reset
-```
-
-<!-- todo: make sure that example is NOT a dangerous one -->
+[Any issues? Check our troubleshooting pages](./troubleshooting.md)

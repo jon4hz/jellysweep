@@ -11,6 +11,7 @@ nav = [
   {"How it works: Filters" = "how-it-works-filters.md"},
   {"Installation Guide" = "installation.md"},
   {"Troubleshooting" = "troubleshooting.md"},
+  {"Configuration" = "configuration.md"}
 ]
 
 [theme]
@@ -19,6 +20,8 @@ logo = "assets/jellysweep.png"
 favicon = "assets/jellysweep.png"
 features = [
   "content.action.edit",
+  "content.code.copy",
+  "content.code.select",
   "navigation.footer",
   "search.share",
   "search.suggest"
