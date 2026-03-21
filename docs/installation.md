@@ -160,11 +160,12 @@ services:
 
 !!! tip ""
 
-    Services that *require* configuration for Jellysweep to work:
+    Services + configs that *require* configuration for Jellysweep to work:
 
-    - [ ] **Jellyfin**
-    - [ ] **Sonarr**
-    - [ ] **Radarr**
+    - [x] **Jellyfin**
+    - [x] **Sonarr**
+    - [x] **Radarr**
+    - [x] **Filters** for each Jellyfin library
 
     [Everything else](#26-other-services--configuration) is 'optional' (just really awesome :grin:)
 
@@ -182,7 +183,7 @@ services:
 
 <!-- collapsible (not by default) -->
 
-???+ abstract "Full template of `config.yml`"
+???+ abstract "`config.yml` template"
 
     ```yaml linenums="1" hl_lines="1 33-35 2-55 57-109 142-167"
     dry_run: true                    # Set to true for testing, false for usage
@@ -373,15 +374,15 @@ services:
 
 <!-- TODO -->
 
-#### 2.4. Sonarr — configuration
+#### 2-4. Sonarr & Radarr — configuration
 
 <!-- TODO -->
 
-#### 2.5. Radarr — configuration
+#### 2-5. Filters — configuration
 
 <!-- TODO -->
 
-#### 2.6 Other services — configuration
+#### 2-6. Other services — configuration
 
 See our [configuration page](./configuration.md) for details about other service configurations:
 
