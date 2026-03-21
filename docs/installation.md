@@ -12,7 +12,7 @@ description: Guided installation — Prerequistites and Docker Compose
     This installation guide **assumes you are comfortable with the following**:
 
     - Docker Compose
-    - Configuration via YAML/`.yml` files
+    - Configuration via YAML files (`.yml`)
 
 ## Prerequisites
 
@@ -151,13 +151,13 @@ services:
           - JELLYSWEEP_LISTEN=0.0.0.0:3002
     ```
 
-1. **Create the the configuration file before starting the container!** Located in the container's directory:
+##### 2-1. **Create the the configuration file before starting the container!** Located in the container's directory:
 
 ```bash title="Jellysweep's Configuration file"
 ./config.yml
 ```
 
-2. Edit the configuration file. Here is a starting template for `config.yaml`:
+##### 2-2. Edit the configuration file. Here is a starting template
 
 <!-- TODO -->
 
