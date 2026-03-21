@@ -38,7 +38,7 @@ This guide assumes these services are also running in Docker
 
 ??? question "Can I use less services?"
 
-    It *is* possible to use Jellysweep with only the following services configured:
+    Yes. It *is* possible to use Jellysweep with only the following services configured:
 
     - [x] Jellyfin
     - [x] Sonarr
@@ -54,7 +54,7 @@ This guide assumes these services are also running in Docker
 
 - [ ] Create a Docker Compose file/service
 
-```yaml title="Example Docker Compose"
+```yaml title="Example Docker Compose" hl_lines="14-18"
 services:
   jellysweep:
     image: ghcr.io/jon4hz/jellysweep:latest
@@ -83,7 +83,7 @@ services:
 
     Another configuration is using Valkey Cache as a cache backend
 
-    ```yaml title="Docker Compose"
+    ```yaml title="Docker Compose" hl_lines="19-27"
     services:
       jellysweep:
         image: ghcr.io/jon4hz/jellysweep:latest
@@ -128,7 +128,7 @@ services:
 
     Docker **environmental variables** can be used. They **override** options in the configuration file
 
-    ```yaml title="Overriding configuration file with environmental variables" hl_lines="17 20"
+    ```yaml title="Overriding configuration file with environmental variables" hl_lines="17-20"
     services:
       jellysweep:
         image: ghcr.io/jon4hz/jellysweep:latest
@@ -151,17 +151,18 @@ services:
           - JELLYSWEEP_LISTEN=0.0.0.0:3002
     ```
 
-#### 2-1. **Create the the configuration file before starting the container!** Located in the container's directory:
+#### 2-1. Create the configuration file
 
+**Create the the configuration file before starting the container!** Located in the container's directory:
 ```bash title="Jellysweep's Configuration file"
 ./config.yml
 ```
 
-#### 2-2. Edit the configuration file. Here is a starting template
+#### 2-2. Edit the configuration file
 
-<!-- TODO -->
+<!-- TODO — all the admonitions + code blocks... this gets messy -->
 
-!!! note
+!!! note "Jellysweep
 
     Options requiring configuration are set to `false` in this template
 
@@ -171,7 +172,7 @@ services:
 
 ???+ abstract "Template `config.yml`"
 
-    ```yaml
+    ```yaml title="Template `config.yml`"
       dry_run: true                    # Set to true for testing, false for usage
       listen: "0.0.0.0:3002"           # Web interface address and port
       cleanup_schedule: "0 */12 * * *" # Every 12 hours
@@ -361,7 +362,7 @@ services:
     - [ ] **Sonarr**
     - [ ] **Radarr**
 
-    [Everything else](./configuration.md) is 'optional' (just really awesome :grin:)
+    [Everything else](#26-other-services--configuration) is 'optional' (just really awesome :grin:)
 
 #### 2-3. Jellyfin — configuration
 
