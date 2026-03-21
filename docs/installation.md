@@ -158,17 +158,6 @@ services:
 
 <!-- TODO — all the admonitions + code blocks... this gets messy -->
 
-!!! tip ""
-
-    Services + configs that *require* configuration for Jellysweep to work:
-
-    - [x] **Jellyfin**
-    - [x] **Sonarr**
-    - [x] **Radarr**
-    - [x] **Filters** for each Jellyfin library
-
-    [Everything else](#26-other-services--configuration) is 'optional' (just really awesome :grin:)
-
 **Here is a starting template. Use this as `config.yml`:**
 
 !!! note "About the config template"
@@ -185,7 +174,7 @@ services:
 
 ???+ abstract "`config.yml` template"
 
-    ```yaml linenums="1" hl_lines="1 33-35 2-55 57-109 142-167"
+    ```yaml linenums="1" hl_lines="1 33-35 52-55 57-109 142-167"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"           # Web interface address and port
     cleanup_schedule: "0 */12 * * *" # Every 12 hours
@@ -361,7 +350,7 @@ services:
     #
     #tunarr:
     #  url: "http://localhost:8000"
-    #  timeout: 30                          # HTTP client timeout in seconds (default: 30)
+    #  timeout: 30                         # HTTP client timeout in seconds (default: 30)
 
     # Cache configuration (optional - improves performance for large libraries)
     cache:
@@ -374,21 +363,148 @@ services:
 
 <!-- TODO -->
 
+You will need:
+
+- **URL** (as Jellysweep's container can access it)
+- **API key**
+    - Jellyfin Web dashboard: `Advanced` ➔ `API Keys` ➔ `New API Key`
+        - Create a new API key. You can name it `Jellysweep`
+
+```yaml title="config.yml" linenums="37"
+# Jellyfin server configuration
+jellyfin:
+  url: "http://localhost:8096"         # Your Jellyfin server URL
+  api_key: "your-jellyfin-api-key"     # Jellyfin API keyey
+```
+
 #### 2-4. Sonarr & Radarr — configuration
 
-<!-- TODO -->
+You will need:
 
-#### 2-5. Filters — configuration
+- **URL** (as Jellysweep's container can access it)
+- **API keys**
+    - Sonarr + Radarr: `Settings` ➔ `General` ➔ `API Key`
 
-<!-- TODO -->
+```yaml title="config.yml" linenums="148"
+sonarr:
+  url: "http://localhost:8989"
+  api_key: "your-sonarr-api-key"
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
-#### 2-6. Other services — configuration
+radarr:
+  url: "http://localhost:7878"
+  api_key: "your-radarr-api-key"
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
+```
+
+#### 2-5. Statistics app — configuration
+
+Either **Jellystat** ^^or^^ **Streamystats** can be used. Simply comment the other out
+
+You will need:
+
+- **URL** (as Jellysweep's container can access it)
+- **API key**
+    - Jellystat: `Settings` ➔ `API Key` ➔ `Add Key`
+        - Create a new API key. You can name it `Jellysweep`
+
+<!-- TODO: Streamystats documentation (i don't use streamystats — i'll spin up a container) -->
+
+```yaml title="config.yml" linenums="158"
+jellystat:
+  url: "http://localhost:3001"
+  api_key: "your-jellystat-api-key"
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+streamystats:
+  url: "http://localhost:3001"
+  server_id: 1                         # Jellyfin server ID in Streamystats
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
+```
+
+#### 2-6. Jellyseerr / Seerr
+
+You will need:
+
+- **URL** (as Jellysweep's container can access it)
+- **API key**
+    - Jellyseerr: `Settings` ➔ `General` ➔ `API Key`
+
+```yaml title="config.yml" linenums="143"
+jellyseerr:
+  url: "http://localhost:5055"
+  api_key: "your-jellyseerr-api-key"
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
+```
+
+#### 2-7. Filters — configuration
+
+The template `config.yml` uses 'sane defaults'. But it is likely you will want to adjust the filters
+
+See our [Filters page for more information](./how-it-works-filters.md)
+
+```yaml title="config.yml" linenums="57"
+# Libraries (and their filters)
+libraries:
+
+  # Name must match the Library name in Jellyfin
+  "Movies":
+    enabled: true
+    cleanup_delay: 60
+    protection_period: 90         # Protect requested content for 90 days
+    # Filter configuration
+    filter:
+      content_age_threshold: 120        # Content must be at least 120 days old
+      last_stream_threshold: 90         # Last watched at least 90 days ago
+      content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
+      tunarr_enabled: true              # Protect items used by Tunarr channels (requires tunarr config)
+      exclude_tags:
+        - "jellysweep-exclude"
+        - "keep"
+        - "favorites"
+    # Disk usage-based cleanup for movies
+    disk_usage_thresholds:
+      - usage_percent: 70.0       # When disk usage reaches 70%
+        max_cleanup_delay: 30     # Reduce grace period to 30 days
+      - usage_percent: 85.0       # When disk usage reaches 85%
+        max_cleanup_delay: 14      # Reduce grace period to 14 days
+      - usage_percent: 90.0       # When disk usage reaches 90%
+        max_cleanup_delay: 7      # Reduce grace period to 7 days
+      - usage_percent: 95.0       # When disk usage reaches 95%
+        max_cleanup_delay: 2      # Reduce grace period to 2 days
+
+  "TV Shows":
+    enabled: true
+    cleanup_delay: 60
+    protection_period: 90
+    # Filter configuration
+    filter:
+      content_age_threshold: 120
+      last_stream_threshold: 90
+      content_size_threshold: 2147483648  # 2GB minimum
+      tunarr_enabled: false             # Disable Tunarr filter for this library
+      exclude_tags:
+        - "jellysweep-exclude"
+        - "ongoing"
+        - "keep"
+    # Disk usage-based cleanup for TV shows
+    disk_usage_thresholds:
+      - usage_percent: 70.0
+        max_cleanup_delay: 30
+      - usage_percent: 85.0
+        max_cleanup_delay: 14
+      - usage_percent: 90.0
+        max_cleanup_delay: 7
+      - usage_percent: 95.0
+        max_cleanup_delay: 2
+```
+
+#### 2-8. Other services — configuration
 
 See our [configuration page](./configuration.md) for details about other service configurations:
 
-- **Jellystat** ^^or^^ **Streamystats**
-- **Jellyseerr**/**Seerr** + SMTP emails
-- **Ntfy**
+- **SMTP Emails** to Seerr users
+- **Ntfy** notifications
 - **Tunarr**
 - **OpenID Connect authentication**
 - **Gravatar** profile pictures
@@ -397,7 +513,19 @@ See our [configuration page](./configuration.md) for details about other service
 
 ### 3. Start Jellysweep
 
-```bash title="Start the Docker Compose service"
+#### 3-1 Start the Docker container
+
+!!! warning
+
+    #### Reminder:
+
+    Jellysweep can **delete media permanently**
+
+    - Take backups of critical data
+    - Write your configuration carefully
+    - Disable `dry_run` **with caution**
+
+```bash title="Start the container"
 docker compose up -d
 ```
 
@@ -405,6 +533,14 @@ docker compose up -d
 docker compose logs -f jellysweep
 ```
 
-Jellysweep should start, and you should be done! :tada:
+Jellysweep should start, and should be available at `http://ip-address:3001`! :tada:
 
 [Any issues? Check our troubleshooting pages](./troubleshooting.md)
+
+#### 3-2. Disabling dry-run
+
+With caution, dry-run mode can be disabled. This means Jellysweep **will delete media**, according to your filters
+
+```yaml title="config.yml" linenums="1"
+dry_run: true                    # Set to true for testing, false for usage
+```
