@@ -6,6 +6,13 @@ plugins = [ "search" ]
 edit_uri = "edit/main/docs/"
 copyright = "Copyright &copy; 2025 - 2026 The Jellysweep Contributors"
 
+nav = [
+  {"Home" = "index.md"},
+  {"How it works: Filters" = "how-it-works-filters.md"},
+  {"Installation Guide" = "installation.md"},
+  {"Troubleshooting" = "troubleshooting.md"},
+]
+
 [theme]
 name = "material"
 logo = "assets/jellysweep.png"

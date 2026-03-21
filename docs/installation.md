@@ -5,9 +5,14 @@ description: Guided installation — Prerequistites and Docker Compose
 
 # Installation
 
-!!! abstract "Supported installation methods"
+!!! abstract "Docker Compose"
 
     **Docker Compose is currently the only supported installation method**
+
+    This guide **assumes you are comfortable with the following**:
+
+    - Docker Compose
+    - YML/YAML configurationsn
 
 ## Prerequisites
 
@@ -27,9 +32,9 @@ Required services:
 
 ### 1. Docker Compose file
 
-Create a Docker Compose file/service. Example:
+Create a Docker Compose file/service
 
-```yaml
+```yaml title="Example Docker Compose"
 services:
   jellysweep:
     image: ghcr.io/jon4hz/jellysweep:latest
@@ -92,7 +97,7 @@ services:
 
 ### 2. Configuration
 
-!!! info "Title"
+!!! important
 
     Configuration must be done prior to starting Jellysweep
 
@@ -100,7 +105,7 @@ Configuration can be done with either:
 
 1. **Configuration file** `config.yml` *(recommended)*
 
-2. Docker **environmental variables**
+1. Docker **environmental variables**
 
 This installation assumes **Configuration file**
 
@@ -112,7 +117,7 @@ This installation assumes **Configuration file**
 ./config.yml
 ```
 
-1. Edit the configuration file. Here is a starting `config.yaml` template:
+2. Edit the configuration file. Here is a starting `config.yaml` template:
 
 <!-- TODO -->
 
