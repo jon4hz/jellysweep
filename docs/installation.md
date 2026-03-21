@@ -175,19 +175,19 @@ services:
 
 !!! note
 
-    - Optional features requiring configuration are set to `false` in this template:
+    - **Optional, disabled features** requiring configuration are set to `false` in this template:
 
       ```yaml
       enabled: false
       ```
 
-    - Highlighted are sections that require configuration
+    - ==Highlighted== are **enabled** features which we recommend configuring
 
 <!-- collapsible (not by default) -->
 
 ???+ abstract "Full template of `config.yml`"
 
-    ```yaml title="Full template" linenums="1" hl_lines="33-35 48-50"
+    ```yaml title="Full template" linenums="1" hl_lines="33-35 52-54 56-108 141-166"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"           # Web interface address and port
     cleanup_schedule: "0 */12 * * *" # Every 12 hours
