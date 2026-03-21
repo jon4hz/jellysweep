@@ -355,6 +355,20 @@ services:
         redis_url: "localhost:6379"    # Redis server URL (when using redis cache)
     ```
 
+#### Required configurations
+
+- [ ] **Jellyfin**
+- [ ] **Sonarr**
+- [ ] **Radarr**
+
+Everything else is 'optional' (just really awesome :grin:)
+
+##### Jellyfin
+
+##### Sonarr
+
+##### Radarr
+
 ### 3. Start the Jellysweep container
 
 Useful Docker Compose commands:
