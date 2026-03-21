@@ -184,7 +184,7 @@ services:
 
 ???+ abstract "Full template of `config.yml`"
 
-    ```yaml linenums="1" hl_lines="1 33-35 53-55 57-109 142-167"
+    ```yaml linenums="1" hl_lines="1 33-35 2-55 57-109 142-167"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"           # Web interface address and port
     cleanup_schedule: "0 */12 * * *" # Every 12 hours
@@ -383,12 +383,16 @@ services:
 
 #### 2.6 Other services — configuration
 
-See our [configuration page](./configuration.md) for more details on services such as:
+See our [configuration page](./configuration.md) for details about other service configurations:
 
 - **Jellystat** ^^or^^ **Streamystats**
-- **Jellyseerr**/**Seerr**
+- **Jellyseerr**/**Seerr** + SMTP emails
 - **Ntfy**
 - **Tunarr**
+- **OpenID Connect authentication**
+- **Gravatar** profile pictures
+- **Web push notifications**
+- **Backend configuration** (cache, database, etc)
 
 ### 3. Start Jellysweep
 
