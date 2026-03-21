@@ -98,9 +98,11 @@ services:
 
 Configuration can be done with either:
 
-- **Configuration file** `config.yml` *(recommended)*
+1. **Configuration file** `config.yml` *(recommended)*
 
-- Docker **environmental variables**
+2. Docker **environmental variables**
+
+This installation assumes **Configuration file**
 
 #### Using a configuration file
 
