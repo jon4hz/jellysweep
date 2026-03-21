@@ -399,7 +399,7 @@ radarr:
 
 #### 2-5. Statistics app — configuration
 
-Either **Jellystat** ^^or^^ **Streamystats** can be used. Simply comment the other out
+Either **Jellystat** ^^or^^ **Streamystats** can be used. Simply comment out the other
 
 You will need:
 
