@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/shirou/gopsutil/v3/disk"
 	radarrAPI "github.com/devopsarr/radarr-go/radarr"
 	sonarrAPI "github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/jon4hz/jellysweep/internal/api/models"
@@ -68,6 +70,10 @@ type Engine struct {
 
 	// migrate old tag based items to database
 	initialDBMigration bool
+
+	// libraryFoldersMap maps library names to their disk folder paths.
+	// Refreshed on every cleanup run.
+	libraryFoldersMap map[string][]string
 
 	data *data
 }
@@ -365,6 +371,9 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 		return err
 	}
 
+	// Apply per-library sweep_until_size cap before saving to database.
+	mediaItems = e.applySweepUntilLimit(ctx, mediaItems)
+
 	// Populate requester information from Jellyseerr
 	log.Info("Populating requester information")
 	mediaItems = e.populateRequesterInfo(ctx, mediaItems)
@@ -433,6 +442,9 @@ func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) 
 	mediaItems = append(mediaItems, sonarrItems...)
 	mediaItems = append(mediaItems, radarrItems...)
 
+	// Store for use in sweep_until calculations.
+	e.libraryFoldersMap = libraryFoldersMap
+
 	// Set deletion policies with freshly gathered library folders map
 	e.policy.SetPolicies(
 		policy.NewDefaultDelete(e.cfg),
@@ -483,6 +495,158 @@ func arrMediaToDBMediaItem(item arr.MediaItem) database.Media {
 	}
 
 	return dbItem
+}
+
+// applySweepUntilLimit caps the items marked for deletion per library based on the
+// sweep_until_percent or sweep_until_gb configuration. Items from libraries without
+// a sweep_until setting are passed through unchanged.
+func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.MediaItem) []arr.MediaItem {
+	// Fast path: skip if no library has a sweep limit configured.
+	hasAnyLimit := false
+	for _, item := range mediaItems {
+		cfg := e.cfg.GetLibraryConfig(item.LibraryName)
+		if cfg != nil && (cfg.SweepUntilPercent > 0 || cfg.SweepUntilGB > 0) {
+			hasAnyLimit = true
+			break
+		}
+	}
+	if !hasAnyLimit {
+		return mediaItems
+	}
+
+	// Fetch bytes already pending deletion from the database (once, for all libraries).
+	pendingDBItems, err := e.db.GetMediaItems(ctx, false)
+	if err != nil {
+		log.Error("failed to get pending items for sweep_until calculation, skipping limit", "error", err)
+		return mediaItems
+	}
+	pendingBytesByLibrary := make(map[string]int64)
+	for _, item := range pendingDBItems {
+		pendingBytesByLibrary[strings.ToLower(item.LibraryName)] += item.FileSize
+	}
+
+	// Group candidate items by library (preserving original slice order via indices).
+	type group struct{ indices []int }
+	groups := make(map[string]*group)
+	for i, item := range mediaItems {
+		key := strings.ToLower(item.LibraryName)
+		if _, ok := groups[key]; !ok {
+			groups[key] = &group{}
+		}
+		groups[key].indices = append(groups[key].indices, i)
+	}
+
+	// Decide which indices to include after applying sweep limits.
+	included := make(map[int]struct{}, len(mediaItems))
+
+	for libraryKey, g := range groups {
+		libraryName := mediaItems[g.indices[0]].LibraryName
+		libCfg := e.cfg.GetLibraryConfig(libraryName)
+
+		if libCfg == nil || (libCfg.SweepUntilPercent == 0 && libCfg.SweepUntilGB == 0) {
+			// No sweep limit for this library — include everything.
+			for _, idx := range g.indices {
+				included[idx] = struct{}{}
+			}
+			continue
+		}
+
+		// Resolve disk stats for the library folders.
+		folders, ok := e.libraryFoldersMap[libraryName]
+		if !ok || len(folders) == 0 {
+			log.Warn("sweep_until configured but no library folders found, skipping limit", "library", libraryName)
+			for _, idx := range g.indices {
+				included[idx] = struct{}{}
+			}
+			continue
+		}
+
+		var diskTotal, diskUsed uint64
+		for _, path := range folders {
+			usage, err := disk.UsageWithContext(ctx, path)
+			if err != nil {
+				log.Error("failed to get disk usage for sweep_until", "path", path, "error", err)
+				continue
+			}
+			if usage.Total > diskTotal {
+				diskTotal = usage.Total
+				diskUsed = usage.Used
+			}
+		}
+
+		if diskTotal == 0 {
+			log.Warn("could not determine disk size for sweep_until, skipping limit", "library", libraryName)
+			for _, idx := range g.indices {
+				included[idx] = struct{}{}
+			}
+			continue
+		}
+
+		// Compute the target maximum used bytes.
+		var targetUsedBytes int64
+		if libCfg.SweepUntilPercent > 0 {
+			targetUsedBytes = int64(float64(diskTotal) * libCfg.SweepUntilPercent / 100.0)
+		} else {
+			targetUsedBytes = int64(libCfg.SweepUntilGB * 1024 * 1024 * 1024)
+		}
+
+		// Projected usage after pending deletions are applied.
+		alreadyMarkedBytes := pendingBytesByLibrary[libraryKey]
+		projectedUsedBytes := int64(diskUsed) - alreadyMarkedBytes
+		bytesToFree := projectedUsedBytes - targetUsedBytes
+
+		if bytesToFree <= 0 {
+			log.Info("sweep_until target already met for library, not marking new items",
+				"library", libraryName,
+				"diskUsedGB", float64(diskUsed)/1e9,
+				"pendingGB", float64(alreadyMarkedBytes)/1e9,
+				"targetUsedGB", float64(targetUsedBytes)/1e9,
+			)
+			continue // Include no new items from this library.
+		}
+
+		log.Info("applying sweep_until limit for library",
+			"library", libraryName,
+			"diskUsedGB", float64(diskUsed)/1e9,
+			"pendingGB", float64(alreadyMarkedBytes)/1e9,
+			"projectedUsedGB", float64(projectedUsedBytes)/1e9,
+			"targetUsedGB", float64(targetUsedBytes)/1e9,
+			"bytesToFreeGB", float64(bytesToFree)/1e9,
+		)
+
+		var accumulatedBytes int64
+		for _, idx := range g.indices {
+			included[idx] = struct{}{}
+			accumulatedBytes += getMediaItemFileSize(mediaItems[idx])
+			if accumulatedBytes >= bytesToFree {
+				log.Info("sweep_until bytes target reached for library",
+					"library", libraryName,
+					"markedGB", float64(accumulatedBytes)/1e9,
+				)
+				break
+			}
+		}
+	}
+
+	// Rebuild the slice in the original order.
+	result := make([]arr.MediaItem, 0, len(included))
+	for i, item := range mediaItems {
+		if _, ok := included[i]; ok {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+// getMediaItemFileSize returns the on-disk file size for an arr.MediaItem.
+func getMediaItemFileSize(item arr.MediaItem) int64 {
+	switch item.MediaType {
+	case models.MediaTypeTV:
+		return item.SeriesResource.Statistics.GetSizeOnDisk()
+	case models.MediaTypeMovie:
+		return item.MovieResource.Statistics.GetSizeOnDisk()
+	}
+	return 0
 }
 
 func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {

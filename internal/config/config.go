@@ -227,6 +227,17 @@ type CleanupConfig struct {
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// Filter is the configuration for all available filters.
 	Filter FilterConfig `yaml:"filter" mapstructure:"filter"`
+	// SweepUntilPercent is the maximum disk usage percentage to target when marking media for deletion.
+	// Media will only be marked for deletion until the projected disk usage (current usage minus
+	// already-pending deletions) falls to or below this percentage.
+	// Takes precedence over SweepUntilGB if both are set. Set to 0 to disable (default).
+	// Example: 90 means stop marking once the disk would be ≤90% full.
+	SweepUntilPercent float64 `yaml:"sweep_until_percent" mapstructure:"sweep_until_percent"`
+	// SweepUntilGB is the maximum disk usage in gigabytes to target when marking media for deletion.
+	// Media will only be marked for deletion until the projected disk usage (current usage minus
+	// already-pending deletions) falls to or below this value. Set to 0 to disable (default).
+	// Example: 900 means stop marking once the disk would have ≤900 GB used.
+	SweepUntilGB float64 `yaml:"sweep_until_gb" mapstructure:"sweep_until_gb"`
 }
 
 type FilterConfig struct {
