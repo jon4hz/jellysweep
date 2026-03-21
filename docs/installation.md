@@ -55,7 +55,6 @@ This guide assumes these services are also running in Docker
 - [ ] Create a Docker Compose file/service
 - [ ] Edit the **volume mounts** to match the library mounts **in Jellyfin's library paths**
 
-
 ```yaml title="Example Docker Compose" hl_lines="14-18"
 services:
   jellysweep:
@@ -177,11 +176,11 @@ services:
 
     - **Optional, disabled features** requiring configuration are set to `false` in this template:
 
-      ```yaml
-      enabled: false
-      ```
+        ```yaml
+        enabled: false
+        ```
 
-    - ==Highlighted== are **enabled** features which we recommend configuring
+    - ==Highlighted== are **enabled** features, which we recommend configuring
 
 <!-- collapsible (not by default) -->
 
@@ -209,16 +208,16 @@ services:
     # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
     auth:
       # OpenID Connect (OIDC) Authentication
-      oidc:
-        enabled: false
-        name: OIDC
-        issuer: "https://login.mydomain.com/application/o/jellysweep/"
-        client_id: "your-client-id"
-        client_secret: "your-client-secret"
-        redirect_url: "http://localhost:3002/auth/oidc/callback"
-        use_pkce: true                     # Use PKCE for enhanced security
-        admin_group: "jellyfin-admins"     # OIDC group for admin access
-        auto_approve_group: "vip-users"    # (Optional) OIDC group for auto-approval of keep requests
+      # oidc:
+      #   enabled: false
+      #   name: OIDC
+      #   issuer: "https://login.mydomain.com/application/o/jellysweep/"
+      #   client_id: "your-client-id"
+      #   client_secret: "your-client-secret"
+      #   redirect_url: "http://localhost:3002/auth/oidc/callback"
+      #   use_pkce: true                     # Use PKCE for enhanced security
+      #   admin_group: "jellyfin-admins"     # OIDC group for admin access
+      #   auto_approve_group: "vip-users"    # (Optional) OIDC group for auto-approval of keep requests
 
       # Jellyfin Authentication
       jellyfin:
