@@ -5,14 +5,14 @@ description: Guided installation — Prerequistites and Docker Compose
 
 # Installation
 
-!!! abstract "Docker Compose"
+!!! abstract "Docker Compose installation"
 
-    **Docker Compose is the only supported installation method**
+    This installation guide **assumes the following:**
 
-    This installation guide **assumes you are comfortable with the following**:
-
-    - Docker Compose
-    - Configuration via YAML files (`.yml`)
+    - You are comfortable with:
+        - Docker Compose
+        - Configuration via YAML files (`.yml`)
+    - Your other services are also running in Docker
 
 ## Prerequisites
 
@@ -27,8 +27,6 @@ Required services:
 - [x] A statistics app
     - [x] **Jellystat** ^^or^^ **Streamystats**
 - [x] **Jellyseerr** / **Seerr**
-
-This guide assumes these services are also running in Docker
 
 <!-- collapsed block -->
 
@@ -172,9 +170,9 @@ services:
 
 **Here is a starting template. Use this as `config.yml`:**
 
-!!! note
+!!! note "About the config template"
 
-    - **Optional, disabled features** requiring configuration are set to `false` in this template:
+    - **Optional features** requiring configuration are disabled — set to `false` (or commented out):
 
         ```yaml
         enabled: false
@@ -186,7 +184,7 @@ services:
 
 ???+ abstract "Full template of `config.yml`"
 
-    ```yaml title="Full template" linenums="1" hl_lines="33-35 52-54 56-108 141-166"
+    ```yaml linenums="1" hl_lines="1 33-35 53-55 57-109 142-167"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"           # Web interface address and port
     cleanup_schedule: "0 */12 * * *" # Every 12 hours
@@ -238,11 +236,12 @@ services:
                                           # Options: "g", "pg", "r", "x"
       size: 80                             # Image size in pixels (1-2048)
 
-    leaving_collections_enabled: true      # Create collections for media scheduled for deletion
+    # Create collections for media scheduled for deletion
+    leaving_collections_enabled: true
     leaving_collections_movie_name: "Leaving Movies"
     leaving_collections_tv_name: "Leaving TV Shows"
 
-    # Library-specific settings
+    # Libraries (and their filters)
     libraries:
 
       # Name must match the Library name in Jellyfin
