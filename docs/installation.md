@@ -28,7 +28,7 @@ Required services:
     - [x] **Jellystat** ^^or^^ **Streamystats**
 - [x] **Jellyseerr** / **Seerr**
 
-This guide also assumes these services are running in Docker
+This guide assumes these services are also running in Docker
 
 <!-- collapsed block -->
 
@@ -128,7 +128,7 @@ services:
 
     Docker **environmental variables** can be used. They **override** options in the configuration file
 
-    ```yaml title="Overriding configuration file with environmental variables"
+    ```yaml title="Overriding configuration file with environmental variables" hl_lines="17 20"
     services:
       jellysweep:
         image: ghcr.io/jon4hz/jellysweep:latest
