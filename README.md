@@ -38,7 +38,7 @@ ______________________________________________________________________
   - [💾 Disk Usage-Based Cleanup](#-disk-usage-based-cleanup)
     - [Configuration Example](#configuration-example)
     - [Behavior Examples](#behavior-examples)
-    - [Storage remaining Example](#storage-remaining-example)
+    - [Storage Remaining Example](#storage-remaining-example)
   - [📸 Screenshots](#-screenshots)
     - [Dashboard Overview](#dashboard-overview)
     - [Statistics Dashboard](#statistics-dashboard)
