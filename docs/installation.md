@@ -172,8 +172,8 @@ services:
 
 === "Minimal configuration"
 
-    ```yaml linenums="1"
-    dry_run: true
+    ```yaml linenums="1 7 18-21 28-80 82-88"
+    dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"
     cleanup_schedule: "0 */12 * * *"
     cleanup_mode: "keep_seasons"
@@ -269,7 +269,7 @@ services:
 
 === "Full configuration"
 
-    ```yaml linenums="1" hl_lines="1 33-35 52-55 57-109 142-167"
+    ```yaml linenums="1" hl_lines="1 7 33-35 52-55 57-109 142-167"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"           # Web interface address and port
     cleanup_schedule: "0 */12 * * *" # Every 12 hours
@@ -467,7 +467,7 @@ You will need:
     - Jellyfin Web dashboard: `Advanced` ➔ `API Keys` ➔ `New API Key`
         - Create a new API key. You can name it `Jellysweep`
 
-```yaml title="config.yml" linenums="37"
+```yaml title="config.yml" linenums="37" hl_lines="1-3"
 # Jellyfin server configuration
 jellyfin:
   url: "http://localhost:8096"         # Your Jellyfin server URL
@@ -482,7 +482,7 @@ You will need:
 - **API keys**
     - Sonarr + Radarr: `Settings` ➔ `General` ➔ `API Key`
 
-```yaml title="config.yml" linenums="148"
+```yaml title="config.yml" linenums="148" hl_lines="1-4 6-9"
 sonarr:
   url: "http://localhost:8989"
   api_key: "your-sonarr-api-key"
@@ -494,47 +494,7 @@ radarr:
   timeout: 30                          # HTTP client timeout in seconds (default: 30)
 ```
 
-#### 2-5. Statistics app — configuration
-
-Either **Jellystat** ^^or^^ **Streamystats** can be used. Simply comment out the other
-
-You will need:
-
-- **URL** (as Jellysweep's container can access it)
-- **API key**
-    - Jellystat: `Settings` ➔ `API Key` ➔ `Add Key`
-        - Create a new API key. You can name it `Jellysweep`
-
-<!-- TODO: Streamystats documentation (i don't use streamystats — i'll spin up a container) -->
-
-```yaml title="config.yml" linenums="158"
-jellystat:
-  url: "http://localhost:3001"
-  api_key: "your-jellystat-api-key"
-  timeout: 30                          # HTTP client timeout in seconds (default: 30)
-
-streamystats:
-  url: "http://localhost:3001"
-  server_id: 1                         # Jellyfin server ID in Streamystats
-  timeout: 30                          # HTTP client timeout in seconds (default: 30)
-```
-
-#### 2-6. Jellyseerr / Seerr
-
-You will need:
-
-- **URL** (as Jellysweep's container can access it)
-- **API key**
-    - Jellyseerr: `Settings` ➔ `General` ➔ `API Key`
-
-```yaml title="config.yml" linenums="143"
-jellyseerr:
-  url: "http://localhost:5055"
-  api_key: "your-jellyseerr-api-key"
-  timeout: 30                          # HTTP client timeout in seconds (default: 30)
-```
-
-#### 2-7. Filters — configuration
+#### 2-5. Filters — configuration
 
 The template `config.yml` uses 'sane defaults'. But it is likely you will want to adjust the filters
 
@@ -600,6 +560,8 @@ libraries:
 
 See our [configuration page](./configuration.md) for details about other service configurations:
 
+- **A statistics app** (Jellystat ^^or^^ Streamystats)
+- **Jellyseerr/Seerr**
 - **SMTP Emails** to Seerr users
 - **Ntfy** notifications
 - **Tunarr**
