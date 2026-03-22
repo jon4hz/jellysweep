@@ -172,7 +172,7 @@ services:
 
 === "Minimal configuration"
 
-    ```yaml linenums="1" hl_lines"1 7 18-21 28-80 82-88"
+    ```yaml
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"
     cleanup_schedule: "0 */12 * * *"
