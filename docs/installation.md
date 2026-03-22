@@ -557,7 +557,7 @@ libraries:
 
 <!-- initially collapsed block -->
 
-??? success "See our configuration page for others"
+??? success "See our configuration page for other configurations"
 
     See our [configuration page](./configuration.md) for details about other services, configurations:
 
