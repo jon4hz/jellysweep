@@ -172,7 +172,7 @@ services:
 
 === "Minimal configuration"
 
-    ```yaml linenums="1"
+    ```yaml linenums="1" hl_lines="1 7 18-21 28-80 82-91"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"
     cleanup_schedule: "0 */12 * * *"
@@ -196,7 +196,7 @@ services:
       api_key: "your-jellyfin-api-key"     # Jellyfin API key
 
     # Create collections for media scheduled for deletion
-    leaving_collections_enabled: true
+    leaving_collections_enabled: false
     leaving_collections_movie_name: "Leaving Movies"
     leaving_collections_tv_name: "Leaving TV Shows"
 
@@ -210,10 +210,10 @@ services:
         protection_period: 90         # Protect requested content for 90 days
         # Filter configuration
         filter:
-          content_age_threshold: 120        # Content must be at least 120 days old
-          last_stream_threshold: 90         # Last watched at least 90 days ago
+          content_age_threshold: 120          # Content must be at least 120 days old
+          last_stream_threshold: 90           # Last watched at least 90 days ago
           content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
-          tunarr_enabled: true              # Protect items used by Tunarr channels (requires tunarr config)
+          tunarr_enabled: true                # Protect items used by Tunarr channels (requires tunarr config)
           exclude_tags:
             - "jellysweep-exclude"
             - "keep"
@@ -223,7 +223,7 @@ services:
           - usage_percent: 70.0       # When disk usage reaches 70%
             max_cleanup_delay: 30     # Reduce grace period to 30 days
           - usage_percent: 85.0       # When disk usage reaches 85%
-            max_cleanup_delay: 14      # Reduce grace period to 14 days
+            max_cleanup_delay: 14     # Reduce grace period to 14 days
           - usage_percent: 90.0       # When disk usage reaches 90%
             max_cleanup_delay: 7      # Reduce grace period to 7 days
           - usage_percent: 95.0       # When disk usage reaches 95%
@@ -238,7 +238,7 @@ services:
           content_age_threshold: 120
           last_stream_threshold: 90
           content_size_threshold: 2147483648  # 2GB minimum
-          tunarr_enabled: false             # Disable Tunarr filter for this library
+          tunarr_enabled: false               # Disable Tunarr filter for this library
           exclude_tags:
             - "jellysweep-exclude"
             - "ongoing"
@@ -555,17 +555,21 @@ libraries:
 
 #### 2-8. Other services — configuration
 
-See our [configuration page](./configuration.md) for details about other service configurations:
+<!-- initially collapsed block -->
 
-- **A statistics app** (Jellystat ^^or^^ Streamystats)
-- **Jellyseerr/Seerr**
-- **SMTP Emails** to Seerr users
-- **Ntfy** notifications
-- **Tunarr**
-- **OpenID Connect authentication**
-- **Gravatar** profile pictures
-- **Web push notifications**
-- **Backend configuration** (cache, database, etc)
+??? success "See our configuration page for others"
+
+    See our [configuration page](./configuration.md) for details about other services, configurations:
+
+    - **A statistics app** (Jellystat ^^or^^ Streamystats)
+    - **Jellyseerr/Seerr**
+    - **SMTP Emails** to Seerr users
+    - **Ntfy** notifications
+    - **Tunarr**
+    - **OpenID Connect authentication**
+    - **Gravatar** profile pictures
+    - **Web push notifications**
+    - **Backend configuration** (cache, database, etc)
 
 ### 3. Start Jellysweep
 
