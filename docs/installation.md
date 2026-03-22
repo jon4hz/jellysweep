@@ -172,7 +172,7 @@ services:
 
 === "Minimal configuration"
 
-    ```yaml linenums="1 7 18-21 28-80 82-88"
+    ```yaml linenums="1" hl_lines"1 7 18-21 28-80 82-88"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"
     cleanup_schedule: "0 */12 * * *"
@@ -467,7 +467,7 @@ You will need:
     - Jellyfin Web dashboard: `Advanced` ➔ `API Keys` ➔ `New API Key`
         - Create a new API key. You can name it `Jellysweep`
 
-```yaml title="config.yml" linenums="37" hl_lines="1-3"
+```yaml title="config.yml" linenums="37" hl_lines="2-4"
 # Jellyfin server configuration
 jellyfin:
   url: "http://localhost:8096"         # Your Jellyfin server URL
@@ -482,7 +482,7 @@ You will need:
 - **API keys**
     - Sonarr + Radarr: `Settings` ➔ `General` ➔ `API Key`
 
-```yaml title="config.yml" linenums="148" hl_lines="1-4 6-9"
+```yaml title="config.yml" linenums="148" hl_lines="1-3 6-8"
 sonarr:
   url: "http://localhost:8989"
   api_key: "your-sonarr-api-key"
