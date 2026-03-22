@@ -497,15 +497,19 @@ func arrMediaToDBMediaItem(item arr.MediaItem) database.Media {
 	return dbItem
 }
 
-// applySweepUntilLimit caps the items marked for deletion per library based on the
-// sweep_until_percent or sweep_until_gb configuration. Items from libraries without
-// a sweep_until setting are passed through unchanged.
+// applySweepUntilLimit caps the items marked for deletion based on the
+// sweep_until_percent_used or sweep_until_gb_free configuration. Items from
+// libraries without a sweep_until setting are passed through unchanged.
+//
+// Libraries that share the same filesystem (detected by equal gopsutil Total
+// values, reliable for bind mounts in Docker) share a single bytes-to-free
+// budget so the same space is not double-counted.
 func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.MediaItem) []arr.MediaItem {
 	// Fast path: skip if no library has a sweep limit configured.
 	hasAnyLimit := false
 	for _, item := range mediaItems {
 		cfg := e.cfg.GetLibraryConfig(item.LibraryName)
-		if cfg != nil && (cfg.SweepUntilPercent > 0 || cfg.SweepUntilGB > 0) {
+		if cfg != nil && (cfg.SweepUntilPercentUsed > 0 || cfg.SweepUntilGBFree > 0) {
 			hasAnyLimit = true
 			break
 		}
@@ -514,7 +518,7 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 		return mediaItems
 	}
 
-	// Fetch bytes already pending deletion from the database (once, for all libraries).
+	// Fetch bytes already pending deletion from the database.
 	pendingDBItems, err := e.db.GetMediaItems(ctx, false)
 	if err != nil {
 		log.Error("failed to get pending items for sweep_until calculation, skipping limit", "error", err)
@@ -525,110 +529,132 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 		pendingBytesByLibrary[strings.ToLower(item.LibraryName)] += item.FileSize
 	}
 
-	// Group candidate items by library (preserving original slice order via indices).
-	type group struct{ indices []int }
-	groups := make(map[string]*group)
-	for i, item := range mediaItems {
-		key := strings.ToLower(item.LibraryName)
-		if _, ok := groups[key]; !ok {
-			groups[key] = &group{}
-		}
-		groups[key].indices = append(groups[key].indices, i)
+	// libraryMount maps lower-case library name to gopsutil.Total for the
+	// filesystem. Used as a stable filesystem identity key (Blocks * Bsize is
+	// constant for a given filesystem). 0 means no sweep limit for this library.
+	libraryMount := make(map[string]uint64)
+
+	type mountBudget struct {
+		remaining int64
 	}
+	mounts := make(map[uint64]*mountBudget)
 
-	// Decide which indices to include after applying sweep limits.
-	included := make(map[int]struct{}, len(mediaItems))
+	// Resolve disk stats for each unique library and compute the per-mount budget.
+	visited := make(map[string]bool)
+	for _, item := range mediaItems {
+		key := strings.ToLower(item.LibraryName)
+		if visited[key] {
+			continue
+		}
+		visited[key] = true
 
-	for libraryKey, g := range groups {
-		libraryName := mediaItems[g.indices[0]].LibraryName
-		libCfg := e.cfg.GetLibraryConfig(libraryName)
+		libCfg := e.cfg.GetLibraryConfig(item.LibraryName)
+		if libCfg == nil || (libCfg.SweepUntilPercentUsed == 0 && libCfg.SweepUntilGBFree == 0) {
+			continue // no limit for this library
+		}
 
-		if libCfg == nil || (libCfg.SweepUntilPercent == 0 && libCfg.SweepUntilGB == 0) {
-			// No sweep limit for this library — include everything.
-			for _, idx := range g.indices {
-				included[idx] = struct{}{}
-			}
+		folders := e.libraryFoldersMap[item.LibraryName]
+		if len(folders) == 0 {
+			log.Warn("sweep_until configured but no library folders found, skipping limit", "library", item.LibraryName)
 			continue
 		}
 
-		// Resolve disk stats for the library folders.
-		folders, ok := e.libraryFoldersMap[libraryName]
-		if !ok || len(folders) == 0 {
-			log.Warn("sweep_until configured but no library folders found, skipping limit", "library", libraryName)
-			for _, idx := range g.indices {
-				included[idx] = struct{}{}
-			}
-			continue
-		}
-
-		var diskTotal, diskUsed uint64
+		// Pick the folder with the largest partition (handles libraries that span
+		// multiple paths on different disks by always picking the dominant one).
+		var diskTotal, diskUsed, diskFree uint64
 		for _, path := range folders {
 			usage, err := disk.UsageWithContext(ctx, path)
 			if err != nil {
 				log.Error("failed to get disk usage for sweep_until", "path", path, "error", err)
 				continue
 			}
+			// gopsutil.Free = Bavail * Bsize on Linux/macOS, matching the
+			// "Available" column in `df`. gopsutil.UsedPercent = Used/(Used+Free)
+			// which also matches df. No syscall wrapper needed.
 			if usage.Total > diskTotal {
 				diskTotal = usage.Total
 				diskUsed = usage.Used
+				diskFree = usage.Free
 			}
 		}
-
 		if diskTotal == 0 {
-			log.Warn("could not determine disk size for sweep_until, skipping limit", "library", libraryName)
-			for _, idx := range g.indices {
-				included[idx] = struct{}{}
-			}
+			log.Warn("could not determine disk size for sweep_until, skipping limit", "library", item.LibraryName)
 			continue
 		}
 
-		// Compute the target maximum used bytes.
-		var targetUsedBytes int64
-		if libCfg.SweepUntilPercent > 0 {
-			targetUsedBytes = int64(float64(diskTotal) * libCfg.SweepUntilPercent / 100.0)
+		libraryMount[key] = diskTotal
+
+		// Compute how many bytes need to be freed to reach the configured target.
+		// Use diskUsed+diskFree as the df-compatible denominator (excludes blocks
+		// reserved for root, which gopsutil.Total includes but df does not show).
+		var libBytesToFree int64
+		if libCfg.SweepUntilPercentUsed > 0 {
+			usable := int64(diskUsed + diskFree)
+			targetUsed := int64(float64(usable) * libCfg.SweepUntilPercentUsed / 100.0)
+			libBytesToFree = int64(diskUsed) - targetUsed
 		} else {
-			targetUsedBytes = int64(libCfg.SweepUntilGB * 1024 * 1024 * 1024)
+			targetFree := int64(libCfg.SweepUntilGBFree * 1e9)
+			libBytesToFree = targetFree - int64(diskFree)
 		}
 
-		// Projected usage after pending deletions are applied.
-		alreadyMarkedBytes := pendingBytesByLibrary[libraryKey]
-		projectedUsedBytes := int64(diskUsed) - alreadyMarkedBytes
-		bytesToFree := projectedUsedBytes - targetUsedBytes
-
-		if bytesToFree <= 0 {
-			log.Info("sweep_until target already met for library, not marking new items",
-				"library", libraryName,
-				"diskUsedGB", float64(diskUsed)/1e9,
-				"pendingGB", float64(alreadyMarkedBytes)/1e9,
-				"targetUsedGB", float64(targetUsedBytes)/1e9,
-			)
-			continue // Include no new items from this library.
-		}
-
-		log.Info("applying sweep_until limit for library",
-			"library", libraryName,
+		log.Debug("sweep_until disk stats",
+			"library", item.LibraryName,
 			"diskUsedGB", float64(diskUsed)/1e9,
-			"pendingGB", float64(alreadyMarkedBytes)/1e9,
-			"projectedUsedGB", float64(projectedUsedBytes)/1e9,
-			"targetUsedGB", float64(targetUsedBytes)/1e9,
-			"bytesToFreeGB", float64(bytesToFree)/1e9,
+			"diskFreeGB", float64(diskFree)/1e9,
+			"libBytesToFreeGB", float64(libBytesToFree)/1e9,
 		)
 
-		var accumulatedBytes int64
-		for _, idx := range g.indices {
-			included[idx] = struct{}{}
-			accumulatedBytes += getMediaItemFileSize(mediaItems[idx])
-			if accumulatedBytes >= bytesToFree {
-				log.Info("sweep_until bytes target reached for library",
-					"library", libraryName,
-					"markedGB", float64(accumulatedBytes)/1e9,
-				)
-				break
-			}
+		// When multiple libraries share a filesystem, use the most aggressive
+		// target (highest bytes-to-free) across all libraries on that mount.
+		budget, exists := mounts[diskTotal]
+		if !exists {
+			budget = &mountBudget{}
+			mounts[diskTotal] = budget
+		}
+		if libBytesToFree > budget.remaining {
+			budget.remaining = libBytesToFree
 		}
 	}
 
-	// Rebuild the slice in the original order.
+	// Subtract already-pending bytes from each mount's shared budget.
+	pendingByMount := make(map[uint64]int64)
+	for libKey, mountKey := range libraryMount {
+		pendingByMount[mountKey] += pendingBytesByLibrary[libKey]
+	}
+	for mountKey, budget := range mounts {
+		pending := pendingByMount[mountKey]
+		budget.remaining -= pending
+		if budget.remaining <= 0 {
+			log.Info("sweep_until target already met, not marking new items",
+				"diskTotalGB", float64(mountKey)/1e9,
+				"alreadyPendingGB", float64(pending)/1e9,
+			)
+		} else {
+			log.Info("applying sweep_until limit",
+				"diskTotalGB", float64(mountKey)/1e9,
+				"alreadyPendingGB", float64(pending)/1e9,
+				"bytesToFreeGB", float64(budget.remaining)/1e9,
+			)
+		}
+	}
+
+	// Include items in original order, drawing from the shared mount budget.
+	included := make(map[int]struct{}, len(mediaItems))
+	for i, item := range mediaItems {
+		mountKey := libraryMount[strings.ToLower(item.LibraryName)]
+		if mountKey == 0 {
+			included[i] = struct{}{} // no sweep limit — always include
+			continue
+		}
+		budget := mounts[mountKey]
+		if budget == nil || budget.remaining <= 0 {
+			continue
+		}
+		included[i] = struct{}{}
+		budget.remaining -= getMediaItemFileSize(item)
+	}
+
+	// Rebuild in original order.
 	result := make([]arr.MediaItem, 0, len(included))
 	for i, item := range mediaItems {
 		if _, ok := included[i]; ok {
@@ -637,6 +663,8 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 	}
 	return result
 }
+
+
 
 // getMediaItemFileSize returns the on-disk file size for an arr.MediaItem.
 func getMediaItemFileSize(item arr.MediaItem) int64 {

@@ -227,17 +227,19 @@ type CleanupConfig struct {
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// Filter is the configuration for all available filters.
 	Filter FilterConfig `yaml:"filter" mapstructure:"filter"`
-	// SweepUntilPercent is the maximum disk usage percentage to target when marking media for deletion.
-	// Media will only be marked for deletion until the projected disk usage (current usage minus
-	// already-pending deletions) falls to or below this percentage.
-	// Takes precedence over SweepUntilGB if both are set. Set to 0 to disable (default).
-	// Example: 90 means stop marking once the disk would be ≤90% full.
-	SweepUntilPercent float64 `yaml:"sweep_until_percent" mapstructure:"sweep_until_percent"`
-	// SweepUntilGB is the maximum disk usage in gigabytes to target when marking media for deletion.
-	// Media will only be marked for deletion until the projected disk usage (current usage minus
-	// already-pending deletions) falls to or below this value. Set to 0 to disable (default).
-	// Example: 900 means stop marking once the disk would have ≤900 GB used.
-	SweepUntilGB float64 `yaml:"sweep_until_gb" mapstructure:"sweep_until_gb"`
+	// SweepUntilPercentUsed is the maximum used disk space percentage to target when marking media for deletion.
+	// Media will only be marked for deletion until the projected used space (after pending deletions)
+	// drops to at most this percentage of total disk capacity.
+	// Takes precedence over SweepUntilGBFree if both are set. Set to 0 to disable (default).
+	// Example: 95 means stop marking once the disk would be ≤95% used (full) (matching what `df` reports).
+	SweepUntilPercentUsed float64 `yaml:"sweep_until_percent_used" mapstructure:"sweep_until_percent_used"`
+	// SweepUntilGBFree is the minimum free disk space in decimal gigabytes (1 GB = 1,000,000,000 bytes)
+	// to maintain when marking media for deletion. Media will only be marked for deletion until the
+	// projected free space reaches at least this many GB. Set to 0 to disable (default).
+	// Note: to convert from `df -k` output to GB, multiply the 1K-block value by 1024 then divide by
+	// 1,000,000,000. E.g. `df -k` showing 13,683,073,272 free ≈ 14,011 GB, not 13,683.
+	// Example: 10 means stop marking once the disk would have at least 10 GB free.
+	SweepUntilGBFree float64 `yaml:"sweep_until_gb_free" mapstructure:"sweep_until_gb_free"`
 }
 
 type FilterConfig struct {
