@@ -371,7 +371,7 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 		return err
 	}
 
-	// Apply per-library sweep_until_size cap before saving to database.
+	// Apply per-library sweep_until limits (sweep_until_percent_used / sweep_until_gb_free) before saving to database.
 	mediaItems = e.applySweepUntilLimit(ctx, mediaItems)
 
 	// Populate requester information from Jellyseerr
@@ -618,8 +618,14 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 
 	// Subtract already-pending bytes from each mount's shared budget.
 	pendingByMount := make(map[uint64]int64)
-	for libKey, mountKey := range libraryMount {
-		pendingByMount[mountKey] += pendingBytesByLibrary[libKey]
+	for libKey, pending := range pendingBytesByLibrary {
+		// Map all enabled libraries to their mount key so that pending deletions
+		// from any library on the same filesystem are accounted for.
+		mountKey := libraryFoldersMap[strings.ToLower(libKey)]
+		if mountKey == 0 {
+			continue
+		}
+		pendingByMount[mountKey] += pending
 	}
 	for mountKey, budget := range mounts {
 		pending := pendingByMount[mountKey]
