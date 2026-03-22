@@ -53,7 +53,7 @@ Required services:
 - [ ] Create a Docker Compose file/service
 - [ ] Edit the **volume mounts** to match the library mounts **in Jellyfin's library paths**
 
-```yaml title="Example Docker Compose" hl_lines="14-18"
+```yaml title="Docker Compose" hl_lines="14-18"
 services:
   jellysweep:
     image: ghcr.io/jon4hz/jellysweep:latest
@@ -266,7 +266,6 @@ services:
       timeout: 30                          # HTTP client timeout in seconds (default: 30)
     ```
 
-
 === "Full configuration"
 
     ```yaml linenums="1" hl_lines="1 7 33-35 52-55 57-109 142-167"
@@ -453,8 +452,6 @@ services:
       type: "memory"                 # Options: "memory", "redis"
       redis_url: "localhost:6379"    # Redis server URL (when using redis cache)
     ```
-
-  
 
 #### 2-3. Jellyfin — configuration
 
