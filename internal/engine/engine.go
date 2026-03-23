@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -621,7 +622,7 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 	for libKey, pending := range pendingBytesByLibrary {
 		// Map all enabled libraries to their mount key so that pending deletions
 		// from any library on the same filesystem are accounted for.
-		mountKey := libraryFoldersMap[strings.ToLower(libKey)]
+		mountKey := libraryMount[strings.ToLower(libKey)]
 		if mountKey == 0 {
 			continue
 		}
@@ -657,7 +658,7 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 			continue
 		}
 		included[i] = struct{}{}
-		budget.remaining -= getMediaItemFileSize(item)
+		budget.remaining -= getMediaItemFileSize(item, e.cfg.GetCleanupMode(), e.cfg.GetKeepCount())
 	}
 
 	// Rebuild in original order.
@@ -672,22 +673,111 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 
 
 
-// getMediaItemFileSize returns the on-disk file size for an arr.MediaItem.
-func getMediaItemFileSize(item arr.MediaItem) int64 {
+// getMediaItemFileSize returns the estimated bytes that will be freed when this item
+// is deleted, taking into account the configured cleanup mode.
+func getMediaItemFileSize(item arr.MediaItem, cleanupMode config.CleanupMode, keepCount int) int64 {
 	switch item.MediaType {
 	case models.MediaTypeTV:
-		return item.SeriesResource.Statistics.GetSizeOnDisk()
+		return estimateSeriesBytesToFree(item.SeriesResource, cleanupMode, keepCount)
 	case models.MediaTypeMovie:
 		return item.MovieResource.Statistics.GetSizeOnDisk()
 	}
 	return 0
 }
 
+// estimateSeriesBytesToFree returns the bytes that will actually be freed when a TV
+// series is cleaned up under the given mode, using per-season statistics already
+// present in SeriesResource (no extra API calls required).
+func estimateSeriesBytesToFree(series sonarrAPI.SeriesResource, cleanupMode config.CleanupMode, keepCount int) int64 {
+	switch cleanupMode {
+	case config.CleanupModeKeepSeasons:
+		return estimateSeriesBytesToFreeKeepSeasons(series, keepCount)
+	case config.CleanupModeKeepEpisodes:
+		return estimateSeriesBytesToFreeKeepEpisodes(series, keepCount)
+	default: // CleanupModeAll and any unknown mode
+		return series.Statistics.GetSizeOnDisk()
+	}
+}
+
+// estimateSeriesBytesToFreeKeepSeasons sums the SizeOnDisk of every regular season
+// (season number > 0) that falls outside the first keepCount seasons.
+func estimateSeriesBytesToFreeKeepSeasons(series sonarrAPI.SeriesResource, keepCount int) int64 {
+	regularSeasons := make([]sonarrAPI.SeasonResource, 0)
+	for _, s := range series.GetSeasons() {
+		if s.GetSeasonNumber() != 0 {
+			regularSeasons = append(regularSeasons, s)
+		}
+	}
+	slices.SortFunc(regularSeasons, func(a, b sonarrAPI.SeasonResource) int {
+		return int(a.GetSeasonNumber() - b.GetSeasonNumber())
+	})
+
+	var bytesToFree int64
+	for i, s := range regularSeasons {
+		if i >= keepCount && s.HasStatistics() {
+			st := s.GetStatistics()
+			bytesToFree += st.GetSizeOnDisk()
+		}
+	}
+	return bytesToFree
+}
+
+// estimateSeriesBytesToFreeKeepEpisodes estimates the bytes freed when only the first
+// keepCount regular episodes (across all regular seasons, in broadcast order) are
+// retained. Because individual episode file sizes are not available without an extra
+// API call, it uses a per-season average (SizeOnDisk / EpisodeFileCount).
+func estimateSeriesBytesToFreeKeepEpisodes(series sonarrAPI.SeriesResource, keepCount int) int64 {
+	regularSeasons := make([]sonarrAPI.SeasonResource, 0)
+	for _, s := range series.GetSeasons() {
+		if s.GetSeasonNumber() != 0 {
+			regularSeasons = append(regularSeasons, s)
+		}
+	}
+	slices.SortFunc(regularSeasons, func(a, b sonarrAPI.SeasonResource) int {
+		return int(a.GetSeasonNumber() - b.GetSeasonNumber())
+	})
+
+	var bytesToFree int64
+	remainingToKeep := keepCount
+	for _, s := range regularSeasons {
+		if !s.HasStatistics() {
+			continue
+		}
+		st := s.GetStatistics()
+		episodeFileCount := int(st.GetEpisodeFileCount())
+		sizeOnDisk := st.GetSizeOnDisk()
+		if episodeFileCount == 0 {
+			continue
+		}
+		if remainingToKeep <= 0 {
+			// Entire season deleted.
+			bytesToFree += sizeOnDisk
+		} else if remainingToKeep >= episodeFileCount {
+			// Entire season kept.
+			remainingToKeep -= episodeFileCount
+		} else {
+			// Partial season: proportional estimate.
+			deletedEpisodes := episodeFileCount - remainingToKeep
+			bytesToFree += int64(float64(sizeOnDisk) * float64(deletedEpisodes) / float64(episodeFileCount))
+			remainingToKeep = 0
+		}
+	}
+	return bytesToFree
+}
+
 func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
 	dbMediaItems := make([]database.Media, 0)
 
+	cleanupMode := e.cfg.GetCleanupMode()
+	keepCount := e.cfg.GetKeepCount()
 	for _, item := range mediaItems {
 		dbItem := arrMediaToDBMediaItem(item)
+		// Override FileSize with the cleanup-mode-aware estimate so that
+		// sweep_until pending-bytes calculations use the actual bytes to be freed
+		// rather than the full series size on disk.
+		if item.MediaType == models.MediaTypeTV {
+			dbItem.FileSize = estimateSeriesBytesToFree(item.SeriesResource, cleanupMode, keepCount)
+		}
 		if err := e.policy.ApplyAll(&dbItem); err != nil {
 			log.Error("failed to apply policies to media item", "title", dbItem.Title, "error", err)
 			continue
