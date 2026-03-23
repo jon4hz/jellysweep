@@ -242,6 +242,25 @@ type CleanupConfig struct {
 	SweepUntilGBFree float64 `yaml:"sweep_until_gb_free" mapstructure:"sweep_until_gb_free"`
 }
 
+// sanitizeSweepThresholds validates and normalizes the sweep-related disk thresholds.
+// For invalid values, it logs a warning and disables the corresponding threshold by setting it to 0.
+func (c *CleanupConfig) sanitizeSweepThresholds() {
+	if c == nil {
+		return
+	}
+
+	if c.SweepUntilPercentUsed < 0 || c.SweepUntilPercentUsed > 100 {
+		log.Warn("invalid sweep_until_percent_used; must be between 0 and 100 (inclusive). Disabling this threshold.",
+			"value", fmt.Sprintf("%v", c.SweepUntilPercentUsed))
+		c.SweepUntilPercentUsed = 0
+	}
+
+	if c.SweepUntilGBFree < 0 {
+		log.Warn("invalid sweep_until_gb_free; must be non-negative. Disabling this threshold.",
+			"value", fmt.Sprintf("%v", c.SweepUntilGBFree))
+		c.SweepUntilGBFree = 0
+	}
+}
 type FilterConfig struct {
 	// ContentAgeThreshold is the minimum age in days for content (since it was first imported) to be eligible for cleanup.
 	ContentAgeThreshold int `yaml:"content_age_threshold" mapstructure:"content_age_threshold"`
