@@ -784,6 +784,10 @@ func sanitizeConfig(c *Config) {
 	if c.ServerURL != "" {
 		c.ServerURL = urlSanitize(c.ServerURL)
 	}
+
+	for _, libCfg := range c.Libraries {
+		libCfg.sanitizeSweepThresholds()
+	}
 }
 
 func urlSanitize(url string) string {
