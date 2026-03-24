@@ -646,6 +646,15 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 	}
 
 	// Include items in original order, drawing from the shared mount budget.
+	// First pass: include items whose estimated bytes-to-free fit within the remaining
+	// budget. This avoids large over-shoots when cleanup is granular (keep_episodes /
+	// keep_seasons modes delete only the episodes/seasons beyond the keep count, so the
+	// per-item estimate is accurate and we should not include far more than needed).
+	type overshootCandidate struct {
+		idx  int
+		size int64
+	}
+	overshootByMount := make(map[uint64][]overshootCandidate)
 	included := make(map[int]struct{}, len(mediaItems))
 	for i, item := range mediaItems {
 		mountKey := libraryMount[strings.ToLower(item.LibraryName)]
@@ -657,8 +666,41 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 		if budget == nil || budget.remaining <= 0 {
 			continue
 		}
-		included[i] = struct{}{}
-		budget.remaining -= getMediaItemFileSize(item, e.cfg.GetCleanupMode(), e.cfg.GetKeepCount())
+		itemSize := getMediaItemFileSize(item, e.cfg.GetCleanupMode(), e.cfg.GetKeepCount())
+		if itemSize <= budget.remaining {
+			included[i] = struct{}{}
+			budget.remaining -= itemSize
+		} else if itemSize > 0 {
+			// Track overshooting items in original order for the second pass.
+			overshootByMount[mountKey] = append(overshootByMount[mountKey], overshootCandidate{idx: i, size: itemSize})
+		}
+	}
+
+	// Second pass: for any mount whose budget is still unmet after the first pass,
+	// include the SMALLEST overshooting item to minimise unnecessary over-deletion.
+	// All candidates individually exceed the remaining gap; picking the smallest one
+	// keeps the total as close to the target as possible (e.g. a 20 GB show covers
+	// an 11 GB gap far better than a 300 GB show would).
+	for mountKey, budget := range mounts {
+		if budget.remaining <= 0 {
+			continue
+		}
+		candidates := overshootByMount[mountKey]
+		if len(candidates) == 0 {
+			log.Warn("sweep_until target cannot be fully met, no items available",
+				"diskTotalGB", float64(mountKey)/1e9,
+				"remainingBytesGB", float64(budget.remaining)/1e9,
+			)
+			continue
+		}
+		// Find the candidate with the smallest estimated freed bytes.
+		best := candidates[0]
+		for _, c := range candidates[1:] {
+			if c.size < best.size {
+				best = c
+			}
+		}
+		included[best.idx] = struct{}{}
 	}
 
 	// Rebuild in original order.
