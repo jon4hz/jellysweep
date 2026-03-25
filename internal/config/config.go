@@ -572,6 +572,18 @@ func validateConfig(c *Config) error {
 		return fmt.Errorf("at least one library must be configured")
 	}
 
+	for libraryName, libraryConfig := range c.Libraries {
+		if libraryConfig == nil {
+			continue
+		}
+		if libraryConfig.SweepUntilGBFree < 0 {
+			return fmt.Errorf("library %q: sweep_until_gb_free must be >= 0 (0 disables it)", libraryName)
+		}
+		if libraryConfig.SweepUntilPercentUsed < 0 || libraryConfig.SweepUntilPercentUsed > 100 {
+			return fmt.Errorf("library %q: sweep_until_percent_used must be between 0 and 100 (0 disables it)", libraryName)
+		}
+	}
+
 	// Validate auth configuration
 	if c.Auth == nil {
 		return fmt.Errorf("missing auth config")
