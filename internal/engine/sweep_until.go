@@ -126,14 +126,22 @@ func estimateFreedSize(item arr.MediaItem, cleanupMode config.CleanupMode, keepC
 		switch cleanupMode { //nolint:exhaustive
 		case config.CleanupModeKeepEpisodes:
 			var totalEps int
+			var hasAnyStats bool
 			for _, season := range seasons {
 				if season.GetSeasonNumber() == 0 {
 					continue // skip specials
 				}
 				if season.HasStatistics() {
+					hasAnyStats = true
 					stats := season.GetStatistics()
 					totalEps += int(stats.GetEpisodeFileCount())
 				}
+			}
+			if !hasAnyStats {
+				// Season statistics were absent from the Sonarr response (e.g. series not
+				// yet scanned). Fall back to the full series size so the sweep_until budget
+				// is still decremented and subsequent items are not over-queued.
+				return totalSize
 			}
 			if totalEps <= keepCount {
 				return 0 // series already meets keep criteria, nothing to free
@@ -142,16 +150,23 @@ func estimateFreedSize(item arr.MediaItem, cleanupMode config.CleanupMode, keepC
 
 		case config.CleanupModeKeepSeasons:
 			var seasonsWithFiles int
+			var hasAnyStats bool
 			for _, season := range seasons {
 				if season.GetSeasonNumber() == 0 {
 					continue // skip specials
 				}
 				if season.HasStatistics() {
+					hasAnyStats = true
 					stats := season.GetStatistics()
 					if stats.GetEpisodeFileCount() > 0 {
 						seasonsWithFiles++
 					}
 				}
+			}
+			if !hasAnyStats {
+				// Season statistics were absent from the Sonarr response. Fall back to
+				// the full series size so the sweep_until budget is still decremented.
+				return totalSize
 			}
 			if seasonsWithFiles <= keepCount {
 				return 0 // series already meets keep criteria, nothing to free
@@ -310,22 +325,30 @@ func (e *Engine) applySweepUntilLimits(ctx context.Context, mediaItems []arr.Med
 			"already_freed_gb_on_mount", float64(alreadyAccumulated)/1e9,
 		)
 
-		// Sort by estimated freed size descending so we reach the target with fewest items.
-		sorted := make([]arr.MediaItem, len(entry.items))
-		copy(sorted, entry.items)
-		sort.Slice(sorted, func(i, j int) bool {
-			return estimateFreedSize(sorted[i], cleanupMode, keepCount) >
-				estimateFreedSize(sorted[j], cleanupMode, keepCount)
+		// Precompute estimated freed bytes once per item to avoid redundant season-stat
+		// walks during both the sort comparisons and the accumulation loop.
+		type scoredItem struct {
+			item  arr.MediaItem
+			freed int64
+		}
+		scored := make([]scoredItem, len(entry.items))
+		for i, item := range entry.items {
+			scored[i] = scoredItem{item: item, freed: estimateFreedSize(item, cleanupMode, keepCount)}
+		}
+
+		// Sort largest-first so the target is reached with as few items as possible.
+		sort.Slice(scored, func(i, j int) bool {
+			return scored[i].freed > scored[j].freed
 		})
 
 		var newlyAccumulated int64
 		included := 0
-		for _, item := range sorted {
+		for _, s := range scored {
 			if stats.isTargetMet(libraryConfig, alreadyAccumulated+newlyAccumulated) {
 				break
 			}
-			newlyAccumulated += estimateFreedSize(item, cleanupMode, keepCount)
-			result = append(result, item)
+			newlyAccumulated += s.freed
+			result = append(result, s.item)
 			included++
 		}
 

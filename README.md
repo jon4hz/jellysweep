@@ -146,9 +146,9 @@ By default, every media item that passes the filters is marked for deletion. The
 | `sweep_until_percent_used` | Stop marking items once the disk *would be* at or below this % used. Matches what `df` reports. |
 | `sweep_until_gb_free` | Stop marking items once the disk *would have* at least this many GB free (decimal GB = 1,000,000,000 bytes). |
 
-If both are set, Jellysweep stops marking items as soon as either limit would be satisfied. If neither is set, all filtered items are marked as usual.
+If both are set, Jellysweep stops marking items as soon as **either** limit would be satisfied — whichever is met first. If neither is set, all filtered items are marked as usual.
 
-Items already queued from previous runs (pending deletion but not yet deleted) are *not* counted against the current run’s sweep-until budget — each run only considers the items it is about to newly mark for deletion.
+Items already queued from previous runs (pending deletion but not yet deleted) **are** counted against the budget. Their on-disk size is added to the accumulated total before new items are selected, so Jellysweep does not over-queue when a previous sweep has already earmarked enough space.
 
 If multiple libraries share the same disk (common in Docker with bind mounts), their budgets are merged so the total bytes freed across all libraries on that volume is correct.
 
