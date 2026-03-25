@@ -530,15 +530,18 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 		pendingBytesByLibrary[strings.ToLower(item.LibraryName)] += item.FileSize
 	}
 
-	// libraryMount maps lower-case library name to gopsutil.Total for the
-	// filesystem. Used as a stable filesystem identity key (Blocks * Bsize is
-	// constant for a given filesystem). 0 means no sweep limit for this library.
-	libraryMount := make(map[string]uint64)
+	// libraryMount maps lower-case library name to a stable, per-filesystem
+	// mount identifier (for example, a combination of device and mountpoint).
+	// An empty string means no sweep limit for this library.
+	libraryMount := make(map[string]string)
 
 	type mountBudget struct {
 		remaining int64
 	}
-	mounts := make(map[uint64]*mountBudget)
+	// mounts holds per-filesystem budgets, keyed by the same mount identifier
+	// used in libraryMount, to avoid collisions between different filesystems
+	// that might share the same total size.
+	mounts := make(map[string]*mountBudget)
 
 	// Resolve disk stats for each unique library and compute the per-mount budget.
 	visited := make(map[string]bool)
@@ -622,8 +625,37 @@ func (e *Engine) applySweepUntilLimit(ctx context.Context, mediaItems []arr.Medi
 	for libKey, pending := range pendingBytesByLibrary {
 		// Map all enabled libraries to their mount key so that pending deletions
 		// from any library on the same filesystem are accounted for.
-		mountKey := libraryMount[strings.ToLower(libKey)]
+		libraryKey := strings.ToLower(libKey)
+
+		// First try the mapping built from the current mediaItems slice.
+		mountKey := libraryMount[libraryKey]
+
+		// If we don't have a mapping yet (e.g. library has pending DB items but no
+		// current candidates), resolve the mount directly from the library folders.
 		if mountKey == 0 {
+			// libraryFoldersMap is expected to contain all known libraries, including
+			// those that only have pending DB deletions.
+			folders, ok := libraryFoldersMap[libraryKey]
+			if ok && len(folders) > 0 {
+				usage, err := disk.Usage(folders[0])
+				if err != nil {
+					log.Warn("failed to resolve disk usage for pending library; pending bytes may not be fully accounted for",
+						"library", libKey,
+						"path", folders[0],
+						"err", err,
+					)
+				} else {
+					mountKey = usage.Total
+					// Cache the resolved mount key so subsequent lookups are cheap.
+					libraryMount[libraryKey] = mountKey
+				}
+			}
+		}
+
+		if mountKey == 0 {
+			// If we still couldn't resolve a mount, skip this library. This preserves
+			// previous behavior while ensuring that resolvable libraries (including
+			// those not in the current mediaItems slice) are now accounted for.
 			continue
 		}
 		pendingByMount[mountKey] += pending
@@ -814,12 +846,10 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
 	keepCount := e.cfg.GetKeepCount()
 	for _, item := range mediaItems {
 		dbItem := arrMediaToDBMediaItem(item)
-		// Override FileSize with the cleanup-mode-aware estimate so that
-		// sweep_until pending-bytes calculations use the actual bytes to be freed
-		// rather than the full series size on disk.
-		if item.MediaType == models.MediaTypeTV {
-			dbItem.FileSize = estimateSeriesBytesToFree(item.SeriesResource, cleanupMode, keepCount)
-		}
+		// NOTE: Do not override dbItem.FileSize here; it should remain the actual
+		// size on disk to keep the persisted meaning consistent across media types.
+		// Any sweep/cleanup logic that needs an estimated "bytes to free" value
+		// should compute it separately using estimateSeriesBytesToFree or similar.
 		if err := e.policy.ApplyAll(&dbItem); err != nil {
 			log.Error("failed to apply policies to media item", "title", dbItem.Title, "error", err)
 			continue
