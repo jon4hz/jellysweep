@@ -227,6 +227,14 @@ type CleanupConfig struct {
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// Filter is the configuration for all available filters.
 	Filter FilterConfig `yaml:"filter" mapstructure:"filter"`
+	// SweepUntilGBFree stops marking items for deletion once the estimated free space
+	// on the library's mount reaches this many GB (SI: 1 GB = 1,000,000,000 bytes).
+	// 0 disables this limit.
+	SweepUntilGBFree float64 `yaml:"sweep_until_gb_free" mapstructure:"sweep_until_gb_free"`
+	// SweepUntilPercentUsed stops marking items for deletion once the estimated disk
+	// usage on the library's mount drops to or below this percentage.
+	// 0 disables this limit.
+	SweepUntilPercentUsed float64 `yaml:"sweep_until_percent_used" mapstructure:"sweep_until_percent_used"`
 }
 
 type FilterConfig struct {

@@ -70,6 +70,9 @@ type Engine struct {
 	initialDBMigration bool
 
 	data *data
+
+	// libraryFoldersMap maps library names to their filesystem paths, populated during gatherMediaItems.
+	libraryFoldersMap map[string][]string
 }
 
 // data contains any data collected during the cleanup process.
@@ -365,6 +368,9 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 		return err
 	}
 
+	// Apply sweep_until limits (stop marking items once a disk space target is estimated to be met)
+	mediaItems = e.applySweepUntilLimits(ctx, mediaItems)
+
 	// Populate requester information from Jellyseerr
 	log.Info("Populating requester information")
 	mediaItems = e.populateRequesterInfo(ctx, mediaItems)
@@ -432,6 +438,9 @@ func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) 
 	mediaItems := make([]arr.MediaItem, 0, len(sonarrItems)+len(radarrItems))
 	mediaItems = append(mediaItems, sonarrItems...)
 	mediaItems = append(mediaItems, radarrItems...)
+
+	// Store library folders map for sweep_until limit calculations.
+	e.libraryFoldersMap = libraryFoldersMap
 
 	// Set deletion policies with freshly gathered library folders map
 	e.policy.SetPolicies(

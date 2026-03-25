@@ -19,7 +19,7 @@ ______________________________________________________________________
 
 - 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat/Streamystats for stats
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
-- 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds
+- 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds with optional sweep-until storage capacity targets
 - 🧹 **Flexible Cleanup Modes** - Choose how much of TV Series should be deleted
 - 📂 **Leaving Collections** - Automatically creates Jellyfin collections showing all media scheduled for deletion
 - 👥 **User Requests** - Built-in keep request system for your users
@@ -38,6 +38,7 @@ ______________________________________________________________________
   - [💾 Disk Usage-Based Cleanup](#-disk-usage-based-cleanup)
     - [Configuration Example](#configuration-example)
     - [Behavior Examples](#behavior-examples)
+    - [Storage Remaining Example](#storage-remaining-example)
   - [📸 Screenshots](#-screenshots)
     - [Dashboard Overview](#dashboard-overview)
     - [Statistics Dashboard](#statistics-dashboard)
@@ -132,6 +133,42 @@ Let's say today is 2025-07-26:
 - **Disk usage 87%**: Media gets deleted on `2025-08-09` (after 14 days)
 - **Disk usage 93%**: Media gets deleted on `2025-08-02` (after 7 days)
 - **Disk usage 97%**: Media gets deleted on `2025-07-29` (after 3 days)
+
+### Storage Remaining Example
+
+By default, every media item that passes the filters is marked for deletion. The sweep-until settings cap how many items get queued per cleanup run based on your current disk usage, so you only delete as much as you actually need to.
+
+> [!IMPORTANT]
+> The same Docker mount requirement applies here as for disk usage monitoring — Jellyfin library paths must be mounted at the same locations inside the Jellysweep container.
+
+| Option | Description |
+| --- | --- |
+| `sweep_until_percent_used` | Stop marking items once the disk *would be* at or below this % used. Matches what `df` reports. |
+| `sweep_until_gb_free` | Stop marking items once the disk *would have* at least this many GB free (decimal GB = 1,000,000,000 bytes). |
+
+If both are set, `sweep_until_percent_used` takes precedence. If neither is set, all filtered items are marked as usual.
+
+Items already queued from previous runs (pending deletion but not yet deleted) are counted against the budget — they won't cause extra items to be marked on top.
+
+If multiple libraries share the same disk (common in Docker with bind mounts), their budgets are merged so the total bytes freed across all libraries on that volume is correct.
+
+#### Configuration Example
+
+```yaml
+libraries:
+  "Movies":
+    # Stop marking movies once disk usage would drop to ≤80%
+    sweep_until_percent_used: 80
+
+  "TV Shows":
+    # Stop marking TV shows once at least 500 GB would be free
+    sweep_until_gb_free: 500
+```
+
+> [!TIP]
+> Use `sweep_until_percent_used` when you think in percentages (e.g. "keep the disk under 80% full").
+> Use `sweep_until_gb_free` when you think in absolute free space (e.g. "always keep 500 GB free").
+> The percentage matches exactly what `df` shows — not the raw partition size.
 
 ______________________________________________________________________
 
