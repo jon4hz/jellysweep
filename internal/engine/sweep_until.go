@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/api/models"
@@ -14,15 +15,26 @@ import (
 
 // sweepDiskStats holds the disk usage stats needed for sweep_until calculations.
 type sweepDiskStats struct {
-	usedBytes uint64
-	freeBytes uint64
+	usedBytes   uint64
+	freeBytes   uint64
+	totalBytes  uint64 // f_blocks * f_bsize — filesystem capacity, stable between resizes
+	totalInodes uint64 // f_files — inode capacity, set at mkfs time
 }
 
-// mountKey returns a string that uniquely identifies the underlying filesystem.
-// Two library paths on the same mount will return identical (usedBytes, freeBytes)
-// from Statfs, making this a reliable same-mount indicator within a single sweep run.
+// mountKey returns a string that identifies the underlying filesystem for
+// shared-budget accounting.  It is derived from two values that are fixed at
+// filesystem-creation time and do not change during normal operation:
+//
+//   - totalBytes  (f_blocks × f_bsize): the partition capacity in bytes
+//   - totalInodes (f_files):            the total inode count
+//
+// Any path on the same filesystem — including separate bind-mounts of the same
+// volume, which is common in Docker media-server setups — returns the same key,
+// so all such libraries share a single deletion budget.  Two unrelated
+// filesystems would need to match on both capacity and inode count to collide,
+// which is effectively impossible in practice.
 func (s *sweepDiskStats) mountKey() string {
-	return fmt.Sprintf("%d-%d", s.usedBytes, s.freeBytes)
+	return fmt.Sprintf("fs:%d:%d", s.totalBytes, s.totalInodes)
 }
 
 // freeGB returns the available space in gigabytes (SI: 1 GB = 1,000,000,000 bytes).
@@ -79,7 +91,12 @@ func getSweepDiskStats(ctx context.Context, folders []string) (*sweepDiskStats, 
 			lastErr = err
 			continue
 		}
-		candidate := &sweepDiskStats{usedBytes: usage.Used, freeBytes: usage.Free}
+		candidate := &sweepDiskStats{
+			usedBytes:   usage.Used,
+			freeBytes:   usage.Free,
+			totalBytes:  usage.Total,
+			totalInodes: usage.InodesTotal,
+		}
 		if result == nil || candidate.usedPercent() > result.usedPercent() {
 			result = candidate
 		}
@@ -146,6 +163,81 @@ func estimateFreedSize(item arr.MediaItem, cleanupMode config.CleanupMode, keepC
 	return 0
 }
 
+// libraryFoldersByName looks up folder paths for a library with case-insensitive fallback,
+// matching the same normalisation that viper applies to map keys.
+func (e *Engine) libraryFoldersByName(name string) []string {
+	if folders, ok := e.libraryFoldersMap[name]; ok {
+		return folders
+	}
+	nameLower := strings.ToLower(name)
+	for k, v := range e.libraryFoldersMap {
+		if strings.ToLower(k) == nameLower {
+			return v
+		}
+	}
+	return nil
+}
+
+// pendingMountBytes returns the total FileSize of all currently-pending (unprotected)
+// media items in the database, keyed by resolved mount point.
+// This seeds the sweep_until accumulator so that space already earmarked for deletion
+// by previous runs is counted against the disk-space budget before new items are selected.
+// FileSize is the full on-disk size stored at insertion time; for keep_episodes/keep_seasons
+// modes this is an overestimate of what will actually be freed, making the seed conservative
+// (i.e. we may queue fewer new items than strictly necessary, but never too many).
+// Mount resolution is performed once per unique library to avoid redundant syscalls.
+func (e *Engine) pendingMountBytes(ctx context.Context) map[string]int64 {
+	pendingItems, err := e.db.GetMediaItems(ctx, false)
+	if err != nil {
+		log.Warn("failed to query pending media items for sweep_until budget seed, treating pending as 0", "error", err)
+		return make(map[string]int64)
+	}
+
+	mountByLibrary := make(map[string]string) // library name → resolved mount (or "" on failure)
+	result := make(map[string]int64)
+
+	for _, item := range pendingItems {
+		if item.FileSize <= 0 {
+			continue
+		}
+
+		mp, cached := mountByLibrary[item.LibraryName]
+		if !cached {
+			folders := e.libraryFoldersByName(item.LibraryName)
+			if len(folders) == 0 {
+				log.Debug("no library folders for pending item, skipping from sweep_until seed",
+					"library", item.LibraryName)
+				mountByLibrary[item.LibraryName] = ""
+				continue
+			}
+			usage, err := disk.UsageWithContext(ctx, folders[0])
+			if err != nil {
+				log.Warn("failed to stat pending item library for sweep_until seed, skipping",
+					"library", item.LibraryName, "error", err)
+				mountByLibrary[item.LibraryName] = ""
+				continue
+			}
+			mp = fmt.Sprintf("fs:%d:%d", usage.Total, usage.InodesTotal)
+			mountByLibrary[item.LibraryName] = mp
+		}
+
+		if mp != "" {
+			result[mp] += item.FileSize
+		}
+	}
+
+	if len(result) > 0 {
+		for mp, bytes := range result {
+			log.Info("sweep_until budget seeded with pending DB items",
+				"mount", mp,
+				"pending_gb", float64(bytes)/1e9,
+			)
+		}
+	}
+
+	return result
+}
+
 // applySweepUntilLimits restricts which items get marked for deletion based on the
 // sweep_until_gb_free or sweep_until_percent_used settings in each library's config.
 // Items are sorted largest-first (by estimated freed bytes) so that the disk target
@@ -153,7 +245,8 @@ func estimateFreedSize(item arr.MediaItem, cleanupMode config.CleanupMode, keepC
 // If no sweep_until setting is configured for a library, all items for that library
 // are returned unchanged.
 func (e *Engine) applySweepUntilLimits(ctx context.Context, mediaItems []arr.MediaItem) []arr.MediaItem {
-	// Build a per-library index while preserving the original ordering within each library.
+	// Build a per-library index. Items within each library are later sorted largest-first,
+	// so the original intra-library ordering is not preserved.
 	type libraryEntry struct {
 		name  string
 		items []arr.MediaItem
@@ -174,9 +267,11 @@ func (e *Engine) applySweepUntilLimits(ctx context.Context, mediaItems []arr.Med
 	keepCount := e.cfg.GetKeepCount()
 
 	// mountAccumulated tracks bytes already earmarked for deletion per mount point.
+	// It is seeded with the FileSize of items already pending deletion in the database
+	// so that previous-run queued items count against the budget before new ones are selected.
 	// Libraries on the same mount share this counter so their combined contribution
 	// is counted against the target rather than each library calculating independently.
-	mountAccumulated := make(map[string]int64)
+	mountAccumulated := e.pendingMountBytes(ctx)
 
 	result := make([]arr.MediaItem, 0, len(mediaItems))
 
@@ -191,16 +286,15 @@ func (e *Engine) applySweepUntilLimits(ctx context.Context, mediaItems []arr.Med
 
 		folders := e.libraryFoldersMap[entry.name]
 		if len(folders) == 0 {
-			log.Warn("no library folders found for sweep_until limit, including all items", "library", entry.name)
-			result = append(result, entry.items...)
+			log.Error("no library folders found for sweep_until limit, skipping all items to avoid over-queuing",
+				"library", entry.name)
 			continue
 		}
 
 		stats, err := getSweepDiskStats(ctx, folders)
 		if err != nil {
-			log.Error("failed to get disk usage for sweep_until limit, including all items",
+			log.Error("failed to get disk usage for sweep_until limit, skipping all items to avoid over-queuing",
 				"library", entry.name, "error", err)
-			result = append(result, entry.items...)
 			continue
 		}
 
