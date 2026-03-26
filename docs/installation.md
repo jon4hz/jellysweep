@@ -29,7 +29,22 @@ Admin access to your Jellyfin media server, and an ecosystem of Jellyfin-related
 
 === "All services"
 
-    For a full list, see [How it works: Integrations and features](./how-it-works-integrations.md)
+    Services include:
+
+    - **Jellyfin**
+    - \*arr's
+        - **Sonarr**
+        - **Radarr**
+    - A statistics app
+        - **Jellystat** ^^or^^ **Streamystats**
+    - **Jellyseerr** / **Seerr**
+    - **SMTP Emails** to Seerr users
+    - **Ntfy** notifications
+    - **Tunarr**
+    - **OpenID Connect authentication**
+    - **Gravatar** profile pictures
+
+    For a full list and what each service does, see [How it works: Integrations and features](./how-it-works-integrations.md)
 
 <!-- todo -->
 
