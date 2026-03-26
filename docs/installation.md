@@ -16,7 +16,7 @@ description: Guided installation — Prerequistites and Docker Compose
 
 ## Prerequisites
 
-Admin access to your Jellyfin media server, and an ecosystem of Jellyfin-related services
+Admin access to your Jellyfin media server, and an ecosystem of Jellyfin-related services:
 
 === "Recommended requirements"
 
@@ -174,30 +174,18 @@ services:
 
 <!-- TODO — all the admonitions + code blocks... this gets messy -->
 
-**Here is a starting template. Use this as `config.yml`:**
-
-!!! note "About the config template"
-
-    - **Optional features** requiring configuration are disabled — set to `false` (or commented out):
-
-        ```yaml
-        enabled: false
-        ```
-
-    - ==Highlighted== are **enabled** features, which we recommend configuring
+**Here are starting templates for `config.yml`:**
 
 === "Minimal configuration"
 
-    ```yaml linenums="1" hl_lines="1 7 18-21 28-80 82-91"
+    !!! note
+
+        - ==Highlighted== lines **require your configuration**
+
+    ```yaml title="config.yml" linenums="1" hl_lines="1 7 18-21 28-80 82-91"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"
-    cleanup_schedule: "0 */12 * * *"
-    cleanup_mode: "keep_seasons"
-    keep_count: 1
-    api_key: ""
     session_key: "your-session-key"
-    session_max_age: 172800
-    secure_cookies: true
     server_url: "http://localhost:3002"
 
     # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
@@ -210,11 +198,6 @@ services:
     jellyfin:
       url: "http://localhost:8096"         # Your Jellyfin server URL
       api_key: "your-jellyfin-api-key"     # Jellyfin API key
-
-    # Create collections for media scheduled for deletion
-    leaving_collections_enabled: false
-    leaving_collections_movie_name: "Leaving Movies"
-    leaving_collections_tv_name: "Leaving TV Shows"
 
     # Libraries (and their filters)
     libraries:
@@ -229,21 +212,8 @@ services:
           content_age_threshold: 120          # Content must be at least 120 days old
           last_stream_threshold: 90           # Last watched at least 90 days ago
           content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
-          tunarr_enabled: true                # Protect items used by Tunarr channels (requires tunarr config)
           exclude_tags:
             - "jellysweep-exclude"
-            - "keep"
-            - "favorites"
-        # Disk usage-based cleanup for movies
-        disk_usage_thresholds:
-          - usage_percent: 70.0       # When disk usage reaches 70%
-            max_cleanup_delay: 30     # Reduce grace period to 30 days
-          - usage_percent: 85.0       # When disk usage reaches 85%
-            max_cleanup_delay: 14     # Reduce grace period to 14 days
-          - usage_percent: 90.0       # When disk usage reaches 90%
-            max_cleanup_delay: 7      # Reduce grace period to 7 days
-          - usage_percent: 95.0       # When disk usage reaches 95%
-            max_cleanup_delay: 2      # Reduce grace period to 2 days
 
       "TV Shows":
         enabled: true
@@ -254,23 +224,10 @@ services:
           content_age_threshold: 120
           last_stream_threshold: 90
           content_size_threshold: 2147483648  # 2GB minimum
-          tunarr_enabled: false               # Disable Tunarr filter for this library
           exclude_tags:
             - "jellysweep-exclude"
-            - "ongoing"
-            - "keep"
-        # Disk usage-based cleanup for TV shows
-        disk_usage_thresholds:
-          - usage_percent: 70.0
-            max_cleanup_delay: 30
-          - usage_percent: 85.0
-            max_cleanup_delay: 14
-          - usage_percent: 90.0
-            max_cleanup_delay: 7
-          - usage_percent: 95.0
-            max_cleanup_delay: 2
 
-    # External service integrations
+    # *arr's
     sonarr:
       url: "http://localhost:8989"
       api_key: "your-sonarr-api-key"
@@ -279,6 +236,17 @@ services:
     radarr:
       url: "http://localhost:7878"
       api_key: "your-radarr-api-key"
+      timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+    # A statistics app (configure only one! Jellystat OR Streamystats)
+    # jellystat:
+    #   url: "http://localhost:3001"
+    #   api_key: "your-jellystat-api-key"
+    #   timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+    streamystats:
+      url: "http://localhost:3001"
+      server_id: 1                         # Jellyfin server ID in Streamystats
       timeout: 30                          # HTTP client timeout in seconds (default: 30)
     ```
 
@@ -507,7 +475,11 @@ radarr:
   timeout: 30                          # HTTP client timeout in seconds (default: 30)
 ```
 
-#### 2-5. Filters — configuration
+#### 2-5. Statistics (Jellystat OR Streamystats)
+
+<!-- todo -->
+
+#### 2-6. Filters — configuration
 
 The template `config.yml` uses 'sane defaults'. But it is likely you will want to adjust the filters
 
@@ -569,7 +541,7 @@ libraries:
         max_cleanup_delay: 2
 ```
 
-#### 2-8. Other services — configuration
+#### 2-9. Other services — configuration
 
 <!-- initially collapsed block -->
 
