@@ -34,6 +34,11 @@ func startServer(cmd *cobra.Command, _ []string) {
 		log.Fatal("failed to load config", "error", err)
 	}
 
+	// Explicit --log-level flag overrides config.
+	if !cmd.Flags().Changed("log-level") {
+		setLogLevel(cfg.LogLevel)
+	}
+
 	exists, err := dbFileExists(cfg.Database.Path)
 	if err != nil {
 		log.Fatal("failed to check database file", "error", err)

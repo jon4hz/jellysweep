@@ -37,6 +37,8 @@ const (
 
 // Config holds the configuration for the Jellysweep server and its dependencies.
 type Config struct {
+	// LogLevel sets the log verbosity. Options: "debug", "info", "warn", "error". Defaults to "info".
+	LogLevel string `yaml:"log_level" mapstructure:"log_level"`
 	// Listen is the address the Jellysweep server will listen on.
 	Listen string `yaml:"listen" mapstructure:"listen"`
 	// CleanupSchedule is the cron schedule for the cleanup job (e.g., "0 */12 * * *" for every 12 hours).
@@ -408,6 +410,7 @@ func Load(path string) (*Config, error) {
 // setDefaults sets default values for the configuration.
 func setDefaults(v *viper.Viper) {
 	// Jellysweep defaults
+	v.SetDefault("log_level", "info")
 	v.SetDefault("listen", "0.0.0.0:3002")
 	v.SetDefault("cleanup_schedule", "0 */12 * * *") // Every 12 hours
 	v.SetDefault("cleanup_mode", "all")              // Default to cleaning up everything
