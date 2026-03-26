@@ -18,7 +18,7 @@ description: Guided installation — Prerequistites and Docker Compose
 
 Admin access to your Jellyfin media server, and an ecosystem of Jellyfin-related services
 
-=== Recommended Requirements
+=== "Recommended requirements"
 
     - [x] **Jellyfin**
     - [x] \*arr's
@@ -27,14 +27,7 @@ Admin access to your Jellyfin media server, and an ecosystem of Jellyfin-related
     - [x] A statistics app
         - [x] **Jellystat** ^^or^^ **Streamystats**
 
-=== Minimum requirements
-
-    - [x] **Jellyfin**
-    - [x] \*arr's
-        - [x] **Sonarr**
-        - [x] **Radarr**
-
-=== All supported services
+=== "All services"
 
     For a full list, see [How it works: Integrations and features](./how-it-works-integrations.md)
 
