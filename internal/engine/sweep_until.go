@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/log"
@@ -13,28 +12,24 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
-// sweepDiskStats holds the disk usage stats needed for sweep_until calculations.
+// sweepDiskStats holds aggregated disk usage stats across one or more filesystems.
 type sweepDiskStats struct {
-	usedBytes   uint64
-	freeBytes   uint64
-	totalBytes  uint64 // f_blocks * f_bsize — filesystem capacity, stable between resizes
-	totalInodes uint64 // f_files — inode capacity, set at mkfs time
+	usedBytes  uint64
+	freeBytes  uint64
+	totalBytes uint64 // sum of partition capacities across all unique filesystems
 }
 
-// mountKey returns a string that identifies the underlying filesystem for
-// shared-budget accounting.  It is derived from two values that are fixed at
-// filesystem-creation time and do not change during normal operation:
+// mountKeyFor returns a string that uniquely identifies the underlying filesystem
+// for a given usage stat, used for deduplication across paths.
 //
-//   - totalBytes  (f_blocks × f_bsize): the partition capacity in bytes
-//   - totalInodes (f_files):            the total inode count
+// It is derived from two values fixed at filesystem-creation time:
+//   - Total bytes (f_blocks × f_bsize): partition capacity
+//   - Total inodes (f_files): inode count
 //
-// Any path on the same filesystem — including separate bind-mounts of the same
-// volume, which is common in Docker media-server setups — returns the same key,
-// so all such libraries share a single deletion budget.  Two unrelated
-// filesystems would need to match on both capacity and inode count to collide,
-// which is effectively impossible in practice.
-func (s *sweepDiskStats) mountKey() string {
-	return fmt.Sprintf("fs:%d:%d", s.totalBytes, s.totalInodes)
+// Any path on the same filesystem — including bind-mounts or Docker volume mounts
+// of the same underlying volume — returns the same key.
+func mountKeyFor(usage *disk.UsageStat) string {
+	return fmt.Sprintf("fs:%d:%d", usage.Total, usage.InodesTotal)
 }
 
 // freeGB returns the available space in gigabytes (SI: 1 GB = 1,000,000,000 bytes).
@@ -42,8 +37,7 @@ func (s *sweepDiskStats) freeGB() float64 {
 	return float64(s.freeBytes) / 1e9
 }
 
-// usedPercent returns the df-style used percentage: used/(used+available)*100.
-// This matches the percentage shown by the `df` command.
+// usedPercent returns the df-style used percentage: used/(used+free)*100.
 func (s *sweepDiskStats) usedPercent() float64 {
 	denominator := s.usedBytes + s.freeBytes
 	if denominator == 0 {
@@ -52,24 +46,24 @@ func (s *sweepDiskStats) usedPercent() float64 {
 	return float64(s.usedBytes) / float64(denominator) * 100.0
 }
 
-// isTargetMet reports whether the sweep_until target is satisfied given the
-// bytes accumulated for deletion so far.
-func (s *sweepDiskStats) isTargetMet(cfg *config.CleanupConfig, accumulatedBytes int64) bool {
-	if cfg.SweepUntilGBFree > 0 {
+// isTargetMet reports whether either sweep_until condition in the quota group config
+// would be satisfied after accounting for the bytes accumulated for deletion so far.
+// If both percent_used and gb_free are set, the target is met as soon as either is satisfied.
+func (s *sweepDiskStats) isTargetMet(cfg *config.QuotaGroupConfig, accumulatedBytes int64) bool {
+	if cfg.GBFree > 0 {
 		estimatedFreeGB := (float64(s.freeBytes) + float64(accumulatedBytes)) / 1e9
-		if estimatedFreeGB >= cfg.SweepUntilGBFree {
+		if estimatedFreeGB >= cfg.GBFree {
 			return true
 		}
 	}
-	if cfg.SweepUntilPercentUsed > 0 {
+	if cfg.PercentUsed > 0 {
 		denominator := float64(s.usedBytes + s.freeBytes)
 		if denominator > 0 {
 			newUsed := float64(s.usedBytes) - float64(accumulatedBytes)
 			if newUsed < 0 {
 				newUsed = 0
 			}
-			estimatedUsedPct := newUsed / denominator * 100.0
-			if estimatedUsedPct <= cfg.SweepUntilPercentUsed {
+			if (newUsed/denominator*100.0) <= cfg.PercentUsed {
 				return true
 			}
 		}
@@ -77,12 +71,16 @@ func (s *sweepDiskStats) isTargetMet(cfg *config.CleanupConfig, accumulatedBytes
 	return false
 }
 
-// getSweepDiskStats returns disk usage stats for a library by checking all its folder paths.
-// When paths span multiple mounts, the most-used mount (highest usage percent) is used,
-// matching the conservative behaviour of the existing disk threshold policy.
-func getSweepDiskStats(ctx context.Context, folders []string) (*sweepDiskStats, error) {
-	var result *sweepDiskStats
+// getQuotaGroupDiskStats returns aggregated disk usage stats across all unique
+// filesystems referenced by the given folder paths. Paths that map to the same
+// underlying filesystem (identified by total bytes + inode count) are counted
+// only once, so bind-mounts, NFS mounts, and Docker volume mounts are handled
+// correctly across Windows, Linux, and macOS.
+func getQuotaGroupDiskStats(ctx context.Context, folders []string) (*sweepDiskStats, error) {
+	seen := make(map[string]bool)
+	var combined sweepDiskStats
 	var lastErr error
+	var foundAny bool
 
 	for _, path := range folders {
 		usage, err := disk.UsageWithContext(ctx, path)
@@ -91,21 +89,21 @@ func getSweepDiskStats(ctx context.Context, folders []string) (*sweepDiskStats, 
 			lastErr = err
 			continue
 		}
-		candidate := &sweepDiskStats{
-			usedBytes:   usage.Used,
-			freeBytes:   usage.Free,
-			totalBytes:  usage.Total,
-			totalInodes: usage.InodesTotal,
+		key := mountKeyFor(usage)
+		if seen[key] {
+			continue // already counted this filesystem
 		}
-		if result == nil || candidate.usedPercent() > result.usedPercent() {
-			result = candidate
-		}
+		seen[key] = true
+		combined.usedBytes += usage.Used
+		combined.freeBytes += usage.Free
+		combined.totalBytes += usage.Total
+		foundAny = true
 	}
 
-	if result == nil {
+	if !foundAny {
 		return nil, lastErr
 	}
-	return result, nil
+	return &combined, nil
 }
 
 // estimateFreedSize estimates the bytes that would be freed by deleting the given item,
@@ -193,172 +191,176 @@ func (e *Engine) libraryFoldersByName(name string) []string {
 	return nil
 }
 
-// pendingMountBytes returns the total FileSize of all currently-pending (unprotected)
-// media items in the database, keyed by resolved mount point.
+// resolveLibraryGroup looks up the quota group name for a given library name,
+// with case-insensitive fallback to handle viper key normalisation.
+func resolveLibraryGroup(libraryName string, libraryGroup map[string]string) string {
+	if g, ok := libraryGroup[libraryName]; ok {
+		return g
+	}
+	lower := strings.ToLower(libraryName)
+	for k, v := range libraryGroup {
+		if strings.ToLower(k) == lower {
+			return v
+		}
+	}
+	return ""
+}
+
+// pendingGroupBytes returns the total FileSize of all currently-pending (unprotected)
+// media items in the database, keyed by quota group name.
 // This seeds the sweep_until accumulator so that space already earmarked for deletion
 // by previous runs is counted against the disk-space budget before new items are selected.
-// FileSize is the full on-disk size stored at insertion time; for keep_episodes/keep_seasons
-// modes this is an overestimate of what will actually be freed, making the seed conservative
-// (i.e. we may queue fewer new items than strictly necessary, but never too many).
-// Mount resolution is performed once per unique library to avoid redundant syscalls.
-func (e *Engine) pendingMountBytes(ctx context.Context) map[string]int64 {
+// libraryGroup maps library name → quota group name (built from the current config).
+func (e *Engine) pendingGroupBytes(ctx context.Context, libraryGroup map[string]string) map[string]int64 {
 	pendingItems, err := e.db.GetMediaItems(ctx, false)
 	if err != nil {
 		log.Warn("failed to query pending media items for sweep_until budget seed, treating pending as 0", "error", err)
 		return make(map[string]int64)
 	}
 
-	mountByLibrary := make(map[string]string) // library name → resolved mount (or "" on failure)
 	result := make(map[string]int64)
-
 	for _, item := range pendingItems {
 		if item.FileSize <= 0 {
 			continue
 		}
-
-		mp, cached := mountByLibrary[item.LibraryName]
-		if !cached {
-			folders := e.libraryFoldersByName(item.LibraryName)
-			if len(folders) == 0 {
-				log.Debug("no library folders for pending item, skipping from sweep_until seed",
-					"library", item.LibraryName)
-				mountByLibrary[item.LibraryName] = ""
-				continue
-			}
-			usage, err := disk.UsageWithContext(ctx, folders[0])
-			if err != nil {
-				log.Warn("failed to stat pending item library for sweep_until seed, skipping",
-					"library", item.LibraryName, "error", err)
-				mountByLibrary[item.LibraryName] = ""
-				continue
-			}
-			mp = fmt.Sprintf("fs:%d:%d", usage.Total, usage.InodesTotal)
-			mountByLibrary[item.LibraryName] = mp
+		group := resolveLibraryGroup(item.LibraryName, libraryGroup)
+		if group == "" {
+			continue
 		}
-
-		if mp != "" {
-			result[mp] += item.FileSize
-		}
+		result[group] += item.FileSize
 	}
 
-	if len(result) > 0 {
-		for mp, bytes := range result {
-			log.Info("sweep_until budget seeded with pending DB items",
-				"mount", mp,
-				"pending_gb", float64(bytes)/1e9,
-			)
-		}
+	for group, bytes := range result {
+		log.Info("sweep_until budget seeded with pending DB items",
+			"quota_group", group,
+			"pending_gb", float64(bytes)/1e9,
+		)
 	}
 
 	return result
 }
 
-// applySweepUntilLimits restricts which items get marked for deletion based on the
-// sweep_until_gb_free or sweep_until_percent_used settings in each library's config.
-// Items are sorted largest-first (by estimated freed bytes) so that the disk target
-// is reached with as few items as possible.
-// If no sweep_until setting is configured for a library, all items for that library
-// are returned unchanged.
+// groupQuotaState holds runtime quota tracking for a single sweep_until_quota_group.
+type groupQuotaState struct {
+	cfg         *config.QuotaGroupConfig
+	stats       *sweepDiskStats
+	accumulated int64 // seed (pending DB items) + newly accumulated this run
+	broken      bool  // disk stats unavailable — skip all items in this group
+}
+
+// applySweepUntilLimits restricts which items get marked for deletion based on
+// sweep_until_quota_groups. Libraries that share the same quota group contribute to a
+// combined disk-space budget calculated by summing storage across all unique filesystems
+// their media resides on. Items are processed in their original filter order with each
+// group's quota tracked independently; once a group's target is met, further items from
+// that group are skipped while items from other groups continue to be evaluated.
+// Libraries without a quota group are passed through unchanged.
 func (e *Engine) applySweepUntilLimits(ctx context.Context, mediaItems []arr.MediaItem) []arr.MediaItem {
-	// Build a per-library index. Items within each library are later sorted largest-first,
-	// so the original intra-library ordering is not preserved.
-	type libraryEntry struct {
-		name  string
-		items []arr.MediaItem
+	if len(e.cfg.SweepUntilQuotaGroups) == 0 {
+		return mediaItems
 	}
-	seen := make(map[string]int) // library name → index in entries
-	entries := make([]libraryEntry, 0)
-	for _, item := range mediaItems {
-		idx, ok := seen[item.LibraryName]
-		if !ok {
-			idx = len(entries)
-			seen[item.LibraryName] = idx
-			entries = append(entries, libraryEntry{name: item.LibraryName})
+
+	// Build library → group and group → []library mappings from current config.
+	libraryGroup := make(map[string]string)
+	groupLibraries := make(map[string][]string)
+	for name, libCfg := range e.cfg.Libraries {
+		if libCfg == nil || libCfg.Filter.SweepUntilQuotaGroup == "" {
+			continue
 		}
-		entries[idx].items = append(entries[idx].items, item)
+		group := libCfg.Filter.SweepUntilQuotaGroup
+		if _, ok := e.cfg.SweepUntilQuotaGroups[group]; !ok {
+			log.Warn("library references undefined sweep_until_quota_group, skipping",
+				"library", name, "group", group)
+			continue
+		}
+		libraryGroup[name] = group
+		groupLibraries[group] = append(groupLibraries[group], name)
+	}
+
+	// Pre-compute disk stats and seed accumulated bytes for each quota group.
+	groupAccumulated := e.pendingGroupBytes(ctx, libraryGroup)
+	groups := make(map[string]*groupQuotaState, len(e.cfg.SweepUntilQuotaGroups))
+
+	for groupName, groupCfg := range e.cfg.SweepUntilQuotaGroups {
+		if groupCfg == nil {
+			continue
+		}
+		gs := &groupQuotaState{
+			cfg:         groupCfg,
+			accumulated: groupAccumulated[groupName],
+		}
+
+		var allFolders []string
+		for _, libName := range groupLibraries[groupName] {
+			allFolders = append(allFolders, e.libraryFoldersByName(libName)...)
+		}
+		if len(allFolders) == 0 {
+			log.Error("no library folders found for quota group, will skip all items in group to avoid over-queuing",
+				"group", groupName)
+			gs.broken = true
+		} else {
+			stats, err := getQuotaGroupDiskStats(ctx, allFolders)
+			if err != nil || stats == nil {
+				log.Error("failed to get disk usage for quota group, will skip all items in group to avoid over-queuing",
+					"group", groupName, "error", err)
+				gs.broken = true
+			} else {
+				gs.stats = stats
+				log.Info("sweep_until quota group ready",
+					"group", groupName,
+					"target_percent_used", groupCfg.PercentUsed,
+					"target_gb_free", groupCfg.GBFree,
+					"current_used_pct", stats.usedPercent(),
+					"current_free_gb", stats.freeGB(),
+					"already_freed_gb", float64(gs.accumulated)/1e9,
+				)
+			}
+		}
+		groups[groupName] = gs
 	}
 
 	cleanupMode := e.cfg.GetCleanupMode()
 	keepCount := e.cfg.GetKeepCount()
 
-	// mountAccumulated tracks bytes already earmarked for deletion per mount point.
-	// It is seeded with the FileSize of items already pending deletion in the database
-	// so that previous-run queued items count against the budget before new ones are selected.
-	// Libraries on the same mount share this counter so their combined contribution
-	// is counted against the target rather than each library calculating independently.
-	mountAccumulated := e.pendingMountBytes(ctx)
-
+	// Single pass in original filter order. Each group's quota is tracked independently,
+	// so items from all libraries in a group (Movies, TV Shows, etc.) are evaluated as
+	// they appear rather than being bucketed by library type first.
 	result := make([]arr.MediaItem, 0, len(mediaItems))
+	groupIncluded := make(map[string]int)
+	groupExcluded := make(map[string]int)
 
-	for _, entry := range entries {
-		libraryConfig := e.cfg.GetLibraryConfig(entry.name)
-		if libraryConfig == nil ||
-			(libraryConfig.SweepUntilGBFree <= 0 && libraryConfig.SweepUntilPercentUsed <= 0) {
-			// No sweep_until configured for this library – include everything.
-			result = append(result, entry.items...)
+	for _, item := range mediaItems {
+		group := resolveLibraryGroup(item.LibraryName, libraryGroup)
+		if group == "" {
+			result = append(result, item) // no quota group — include unconditionally
 			continue
 		}
 
-		folders := e.libraryFoldersMap[entry.name]
-		if len(folders) == 0 {
-			log.Error("no library folders found for sweep_until limit, skipping all items to avoid over-queuing",
-				"library", entry.name)
+		gs, ok := groups[group]
+		if !ok || gs.broken {
+			groupExcluded[group]++
 			continue
 		}
 
-		stats, err := getSweepDiskStats(ctx, folders)
-		if err != nil {
-			log.Error("failed to get disk usage for sweep_until limit, skipping all items to avoid over-queuing",
-				"library", entry.name, "error", err)
+		if gs.stats.isTargetMet(gs.cfg, gs.accumulated) {
+			groupExcluded[group]++
 			continue
 		}
 
-		mountKey := stats.mountKey()
-		alreadyAccumulated := mountAccumulated[mountKey]
+		gs.accumulated += estimateFreedSize(item, cleanupMode, keepCount)
+		result = append(result, item)
+		groupIncluded[group]++
+	}
 
-		log.Info("applying sweep_until limit",
-			"library", entry.name,
-			"sweep_until_gb_free", libraryConfig.SweepUntilGBFree,
-			"sweep_until_percent_used", libraryConfig.SweepUntilPercentUsed,
-			"current_free_gb", stats.freeGB(),
-			"current_used_pct", stats.usedPercent(),
-			"already_freed_gb_on_mount", float64(alreadyAccumulated)/1e9,
-		)
-
-		// Precompute estimated freed bytes once per item to avoid redundant season-stat
-		// walks during both the sort comparisons and the accumulation loop.
-		type scoredItem struct {
-			item  arr.MediaItem
-			freed int64
+	for groupName, gs := range groups {
+		if gs.broken {
+			continue
 		}
-		scored := make([]scoredItem, len(entry.items))
-		for i, item := range entry.items {
-			scored[i] = scoredItem{item: item, freed: estimateFreedSize(item, cleanupMode, keepCount)}
-		}
-
-		// Sort largest-first so the target is reached with as few items as possible.
-		sort.Slice(scored, func(i, j int) bool {
-			return scored[i].freed > scored[j].freed
-		})
-
-		var newlyAccumulated int64
-		included := 0
-		for _, s := range scored {
-			if stats.isTargetMet(libraryConfig, alreadyAccumulated+newlyAccumulated) {
-				break
-			}
-			newlyAccumulated += s.freed
-			result = append(result, s.item)
-			included++
-		}
-
-		mountAccumulated[mountKey] += newlyAccumulated
-
-		log.Info("sweep_until limit applied",
-			"library", entry.name,
-			"items_included", included,
-			"items_excluded", len(entry.items)-included,
-			"estimated_freed_gb", float64(newlyAccumulated)/1e9,
+		log.Info("sweep_until quota group limit applied",
+			"group", groupName,
+			"items_included", groupIncluded[groupName],
+			"items_excluded", groupExcluded[groupName],
+			"estimated_freed_gb", float64(gs.accumulated-groupAccumulated[groupName])/1e9,
 		)
 	}
 

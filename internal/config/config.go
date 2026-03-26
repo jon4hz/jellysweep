@@ -43,6 +43,10 @@ type Config struct {
 	CleanupSchedule string `yaml:"cleanup_schedule" mapstructure:"cleanup_schedule"`
 	// Libraries is a map of libraries to their cleanup configurations.
 	Libraries map[string]*CleanupConfig `yaml:"libraries" mapstructure:"libraries"`
+	// SweepUntilQuotaGroups defines named disk-quota groups. Libraries that reference a group
+	// share a combined disk-space budget; sweeping stops once the estimated combined usage
+	// drops to or below the group's percent_used target.
+	SweepUntilQuotaGroups map[string]*QuotaGroupConfig `yaml:"sweep_until_quota_groups" mapstructure:"sweep_until_quota_groups"`
 	// DryRun indicates whether the cleanup job should run in dry-run mode.
 	DryRun bool `yaml:"dry_run" mapstructure:"dry_run"`
 	// CleanupMode specifies how to clean up TV series. Options: "all", "keep_episodes", "keep_seasons"
@@ -203,6 +207,21 @@ type WebPushConfig struct {
 	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
+// QuotaGroupConfig defines a named disk-quota group used by sweep_until_quota_groups.
+// At least one of PercentUsed or GBFree must be set. If both are set, sweeping stops
+// as soon as either condition would be satisfied — whichever comes first.
+type QuotaGroupConfig struct {
+	// PercentUsed is the target disk usage percentage. Sweeping stops once the combined
+	// estimated usage across all filesystems in the group drops to or below this value.
+	// Must be > 0 and < 100. 0 disables this condition.
+	PercentUsed float64 `yaml:"percent_used" mapstructure:"percent_used"`
+	// GBFree is the minimum free space in gigabytes (SI: 1 GB = 1,000,000,000 bytes).
+	// Sweeping stops once the combined estimated free space across all filesystems in
+	// the group would reach or exceed this value.
+	// Must be > 0. 0 disables this condition.
+	GBFree float64 `yaml:"gb_free" mapstructure:"gb_free"`
+}
+
 // CleanupConfig holds the configuration for the cleanup job.
 type CleanupConfig struct {
 	// Enabled indicates whether the cleanup job is enabled.
@@ -227,14 +246,6 @@ type CleanupConfig struct {
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// Filter is the configuration for all available filters.
 	Filter FilterConfig `yaml:"filter" mapstructure:"filter"`
-	// SweepUntilGBFree stops marking items for deletion once the estimated free space
-	// on the library's mount reaches this many GB (SI: 1 GB = 1,000,000,000 bytes).
-	// 0 disables this limit.
-	SweepUntilGBFree float64 `yaml:"sweep_until_gb_free" mapstructure:"sweep_until_gb_free"`
-	// SweepUntilPercentUsed stops marking items for deletion once the estimated disk
-	// usage on the library's mount drops to or below this percentage.
-	// 0 disables this limit.
-	SweepUntilPercentUsed float64 `yaml:"sweep_until_percent_used" mapstructure:"sweep_until_percent_used"`
 }
 
 type FilterConfig struct {
@@ -248,6 +259,9 @@ type FilterConfig struct {
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// TunarrEnabled enables the Tunarr filter for this library to protect items used in Tunarr channels.
 	TunarrEnabled bool `yaml:"tunarr_enabled" mapstructure:"tunarr_enabled"`
+	// SweepUntilQuotaGroup references a named group defined in sweep_until_quota_groups.
+	// Libraries sharing the same group contribute to a combined disk-space budget.
+	SweepUntilQuotaGroup string `yaml:"sweep_until_quota_group" mapstructure:"sweep_until_quota_group"`
 }
 
 // DiskUsageThreshold holds the disk usage thresholds for cleanup.
@@ -572,15 +586,65 @@ func validateConfig(c *Config) error {
 		return fmt.Errorf("at least one library must be configured")
 	}
 
+	referencedGroups := make(map[string]bool)
+	for groupName, groupConfig := range c.SweepUntilQuotaGroups {
+		if groupConfig == nil {
+			return fmt.Errorf("sweep_until_quota_group %q is defined but has no configuration", groupName)
+		}
+		if groupConfig.PercentUsed == 0 && groupConfig.GBFree == 0 {
+			return fmt.Errorf("sweep_until_quota_group %q: at least one of percent_used or gb_free must be set", groupName)
+		}
+		if groupConfig.PercentUsed != 0 && (groupConfig.PercentUsed <= 0 || groupConfig.PercentUsed >= 100) {
+			return fmt.Errorf("sweep_until_quota_group %q: percent_used must be between 0 (exclusive) and 100 (exclusive)", groupName)
+		}
+		if groupConfig.GBFree < 0 {
+			return fmt.Errorf("sweep_until_quota_group %q: gb_free must be >= 0", groupName)
+		}
+	}
+
 	for libraryName, libraryConfig := range c.Libraries {
 		if libraryConfig == nil {
 			continue
 		}
-		if libraryConfig.SweepUntilGBFree < 0 {
-			return fmt.Errorf("library %q: sweep_until_gb_free must be >= 0 (0 disables it)", libraryName)
+
+		if libraryConfig.CleanupDelay < 0 {
+			return fmt.Errorf("library %q: cleanup_delay must be >= 0", libraryName)
 		}
-		if libraryConfig.SweepUntilPercentUsed < 0 || libraryConfig.SweepUntilPercentUsed > 100 {
-			return fmt.Errorf("library %q: sweep_until_percent_used must be between 0 and 100 (0 disables it)", libraryName)
+		if libraryConfig.ProtectionPeriod < 0 {
+			return fmt.Errorf("library %q: protection_period must be >= 0", libraryName)
+		}
+
+		filter := libraryConfig.Filter
+		if filter.ContentAgeThreshold < 0 {
+			return fmt.Errorf("library %q: filter.content_age_threshold must be >= 0", libraryName)
+		}
+		if filter.LastStreamThreshold < 0 {
+			return fmt.Errorf("library %q: filter.last_stream_threshold must be >= 0", libraryName)
+		}
+		if filter.ContentSizeThreshold < 0 {
+			return fmt.Errorf("library %q: filter.content_size_threshold must be >= 0", libraryName)
+		}
+
+		for i, threshold := range libraryConfig.DiskUsageThresholds {
+			if threshold.UsagePercent <= 0 || threshold.UsagePercent > 100 {
+				return fmt.Errorf("library %q: disk_usage_thresholds[%d].usage_percent must be between 0 (exclusive) and 100", libraryName, i)
+			}
+			if threshold.MaxCleanupDelay < 0 {
+				return fmt.Errorf("library %q: disk_usage_thresholds[%d].max_cleanup_delay must be >= 0", libraryName, i)
+			}
+		}
+
+		if filter.SweepUntilQuotaGroup != "" {
+			if _, ok := c.SweepUntilQuotaGroups[filter.SweepUntilQuotaGroup]; !ok {
+				return fmt.Errorf("library %q references undefined sweep_until_quota_group %q", libraryName, filter.SweepUntilQuotaGroup)
+			}
+			referencedGroups[filter.SweepUntilQuotaGroup] = true
+		}
+	}
+
+	for groupName := range c.SweepUntilQuotaGroups {
+		if !referencedGroups[groupName] {
+			log.Warn("sweep_until_quota_group is defined but not referenced by any library", "group", groupName)
 		}
 	}
 
