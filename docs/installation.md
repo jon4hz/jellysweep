@@ -180,75 +180,137 @@ services:
 
     !!! note
 
-        - ==Highlighted== lines **^^require^^ your configuration**, for Jellysweep to function
+        - ==Highlighted== lines **^^require^^ your configuration** for Jellysweep to function
 
-    ```yaml title="config.yml" linenums="1" hl_lines="1 3 14-15 21 33 47-48 52-53 56-60 62-65"
-    dry_run: true                    # Set to true for testing, false for usage
-    listen: "0.0.0.0:3002"
-    session_key: "your-session-key"
-    server_url: "http://localhost:3002"
+    === "Streamystats"
 
-    # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
-    auth:
-      # Jellyfin Authentication
-      jellyfin:
-        enabled: true                      # Default authentication method
+        ```yaml title="config.yml" linenums="1" hl_lines="1 3 14-15 21 33 47-48 52-53 56-60 62-65"
+        dry_run: true                    # Set to true for testing, false for usage
+        listen: "0.0.0.0:3002"
+        session_key: "your-session-key"
+        server_url: "http://localhost:3002"
 
-    # Jellyfin server configuration
-    jellyfin:
-      url: "http://localhost:8096"         # Your Jellyfin server URL
-      api_key: "your-jellyfin-api-key"     # Jellyfin API key
+        # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
+        auth:
+          # Jellyfin Authentication
+          jellyfin:
+            enabled: true                      # Default authentication method
 
-    # Libraries (and their filters)
-    libraries:
+        # Jellyfin server configuration
+        jellyfin:
+          url: "http://localhost:8096"         # Your Jellyfin server URL
+          api_key: "your-jellyfin-api-key"     # Jellyfin API key
 
-      # Name must match the Library name in Jellyfin
-      "Movies":
-        enabled: true
-        cleanup_delay: 60
-        protection_period: 90         # Protect requested content for 90 days
-        # Filter configuration
-        filter:
-          content_age_threshold: 120          # Content must be at least 120 days old
-          last_stream_threshold: 90           # Last watched at least 90 days ago
-          content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
-          exclude_tags:
-            - "jellysweep-exclude"
+        # Libraries (and their filters)
+        libraries:
 
-      "TV Shows":
-        enabled: true
-        cleanup_delay: 60
-        protection_period: 90
-        # Filter configuration
-        filter:
-          content_age_threshold: 120
-          last_stream_threshold: 90
-          content_size_threshold: 2147483648  # 2GB minimum
-          exclude_tags:
-            - "jellysweep-exclude"
+          # Name must match the Library name in Jellyfin
+          "Movies":
+            enabled: true
+            cleanup_delay: 60
+            protection_period: 90         # Protect requested content for 90 days
+            # Filter configuration
+            filter:
+              content_age_threshold: 120          # Content must be at least 120 days old
+              last_stream_threshold: 90           # Last watched at least 90 days ago
+              content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
+              exclude_tags:
+                - "jellysweep-exclude"
 
-    # *arr's
-    sonarr:
-      url: "http://localhost:8989"
-      api_key: "your-sonarr-api-key"
-      timeout: 30                          # HTTP client timeout in seconds (default: 30)
+          "TV Shows":
+            enabled: true
+            cleanup_delay: 60
+            protection_period: 90
+            # Filter configuration
+            filter:
+              content_age_threshold: 120
+              last_stream_threshold: 90
+              content_size_threshold: 2147483648  # 2GB minimum
+              exclude_tags:
+                - "jellysweep-exclude"
 
-    radarr:
-      url: "http://localhost:7878"
-      api_key: "your-radarr-api-key"
-      timeout: 30                          # HTTP client timeout in seconds (default: 30)
+        # *arr's
+        sonarr:
+          url: "http://localhost:8989"
+          api_key: "your-sonarr-api-key"
+          timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
-    # A statistics app (configure only one! Jellystat OR Streamystats)
-    # jellystat:
-    #   url: "http://localhost:3001"
-    #   api_key: "your-jellystat-api-key"
-    #   timeout: 30                          # HTTP client timeout in seconds (default: 30)
+        radarr:
+          url: "http://localhost:7878"
+          api_key: "your-radarr-api-key"
+          timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
-    streamystats:
-      url: "http://localhost:3001"
-      server_id: 1                         # Jellyfin server ID in Streamystats
-      timeout: 30                          # HTTP client timeout in seconds (default: 30)
-    ```
+        # Statistics app
+        streamystats:
+          url: "http://localhost:3001"
+          server_id: 1                         # Jellyfin server ID in Streamystats
+          timeout: 30                          # HTTP client timeout in seconds (default: 30)
+        ```
+
+    === "Jellystat"
+
+        ```yaml title="config.yml" linenums="1" hl_lines="1 3 14-15 21 33 47-48 52-53 56-60 62-65"
+        dry_run: true                    # Set to true for testing, false for usage
+        listen: "0.0.0.0:3002"
+        session_key: "your-session-key"
+        server_url: "http://localhost:3002"
+
+        # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
+        auth:
+          # Jellyfin Authentication
+          jellyfin:
+            enabled: true                      # Default authentication method
+
+        # Jellyfin server configuration
+        jellyfin:
+          url: "http://localhost:8096"         # Your Jellyfin server URL
+          api_key: "your-jellyfin-api-key"     # Jellyfin API key
+
+        # Libraries (and their filters)
+        libraries:
+
+          # Name must match the Library name in Jellyfin
+          "Movies":
+            enabled: true
+            cleanup_delay: 60
+            protection_period: 90         # Protect requested content for 90 days
+            # Filter configuration
+            filter:
+              content_age_threshold: 120          # Content must be at least 120 days old
+              last_stream_threshold: 90           # Last watched at least 90 days ago
+              content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
+              exclude_tags:
+                - "jellysweep-exclude"
+
+          "TV Shows":
+            enabled: true
+            cleanup_delay: 60
+            protection_period: 90
+            # Filter configuration
+            filter:
+              content_age_threshold: 120
+              last_stream_threshold: 90
+              content_size_threshold: 2147483648  # 2GB minimum
+              exclude_tags:
+                - "jellysweep-exclude"
+
+        # *arr's
+        sonarr:
+          url: "http://localhost:8989"
+          api_key: "your-sonarr-api-key"
+          timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+        radarr:
+          url: "http://localhost:7878"
+          api_key: "your-radarr-api-key"
+          timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+        # Statistics app
+        jellystat:
+          url: "http://localhost:3001"
+          api_key: "your-jellystat-api-key"
+          timeout: 30                          # HTTP client timeout in seconds (default: 30)
+        ```
 
 === "Full configuration"
 
