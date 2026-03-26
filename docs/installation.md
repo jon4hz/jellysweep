@@ -48,7 +48,7 @@ Admin access to your Jellyfin media server, and an ecosystem of Jellyfin-related
 
 <!-- todo -->
 
-<!-- collapsed block -->
+<!-- initially collapsed -->
 
 ??? question "Can I use less services?"
 
@@ -90,7 +90,7 @@ services:
       # - /data/tv:/data/tv:ro
 ```
 
-<!-- collapsed block -->
+<!-- initially collapsed -->
 
 ??? example "Valkey Cache backend (advanced)"
 
@@ -133,7 +133,7 @@ services:
 - Configuration is primarily done via a **configuration file**
 - Configuration is discussed further in [Configuration](./configuration.md)
 
-<!-- collapsed block -->
+<!-- initially collapsed -->
 
 ??? example "Environmental variables (advanced)"
 
@@ -249,7 +249,7 @@ services:
 
     === "Jellystat"
 
-        ```yaml title="config.yml" linenums="1" hl_lines="1-2 14-15 20 32 46-47 51-52 57-58"
+        ```yaml title="config.yml" linenums="1" hl_lines="1-2 14-15 20 33 47-48 52-53 58-59"
         dry_run: true                    # Set to true for testing, false for usage
         session_key: "your-session-key"
         listen: "0.0.0.0:3002"
@@ -281,6 +281,7 @@ services:
               exclude_tags:
                 - "jellysweep-exclude"
 
+          # Name must match the Library name in Jellyfin
           "TV Shows":
             enabled: true
             cleanup_delay: 60
@@ -310,6 +311,8 @@ services:
           api_key: "your-jellystat-api-key"
           timeout: 30                          # HTTP client timeout in seconds (default: 30)
         ```
+
+<!-- TODO -->
 
 === "Full configuration"
 
@@ -509,7 +512,7 @@ You will need:
     - Jellyfin Web dashboard: `Advanced` ➔ `API Keys` ➔ `New API Key`
         - Create a new API key. You can name it `Jellysweep`
 
-```yaml title="config.yml" linenums="37" hl_lines="2-4"
+```yaml title="config.yml" linenums="13" hl_lines="3-4"
 # Jellyfin server configuration
 jellyfin:
   url: "http://localhost:8096"         # Your Jellyfin server URL
@@ -524,7 +527,7 @@ You will need:
 - **API keys**
     - Sonarr + Radarr: `Settings` ➔ `General` ➔ `API Key`
 
-```yaml title="config.yml" linenums="148" hl_lines="1-3 6-8"
+```yaml title="config.yml" linenums="148" hl_lines="2-3 7-8"
 sonarr:
   url: "http://localhost:8989"
   api_key: "your-sonarr-api-key"
@@ -536,7 +539,7 @@ radarr:
   timeout: 30                          # HTTP client timeout in seconds (default: 30)
 ```
 
-#### 2-5. Statistics (Jellystat OR Streamystats)
+#### 2-5. Statistics app — configuration
 
 <!-- todo -->
 
@@ -546,10 +549,9 @@ The template `config.yml` uses 'sane defaults'. But it is likely you will want t
 
 See our [Filters page for more information](./how-it-works-filters.md)
 
-```yaml title="config.yml" linenums="57"
+```yaml title="config.yml" linenums="18" hl_lines="3 30"
 # Libraries (and their filters)
 libraries:
-
   # Name must match the Library name in Jellyfin
   "Movies":
     enabled: true
@@ -576,6 +578,7 @@ libraries:
       - usage_percent: 95.0       # When disk usage reaches 95%
         max_cleanup_delay: 2      # Reduce grace period to 2 days
 
+  # Name must match the Library name in Jellyfin
   "TV Shows":
     enabled: true
     cleanup_delay: 60
@@ -604,7 +607,7 @@ libraries:
 
 #### 2-9. Other services — configuration
 
-<!-- initially collapsed block -->
+<!-- initially collapsed -->
 
 ??? success "See our configuration page for other configurations"
 
@@ -649,6 +652,6 @@ Jellysweep should start, and should be available at `http://ip-address:3001`! :t
 
 With caution, dry-run mode can be disabled. This means Jellysweep **will delete media**, according to your filters
 
-```yaml title="config.yml" linenums="1"
+```yaml title="config.yml" linenums="1" hl_lines="1"
 dry_run: true                    # Set to true for testing, false for usage
 ```
