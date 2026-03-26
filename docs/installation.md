@@ -312,8 +312,6 @@ services:
           timeout: 30                          # HTTP client timeout in seconds (default: 30)
         ```
 
-<!-- TODO -->
-
 === "Full configuration"
 
     ```yaml linenums="1" hl_lines="1 7 33-35 52-55 57-109 142-167"
