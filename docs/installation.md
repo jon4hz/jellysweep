@@ -184,9 +184,11 @@ services:
 
     === "Streamystats"
 
-        ```yaml title="config.yml" linenums="1" hl_lines="1-2 14-15 20 33 47-48 52-53 58-59"
+        ```yaml title="config.yml" linenums="1" hl_lines="1-2 16-17 22 35 49-50 54-55 60-61"
         dry_run: true                    # Set to true for testing, false for usage
         session_key: "your-session-key"
+
+        # networking
         listen: "0.0.0.0:3002"
         server_url: "http://localhost:3002"
 
@@ -249,9 +251,11 @@ services:
 
     === "Jellystat"
 
-        ```yaml title="config.yml" linenums="1" hl_lines="1-2 14-15 20 33 47-48 52-53 58-59"
+        ```yaml title="config.yml" linenums="1" hl_lines="1-2 16-17 22 35 49-50 54-55 60-61"
         dry_run: true                    # Set to true for testing, false for usage
         session_key: "your-session-key"
+
+        # networking
         listen: "0.0.0.0:3002"
         server_url: "http://localhost:3002"
 
@@ -314,20 +318,32 @@ services:
 
 === "Full configuration"
 
-    ```yaml linenums="1" hl_lines="1 7 33-35 52-55 57-109 142-167"
+    !!! note
+
+        - Most added configurations can be enabled/disabled:
+
+        ```yaml
+        enabled: true
+        ```
+
+    ```yaml title="config.yml" linenums="1" hl_lines="1 7 33-35 52-55 57-109 142-167"
     dry_run: true                    # Set to true for testing, false for usage
-    listen: "0.0.0.0:3002"           # Web interface address and port
-    cleanup_schedule: "0 */12 * * *" # Every 12 hours
-    cleanup_mode: "keep_seasons"     # Cleanup mode: "all", "keep_episodes", or "keep_seasons"
-    keep_count: 1                    # Number of episodes/seasons to keep (when using keep_episodes or keep_seasons)
-    api_key: ""                      # Optional: API key for Jellyfin plugin integration
     session_key: "your-session-key"  # Random string for session encryption
-    session_max_age: 172800          # Session max age in seconds (48 hours)
-    secure_cookies: true             # Set Secure flag on session cookies (disable only for local development)
+
+    # networking, web UI, etc
+    listen: "0.0.0.0:3002"           # Web interface address and port
+    server_url: "http://localhost:3002"
     # trusted_proxies:               # Optional: list of trusted reverse-proxy IPs/CIDRs
     #   - "10.0.0.1"                 # If unset, all proxies are trusted
     #   - "192.168.1.0/24"
-    server_url: "http://localhost:3002"
+    secure_cookies: true             # Set Secure flag on session cookies (disable only for local development)
+    session_max_age: 172800          # Session max age in seconds (48 hours)
+    api_key: ""                      # Optional: API key for Jellyfin plugin integration
+
+    # cleanup configs
+    cleanup_schedule: "0 */12 * * *" # Every 12 hours
+    cleanup_mode: "keep_seasons"     # Cleanup mode: "all", "keep_episodes", or "keep_seasons"
+    keep_count: 1                    # Number of episodes/seasons to keep (when using keep_episodes or keep_seasons)
 
     # Database configuration (optional)
     database:
@@ -373,7 +389,6 @@ services:
 
     # Libraries (and their filters)
     libraries:
-
       # Name must match the Library name in Jellyfin
       "Movies":
         enabled: true
@@ -400,6 +415,7 @@ services:
           - usage_percent: 95.0       # When disk usage reaches 95%
             max_cleanup_delay: 2      # Reduce grace period to 2 days
 
+      # Name must match the Library name in Jellyfin
       "TV Shows":
         enabled: true
         cleanup_delay: 60
@@ -540,6 +556,26 @@ radarr:
 #### 2-5. Statistics app — configuration
 
 <!-- todo -->
+
+=== "Streamystats
+
+    ```yaml title="config.yml" linenums="56" hl_lines="3-4"
+      # Statistics app
+      jellystat:
+        url: "http://localhost:3001"
+        api_key: "your-jellystat-api-key"
+        timeout: 30                          # HTTP client timeout in seconds (default: 30)
+    ```
+
+=== "Jellystat"
+
+    ```yaml title="config.yml" linenums="56" hl_lines="3-4"
+      # Statistics app
+      streamystats:
+        url: "http://localhost:3001"
+        server_id: 1                         # Jellyfin server ID in Streamystats
+        timeout: 30                          # HTTP client timeout in seconds (default: 30)
+    ```
 
 #### 2-6. Filters — configuration
 
