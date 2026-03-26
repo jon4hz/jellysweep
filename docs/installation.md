@@ -172,7 +172,7 @@ services:
 
 #### 2-2. Edit the configuration file
 
-<!-- TODO — all the admonitions + code blocks... this gets messy -->
+<!-- TODO: another "Content tab", for Jellystat vs Streamystats -->
 
 **Here are starting templates for `config.yml`:**
 
@@ -180,9 +180,9 @@ services:
 
     !!! note
 
-        - ==Highlighted== lines **require your configuration**
+        - ==Highlighted== lines **^^require^^ your configuration**, for Jellysweep to function
 
-    ```yaml title="config.yml" linenums="1" hl_lines="1 7 18-21 28-80 82-91"
+    ```yaml title="config.yml" linenums="1" hl_lines="1 3 14-15 21 33 47-48 52-53 56-60 62-65"
     dry_run: true                    # Set to true for testing, false for usage
     listen: "0.0.0.0:3002"
     session_key: "your-session-key"
