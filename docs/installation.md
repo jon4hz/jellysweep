@@ -184,10 +184,10 @@ services:
 
     === "Streamystats"
 
-        ```yaml title="config.yml" linenums="1" hl_lines="1 3 14-15 21 33 47-48 52-53 56-60 62-65"
+        ```yaml title="config.yml" linenums="1" hl_lines="1-2 14-15 20 33 47-48 52-53 58-59"
         dry_run: true                    # Set to true for testing, false for usage
-        listen: "0.0.0.0:3002"
         session_key: "your-session-key"
+        listen: "0.0.0.0:3002"
         server_url: "http://localhost:3002"
 
         # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
@@ -203,7 +203,6 @@ services:
 
         # Libraries (and their filters)
         libraries:
-
           # Name must match the Library name in Jellyfin
           "Movies":
             enabled: true
@@ -217,6 +216,7 @@ services:
               exclude_tags:
                 - "jellysweep-exclude"
 
+          # Name must match the Library name in Jellyfin
           "TV Shows":
             enabled: true
             cleanup_delay: 60
@@ -249,10 +249,10 @@ services:
 
     === "Jellystat"
 
-        ```yaml title="config.yml" linenums="1" hl_lines="1 3 14-15 21 33 47-48 52-53 56-60 62-65"
+        ```yaml title="config.yml" linenums="1" hl_lines="1-2 14-15 20 32 46-47 51-52 57-58"
         dry_run: true                    # Set to true for testing, false for usage
-        listen: "0.0.0.0:3002"
         session_key: "your-session-key"
+        listen: "0.0.0.0:3002"
         server_url: "http://localhost:3002"
 
         # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
@@ -268,7 +268,6 @@ services:
 
         # Libraries (and their filters)
         libraries:
-
           # Name must match the Library name in Jellyfin
           "Movies":
             enabled: true
