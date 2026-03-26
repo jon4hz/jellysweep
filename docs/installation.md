@@ -18,21 +18,29 @@ description: Guided installation — Prerequistites and Docker Compose
 
 Admin access to your Jellyfin media server, and an ecosystem of Jellyfin-related services
 
-Required services:
+=== Recommended Requirements
 
-- [x] **Jellyfin**
-- [x] \*arr's
-    - [x] **Sonarr**
-    - [x] **Radarr**
-- [x] A statistics app
-    - [x] **Jellystat** ^^or^^ **Streamystats**
-- [x] **Jellyseerr** / **Seerr**
+    - [x] **Jellyfin**
+    - [x] \*arr's
+        - [x] **Sonarr**
+        - [x] **Radarr**
+    - [x] A statistics app
+        - [x] **Jellystat** ^^or^^ **Streamystats**
 
-<!-- collapsed block -->
+=== Minimum requirements
+
+    - [x] **Jellyfin**
+    - [x] \*arr's
+        - [x] **Sonarr**
+        - [x] **Radarr**
+
+=== All supported services
+
+    For a full list, see [How it works: Integrations and features](./how-it-works-integrations.md)
 
 <!-- todo -->
 
-<!-- ??? question "Do I really need all these services?" -->
+<!-- collapsed block -->
 
 ??? question "Can I use less services?"
 
@@ -42,9 +50,9 @@ Required services:
     - [x] Sonarr
     - [x] Radarr
 
-    However, this is not recommended for the full capabilities of Jellysweep
+    However, this is **not recommended** for the full capabilities of Jellysweep
 
-    This installation guide will asssume you have all of the prerequisites
+    This installation guide will asssume you have all of the prerequisites ("Recommended requirements")
 
 ## Docker Compose installation
 
@@ -561,7 +569,6 @@ libraries:
 
     See our [configuration page](./configuration.md) for details about other services, configurations:
 
-    - **A statistics app** (Jellystat ^^or^^ Streamystats)
     - **Jellyseerr/Seerr**
     - **SMTP Emails** to Seerr users
     - **Ntfy** notifications

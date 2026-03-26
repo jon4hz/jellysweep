@@ -9,6 +9,7 @@ copyright = "Copyright &copy; 2025 - 2026 The Jellysweep Contributors"
 nav = [
   {"Home" = "index.md"},
   {"How it works: Filters" = "how-it-works-filters.md"},
+  {"How it works: Integrations and features" = "how-it-works-integrations.md"},
   {"Installation Guide" = "installation.md"},
   {"Troubleshooting" = "troubleshooting.md"},
   {"Configuration" = "configuration.md"}
