@@ -517,8 +517,6 @@ services:
 
 #### 2-3. Jellyfin — configuration
 
-<!-- TODO -->
-
 You will need:
 
 - **URL** (as Jellysweep's container can access it)
@@ -573,6 +571,8 @@ radarr:
     ```
 
 === "Jellystat"
+
+    You will need:
 
     - URL
     - API key
