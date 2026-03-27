@@ -220,6 +220,10 @@ type QuotaGroupConfig struct {
 	// the group would reach or exceed this value.
 	// Must be > 0. 0 disables this condition.
 	GBFree float64 `yaml:"gb_free" mapstructure:"gb_free"`
+	// LargestFirst, when true, sorts items in this quota group by estimated freed size
+	// (descending) before the quota accumulator runs, so the largest items are deleted
+	// first. Items belonging to other groups are unaffected. Default: false.
+	LargestFirst bool `yaml:"largest_first" mapstructure:"largest_first"`
 }
 
 // CleanupConfig holds the configuration for the cleanup job.

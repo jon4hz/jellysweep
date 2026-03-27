@@ -157,7 +157,7 @@ You define named quota groups at the top level of the config, each with a `perce
 3. All candidate items across **all libraries in the group** are evaluated in filter order (the same order the filters produced them).
 4. Items are selected for deletion until the estimated combined usage would drop to or below the group's target.
 
-This means if Movies and TV Shows both belong to `"media"`, items from both libraries compete for the same budget. Items are processed in the order the filters produced them — no re-sorting by size occurs.
+This means if Movies and TV Shows both belong to `"media"`, items from both libraries compete for the same budget. By default, items are processed in the order the filters produced them. Setting `largest_first: true` on a group re-orders that group's items by estimated freed size (largest first) before the quota accumulator runs, so you reach the target by deleting fewer, larger items.
 
 Libraries without a `sweep_until_quota_group` are not affected — all items that pass their filters are marked as usual.
 
@@ -165,14 +165,15 @@ Libraries without a `sweep_until_quota_group` are not affected — all items tha
 
 **Deduplication across mounts.** If two library paths live on the same underlying filesystem (e.g. bind-mounts or Docker volumes), that filesystem is only counted once. This works correctly across Linux, Windows, NFS, and Docker volume mounts.
 
-Each quota group supports two target conditions — set one or both:
+Each quota group supports the following fields:
 
 | Field | Description |
 |---|---|
 | `percent_used` | Stop queuing once the combined estimated usage would drop to or below this percentage (matches `df` output). Must be > 0 and < 100. |
 | `gb_free` | Stop queuing once the combined estimated free space would reach or exceed this many GB (SI: 1 GB = 1,000,000,000 bytes). Must be > 0. |
+| `largest_first` | When `true`, sort this group's candidate items by estimated freed size (descending) before the quota accumulator runs. Largest items are deleted first, reaching the target in fewer deletions. Equal-sized items keep their original scheduled-deletion order. Default: `false`. |
 
-If both are set, sweeping stops as soon as **either** condition would be satisfied — whichever comes first.
+If both `percent_used` and `gb_free` are set, sweeping stops as soon as **either** condition would be satisfied — whichever comes first.
 
 ### Configuration Example
 
@@ -183,6 +184,7 @@ sweep_until_quota_groups:
   "media":
     percent_used: 65    # Stop queuing once combined usage would be ≤65% full
     # gb_free: 500      # Or: also stop once 500 GB would be free (either condition wins)
+    largest_first: true # Delete largest items first to hit the target faster
   "recordings":
     gb_free: 50         # Keep at least 50 GB free on the recordings filesystem
 
@@ -635,6 +637,7 @@ sweep_until_quota_groups:
   "media":
     percent_used: 70        # Stop queuing once the combined pool would be ≤70% full
     # gb_free: 500          # Optional: also stop once 500 GB would be free (either wins)
+    # largest_first: true   # Optional: delete largest items first to reach the target faster
 
 # Library-specific settings
 libraries:
