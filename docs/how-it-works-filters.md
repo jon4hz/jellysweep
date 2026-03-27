@@ -1,1 +1,1 @@
-# How it work: Filters
+# How it works: Filters
