@@ -139,7 +139,7 @@ services:
 
     Docker **environmental variables** can be used. They **override** options in the configuration file
 
-    ```yaml title="Overriding configuration file with environmental variables" hl_lines="17-20"
+    ```yaml title="Docker Compose" hl_lines="17-20"
     services:
       jellysweep:
         image: ghcr.io/jon4hz/jellysweep:latest
