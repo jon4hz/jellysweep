@@ -19,7 +19,7 @@ ______________________________________________________________________
 
 - 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat/Streamystats for stats
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
-- 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds
+- 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds with sweep-until quota groups to cap deletions across shared storage pools
 - 🧹 **Flexible Cleanup Modes** - Choose how much of TV Series should be deleted
 - 📂 **Leaving Collections** - Automatically creates Jellyfin collections showing all media scheduled for deletion
 - 👥 **User Requests** - Built-in keep request system for your users
@@ -38,6 +38,10 @@ ______________________________________________________________________
   - [💾 Disk Usage-Based Cleanup](#-disk-usage-based-cleanup)
     - [Configuration Example](#configuration-example)
     - [Behavior Examples](#behavior-examples)
+  - [📦 Sweep-Until Quota Groups](#-sweep-until-quota-groups)
+    - [How Quota Groups Work](#how-quota-groups-work)
+    - [Configuration Example](#configuration-example-1)
+    - [Multi-Disk Example](#multi-disk-example)
   - [📸 Screenshots](#-screenshots)
     - [Dashboard Overview](#dashboard-overview)
     - [Statistics Dashboard](#statistics-dashboard)
@@ -132,6 +136,126 @@ Let's say today is 2025-07-26:
 - **Disk usage 87%**: Media gets deleted on `2025-08-09` (after 14 days)
 - **Disk usage 93%**: Media gets deleted on `2025-08-02` (after 7 days)
 - **Disk usage 97%**: Media gets deleted on `2025-07-29` (after 3 days)
+
+______________________________________________________________________
+
+## 📦 Sweep-Until Quota Groups
+
+By default, every media item that passes the filters is marked for deletion. Sweep-until quota groups cap how many items get queued per cleanup run based on your current disk usage, so you only delete as much as you actually need to.
+
+> [!IMPORTANT]
+> For quota group disk monitoring to work in Docker containers, Jellyfin library paths must be mounted at the same locations inside the Jellysweep container. For example, if Jellyfin has `/data/movies` mapped to `/movies`, Jellysweep also needs `/data/movies` mapped to `/movies`.
+
+### How Quota Groups Work
+
+The key difference from a simple per-library disk threshold is that **the quota is calculated per group, not per disk**.
+
+You define named quota groups at the top level of the config, each with a `percent_used` target. Libraries opt in to a group by setting `filter.sweep_until_quota_group`. When the cleanup job runs for a group:
+
+1. Jellysweep finds every unique filesystem that **any library in the group** has files on (by statting the library's Jellyfin paths).
+2. It sums the used and free bytes across all those unique filesystems to get a **combined usage figure**.
+3. All candidate items across **all libraries in the group** are evaluated in filter order (the same order the filters produced them).
+4. Items are selected for deletion until the estimated combined usage would drop to or below the group's target.
+
+This means if Movies and TV Shows both belong to `"media"`, items from both libraries compete for the same budget. By default, items are processed in the order the filters produced them. Setting `largest_first: true` on a group re-orders that group's items by estimated freed size (largest first) before the quota accumulator runs, so you reach the target by deleting fewer, larger items.
+
+Libraries without a `sweep_until_quota_group` are not affected — all items that pass their filters are marked as usual.
+
+**Pending items are counted.** If a previous run already queued enough items to meet the target, no new items are added. This prevents over-queuing across multiple cleanup runs.
+
+**Deduplication across mounts.** If two library paths live on the same underlying filesystem (e.g. bind-mounts or Docker volumes), that filesystem is only counted once. This works correctly across Linux, Windows, NFS, and Docker volume mounts.
+
+Each quota group supports the following fields:
+
+| Field | Description |
+|---|---|
+| `percent_used` | Stop queuing once the combined estimated usage would drop to or below this percentage (matches `df` output). Must be > 0 and < 100. |
+| `gb_free` | Stop queuing once the combined estimated free space would reach or exceed this many GB (SI: 1 GB = 1,000,000,000 bytes). Must be > 0. |
+| `largest_first` | When `true`, sort this group's candidate items by estimated freed size (descending) before the quota accumulator runs. Largest items are deleted first, reaching the target in fewer deletions. Equal-sized items keep their original scheduled-deletion order. Default: `false`. |
+
+If both `percent_used` and `gb_free` are set, sweeping stops as soon as **either** condition would be satisfied — whichever comes first.
+
+### Configuration Example
+
+```yaml
+# Define named quota groups at the top level.
+# Set percent_used, gb_free, or both. If both are set, either condition satisfies the target.
+sweep_until_quota_groups:
+  "media":
+    percent_used: 65    # Stop queuing once combined usage would be ≤65% full
+    # gb_free: 500      # Or: also stop once 500 GB would be free (either condition wins)
+    largest_first: true # Delete largest items first to hit the target faster
+  "recordings":
+    gb_free: 50         # Keep at least 50 GB free on the recordings filesystem
+
+# Library-specific settings
+libraries:
+
+  "Movies":
+    enabled: true
+    cleanup_delay: 90
+    protection_period: 30
+    filter:
+      content_age_threshold: 185
+      last_stream_threshold: 366
+      content_size_threshold: 1073741824    # 1 GB minimum
+      exclude_tags:
+        - "jellysweep-ignore"
+      sweep_until_quota_group: "media"      # joins the "media" quota pool
+    disk_usage_thresholds:
+      - usage_percent: 90.0
+        max_cleanup_delay: 7
+
+  "TV Shows":
+    enabled: true
+    cleanup_delay: 90
+    protection_period: 30
+    filter:
+      content_age_threshold: 185
+      last_stream_threshold: 366
+      content_size_threshold: 1073741824
+      exclude_tags:
+        - "jellysweep-ignore"
+      sweep_until_quota_group: "media"      # same pool as Movies
+    disk_usage_thresholds:
+      - usage_percent: 90.0
+        max_cleanup_delay: 7
+
+  "Recordings":
+    enabled: true
+    cleanup_delay: 1
+    protection_period: 7
+    filter:
+      content_age_threshold: 7
+      last_stream_threshold: 1
+      content_size_threshold: 0
+      sweep_until_quota_group: "recordings" # separate pool for recordings drive
+```
+
+### Multi-Disk Example
+
+Consider this setup:
+
+- **TV Shows** library: 800 shows on `/mnt/media1` (95% full, 10 TB total) and 200 shows on `/mnt/media2` (10% full, 10 TB total)
+- **Movies** library: all movies on `/mnt/media1`
+- Both libraries belong to the `"media"` quota group with `percent_used: 70`
+
+Jellysweep calculates the combined pool:
+
+| Filesystem | Used | Free | Total |
+|---|---|---|---|
+| `/mnt/media1` | 9.5 TB | 0.5 TB | 10 TB |
+| `/mnt/media2` | 1.0 TB | 9.0 TB | 10 TB |
+| **Combined** | **10.5 TB** | **9.5 TB** | **20 TB** |
+
+Combined used percent = 10.5 / (10.5 + 9.5) × 100 ≈ **52.5%**
+
+Since 52.5% is already below the 70% target, **no items are queued** — even though `/mnt/media1` alone is at 95%. The quota is evaluated across the whole group, not per individual disk.
+
+If `/mnt/media2` were also 95% full (combined ≈ 95%), Jellysweep would sort all Movies and TV Shows items by size (largest first) and queue them until the estimated combined usage would drop to 70%.
+
+> [!TIP]
+> Use separate quota groups for storage pools that are physically independent (e.g. a media NAS and a recordings drive). Libraries on the same physical pool should share a group so the budget is evaluated correctly across all of them.
 
 ______________________________________________________________________
 
@@ -511,6 +635,16 @@ leaving_collections_enabled: true      # Create collections for media scheduled 
 leaving_collections_movie_name: "Leaving Movies"
 leaving_collections_tv_name: "Leaving TV Shows"
 
+# Sweep-until quota groups (optional).
+# Libraries that share a group contribute to a combined disk-space budget.
+# Sweeping stops once the estimated combined usage would drop to or below percent_used.
+# See the "Sweep-Until Quota Groups" section for a full explanation.
+sweep_until_quota_groups:
+  "media":
+    percent_used: 70        # Stop queuing once the combined pool would be ≤70% full
+    # gb_free: 500          # Optional: also stop once 500 GB would be free (either wins)
+    # largest_first: true   # Optional: delete largest items first to reach the target faster
+
 # Library-specific settings
 libraries:
 
@@ -529,12 +663,13 @@ libraries:
         - "jellysweep-exclude"
         - "keep"
         - "favorites"
-    # Disk usage-based cleanup for movies
+      sweep_until_quota_group: "media"  # Join the shared media quota pool
+    # Disk usage-based cleanup for movies (speeds up grace period when disk is full)
     disk_usage_thresholds:
       - usage_percent: 70.0       # When disk usage reaches 70%
         max_cleanup_delay: 30     # Reduce grace period to 30 days
       - usage_percent: 85.0       # When disk usage reaches 85%
-        max_cleanup_delay: 14      # Reduce grace period to 14 days
+        max_cleanup_delay: 14     # Reduce grace period to 14 days
       - usage_percent: 90.0       # When disk usage reaches 90%
         max_cleanup_delay: 7      # Reduce grace period to 7 days
       - usage_percent: 95.0       # When disk usage reaches 95%
@@ -554,6 +689,7 @@ libraries:
         - "jellysweep-exclude"
         - "ongoing"
         - "keep"
+      sweep_until_quota_group: "media"  # Same pool as Movies — budget is shared
     # Disk usage-based cleanup for TV shows
     disk_usage_thresholds:
       - usage_percent: 70.0
