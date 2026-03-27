@@ -557,17 +557,12 @@ radarr:
 
 <!-- todo -->
 
-=== "Streamystats
+=== "Streamystats"
 
-    ```yaml title="config.yml" linenums="56" hl_lines="3-4"
-      # Statistics app
-      jellystat:
-        url: "http://localhost:3001"
-        api_key: "your-jellystat-api-key"
-        timeout: 30                          # HTTP client timeout in seconds (default: 30)
-    ```
+    You will need:
 
-=== "Jellystat"
+    - URL
+    - Jellyfin server ID
 
     ```yaml title="config.yml" linenums="56" hl_lines="3-4"
       # Statistics app
@@ -577,67 +572,24 @@ radarr:
         timeout: 30                          # HTTP client timeout in seconds (default: 30)
     ```
 
+=== "Jellystat"
+
+    - URL
+    - API key
+
+    ```yaml title="config.yml" linenums="56" hl_lines="3-4"
+      # Statistics app
+      jellystat:
+        url: "http://localhost:3001"
+        api_key: "your-jellystat-api-key"
+        timeout: 30                          # HTTP client timeout in seconds (default: 30)
+    ```
+
 #### 2-6. Filters — configuration
 
 The template `config.yml` uses 'sane defaults'. But it is likely you will want to adjust the filters
 
-See our [Filters page for more information](./how-it-works-filters.md)
-
-```yaml title="config.yml" linenums="18" hl_lines="3 30"
-# Libraries (and their filters)
-libraries:
-  # Name must match the Library name in Jellyfin
-  "Movies":
-    enabled: true
-    cleanup_delay: 60
-    protection_period: 90         # Protect requested content for 90 days
-    # Filter configuration
-    filter:
-      content_age_threshold: 120        # Content must be at least 120 days old
-      last_stream_threshold: 90         # Last watched at least 90 days ago
-      content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
-      tunarr_enabled: true              # Protect items used by Tunarr channels (requires tunarr config)
-      exclude_tags:
-        - "jellysweep-exclude"
-        - "keep"
-        - "favorites"
-    # Disk usage-based cleanup for movies
-    disk_usage_thresholds:
-      - usage_percent: 70.0       # When disk usage reaches 70%
-        max_cleanup_delay: 30     # Reduce grace period to 30 days
-      - usage_percent: 85.0       # When disk usage reaches 85%
-        max_cleanup_delay: 14      # Reduce grace period to 14 days
-      - usage_percent: 90.0       # When disk usage reaches 90%
-        max_cleanup_delay: 7      # Reduce grace period to 7 days
-      - usage_percent: 95.0       # When disk usage reaches 95%
-        max_cleanup_delay: 2      # Reduce grace period to 2 days
-
-  # Name must match the Library name in Jellyfin
-  "TV Shows":
-    enabled: true
-    cleanup_delay: 60
-    protection_period: 90
-    # Filter configuration
-    filter:
-      content_age_threshold: 120
-      last_stream_threshold: 90
-      content_size_threshold: 2147483648  # 2GB minimum
-      tunarr_enabled: false             # Disable Tunarr filter for this library
-      exclude_tags:
-        - "jellysweep-exclude"
-        - "ongoing"
-        - "keep"
-    # Disk usage-based cleanup for TV shows
-    disk_usage_thresholds:
-      - usage_percent: 70.0
-        max_cleanup_delay: 30
-      - usage_percent: 85.0
-        max_cleanup_delay: 14
-      - usage_percent: 90.0
-        max_cleanup_delay: 7
-      - usage_percent: 95.0
-        max_cleanup_delay: 2
-```
+[See our Filters page for more information](./how-it-works-filters.md)
 
 #### 2-9. Other services — configuration
 
