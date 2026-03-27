@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -121,15 +122,13 @@ func requireAuth(gravatarCfg *config.GravatarConfig) gin.HandlerFunc {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
 		if userID == nil {
-			c.Redirect(http.StatusFound, "/login")
-			c.Abort()
+			abortUnauthenticated(c)
 			return
 		}
 
 		userIDUint, ok := userID.(uint)
 		if !ok {
-			c.Redirect(http.StatusFound, "/login")
-			c.Abort()
+			abortUnauthenticated(c)
 			return
 		}
 
@@ -189,4 +188,15 @@ func getSessionBool(session sessions.Session, key string) bool {
 		}
 	}
 	return false
+}
+
+// abortUnauthenticated returns 401 JSON for API requests or redirects to /login for page requests.
+func abortUnauthenticated(c *gin.Context) {
+	path := c.Request.URL.Path
+	if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/admin/api/") {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	} else {
+		c.Redirect(http.StatusFound, "/login")
+	}
+	c.Abort()
 }

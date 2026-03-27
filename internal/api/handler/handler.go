@@ -172,10 +172,38 @@ func (h *Handler) Me(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"username": user.Username,
-		"isAdmin":  user.IsAdmin,
-	})
+	resp := gin.H{
+		"username":    user.Username,
+		"name":        user.Name,
+		"isAdmin":     user.IsAdmin,
+		"gravatarUrl": user.GravatarURL,
+		"isDryRun":    h.config.DryRun,
+	}
+
+	if user.IsAdmin {
+		requests, err := h.engine.GetMediaWithPendingRequest(c.Request.Context())
+		if err == nil {
+			resp["pendingRequestsCount"] = len(requests)
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// GetAuthConfig returns the authentication configuration (public endpoint).
+func (h *Handler) GetAuthConfig(c *gin.Context) {
+	resp := gin.H{}
+
+	if h.config.Auth != nil {
+		if h.config.Auth.Jellyfin != nil {
+			resp["jellyfin"] = gin.H{"enabled": h.config.Auth.Jellyfin.Enabled}
+		}
+		if h.config.Auth.OIDC != nil {
+			resp["oidc"] = gin.H{"enabled": h.config.Auth.OIDC.Enabled, "name": h.config.Auth.OIDC.Name}
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 // GetMediaItems returns the current user's media items as JSON.

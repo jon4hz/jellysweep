@@ -5,6 +5,10 @@ FROM golang:1.25 AS base
 RUN curl -fsSL https://deb.nodesource.com/setup_25.x | bash - \
     && apt-get install -y nodejs
 
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
 # Set working directory
 WORKDIR /app
 
@@ -13,6 +17,10 @@ COPY package.json ./
 
 # Install npm dependencies
 RUN npm install
+
+# Copy frontend package.json for Bun dependencies
+COPY frontend/package.json frontend/bun.lock* frontend/
+RUN cd frontend && bun install
 
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./

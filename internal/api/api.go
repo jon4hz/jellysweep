@@ -20,6 +20,8 @@ import (
 	"github.com/jon4hz/jellysweep/internal/database"
 	"github.com/jon4hz/jellysweep/internal/engine"
 	"github.com/jon4hz/jellysweep/internal/static"
+
+	"github.com/jon4hz/jellysweep/frontend/spa"
 )
 
 type Server struct {
@@ -97,7 +99,8 @@ func (s *Server) setupRoutes() error {
 		c.Data(http.StatusOK, "text/plain", data)
 	})
 
-	s.ginEngine.GET("/login", h.Login)
+	// Public API routes (no auth required)
+	s.ginEngine.GET("/api/auth/config", h.GetAuthConfig)
 
 	// Auth routes
 	s.ginEngine.POST("/auth/jellyfin/login", s.authProvider.Login)
@@ -107,7 +110,6 @@ func (s *Server) setupRoutes() error {
 	protected := s.ginEngine.Group("/")
 	protected.Use(s.authProvider.RequireAuth())
 
-	protected.GET("/", h.Home)
 	protected.GET("/logout", h.Logout)
 
 	// API routes
@@ -128,6 +130,11 @@ func (s *Server) setupRoutes() error {
 		api.POST("/webpush/unsubscribe", webpushHandler.UnsubscribeByEndpoint)
 	}
 
+	// SPA catch-all for react slop
+	if err := spa.SetupSPA(s.ginEngine); err != nil {
+		log.Warn("SPA not available (frontend not built?)", "error", err)
+	}
+
 	return nil
 }
 
@@ -136,16 +143,6 @@ func (s *Server) setupAdminRoutes() {
 	adminGroup.Use(s.authProvider.RequireAuth(), s.authProvider.RequireAdmin())
 
 	h := handler.NewAdmin(s.engine, s.cfg)
-
-	// Admin panel page
-	adminGroup.GET("", h.AdminPanel)
-	adminGroup.GET("/", h.AdminPanel)
-
-	// Scheduler panel page
-	adminGroup.GET("/scheduler", h.SchedulerPanel)
-
-	// History panel page
-	adminGroup.GET("/history", h.HistoryPanel)
 
 	// Admin API routes
 	adminAPI := adminGroup.Group("/api")

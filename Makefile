@@ -1,4 +1,4 @@
-.PHONY: run build templ css js clean
+.PHONY: run build templ css js clean frontend
 
 # Run the application with debug logging
 run: build serve
@@ -7,7 +7,7 @@ serve:
 	go run . serve --log-level=debug
 
 # Build all assets and templates
-build: templ css js
+build: templ css js frontend
 
 # Generate Go templates from templ files
 templ:
@@ -21,7 +21,13 @@ css:
 js:
 	npm run build-js
 
+# Build React frontend
+frontend:
+	cd frontend && bun install && bun run build
+
 # Clean generated files
 clean:
 	rm -rf web/templates/**/*_templ.go
 	rm -rf internal/static/static/dist/
+	rm -rf frontend/spa/dist/
+	rm -rf frontend/node_modules/
