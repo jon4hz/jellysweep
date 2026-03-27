@@ -121,13 +121,13 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 			allFolders = append(allFolders, f.libraryFolders.get(libName)...)
 		}
 		if len(allFolders) == 0 {
-			log.Error("no library folders found for quota group, will skip all items in group to avoid over-queuing",
+			log.Warn("no library folders found for quota group, will skip all items in group to avoid over-queuing",
 				"group", groupName)
 			gs.broken = true
 		} else {
 			stats, err := getQuotaGroupDiskStats(ctx, allFolders, partitions)
 			if err != nil || stats == nil {
-				log.Error("failed to get disk usage for quota group, will skip all items in group to avoid over-queuing",
+				log.Warn("failed to get disk usage for quota group, will skip all items in group to avoid over-queuing",
 					"group", groupName, "error", err)
 				gs.broken = true
 			} else {
