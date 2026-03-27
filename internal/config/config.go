@@ -68,6 +68,8 @@ type Config struct {
 	TrustedProxies []string `yaml:"trusted_proxies" mapstructure:"trusted_proxies"`
 	// Email holds the email notification configuration.
 	Email *EmailConfig `yaml:"email" mapstructure:"email"`
+	// Discord holds the Discord notification configuration.
+	Discord *DiscordConfig `yaml:"discord" mapstructure:"discord"`
 	// Ntfy holds the ntfy notification configuration.
 	Ntfy *NtfyConfig `yaml:"ntfy" mapstructure:"ntfy"`
 	// WebPush holds the webpush notification configuration.
@@ -169,6 +171,18 @@ type EmailConfig struct {
 	UseSSL bool `yaml:"use_ssl" mapstructure:"use_ssl"`
 	// InsecureSkipVerify indicates whether to skip TLS certificate verification.
 	InsecureSkipVerify bool `yaml:"insecure_skip_verify" mapstructure:"insecure_skip_verify"`
+}
+
+// DiscordConfig holds the Discord notification configuration.
+type DiscordConfig struct {
+	// Enabled indicates whether Discord notifications are enabled.
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+	// WebhookURL is the Discord webhook URL to which notifications will be sent.
+	WebhookURL string `yaml:"webhook_url" mapstructure:"webhook_url"`
+	// Username is the username that will appear for the webhook messages.
+	Username string `yaml:"username" mapstructure:"username"`
+	// AvatarURL is the URL of the avatar that will appear for the webhook messages.
+	AvatarURL string `yaml:"avatar_url" mapstructure:"avatar_url"`
 }
 
 // NtfyConfig holds the ntfy notification configuration.
@@ -455,6 +469,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("email.use_ssl", false)
 	v.SetDefault("email.insecure_skip_verify", false)
 
+	// Discord defaults
+	v.SetDefault("discord.enabled", false)
+	v.SetDefault("discord.webhook_url", "")
+	v.SetDefault("discord.username", "Jellysweep")
+	v.SetDefault("discord.avatar_url", "")
+
 	// Ntfy defaults
 	v.SetDefault("ntfy.enabled", false)
 	v.SetDefault("ntfy.server_url", "https://ntfy.sh")
@@ -514,6 +534,13 @@ func bindNestedEnv(v *viper.Viper) {
 	// Jellyfin
 	v.MustBindEnv("jellyfin.url", "JELLYSWEEP_JELLYFIN_URL")
 	v.MustBindEnv("jellyfin.api_key", "JELLYSWEEP_JELLYFIN_API_KEY")
+
+	// Discord
+	v.MustBindEnv("discord.enabled", "JELLYSWEEP_DISCORD_ENABLED")
+	v.MustBindEnv("discord.webhook_url", "JELLYSWEEP_DISCORD_WEBHOOK_URL")
+	v.MustBindEnv("discord.username", "JELLYSWEEP_DISCORD_USERNAME")
+	v.MustBindEnv("discord.avatar_url", "JELLYSWEEP_DISCORD_AVATAR_URL")
+
 	v.MustBindEnv("jellyfin.timeout", "JELLYSWEEP_JELLYFIN_TIMEOUT")
 }
 
@@ -599,6 +626,12 @@ func validateConfig(c *Config) error {
 	} else {
 		c.Cache = &CacheConfig{
 			Type: CacheTypeMemory, // Default to in-memory cache if not enabled
+		}
+	}
+
+	if c.Discord != nil && c.Discord.Enabled {
+		if c.Discord.WebhookURL == "" {
+			return fmt.Errorf("discord webhook URL is required when Discord notifications are enabled")
 		}
 	}
 
