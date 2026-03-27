@@ -13,9 +13,11 @@ import (
 
 var v = viper.New()
 
-// BindPFlag binds a cobra persistent flag to a viper key.
-func BindPFlag(key string, flag *pflag.Flag) error {
-	return v.BindPFlag(key, flag)
+// MustBindPFlag binds a cobra persistent flag to a viper key.
+func MustBindPFlag(key string, flag *pflag.Flag) {
+	if err := v.BindPFlag(key, flag); err != nil {
+		panic(err)
+	}
 }
 
 const defaultTimeout = 30 // seconds

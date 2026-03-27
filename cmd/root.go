@@ -19,7 +19,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&rootCmdPersistentFlags.LogFile, "log-file", "", "File to write logs to")
 	rootCmd.PersistentFlags().StringVarP(&rootCmdPersistentFlags.ConfigFile, "config", "c", "", "Path to config file (default: search for config.yml in current dir, ~/.jellysweep, /etc/jellysweep)")
 	rootCmd.PersistentFlags().StringVar(&rootCmdPersistentFlags.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
-	_ = config.BindPFlag("log_level", rootCmd.PersistentFlags().Lookup("log-level"))
+	config.MustBindPFlag("log_level", rootCmd.PersistentFlags().Lookup("log-level"))
 }
 
 var rootCmd = &cobra.Command{
