@@ -6,8 +6,19 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/jon4hz/jellysweep/internal/logging"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
+
+var v = viper.New()
+
+// MustBindPFlag binds a cobra persistent flag to a viper key.
+func MustBindPFlag(key string, flag *pflag.Flag) {
+	if err := v.BindPFlag(key, flag); err != nil {
+		panic(err)
+	}
+}
 
 const defaultTimeout = 30 // seconds
 
@@ -37,6 +48,8 @@ const (
 
 // Config holds the configuration for the Jellysweep server and its dependencies.
 type Config struct {
+	// LogLevel sets the log verbosity. Options: "debug", "info", "warn", "error". Defaults to "info".
+	LogLevel string `yaml:"log_level" mapstructure:"log_level"`
 	// Listen is the address the Jellysweep server will listen on.
 	Listen string `yaml:"listen" mapstructure:"listen"`
 	// CleanupSchedule is the cron schedule for the cleanup job (e.g., "0 */12 * * *" for every 12 hours).
@@ -344,8 +357,6 @@ type GravatarConfig struct {
 // If path is empty, it will use default search paths for config files.
 // If no config file is found, it will generate a default one in the current directory.
 func Load(path string) (*Config, error) {
-	v := viper.New()
-
 	// bind some weirdly unsupported nested env vars
 	bindNestedEnv(v)
 
@@ -391,6 +402,9 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	// Apply the resolved log level.
+	logging.SetLevel(c.LogLevel)
+
 	// Sanitize config values
 	sanitizeConfig(&c)
 
@@ -408,6 +422,7 @@ func Load(path string) (*Config, error) {
 // setDefaults sets default values for the configuration.
 func setDefaults(v *viper.Viper) {
 	// Jellysweep defaults
+	v.SetDefault("log_level", "info")
 	v.SetDefault("listen", "0.0.0.0:3002")
 	v.SetDefault("cleanup_schedule", "0 */12 * * *") // Every 12 hours
 	v.SetDefault("cleanup_mode", "all")              // Default to cleaning up everything

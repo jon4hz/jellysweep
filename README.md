@@ -202,7 +202,11 @@ services:
       # You can also override config options with env vars
       - JELLYSWEEP_DRY_RUN=false
       - JELLYSWEEP_LISTEN=0.0.0.0:3002
-    # enable debug logs
+    # enable debug logs (choose one approach):
+    # via environment variable:
+    # environment:
+    #   - JELLYSWEEP_LOG_LEVEL=debug
+    # via command flag:
     # command:
     #   - serve
     #   - --log-level=debug
@@ -363,6 +367,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | Environment Variable                        | Default Value                   | Description                                                                            |
 | ------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
 | **Jellysweep Server**                       |                                 |                                                                                        |
+| `JELLYSWEEP_LOG_LEVEL`                      | `info`                          | Log verbosity: `debug`, `info`, `warn`, or `error`                                     |
 | `JELLYSWEEP_LISTEN`                         | `0.0.0.0:3002`                  | Address and port for the web interface                                                 |
 | `JELLYSWEEP_CLEANUP_SCHEDULE`               | `0 */12 * * *`                  | Cron schedule for cleanup runs                                                         |
 | `JELLYSWEEP_CLEANUP_MODE`                   | `all`                           | Cleanup mode: `all`, `keep_episodes`, or `keep_seasons`                                |
@@ -450,6 +455,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 Jellysweep uses a YAML configuration file with the following structure:
 
 ```yaml
+log_level: "info"                # Log verbosity: "debug", "info", "warn", "error"
 dry_run: false                   # Set to true for testing
 listen: "0.0.0.0:3002"           # Web interface address and port
 cleanup_schedule: "0 */12 * * *" # Every 12 hours
