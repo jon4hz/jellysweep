@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"context"
-	"io"
-	"os"
 
 	"github.com/charmbracelet/fang"
-	"github.com/charmbracelet/log"
+	"github.com/jon4hz/jellysweep/internal/config"
+	"github.com/jon4hz/jellysweep/internal/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +19,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&rootCmdPersistentFlags.LogFile, "log-file", "", "File to write logs to")
 	rootCmd.PersistentFlags().StringVarP(&rootCmdPersistentFlags.ConfigFile, "config", "c", "", "Path to config file (default: search for config.yml in current dir, ~/.jellysweep, /etc/jellysweep)")
 	rootCmd.PersistentFlags().StringVar(&rootCmdPersistentFlags.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
+	_ = config.BindPFlag("log_level", rootCmd.PersistentFlags().Lookup("log-level"))
 }
 
 var rootCmd = &cobra.Command{
@@ -33,47 +33,14 @@ var rootCmd = &cobra.Command{
 		HiddenDefaultCmd: true,
 	},
 	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-		setLogLevel(rootCmdPersistentFlags.LogLevel)
-		logToFile()
+		logging.SetLevel(rootCmdPersistentFlags.LogLevel)
+		logging.SetOutputFile(rootCmdPersistentFlags.LogFile)
 	},
 	RunE: root,
 }
 
 func root(cmd *cobra.Command, _ []string) error {
 	return cmd.Help()
-}
-
-func setLogLevel(level string) {
-	switch level {
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-	case "info":
-		log.SetLevel(log.InfoLevel)
-	case "warn":
-		log.SetLevel(log.WarnLevel)
-	case "error":
-		log.SetLevel(log.ErrorLevel)
-	default:
-		log.Warn("unknown log level, defaulting to info", "level", level)
-		log.SetLevel(log.InfoLevel)
-	}
-}
-
-func logToFile() {
-	if rootCmdPersistentFlags.LogFile == "" {
-		log.Info("no log file specified, logging to console only")
-		return
-	}
-	file, err := os.OpenFile(rootCmdPersistentFlags.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644) //nolint:gosec
-	if err != nil {
-		log.Error("failed to open log file", "error", err)
-		return
-	}
-
-	// Create a multi-writer that writes to both console and file
-	multiWriter := io.MultiWriter(os.Stdout, file)
-	log.SetOutput(multiWriter)
-	log.Info("logging to both console and file", "file", rootCmdPersistentFlags.LogFile)
 }
 
 func Execute() error {

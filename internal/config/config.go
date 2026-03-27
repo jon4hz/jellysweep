@@ -6,8 +6,17 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/jon4hz/jellysweep/internal/logging"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
+
+var v = viper.New()
+
+// BindPFlag binds a cobra persistent flag to a viper key.
+func BindPFlag(key string, flag *pflag.Flag) error {
+	return v.BindPFlag(key, flag)
+}
 
 const defaultTimeout = 30 // seconds
 
@@ -346,8 +355,6 @@ type GravatarConfig struct {
 // If path is empty, it will use default search paths for config files.
 // If no config file is found, it will generate a default one in the current directory.
 func Load(path string) (*Config, error) {
-	v := viper.New()
-
 	// bind some weirdly unsupported nested env vars
 	bindNestedEnv(v)
 
@@ -392,6 +399,9 @@ func Load(path string) (*Config, error) {
 	if err := v.Unmarshal(&c); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+
+	// Apply the resolved log level.
+	logging.SetLevel(c.LogLevel)
 
 	// Sanitize config values
 	sanitizeConfig(&c)
