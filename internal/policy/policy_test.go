@@ -29,6 +29,10 @@ func (s *stubPolicy) ShouldTriggerDeletion(context.Context, database.Media) (boo
 	return s.trigger, s.triggerErr
 }
 
+func (s *stubPolicy) GetEstimatedDeleteAt(context.Context, database.Media) (time.Time, error) {
+	return time.Time{}, nil
+}
+
 func TestEngineApplyAll(t *testing.T) {
 	a, b := &stubPolicy{}, &stubPolicy{}
 	e := NewEngine()
