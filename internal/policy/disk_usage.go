@@ -62,6 +62,10 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media datab
 	if len(media.DiskUsageDeletePolicies) == 0 {
 		return false, nil
 	}
+	libraryConfig := p.cfg.GetLibraryConfig(media.LibraryName)
+	if libraryConfig == nil || len(libraryConfig.DiskUsageThresholds) == 0 {
+		return false, nil
+	}
 
 	currentDiskUsage, err := p.getCurrentDiskUsage(ctx, media.LibraryName)
 	if err != nil {
@@ -105,6 +109,9 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media datab
 	return false, nil
 }
 
+// GetEstimatedDeleteAt returns the earliest deletion date among disk usage policies
+// whose thresholds are currently exceeded. Returns zero time if no thresholds are exceeded
+// or if there are no disk usage policies.
 func (p *DiskUsageDelete) GetEstimatedDeleteAt(ctx context.Context, media database.Media) (time.Time, error) {
 	if len(media.DiskUsageDeletePolicies) == 0 {
 		return time.Time{}, nil
