@@ -28,6 +28,7 @@ import (
 	streamfilter "github.com/jon4hz/jellysweep/internal/filter/stream_filter"
 	tagsfilter "github.com/jon4hz/jellysweep/internal/filter/tags_filter"
 	tunarrfilter "github.com/jon4hz/jellysweep/internal/filter/tunarr_filter"
+	sweepuntilfilter "github.com/jon4hz/jellysweep/internal/filter/sweep_until_filter"
 	"github.com/jon4hz/jellysweep/internal/notify/email"
 	"github.com/jon4hz/jellysweep/internal/notify/ntfy"
 	"github.com/jon4hz/jellysweep/internal/notify/webpush"
@@ -70,6 +71,9 @@ type Engine struct {
 	initialDBMigration bool
 
 	data *data
+
+	// libraryFolders is shared with the sweep_until filter; updated each run by gatherMediaItems.
+	libraryFolders *sweepuntilfilter.LibraryFoldersMap
 }
 
 // data contains any data collected during the cleanup process.
@@ -163,6 +167,8 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		webpushClient = webpush.NewClient(cfg.WebPush)
 	}
 
+	libFolders := sweepuntilfilter.NewLibraryFoldersMap()
+
 	engine := &Engine{
 		cfg:                cfg,
 		db:                 db,
@@ -181,9 +187,14 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		data: &data{
 			userNotifications: make(map[string][]arr.MediaItem),
 		},
-		imageCache: cache.NewImageCache("./data/cache/images", db),
-		cache:      engineCache,
+		imageCache:			cache.NewImageCache("./data/cache/images", db),
+		cache:				engineCache,
+		libraryFolders:		libFolders,
 	}
+
+	// sweep_until must run last - it depends on libraryFolders being populated by
+	// gatherMediaItems, and should only see items that passed all other filters.
+	engine.filters.Add(sweepuntilfilter.New(cfg, db, libFolders))
 
 	// Setup scheduled jobs
 	if err := engine.setupJobs(); err != nil {
@@ -432,6 +443,9 @@ func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) 
 	mediaItems := make([]arr.MediaItem, 0, len(sonarrItems)+len(radarrItems))
 	mediaItems = append(mediaItems, sonarrItems...)
 	mediaItems = append(mediaItems, radarrItems...)
+
+	// Update the shared reference so the sweep_until filter sees current paths.
+	e.libraryFolders.Set(libraryFoldersMap)
 
 	// Set deletion policies with freshly gathered library folders map
 	e.policy.SetPolicies(
