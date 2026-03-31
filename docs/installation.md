@@ -330,7 +330,7 @@ services:
 
     === "Streamystats"
 
-        ```yaml title="config.yml" linenums="1" hl_lines="1-2 43-44 48 57-59 64 90 117 130 140 148-149 153-154 158-159 163-164"
+        ```yaml title="config.yml" linenums="1" hl_lines="1-2 43-44 48 57-59 64 90 117 130 140 148-149 153-154 158-159 163-164 178"
         dry_run: true                    # Set to true for testing, false for usage
         session_key: "your-session-key"  # Random string for session encryption
 
@@ -515,7 +515,7 @@ services:
 
     === "Streamystats"
 
-        ```yaml title="config.yml" linenums="1" hl_lines="1-2 43-44 48 57-59 64 90 117 130 140 148-149 153-154 158-159 163-164"
+        ```yaml title="config.yml" linenums="1" hl_lines="1-2 43-44 48 57-59 64 90 117 130 140 148-149 153-154 158-159 163-164 178"
         dry_run: true                    # Set to true for testing, false for usage
         session_key: "your-session-key"  # Random string for session encryption
 
