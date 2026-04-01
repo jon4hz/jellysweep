@@ -28,6 +28,7 @@ import (
 	streamfilter "github.com/jon4hz/jellysweep/internal/filter/stream_filter"
 	tagsfilter "github.com/jon4hz/jellysweep/internal/filter/tags_filter"
 	tunarrfilter "github.com/jon4hz/jellysweep/internal/filter/tunarr_filter"
+	"github.com/jon4hz/jellysweep/internal/notify/discord"
 	"github.com/jon4hz/jellysweep/internal/notify/email"
 	"github.com/jon4hz/jellysweep/internal/notify/ntfy"
 	"github.com/jon4hz/jellysweep/internal/notify/webpush"
@@ -59,6 +60,7 @@ type Engine struct {
 	sonarr     arr.Arrer
 	radarr     arr.Arrer
 	email      *email.NotificationService
+	discord    *discord.Client
 	ntfy       *ntfy.Client
 	webpush    *webpush.Client
 	scheduler  *scheduler.Scheduler
@@ -76,6 +78,8 @@ type Engine struct {
 type data struct {
 	// userNotifications tracks which users should be notified about which media items
 	userNotifications map[string][]arr.MediaItem // key: user email, value: media items
+	// allMediaItems holds every item marked for deletion, regardless of whether a requestor is known
+	allMediaItems []arr.MediaItem
 }
 
 // New creates a new Engine instance.
@@ -151,6 +155,12 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		emailService = email.New(cfg.Email)
 	}
 
+	// Initialize Discord notification client
+	var discordClient *discord.Client
+	if cfg.Discord != nil && cfg.Discord.Enabled {
+		discordClient = discord.New(cfg.Discord)
+	}
+
 	// Initialize ntfy client
 	var ntfyClient *ntfy.Client
 	if cfg.Ntfy != nil && cfg.Ntfy.Enabled {
@@ -175,6 +185,7 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		sonarr:             sonarrClient,
 		radarr:             radarrClient,
 		email:              emailService,
+		discord:            discordClient,
 		ntfy:               ntfyClient,
 		webpush:            webpushClient,
 		scheduler:          sched,
@@ -373,9 +384,10 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 	e.data.userNotifications = make(map[string][]arr.MediaItem)
 
 	for _, item := range mediaItems {
-		if item.RequestedBy != "" {
-			e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
+		if item.RequestedBy != nil {
+			e.data.userNotifications[item.RequestedBy.UserEmail] = append(e.data.userNotifications[item.RequestedBy.UserEmail], item)
 		}
+		e.data.allMediaItems = append(e.data.allMediaItems, item)
 		log.Info("Marking media item for deletion", "name", item.Title, "library", item.LibraryName)
 	}
 
@@ -395,6 +407,8 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 
 	// Send email notifications before marking for deletion
 	e.sendEmailNotifications()
+	// Send Discord notifications before marking for deletion
+	e.sendDiscordNotifications()
 
 	// Send ntfy deletion summary notification
 	if err := e.sendNtfyDeletionSummary(ctx, mediaItems); err != nil {
@@ -443,10 +457,14 @@ func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) 
 }
 
 func arrMediaToDBMediaItem(item arr.MediaItem) database.Media {
+	var requestedBy string
+	if item.RequestedBy != nil {
+		requestedBy = item.RequestedBy.UserEmail
+	}
 	dbItem := database.Media{
 		JellyfinID:  item.JellyfinID,
 		LibraryName: item.LibraryName,
-		RequestedBy: item.RequestedBy,
+		RequestedBy: requestedBy,
 	}
 
 	switch item.MediaType {
