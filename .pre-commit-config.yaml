@@ -16,7 +16,7 @@ repos:
 
   # Gitleaks - Secret detection
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.1
+    rev: v8.30.0
     hooks:
       - id: gitleaks
 
@@ -29,13 +29,13 @@ repos:
 
   # golangci-lint
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.11.3
+    rev: v2.11.4
     hooks:
       - id: golangci-lint
 
   # Markdown formatter
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.22
+    rev: 1.0.0
     hooks:
       - id: mdformat
         additional_dependencies:
