@@ -29,7 +29,7 @@ require (
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/samber/lo v1.53.0
 	github.com/shirou/gopsutil/v3 v3.24.5
-	github.com/sj14/jellyfin-go v0.4.2
+	github.com/sj14/jellyfin-go v0.4.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
