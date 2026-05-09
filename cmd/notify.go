@@ -209,14 +209,7 @@ func runNotifyNtfy(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("ntfy is not enabled in config")
 	}
 
-	client := ntfy.NewClient(&ntfy.Config{
-		Enabled:   cfg.Ntfy.Enabled,
-		ServerURL: cfg.Ntfy.ServerURL,
-		Topic:     cfg.Ntfy.Topic,
-		Username:  cfg.Ntfy.Username,
-		Password:  cfg.Ntfy.Password,
-		Token:     cfg.Ntfy.Token,
-	})
+	client := ntfy.NewClient(cfg.Ntfy)
 
 	libraries := map[string][]ntfy.MediaItem{
 		"TV Shows": {

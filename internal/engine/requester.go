@@ -30,7 +30,7 @@ func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.Med
 			log.Debug("no request info found for item", "title", item.Title)
 			continue
 		}
-    if !emailRegex.MatchString(requestInfo.UserEmail) {
+		if !emailRegex.MatchString(requestInfo.UserEmail) {
 			log.Warn("invalid email address for item, skipping", "title", item.Title, "email", requestInfo.UserEmail)
 			continue
 		}
