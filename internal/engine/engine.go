@@ -382,6 +382,7 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 
 	// Reset and populate user notifications for email sending
 	e.data.userNotifications = make(map[string][]arr.MediaItem)
+	e.data.allMediaItems = nil
 
 	for _, item := range mediaItems {
 		if item.RequestedBy != nil {
