@@ -13,6 +13,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type sampleItem struct {
+	title       string
+	mediaType   string // "show" or "movie"
+	requestedBy string
+	year        int32
+}
+
+var sampleItems = []sampleItem{
+	{title: "Breaking Bad", mediaType: "show", requestedBy: "testuser", year: 2008},
+	{title: "Inception", mediaType: "movie", requestedBy: "testuser2", year: 2010},
+	{title: "The Wire", mediaType: "show", requestedBy: "testuser", year: 2002},
+}
+
 // notifyCmd is the parent for all notification test subcommands.
 var notifyCmd = &cobra.Command{
 	Use:   "notify",
@@ -85,14 +98,18 @@ func runNotifyDiscord(_ *cobra.Command, _ []string) error {
 
 	client := discord.New(discordCfg)
 
-	now := time.Now()
-	cleanupDate := now.AddDate(0, 0, 7)
+	cleanupDate := time.Now().AddDate(0, 0, 7)
+	items := make([]discord.MediaItem, len(sampleItems))
+	for i, s := range sampleItems {
+		items[i] = discord.MediaItem{
+			Title:       s.title,
+			MediaType:   s.mediaType,
+			RequestedBy: s.requestedBy,
+			CleanupDate: cleanupDate,
+		}
+	}
 	notification := discord.UserNotification{
-		MediaItems: []discord.MediaItem{
-			{Title: "Breaking Bad", MediaType: "show", RequestedBy: "testuser", CleanupDate: cleanupDate},
-			{Title: "Inception", MediaType: "movie", RequestedBy: "testuser2", CleanupDate: cleanupDate},
-			{Title: "The Wire", MediaType: "show", RequestedBy: "testuser", CleanupDate: cleanupDate},
-		},
+		MediaItems:    items,
 		JellysweepURL: cfg.ServerURL,
 		DryRun:        notifyDiscordFlags.DryRun,
 	}
@@ -158,16 +175,19 @@ func runNotifyEmail(_ *cobra.Command, _ []string) error {
 
 	svc := email.New(cfg.Email)
 
-	now := time.Now()
+	items := make([]email.MediaItem, len(sampleItems))
+	for i, s := range sampleItems {
+		items[i] = email.MediaItem{
+			Title:       s.title,
+			MediaType:   s.mediaType,
+			RequestedBy: s.requestedBy,
+		}
+	}
 	notification := email.UserNotification{
-		UserEmail: notifyEmailFlags.To,
-		UserName:  "testuser",
-		MediaItems: []email.MediaItem{
-			{Title: "Breaking Bad", MediaType: "show", RequestedBy: "testuser"},
-			{Title: "Inception", MediaType: "movie", RequestedBy: "testuser"},
-			{Title: "The Wire", MediaType: "show", RequestedBy: ""},
-		},
-		CleanupDate:   now.AddDate(0, 0, 7),
+		UserEmail:     notifyEmailFlags.To,
+		UserName:      "testuser",
+		MediaItems:    items,
+		CleanupDate:   time.Now().AddDate(0, 0, 7),
 		JellysweepURL: cfg.ServerURL,
 		DryRun:        notifyEmailFlags.DryRun,
 	}
@@ -211,17 +231,23 @@ func runNotifyNtfy(_ *cobra.Command, _ []string) error {
 
 	client := ntfy.NewClient(cfg.Ntfy)
 
-	libraries := map[string][]ntfy.MediaItem{
-		"TV Shows": {
-			{Title: "Breaking Bad", Type: "tv", Year: 2008},
-			{Title: "The Wire", Type: "tv", Year: 2002},
-		},
-		"Movies": {
-			{Title: "Inception", Type: "movie", Year: 2010},
-		},
+	libraries := map[string][]ntfy.MediaItem{}
+	for _, s := range sampleItems {
+		var library, ntfyType string
+		switch s.mediaType {
+		case "show":
+			library, ntfyType = "TV Shows", "tv"
+		case "movie":
+			library, ntfyType = "Movies", "movie"
+		}
+		libraries[library] = append(libraries[library], ntfy.MediaItem{
+			Title: s.title,
+			Type:  ntfyType,
+			Year:  s.year,
+		})
 	}
 
-	if err := client.SendDeletionSummary(context.Background(), 3, libraries); err != nil {
+	if err := client.SendDeletionSummary(context.Background(), len(sampleItems), libraries); err != nil {
 		return fmt.Errorf("failed to send test ntfy notification: %w", err)
 	}
 
