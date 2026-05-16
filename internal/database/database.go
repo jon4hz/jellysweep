@@ -28,10 +28,7 @@ func New(cfg *config.DatabaseConfig) (*Client, bool, error) {
 		return nil, false, fmt.Errorf("failed to connect database: %w", err)
 	}
 
-	isNew, err := isNewDatabase(db)
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to inspect database schema: %w", err)
-	}
+	isNew := isNewDatabase(db)
 
 	if err := db.AutoMigrate(
 		&Media{},
@@ -64,6 +61,6 @@ func dialectorForConfig(cfg *config.DatabaseConfig) (gorm.Dialector, error) {
 	}
 }
 
-func isNewDatabase(db *gorm.DB) (bool, error) {
-	return !db.Migrator().HasTable(&Media{}), nil
+func isNewDatabase(db *gorm.DB) bool {
+	return !db.Migrator().HasTable(&Media{})
 }
