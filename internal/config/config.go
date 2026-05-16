@@ -38,6 +38,13 @@ const (
 	CacheTypeRedis  CacheType = "redis"
 )
 
+type DatabaseType string
+
+const (
+	DatabaseTypeSQLite   DatabaseType = "sqlite"
+	DatabaseTypePostgres DatabaseType = "postgres"
+)
+
 type CleanupMode string
 
 const (
@@ -156,8 +163,12 @@ type JellyfinAuthConfig struct {
 
 // DatabaseConfig holds the database configuration.
 type DatabaseConfig struct {
+	// Type is the database backend to use. Options: "sqlite", "postgres".
+	Type DatabaseType `yaml:"type" mapstructure:"type"`
 	// Path is the path to the database file.
 	Path string `yaml:"path" mapstructure:"path"`
+	// URL is the database connection URL. Required when Type is "postgres".
+	URL string `yaml:"url" mapstructure:"url"`
 }
 
 // EmailConfig holds the email notification configuration.
@@ -448,7 +459,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.jellyfin.enabled", true)
 
 	// Database defaults
+	v.SetDefault("database.type", DatabaseTypeSQLite)
 	v.SetDefault("database.path", "./data/jellysweep.db")
+	v.SetDefault("database.url", "")
 
 	// Cache defaults
 	v.SetDefault("cache.type", CacheTypeMemory) // Default to in-memory
@@ -530,6 +543,11 @@ func bindNestedEnv(v *viper.Viper) {
 	v.MustBindEnv("jellyfin.url", "JELLYSWEEP_JELLYFIN_URL")
 	v.MustBindEnv("jellyfin.api_key", "JELLYSWEEP_JELLYFIN_API_KEY")
 	v.MustBindEnv("jellyfin.timeout", "JELLYSWEEP_JELLYFIN_TIMEOUT")
+
+	// Database
+	v.MustBindEnv("database.type", "JELLYSWEEP_DATABASE_TYPE")
+	v.MustBindEnv("database.path", "JELLYSWEEP_DATABASE_PATH")
+	v.MustBindEnv("database.url", "JELLYSWEEP_DATABASE_URL")
 }
 
 // validateConfig validates the configuration.
@@ -573,6 +591,30 @@ func validateConfig(c *Config) error {
 
 	if c.SessionKey == "" {
 		return fmt.Errorf("session key is required")
+	}
+
+	if c.Database == nil {
+		return fmt.Errorf("missing database config")
+	}
+	if c.Database.Type == "" {
+		c.Database.Type = DatabaseTypeSQLite
+	}
+	switch c.Database.Type {
+	case DatabaseTypeSQLite:
+		if c.Database.Path == "" {
+			return fmt.Errorf("database path is required when database type is sqlite")
+		}
+	case DatabaseTypePostgres:
+		if c.Database.URL == "" {
+			return fmt.Errorf("database URL is required when database type is postgres")
+		}
+	default:
+		return fmt.Errorf(
+			"invalid database type %q: must be one of %q, %q",
+			c.Database.Type,
+			DatabaseTypeSQLite,
+			DatabaseTypePostgres,
+		)
 	}
 
 	if len(c.Libraries) == 0 {

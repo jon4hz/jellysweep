@@ -384,7 +384,9 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_LEAVING_COLLECTIONS_MOVIE_NAME` | `Leaving Movies`                | Name of the leaving movies collection                                                  |
 | `JELLYSWEEP_LEAVING_COLLECTIONS_TV_NAME`    | `Leaving TV Shows`              | Name of the leaving TV shows collection                                                |
 | **Database Configuration**                  |                                 |                                                                                        |
+| `JELLYSWEEP_DATABASE_TYPE`                  | `sqlite`                        | Database backend: `sqlite` or `postgres`                                               |
 | `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file                                                              |
+| `JELLYSWEEP_DATABASE_URL`                   | *(required for postgres)*       | PostgreSQL connection URL                                                              |
 | **OIDC Authentication**                     |                                 |                                                                                        |
 | `JELLYSWEEP_AUTH_OIDC_ENABLED`              | `false`                         | Enable OIDC/SSO authentication                                                         |
 | `JELLYSWEEP_AUTH_OIDC_NAME`                 | OIDC                            | Display name on the login page                                                         |
@@ -472,7 +474,13 @@ server_url: "http://localhost:3002"
 
 # Database configuration (optional)
 database:
+  type: "sqlite"
   path: "./data/jellysweep.db"
+
+# PostgreSQL example:
+# database:
+#   type: "postgres"
+#   url: "postgres://jellysweep:password@postgres:5432/jellysweep?sslmode=disable"
 
 # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
 auth:
