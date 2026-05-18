@@ -2,6 +2,9 @@ package database
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
 
 	"github.com/glebarez/sqlite"
 	"github.com/jon4hz/jellysweep/internal/config"
@@ -55,10 +58,34 @@ func dialectorForConfig(cfg *config.DatabaseConfig) (gorm.Dialector, error) {
 	case "", config.DatabaseTypeSQLite:
 		return sqlite.Open(cfg.Path), nil
 	case config.DatabaseTypePostgres:
-		return postgres.Open(cfg.URL), nil
+		return postgres.Open(postgresDSNForConfig(cfg)), nil
 	default:
 		return nil, fmt.Errorf("unsupported database type %q", cfg.Type)
 	}
+}
+
+func postgresDSNForConfig(cfg *config.DatabaseConfig) string {
+	sslMode := cfg.SSLMode
+	if sslMode == "" {
+		sslMode = "disable"
+	}
+
+	u := &url.URL{
+		Scheme: "postgres",
+		Host:   net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
+		Path:   cfg.Name,
+	}
+	if cfg.Password != "" {
+		u.User = url.UserPassword(cfg.User, cfg.Password)
+	} else {
+		u.User = url.User(cfg.User)
+	}
+
+	q := u.Query()
+	q.Set("sslmode", sslMode)
+	u.RawQuery = q.Encode()
+
+	return u.String()
 }
 
 func isNewDatabase(db *gorm.DB) bool {

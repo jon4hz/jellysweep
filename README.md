@@ -385,8 +385,13 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_LEAVING_COLLECTIONS_TV_NAME`    | `Leaving TV Shows`              | Name of the leaving TV shows collection                                                |
 | **Database Configuration**                  |                                 |                                                                                        |
 | `JELLYSWEEP_DATABASE_TYPE`                  | `sqlite`                        | Database backend: `sqlite` or `postgres`                                               |
-| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file                                                              |
-| `JELLYSWEEP_DATABASE_URL`                   | *(required for postgres)*       | PostgreSQL connection URL                                                              |
+| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file (for SQLite)                                                |
+| `JELLYSWEEP_DATABASE_HOST`                  | *(required for postgres)*       | PostgreSQL server host                                                                 |
+| `JELLYSWEEP_DATABASE_PORT`                  | `5432`                          | PostgreSQL server port                                                                 |
+| `JELLYSWEEP_DATABASE_NAME`                  | *(required for postgres)*       | PostgreSQL database name                                                               |
+| `JELLYSWEEP_DATABASE_USER`                  | *(required for postgres)*       | PostgreSQL user                                                                        |
+| `JELLYSWEEP_DATABASE_PASSWORD`              | *(optional)*                    | PostgreSQL password                                                                    |
+| `JELLYSWEEP_DATABASE_SSL_MODE`              | `disable`                       | PostgreSQL SSL mode                                                                    |
 | **OIDC Authentication**                     |                                 |                                                                                        |
 | `JELLYSWEEP_AUTH_OIDC_ENABLED`              | `false`                         | Enable OIDC/SSO authentication                                                         |
 | `JELLYSWEEP_AUTH_OIDC_NAME`                 | OIDC                            | Display name on the login page                                                         |
@@ -480,7 +485,12 @@ database:
 # PostgreSQL example:
 # database:
 #   type: "postgres"
-#   url: "postgres://jellysweep:password@postgres:5432/jellysweep?sslmode=disable"
+#   host: "postgres"
+#   port: 5432
+#   name: "jellysweep"
+#   user: "jellysweep"
+#   password: "password"
+#   ssl_mode: "disable"
 
 # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
 auth:

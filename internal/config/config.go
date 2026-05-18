@@ -167,8 +167,18 @@ type DatabaseConfig struct {
 	Type DatabaseType `yaml:"type" mapstructure:"type"`
 	// Path is the path to the database file.
 	Path string `yaml:"path" mapstructure:"path"`
-	// URL is the database connection URL. Required when Type is "postgres".
-	URL string `yaml:"url" mapstructure:"url"`
+	// Host is the PostgreSQL server host.
+	Host string `yaml:"host" mapstructure:"host"`
+	// Port is the PostgreSQL server port.
+	Port int `yaml:"port" mapstructure:"port"`
+	// Name is the PostgreSQL database name.
+	Name string `yaml:"name" mapstructure:"name"`
+	// User is the PostgreSQL user.
+	User string `yaml:"user" mapstructure:"user"`
+	// Password is the PostgreSQL password.
+	Password string `yaml:"password" mapstructure:"password"`
+	// SSLMode is the PostgreSQL sslmode connection option.
+	SSLMode string `yaml:"ssl_mode" mapstructure:"ssl_mode"`
 }
 
 // EmailConfig holds the email notification configuration.
@@ -461,7 +471,12 @@ func setDefaults(v *viper.Viper) {
 	// Database defaults
 	v.SetDefault("database.type", DatabaseTypeSQLite)
 	v.SetDefault("database.path", "./data/jellysweep.db")
-	v.SetDefault("database.url", "")
+	v.SetDefault("database.host", "")
+	v.SetDefault("database.port", 5432)
+	v.SetDefault("database.name", "")
+	v.SetDefault("database.user", "")
+	v.SetDefault("database.password", "")
+	v.SetDefault("database.ssl_mode", "disable")
 
 	// Cache defaults
 	v.SetDefault("cache.type", CacheTypeMemory) // Default to in-memory
@@ -547,7 +562,12 @@ func bindNestedEnv(v *viper.Viper) {
 	// Database
 	v.MustBindEnv("database.type", "JELLYSWEEP_DATABASE_TYPE")
 	v.MustBindEnv("database.path", "JELLYSWEEP_DATABASE_PATH")
-	v.MustBindEnv("database.url", "JELLYSWEEP_DATABASE_URL")
+	v.MustBindEnv("database.host", "JELLYSWEEP_DATABASE_HOST")
+	v.MustBindEnv("database.port", "JELLYSWEEP_DATABASE_PORT")
+	v.MustBindEnv("database.name", "JELLYSWEEP_DATABASE_NAME")
+	v.MustBindEnv("database.user", "JELLYSWEEP_DATABASE_USER")
+	v.MustBindEnv("database.password", "JELLYSWEEP_DATABASE_PASSWORD")
+	v.MustBindEnv("database.ssl_mode", "JELLYSWEEP_DATABASE_SSL_MODE")
 }
 
 // validateConfig validates the configuration.
@@ -605,8 +625,26 @@ func validateConfig(c *Config) error {
 			return fmt.Errorf("database path is required when database type is sqlite")
 		}
 	case DatabaseTypePostgres:
-		if c.Database.URL == "" {
-			return fmt.Errorf("database URL is required when database type is postgres")
+		if c.Database.Host == "" {
+			return fmt.Errorf("database host is required when database type is postgres")
+		}
+		if c.Database.Name == "" {
+			return fmt.Errorf("database name is required when database type is postgres")
+		}
+		if c.Database.User == "" {
+			return fmt.Errorf("database user is required when database type is postgres")
+		}
+		if c.Database.Port <= 0 {
+			return fmt.Errorf("database port must be greater than 0 when database type is postgres")
+		}
+		if c.Database.Port > 65535 {
+			return fmt.Errorf("database port must be less than or equal to 65535 when database type is postgres")
+		}
+		switch c.Database.SSLMode {
+		case "", "disable", "allow", "prefer", "require", "verify-ca", "verify-full":
+			// valid
+		default:
+			return fmt.Errorf("invalid database ssl_mode %q", c.Database.SSLMode)
 		}
 	default:
 		return fmt.Errorf(
