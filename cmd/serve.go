@@ -34,12 +34,7 @@ func startServer(cmd *cobra.Command, _ []string) {
 		log.Fatal("failed to load config", "error", err)
 	}
 
-	exists, err := dbFileExists(cfg.Database.Path)
-	if err != nil {
-		log.Fatal("failed to check database file", "error", err)
-	}
-
-	db, err := database.New(cfg.Database.Path)
+	db, isNewDatabase, err := database.New(cfg.Database)
 	if err != nil {
 		log.Fatal("failed to initialize database", "error", err)
 	}
@@ -47,7 +42,7 @@ func startServer(cmd *cobra.Command, _ []string) {
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
-	engine, err := engine.New(cfg, db, !exists)
+	engine, err := engine.New(cfg, db, isNewDatabase)
 	if err != nil {
 		log.Fatal("failed to create engine", "error", err)
 	}
@@ -97,15 +92,4 @@ func startServer(cmd *cobra.Command, _ []string) {
 	if err := engine.Close(); err != nil {
 		log.Error("engine shutdown error", "error", err)
 	}
-}
-
-func dbFileExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
 }

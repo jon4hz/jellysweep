@@ -326,7 +326,11 @@ services:
       # You can also override config options with env vars
       - JELLYSWEEP_DRY_RUN=false
       - JELLYSWEEP_LISTEN=0.0.0.0:3002
-    # enable debug logs
+    # enable debug logs (choose one approach):
+    # via environment variable:
+    # environment:
+    #   - JELLYSWEEP_LOG_LEVEL=debug
+    # via command flag:
     # command:
     #   - serve
     #   - --log-level=debug
@@ -487,6 +491,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | Environment Variable                        | Default Value                   | Description                                                                            |
 | ------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
 | **Jellysweep Server**                       |                                 |                                                                                        |
+| `JELLYSWEEP_LOG_LEVEL`                      | `info`                          | Log verbosity: `debug`, `info`, `warn`, or `error`                                     |
 | `JELLYSWEEP_LISTEN`                         | `0.0.0.0:3002`                  | Address and port for the web interface                                                 |
 | `JELLYSWEEP_CLEANUP_SCHEDULE`               | `0 */12 * * *`                  | Cron schedule for cleanup runs                                                         |
 | `JELLYSWEEP_CLEANUP_MODE`                   | `all`                           | Cleanup mode: `all`, `keep_episodes`, or `keep_seasons`                                |
@@ -503,7 +508,14 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_LEAVING_COLLECTIONS_MOVIE_NAME` | `Leaving Movies`                | Name of the leaving movies collection                                                  |
 | `JELLYSWEEP_LEAVING_COLLECTIONS_TV_NAME`    | `Leaving TV Shows`              | Name of the leaving TV shows collection                                                |
 | **Database Configuration**                  |                                 |                                                                                        |
-| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file                                                              |
+| `JELLYSWEEP_DATABASE_TYPE`                  | `sqlite`                        | Database backend: `sqlite` or `postgres`                                               |
+| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file (for SQLite)                                                |
+| `JELLYSWEEP_DATABASE_HOST`                  | *(required for postgres)*       | PostgreSQL server host                                                                 |
+| `JELLYSWEEP_DATABASE_PORT`                  | `5432`                          | PostgreSQL server port                                                                 |
+| `JELLYSWEEP_DATABASE_NAME`                  | *(required for postgres)*       | PostgreSQL database name                                                               |
+| `JELLYSWEEP_DATABASE_USER`                  | *(required for postgres)*       | PostgreSQL user                                                                        |
+| `JELLYSWEEP_DATABASE_PASSWORD`              | *(optional)*                    | PostgreSQL password                                                                    |
+| `JELLYSWEEP_DATABASE_SSL_MODE`              | `disable`                       | PostgreSQL SSL mode                                                                    |
 | **OIDC Authentication**                     |                                 |                                                                                        |
 | `JELLYSWEEP_AUTH_OIDC_ENABLED`              | `false`                         | Enable OIDC/SSO authentication                                                         |
 | `JELLYSWEEP_AUTH_OIDC_NAME`                 | OIDC                            | Display name on the login page                                                         |
@@ -574,6 +586,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 Jellysweep uses a YAML configuration file with the following structure:
 
 ```yaml
+log_level: "info"                # Log verbosity: "debug", "info", "warn", "error"
 dry_run: false                   # Set to true for testing
 listen: "0.0.0.0:3002"           # Web interface address and port
 cleanup_schedule: "0 */12 * * *" # Every 12 hours
@@ -590,7 +603,18 @@ server_url: "http://localhost:3002"
 
 # Database configuration (optional)
 database:
+  type: "sqlite"
   path: "./data/jellysweep.db"
+
+# PostgreSQL example:
+# database:
+#   type: "postgres"
+#   host: "postgres"
+#   port: 5432
+#   name: "jellysweep"
+#   user: "jellysweep"
+#   password: "password"
+#   ssl_mode: "disable"
 
 # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
 auth:

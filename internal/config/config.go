@@ -6,8 +6,19 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"github.com/jon4hz/jellysweep/internal/logging"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
+
+var v = viper.New()
+
+// MustBindPFlag binds a cobra persistent flag to a viper key.
+func MustBindPFlag(key string, flag *pflag.Flag) {
+	if err := v.BindPFlag(key, flag); err != nil {
+		panic(err)
+	}
+}
 
 const defaultTimeout = 30 // seconds
 
@@ -27,6 +38,13 @@ const (
 	CacheTypeRedis  CacheType = "redis"
 )
 
+type DatabaseType string
+
+const (
+	DatabaseTypeSQLite   DatabaseType = "sqlite"
+	DatabaseTypePostgres DatabaseType = "postgres"
+)
+
 type CleanupMode string
 
 const (
@@ -37,6 +55,8 @@ const (
 
 // Config holds the configuration for the Jellysweep server and its dependencies.
 type Config struct {
+	// LogLevel sets the log verbosity. Options: "debug", "info", "warn", "error". Defaults to "info".
+	LogLevel string `yaml:"log_level" mapstructure:"log_level"`
 	// Listen is the address the Jellysweep server will listen on.
 	Listen string `yaml:"listen" mapstructure:"listen"`
 	// CleanupSchedule is the cron schedule for the cleanup job (e.g., "0 */12 * * *" for every 12 hours).
@@ -147,8 +167,22 @@ type JellyfinAuthConfig struct {
 
 // DatabaseConfig holds the database configuration.
 type DatabaseConfig struct {
+	// Type is the database backend to use. Options: "sqlite", "postgres".
+	Type DatabaseType `yaml:"type" mapstructure:"type"`
 	// Path is the path to the database file.
 	Path string `yaml:"path" mapstructure:"path"`
+	// Host is the PostgreSQL server host.
+	Host string `yaml:"host" mapstructure:"host"`
+	// Port is the PostgreSQL server port.
+	Port int `yaml:"port" mapstructure:"port"`
+	// Name is the PostgreSQL database name.
+	Name string `yaml:"name" mapstructure:"name"`
+	// User is the PostgreSQL user.
+	User string `yaml:"user" mapstructure:"user"`
+	// Password is the PostgreSQL password.
+	Password string `yaml:"password" mapstructure:"password"`
+	// SSLMode is the PostgreSQL sslmode connection option.
+	SSLMode string `yaml:"ssl_mode" mapstructure:"ssl_mode"`
 }
 
 // EmailConfig holds the email notification configuration.
@@ -370,8 +404,6 @@ type GravatarConfig struct {
 // If path is empty, it will use default search paths for config files.
 // If no config file is found, it will generate a default one in the current directory.
 func Load(path string) (*Config, error) {
-	v := viper.New()
-
 	// bind some weirdly unsupported nested env vars
 	bindNestedEnv(v)
 
@@ -417,6 +449,9 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	// Apply the resolved log level.
+	logging.SetLevel(c.LogLevel)
+
 	// Sanitize config values
 	sanitizeConfig(&c)
 
@@ -434,6 +469,7 @@ func Load(path string) (*Config, error) {
 // setDefaults sets default values for the configuration.
 func setDefaults(v *viper.Viper) {
 	// Jellysweep defaults
+	v.SetDefault("log_level", "info")
 	v.SetDefault("listen", "0.0.0.0:3002")
 	v.SetDefault("cleanup_schedule", "0 */12 * * *") // Every 12 hours
 	v.SetDefault("cleanup_mode", "all")              // Default to cleaning up everything
@@ -459,7 +495,14 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.jellyfin.enabled", true)
 
 	// Database defaults
+	v.SetDefault("database.type", DatabaseTypeSQLite)
 	v.SetDefault("database.path", "./data/jellysweep.db")
+	v.SetDefault("database.host", "")
+	v.SetDefault("database.port", 5432)
+	v.SetDefault("database.name", "")
+	v.SetDefault("database.user", "")
+	v.SetDefault("database.password", "")
+	v.SetDefault("database.ssl_mode", "disable")
 
 	// Cache defaults
 	v.SetDefault("cache.type", CacheTypeMemory) // Default to in-memory
@@ -541,6 +584,16 @@ func bindNestedEnv(v *viper.Viper) {
 	v.MustBindEnv("jellyfin.url", "JELLYSWEEP_JELLYFIN_URL")
 	v.MustBindEnv("jellyfin.api_key", "JELLYSWEEP_JELLYFIN_API_KEY")
 	v.MustBindEnv("jellyfin.timeout", "JELLYSWEEP_JELLYFIN_TIMEOUT")
+
+	// Database
+	v.MustBindEnv("database.type", "JELLYSWEEP_DATABASE_TYPE")
+	v.MustBindEnv("database.path", "JELLYSWEEP_DATABASE_PATH")
+	v.MustBindEnv("database.host", "JELLYSWEEP_DATABASE_HOST")
+	v.MustBindEnv("database.port", "JELLYSWEEP_DATABASE_PORT")
+	v.MustBindEnv("database.name", "JELLYSWEEP_DATABASE_NAME")
+	v.MustBindEnv("database.user", "JELLYSWEEP_DATABASE_USER")
+	v.MustBindEnv("database.password", "JELLYSWEEP_DATABASE_PASSWORD")
+	v.MustBindEnv("database.ssl_mode", "JELLYSWEEP_DATABASE_SSL_MODE")
 }
 
 // validateConfig validates the configuration.
@@ -584,6 +637,48 @@ func validateConfig(c *Config) error {
 
 	if c.SessionKey == "" {
 		return fmt.Errorf("session key is required")
+	}
+
+	if c.Database == nil {
+		return fmt.Errorf("missing database config")
+	}
+	if c.Database.Type == "" {
+		c.Database.Type = DatabaseTypeSQLite
+	}
+	switch c.Database.Type {
+	case DatabaseTypeSQLite:
+		if c.Database.Path == "" {
+			return fmt.Errorf("database path is required when database type is sqlite")
+		}
+	case DatabaseTypePostgres:
+		if c.Database.Host == "" {
+			return fmt.Errorf("database host is required when database type is postgres")
+		}
+		if c.Database.Name == "" {
+			return fmt.Errorf("database name is required when database type is postgres")
+		}
+		if c.Database.User == "" {
+			return fmt.Errorf("database user is required when database type is postgres")
+		}
+		if c.Database.Port <= 0 {
+			return fmt.Errorf("database port must be greater than 0 when database type is postgres")
+		}
+		if c.Database.Port > 65535 {
+			return fmt.Errorf("database port must be less than or equal to 65535 when database type is postgres")
+		}
+		switch c.Database.SSLMode {
+		case "", "disable", "allow", "prefer", "require", "verify-ca", "verify-full":
+			// valid
+		default:
+			return fmt.Errorf("invalid database ssl_mode %q", c.Database.SSLMode)
+		}
+	default:
+		return fmt.Errorf(
+			"invalid database type %q: must be one of %q, %q",
+			c.Database.Type,
+			DatabaseTypeSQLite,
+			DatabaseTypePostgres,
+		)
 	}
 
 	if len(c.Libraries) == 0 {
