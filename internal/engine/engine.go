@@ -23,6 +23,7 @@ import (
 	"github.com/jon4hz/jellysweep/internal/filter"
 	agefilter "github.com/jon4hz/jellysweep/internal/filter/age_filter"
 	databasefilter "github.com/jon4hz/jellysweep/internal/filter/database_filter"
+	moviereleasefilter "github.com/jon4hz/jellysweep/internal/filter/movie_release_filter"
 	seriesfilter "github.com/jon4hz/jellysweep/internal/filter/series_filter"
 	sizefilter "github.com/jon4hz/jellysweep/internal/filter/size_filter"
 	streamfilter "github.com/jon4hz/jellysweep/internal/filter/stream_filter"
@@ -125,6 +126,7 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		seriesfilter.New(cfg),
 		tagsfilter.New(cfg),
 		sizefilter.New(cfg),
+		moviereleasefilter.New(cfg),
 		agefilter.New(cfg, db, sonarrClient, radarrClient),
 		streamfilter.New(cfg, statsClient),
 	}

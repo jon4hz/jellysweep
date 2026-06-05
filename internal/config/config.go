@@ -266,6 +266,9 @@ type CleanupConfig struct {
 type FilterConfig struct {
 	// ContentAgeThreshold is the minimum age in days for content (since it was first imported) to be eligible for cleanup.
 	ContentAgeThreshold int `yaml:"content_age_threshold" mapstructure:"content_age_threshold"`
+	// MovieReleaseDateMax is the latest movie release date accepted for cleanup.
+	// Supported formats: YYYY-MM-DD and RFC3339.
+	MovieReleaseDateMax string `yaml:"movie_release_date_max" mapstructure:"movie_release_date_max"`
 	// LastStreamThreshold is the minimum time in days since the last stream for content to be eligible for cleanup.
 	LastStreamThreshold int `yaml:"last_stream_threshold" mapstructure:"last_stream_threshold"`
 	// ContentSizeThreshold is the minimum size in bytes for content to be eligible for cleanup.
@@ -936,6 +939,21 @@ func (c *CleanupConfig) GetContentAgeThreshold() int {
 	return 30 // Default to 30 days
 }
 
+// GetMovieReleaseDateMax returns the maximum movie release date cutoff.
+// An empty value disables movie release date filtering.
+func (c *CleanupConfig) GetMovieReleaseDateMax() (*time.Time, error) {
+	if strings.TrimSpace(c.Filter.MovieReleaseDateMax) == "" {
+		return nil, nil
+	}
+
+	releaseDateMax, err := parseConfigTime(c.Filter.MovieReleaseDateMax)
+	if err != nil {
+		return nil, fmt.Errorf("invalid movie_release_date_max %q: %w", c.Filter.MovieReleaseDateMax, err)
+	}
+
+	return &releaseDateMax, nil
+}
+
 // GetLastStreamThreshold returns the last stream threshold with proper defaults.
 // It first checks the new Filter.LastStreamThreshold field, and falls back to the
 // deprecated LastStreamThreshold field if the new field is not set.
@@ -998,4 +1016,21 @@ func (c *CleanupConfig) GetExcludeTags() []string {
 	}
 	// Default value
 	return []string{} // Default to empty list
+}
+
+func parseConfigTime(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	for _, layout := range []string{
+		time.RFC3339,
+		"2006-01-02",
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+	} {
+		parsed, err := time.Parse(layout, value)
+		if err == nil {
+			return parsed, nil
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("expected YYYY-MM-DD or RFC3339 timestamp")
 }
