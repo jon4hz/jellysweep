@@ -76,14 +76,14 @@ If one of the filters is not met, the item will be skipped and not marked for de
 
 Filters can be configured per library and include:
 
-| Filter                          | Description                                                                      |
-| ------------------------------- | -------------------------------------------------------------------------------- |
-| `content_age_threshold`         | Minimum age of the content in days                                               |
-| `movie_release_date_max`        | Only accept movies released before this date (YYYY-MM-DD or RFC3339)             |
-| `last_stream_threshold`         | Minimum days since the content was last streamed                                 |
-| `content_size_threshold`        | Minimum size of the content in bytes (0 = no minimum)                            |
-| `tunarr_enabled`                | Whether to protect items used by Tunarr channels (requires Tunarr configuration) |
-| `exclude_tags`                  | List of Sonarr/Radarr tags that exclude content from deletion                    |
+| Filter                   | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `content_age_threshold`  | Minimum age of the content in days                                               |
+| `movie_release_date_max` | Only accept movies released before this date (YYYY-MM-DD or RFC3339)             |
+| `last_stream_threshold`  | Minimum days since the content was last streamed                                 |
+| `content_size_threshold` | Minimum size of the content in bytes (0 = no minimum)                            |
+| `tunarr_enabled`         | Whether to protect items used by Tunarr channels (requires Tunarr configuration) |
+| `exclude_tags`           | List of Sonarr/Radarr tags that exclude content from deletion                    |
 
 > [!IMPORTANT]
 > Once a media item is marked for deletion, it wont go through the filters again. Filter changes will only affect new items that are being considered for deletion.
@@ -386,7 +386,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_LEAVING_COLLECTIONS_TV_NAME`    | `Leaving TV Shows`              | Name of the leaving TV shows collection                                                |
 | **Database Configuration**                  |                                 |                                                                                        |
 | `JELLYSWEEP_DATABASE_TYPE`                  | `sqlite`                        | Database backend: `sqlite` or `postgres`                                               |
-| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file (for SQLite)                                                |
+| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file (for SQLite)                                                 |
 | `JELLYSWEEP_DATABASE_HOST`                  | *(required for postgres)*       | PostgreSQL server host                                                                 |
 | `JELLYSWEEP_DATABASE_PORT`                  | `5432`                          | PostgreSQL server port                                                                 |
 | `JELLYSWEEP_DATABASE_NAME`                  | *(required for postgres)*       | PostgreSQL database name                                                               |
