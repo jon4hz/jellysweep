@@ -53,6 +53,24 @@ const (
 	CleanupModeKeepSeasons  CleanupMode = "keep_seasons"
 )
 
+// CleanupOrder selects which items within a sweep_until quota group are swept first
+// when only a subset of candidates is needed to meet the group's disk-space target.
+type CleanupOrder string
+
+const (
+	// CleanupOrderDefault sweeps items in the order they were reported eligible by the
+	// preceding filters (arrival order), without any re-sorting.
+	CleanupOrderDefault CleanupOrder = "default"
+	// CleanupOrderTitle sweeps items in a stable alphabetical order (by title, then
+	// Jellyfin ID) so the set of items withheld by the quota does not oscillate between
+	// runs even if upstream ordering changes.
+	CleanupOrderTitle CleanupOrder = "title"
+	// CleanupOrderLargestFirst sweeps the items that free the most space first.
+	CleanupOrderLargestFirst CleanupOrder = "largest_first"
+	// CleanupOrderSmallestFirst sweeps the items that free the least space first.
+	CleanupOrderSmallestFirst CleanupOrder = "smallest_first"
+)
+
 // Config holds the configuration for the Jellysweep server and its dependencies.
 type Config struct {
 	// LogLevel sets the log verbosity. Options: "debug", "info", "warn", "error". Defaults to "info".
@@ -64,8 +82,8 @@ type Config struct {
 	// Libraries is a map of libraries to their cleanup configurations.
 	Libraries map[string]*CleanupConfig `yaml:"libraries" mapstructure:"libraries"`
 	// SweepUntilQuotaGroups defines named disk-quota groups. Libraries that reference a group
-	// share a combined disk-space budget; sweeping stops once the estimated combined usage
-	// drops to or below the group's percent_used target.
+	// share a combined disk-space budget; sweeping stops once the group's percent_used or
+	// gb_free target is estimated to be met. Group names are case-insensitive.
 	SweepUntilQuotaGroups map[string]*QuotaGroupConfig `yaml:"sweep_until_quota_groups" mapstructure:"sweep_until_quota_groups"`
 	// DryRun indicates whether the cleanup job should run in dry-run mode.
 	DryRun bool `yaml:"dry_run" mapstructure:"dry_run"`
@@ -247,17 +265,27 @@ type WebPushConfig struct {
 type QuotaGroupConfig struct {
 	// PercentUsed is the target disk usage percentage. Sweeping stops once the combined
 	// estimated usage across all filesystems in the group drops to or below this value.
-	// Must be > 0 and < 100. 0 disables this condition.
+	// Valid values are between 0 and 100 (both exclusive); 0 (unset) disables this
+	// condition. At least one of percent_used or gb_free must be set.
 	PercentUsed float64 `yaml:"percent_used" mapstructure:"percent_used"`
 	// GBFree is the minimum free space in gigabytes (SI: 1 GB = 1,000,000,000 bytes).
 	// Sweeping stops once the combined estimated free space across all filesystems in
-	// the group would reach or exceed this value.
-	// Must be > 0. 0 disables this condition.
+	// the group would reach or exceed this value. 0 (unset) disables this condition.
+	// At least one of percent_used or gb_free must be set.
 	GBFree float64 `yaml:"gb_free" mapstructure:"gb_free"`
-	// LargestFirst, when true, sorts items in this quota group by estimated freed size
-	// (descending) before the quota accumulator runs, so the largest items are deleted
-	// first. Items belonging to other groups are unaffected. Default: false.
-	LargestFirst bool `yaml:"largest_first" mapstructure:"largest_first"`
+	// Order controls which items in the group are swept first when only a subset is
+	// needed to meet the target. One of "default" (the order items were reported
+	// eligible by the preceding filters), "title" (stable alphabetical order),
+	// "largest_first", or "smallest_first". Empty defaults to "default".
+	Order CleanupOrder `yaml:"order" mapstructure:"order"`
+}
+
+// GetOrder returns the effective sweep order for the group.
+func (q *QuotaGroupConfig) GetOrder() CleanupOrder {
+	if q.Order != "" {
+		return q.Order
+	}
+	return CleanupOrderDefault
 }
 
 // CleanupConfig holds the configuration for the cleanup job.
@@ -685,6 +713,21 @@ func validateConfig(c *Config) error {
 		return fmt.Errorf("at least one library must be configured")
 	}
 
+	// Group names are case-insensitive: viper lowercases YAML map keys but not string
+	// values, so a group defined as "Media" and referenced as "Media" would otherwise
+	// never match. Normalise both sides to lowercase up front.
+	if len(c.SweepUntilQuotaGroups) > 0 {
+		normalized := make(map[string]*QuotaGroupConfig, len(c.SweepUntilQuotaGroups))
+		for groupName, groupConfig := range c.SweepUntilQuotaGroups {
+			lower := strings.ToLower(groupName)
+			if _, exists := normalized[lower]; exists {
+				return fmt.Errorf("sweep_until_quota_group %q is defined multiple times with different casing", lower)
+			}
+			normalized[lower] = groupConfig
+		}
+		c.SweepUntilQuotaGroups = normalized
+	}
+
 	referencedGroups := make(map[string]bool)
 	for groupName, groupConfig := range c.SweepUntilQuotaGroups {
 		if groupConfig == nil {
@@ -698,6 +741,12 @@ func validateConfig(c *Config) error {
 		}
 		if groupConfig.GBFree < 0 {
 			return fmt.Errorf("sweep_until_quota_group %q: gb_free must be >= 0", groupName)
+		}
+		switch groupConfig.Order {
+		case "", CleanupOrderDefault, CleanupOrderTitle, CleanupOrderLargestFirst, CleanupOrderSmallestFirst:
+		default:
+			return fmt.Errorf("sweep_until_quota_group %q: order must be one of %q, %q, %q or %q",
+				groupName, CleanupOrderDefault, CleanupOrderTitle, CleanupOrderLargestFirst, CleanupOrderSmallestFirst)
 		}
 	}
 
@@ -734,10 +783,13 @@ func validateConfig(c *Config) error {
 		}
 
 		if filter.SweepUntilQuotaGroup != "" {
-			if _, ok := c.SweepUntilQuotaGroups[filter.SweepUntilQuotaGroup]; !ok {
+			// Normalise the reference to match the lowercased group keys (see above).
+			groupRef := strings.ToLower(filter.SweepUntilQuotaGroup)
+			if _, ok := c.SweepUntilQuotaGroups[groupRef]; !ok {
 				return fmt.Errorf("library %q references undefined sweep_until_quota_group %q", libraryName, filter.SweepUntilQuotaGroup)
 			}
-			referencedGroups[filter.SweepUntilQuotaGroup] = true
+			libraryConfig.Filter.SweepUntilQuotaGroup = groupRef
+			referencedGroups[groupRef] = true
 		}
 	}
 

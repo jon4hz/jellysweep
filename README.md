@@ -150,28 +150,43 @@ By default, every media item that passes the filters is marked for deletion. Swe
 
 The key difference from a simple per-library disk threshold is that **the quota is calculated per group, not per disk**.
 
-You define named quota groups at the top level of the config, each with a `percent_used` target. Libraries opt in to a group by setting `filter.sweep_until_quota_group`. When the cleanup job runs for a group:
+You define named quota groups at the top level of the config, each with a `percent_used` and/or `gb_free` target (group names are case-insensitive). Libraries opt in to a group by setting `filter.sweep_until_quota_group`. When the cleanup job runs for a group:
 
 1. Jellysweep finds every unique filesystem that **any library in the group** has files on (by statting the library's Jellyfin paths).
 2. It sums the used and free bytes across all those unique filesystems to get a **combined usage figure**.
-3. All candidate items across **all libraries in the group** are evaluated in filter order (the same order the filters produced them).
+3. All candidate items across **all libraries in the group** are evaluated in filter order (the same order the filters reported them eligible), unless the group configures a different `order`.
 4. Items are selected for deletion until the estimated combined usage would drop to or below the group's target.
 
-This means if Movies and TV Shows both belong to `"media"`, items from both libraries compete for the same budget. By default, items are processed in the order the filters produced them. Setting `largest_first: true` on a group re-orders that group's items by estimated freed size (largest first) before the quota accumulator runs, so you reach the target by deleting fewer, larger items.
+This means if Movies and TV Shows both belong to `"media"`, items from both libraries compete for the same budget. By default (`order: default`), a group's items are swept in the order the preceding filters reported them eligible. Set `order: largest_first` to reach the target by deleting fewer, larger items, `order: smallest_first` to delete the smallest first, or `order: title` for a stable alphabetical order that never depends on upstream ordering.
+
+Note that `order` only controls **which items get queued** when the budget doesn't cover all candidates — actual deletions happen later, once each item's `cleanup_delay` grace period expires, regardless of the order it was queued in. For the same reason the target is met **on paper** at queue time: the measured free space only catches up once the queued items' grace periods expire and the deletions land.
 
 Libraries without a `sweep_until_quota_group` are not affected — all items that pass their filters are marked as usual.
 
-**Pending items are counted.** If a previous run already queued enough items to meet the target, no new items are added. This prevents over-queuing across multiple cleanup runs.
+> [!WARNING]
+> **Fail-safe:** if Jellysweep cannot measure a group's disk usage — the library paths don't exist inside its container, a filesystem fails to stat (even one of several), or the database is unreachable — it **withholds every item in that group** for that run rather than risk over-deleting. If Jellysweep seems to never queue anything, check the logs for `quota group` warnings and verify the paths in the IMPORTANT note above are mounted correctly.
 
-**Deduplication across mounts.** If two library paths live on the same underlying filesystem (e.g. bind-mounts or Docker volumes), that filesystem is only counted once. This works correctly across Linux, Windows, NFS, and Docker volume mounts.
+> [!NOTE]
+> A library can belong to **at most one** quota group, and only libraries that are members of a group are budgeted. If an *unmanaged* library shares a filesystem with a quota group, its growth is invisible to that group's budget and can prevent the `gb_free`/`percent_used` target from ever being met. Jellysweep logs a warning when it detects this; put every library that shares a pool into the same group.
+
+**Pending items are counted.** If a previous run already queued enough items to meet the target, no new items are added. This prevents over-queuing across multiple cleanup runs. Each queued item remembers which group it was budgeted against, so the budget stays correct even if a library is renamed in Jellyfin or moved between groups later.
+
+**Deduplication across mounts.** If two library paths live on the same underlying filesystem (e.g. bind-mounts of one mergerfs pool, or Docker volumes from one drive), that filesystem is only counted once. ZFS datasets are recognised by their pool: used bytes are summed across the group's datasets while the pool's shared free space is counted once, so `gb_free` is exact; `percent_used` only sees the group's own datasets (data in other datasets on the pool isn't counted as used), which makes it conservative — prefer `gb_free` on ZFS. When no partition table is visible (minimal containers), Jellysweep falls back to per-path filesystem identity, which covers the common cases but can miss deduplication on exotic setups — in the worst case it under-deletes, never over-deletes.
+
+**Item size basis.** The budget counts each candidate's **freeable size**: for movies and `cleanup_mode: all` that is the full size on disk; for `keep_episodes`/`keep_seasons` it subtracts the episodes/seasons (and Season-0 specials) the deletion will keep, using Sonarr's per-season statistics. The same figure is stored for queued items, so pending and new candidates are accounted identically. The estimate is frozen at queue time: if you change `cleanup_mode`/`keep_count` (or a series grows) while items are pending, the budget uses the old figures until those deletions land and the disk is re-measured.
+
+**Unreachable targets.** If `gb_free` is set higher than the space that could ever be freed (everything deleted), the target can never be met and the group simply sweeps every eligible item each run — Jellysweep logs a warning when it detects this.
+
+> [!NOTE]
+> Quota groups are **entirely opt-in**. If you define no `sweep_until_quota_groups`, the feature is inactive, nothing about deletion changes, and **no database changes are made** — Jellysweep deletes exactly as it did before.
 
 Each quota group supports the following fields:
 
 | Field | Description |
 |---|---|
-| `percent_used` | Stop queuing once the combined estimated usage would drop to or below this percentage (matches `df` output). Must be > 0 and < 100. |
-| `gb_free` | Stop queuing once the combined estimated free space would reach or exceed this many GB (SI: 1 GB = 1,000,000,000 bytes). Must be > 0. |
-| `largest_first` | When `true`, sort this group's candidate items by estimated freed size (descending) before the quota accumulator runs. Largest items are deleted first, reaching the target in fewer deletions. Equal-sized items keep their original scheduled-deletion order. Default: `false`. |
+| `percent_used` | Stop queuing once the combined estimated usage would drop to or below this percentage (matches `df` output). Must be > 0 and < 100; 0 (unset) disables this condition. |
+| `gb_free` | Stop queuing once the combined estimated free space would reach or exceed this many GB (SI: 1 GB = 1,000,000,000 bytes). 0 (unset) disables this condition. |
+| `order` | Which items in the group are queued first when the budget doesn't cover all candidates: `default` (the order items were reported eligible by the filters), `title` (stable alphabetical order), `largest_first` (largest freeable size first, reaching the target in fewer deletions), or `smallest_first`. Default: `default`. |
 
 If both `percent_used` and `gb_free` are set, sweeping stops as soon as **either** condition would be satisfied — whichever comes first.
 
@@ -182,9 +197,10 @@ If both `percent_used` and `gb_free` are set, sweeping stops as soon as **either
 # Set percent_used, gb_free, or both. If both are set, either condition satisfies the target.
 sweep_until_quota_groups:
   "media":
-    percent_used: 65    # Stop queuing once combined usage would be ≤65% full
-    # gb_free: 500      # Or: also stop once 500 GB would be free (either condition wins)
-    largest_first: true # Delete largest items first to hit the target faster
+    percent_used: 65       # Stop queuing once combined usage would be ≤65% full
+    # gb_free: 500         # Or: also stop once 500 GB would be free (either condition wins)
+    order: largest_first   # Delete largest items first to hit the target faster
+                           # (default | title | largest_first | smallest_first)
   "recordings":
     gb_free: 50         # Keep at least 50 GB free on the recordings filesystem
 
@@ -252,7 +268,7 @@ Combined used percent = 10.5 / (10.5 + 9.5) × 100 ≈ **52.5%**
 
 Since 52.5% is already below the 70% target, **no items are queued** — even though `/mnt/media1` alone is at 95%. The quota is evaluated across the whole group, not per individual disk.
 
-If `/mnt/media2` were also 95% full (combined ≈ 95%), Jellysweep would sort all Movies and TV Shows items by size (largest first) and queue them until the estimated combined usage would drop to 70%.
+If `/mnt/media2` were also 95% full (combined ≈ 95%), Jellysweep would queue Movies and TV Shows items — in the group's configured `order` — until the estimated combined usage would drop to 70%.
 
 > [!TIP]
 > Use separate quota groups for storage pools that are physically independent (e.g. a media NAS and a recordings drive). Libraries on the same physical pool should share a group so the budget is evaluated correctly across all of them.
@@ -326,11 +342,9 @@ services:
       # You can also override config options with env vars
       - JELLYSWEEP_DRY_RUN=false
       - JELLYSWEEP_LISTEN=0.0.0.0:3002
-    # enable debug logs (choose one approach):
-    # via environment variable:
-    # environment:
-    #   - JELLYSWEEP_LOG_LEVEL=debug
-    # via command flag:
+      # enable debug logs by uncommenting:
+      # - JELLYSWEEP_LOG_LEVEL=debug
+    # ...or enable debug logs via command flag:
     # command:
     #   - serve
     #   - --log-level=debug
@@ -578,8 +592,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 > Either Sonarr or Radarr (or both) must be configured. Only one of Jellystat or Streamystats can be configured at a time.
 
 > [!IMPORTANT]
-> The library configuration cannot be set via environment variables and must be defined in the configuration file.
-> .
+> Map-valued options — the library configuration and `sweep_until_quota_groups` — cannot be set via environment variables and must be defined in the configuration file.
 
 ### Configuration File
 
@@ -655,13 +668,13 @@ leaving_collections_tv_name: "Leaving TV Shows"
 
 # Sweep-until quota groups (optional).
 # Libraries that share a group contribute to a combined disk-space budget.
-# Sweeping stops once the estimated combined usage would drop to or below percent_used.
+# Sweeping stops once the percent_used and/or gb_free target would be met.
 # See the "Sweep-Until Quota Groups" section for a full explanation.
 sweep_until_quota_groups:
   "media":
     percent_used: 70        # Stop queuing once the combined pool would be ≤70% full
     # gb_free: 500          # Optional: also stop once 500 GB would be free (either wins)
-    # largest_first: true   # Optional: delete largest items first to reach the target faster
+    # order: largest_first  # Optional: default | title | largest_first | smallest_first
 
 # Library-specific settings
 libraries:
