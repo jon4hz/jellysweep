@@ -20,20 +20,21 @@ type DiskUsageDeletePolicy struct {
 // Media represents a media item in the database.
 type Media struct {
 	gorm.Model
-	JellyfinID      string `gorm:"not null;uniqueIndex:idx_media_arr"`
-	LibraryName     string
-	ArrID           int32 `gorm:"not null;uniqueIndex:idx_media_arr"` // Sonarr or Radarr ID
-	Title           string
-	TmdbId          *int32 `gorm:"index"`
-	TvdbId          *int32 `gorm:"index"`
-	Year            int32
-	FileSize        int64
-	PosterURL       string
-	MediaType       MediaType `gorm:"not null;uniqueIndex:idx_media_arr"`
-	RequestedBy     string
-	DefaultDeleteAt time.Time `gorm:"not null;index;uniqueIndex:idx_media_arr"`
-	ProtectedUntil  *time.Time
-	Unkeepable      bool
+	JellyfinID        string `gorm:"not null;uniqueIndex:idx_media_arr"`
+	LibraryName       string
+	ArrID             int32 `gorm:"not null;uniqueIndex:idx_media_arr"` // Sonarr or Radarr ID
+	Title             string
+	TmdbId            *int32 `gorm:"index"`
+	TvdbId            *int32 `gorm:"index"`
+	Year              int32
+	FileSize          int64
+	PosterURL         string
+	MediaType         MediaType `gorm:"not null;uniqueIndex:idx_media_arr"`
+	RequestedBy       string
+	DefaultDeleteAt   time.Time `gorm:"not null;index;uniqueIndex:idx_media_arr"`
+	EstimatedDeleteAt time.Time
+	ProtectedUntil    *time.Time
+	Unkeepable        bool
 	// Reason why this item was deleted from the database.
 	DBDeleteReason          DBDeleteReason
 	DiskUsageDeletePolicies []DiskUsageDeletePolicy `gorm:"constraint:OnDelete:CASCADE;"`
@@ -149,6 +150,7 @@ func (c *Client) GetDeletedMediaByTVDBID(ctx context.Context, tvdbID int32) ([]M
 func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error {
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).
+		Select("ProtectedUntil", "Unkeepable").
 		Updates(Media{ProtectedUntil: protectedUntil, Unkeepable: false})
 	if result.Error != nil {
 		log.Error("failed to set media protected until", "error", result.Error)
@@ -157,9 +159,22 @@ func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, prote
 	return nil
 }
 
+func (c *Client) SetMediaEstimatedDeleteAt(ctx context.Context, mediaID uint, estimatedDeleteAt time.Time) error {
+	result := c.db.WithContext(ctx).Model(&Media{}).
+		Where("id = ?", mediaID).
+		Select("EstimatedDeleteAt").
+		Updates(Media{EstimatedDeleteAt: estimatedDeleteAt})
+	if result.Error != nil {
+		log.Error("failed to set media estimated delete at", "error", result.Error)
+		return result.Error
+	}
+	return nil
+}
+
 func (c *Client) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error {
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).
+		Select("Unkeepable", "ProtectedUntil").
 		Updates(Media{Unkeepable: true, ProtectedUntil: nil})
 	if result.Error != nil {
 		log.Error("failed to mark media as unkeepable", "error", result.Error)

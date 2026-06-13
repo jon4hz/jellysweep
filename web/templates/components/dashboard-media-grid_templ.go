@@ -181,8 +181,8 @@ func DashboardFilters(mediaItems []models.UserMediaItem) templ.Component {
 
 func DashboardMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_DashboardMediaGridScript_2b58`,
-		Function: `function __templ_DashboardMediaGridScript_2b58(){class DashboardMediaGridManager extends MediaGridManager {
+		Name: `__templ_DashboardMediaGridScript_c957`,
+		Function: `function __templ_DashboardMediaGridScript_c957(){class DashboardMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -226,7 +226,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 				type: item.MediaType, // database.Media uses MediaType field
 				year: item.Year,
 				library: item.LibraryName, // database.Media uses LibraryName field
-				deletionTimestamp: item.DefaultDeleteAt ? new Date(item.DefaultDeleteAt).getTime() : 0, // database.Media uses DefaultDeleteAt
+				deletionTimestamp: item.EstimatedDeleteAt ? new Date(item.EstimatedDeleteAt).getTime() : 0, // database.Media uses EstimatedDeleteAt
 				fileSize: item.FileSize || 0,
 				hasRequested: item.Request && item.Request.ID ? true : false, // Check if Request exists and has ID
 				canRequest: !item.Unkeepable, // database.Media uses Unkeepable (inverted logic)
@@ -635,8 +635,8 @@ func DashboardMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_2b58`),
-		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_2b58`),
+		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_c957`),
+		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_c957`),
 	}
 }
 
