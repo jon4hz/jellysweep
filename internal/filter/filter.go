@@ -27,6 +27,11 @@ func New(filters ...Filterer) *Filter {
 	}
 }
 
+// Add appends a filter - allowing dynamic addition of filters after creation.
+func (f *Filter) Add(filter Filterer) {
+	f.filters = append(f.filters, filter)
+}
+
 // ApplyAll applies all filters sequentially to the provided media items.
 func (f *Filter) ApplyAll(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.MediaItem, error) {
 	var err error

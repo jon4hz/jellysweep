@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -26,6 +27,7 @@ import (
 	seriesfilter "github.com/jon4hz/jellysweep/internal/filter/series_filter"
 	sizefilter "github.com/jon4hz/jellysweep/internal/filter/size_filter"
 	streamfilter "github.com/jon4hz/jellysweep/internal/filter/stream_filter"
+	sweepuntilfilter "github.com/jon4hz/jellysweep/internal/filter/sweep_until_filter"
 	tagsfilter "github.com/jon4hz/jellysweep/internal/filter/tags_filter"
 	tunarrfilter "github.com/jon4hz/jellysweep/internal/filter/tunarr_filter"
 	"github.com/jon4hz/jellysweep/internal/notify/email"
@@ -70,6 +72,9 @@ type Engine struct {
 	initialDBMigration bool
 
 	data *data
+
+	// libraryFolders is shared with the sweep_until filter; updated each run by gatherMediaItems.
+	libraryFolders *sweepuntilfilter.LibraryFoldersMap
 }
 
 // data contains any data collected during the cleanup process.
@@ -163,6 +168,8 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		webpushClient = webpush.NewClient(cfg.WebPush)
 	}
 
+	libFolders := sweepuntilfilter.NewLibraryFoldersMap()
+
 	engine := &Engine{
 		cfg:                cfg,
 		db:                 db,
@@ -181,8 +188,17 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		data: &data{
 			userNotifications: make(map[string][]arr.MediaItem),
 		},
-		imageCache: cache.NewImageCache("./data/cache/images", db),
-		cache:      engineCache,
+		imageCache:     cache.NewImageCache("./data/cache/images", db),
+		cache:          engineCache,
+		libraryFolders: libFolders,
+	}
+
+	// sweep_until is fully opt-in: only register it when quota groups are configured, so
+	// users who don't want any quota delete exactly as before with zero added behavior.
+	// It must run last - it depends on libraryFolders being populated by gatherMediaItems,
+	// and should only see items that passed all other filters.
+	if len(cfg.SweepUntilQuotaGroups) > 0 {
+		engine.filters.Add(sweepuntilfilter.New(cfg, db, libFolders))
 	}
 
 	// Setup scheduled jobs
@@ -210,22 +226,25 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 
 	e.removeProtectedExpiredItems(ctx)
 
-	mediaItems, err := e.gatherMediaItems(ctx)
+	mediaItems, failedLibraries, err := e.gatherMediaItems(ctx)
 	if err != nil {
 		log.Error("failed to gather media items", "error", err)
 		return err
 	}
 	log.Info("Media items gathered successfully")
 
-	if err := e.removeItemsNotFoundAnymore(ctx, mediaItems); err != nil {
+	if err := e.removeItemsNotFoundAnymore(ctx, mediaItems, failedLibraries); err != nil {
 		log.Error("An error occurred while removing items not found in Jellyfin")
 	}
+
+	// Remove recently played items from the database BEFORE marking new ones: the
+	// sweep_until budget seed counts pending DB items, so rows that are about to be
+	// removed must not consume budget in the same run.
+	e.removeRecentlyPlayedItems(ctx)
 
 	if err = e.markForDeletion(ctx, mediaItems); err != nil {
 		log.Error("An error occurred while marking media for deletion")
 	}
-
-	e.removeRecentlyPlayedItems(ctx)
 
 	// only delete media if there was no previous error
 	if err == nil {
@@ -324,7 +343,7 @@ func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
 	log.Info("Recently played items removal process completed")
 }
 
-func (e *Engine) removeItemsNotFoundAnymore(ctx context.Context, mediaItems []arr.MediaItem) error {
+func (e *Engine) removeItemsNotFoundAnymore(ctx context.Context, mediaItems []arr.MediaItem, failedLibraries []string) error {
 	log.Info("Removing items no longer present in Jellyfin from database")
 
 	dbMediaItems, err := e.db.GetMediaItems(ctx, false)
@@ -338,7 +357,21 @@ func (e *Engine) removeItemsNotFoundAnymore(ctx context.Context, mediaItems []ar
 		jellyfinItemMap[item.JellyfinID] = struct{}{}
 	}
 
+	// Items from libraries whose fetch failed are unknown this run, not missing.
+	// Wiping their rows would reset deletion timers and, for sweep_until quota groups,
+	// drop their bytes from the budget seed — letting other libraries re-spend the
+	// budget and eventually over-delete once the library comes back.
+	failedLibrary := make(map[string]struct{}, len(failedLibraries))
+	for _, name := range failedLibraries {
+		failedLibrary[strings.ToLower(name)] = struct{}{}
+	}
+
 	for _, dbItem := range dbMediaItems {
+		if _, failed := failedLibrary[strings.ToLower(dbItem.LibraryName)]; failed {
+			log.Warn("skipping missing-item check for library whose Jellyfin fetch failed",
+				"library", dbItem.LibraryName, "title", dbItem.Title)
+			continue
+		}
 		if _, exists := jellyfinItemMap[dbItem.JellyfinID]; !exists {
 			log.Info("Media item no longer present in Jellyfin, removing from database", "title", dbItem.Title, "jellyfinID", dbItem.JellyfinID)
 			dbItem.DBDeleteReason = database.DBDeleteReasonMissingInJellyfin
@@ -405,18 +438,20 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 }
 
 // gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
-// It merges them into a single collection grouped by library.
-func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) {
-	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx)
+// It merges them into a single collection grouped by library. The second return value
+// lists libraries whose Jellyfin fetch failed: their items are unknown this run, not
+// missing, and downstream cleanup steps must not act on their absence.
+func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, []string, error) {
+	jellyfinItems, libraryFoldersMap, failedLibraries, err := e.jellyfin.GetJellyfinItems(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get jellyfin items: %w", err)
+		return nil, nil, fmt.Errorf("failed to get jellyfin items: %w", err)
 	}
 
 	var sonarrItems []arr.MediaItem
 	if e.sonarr != nil {
 		sonarrItems, err = e.sonarr.GetItems(ctx, jellyfinItems)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get sonarr items: %w", err)
+			return nil, nil, fmt.Errorf("failed to get sonarr items: %w", err)
 		}
 	}
 
@@ -424,7 +459,7 @@ func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) 
 	if e.radarr != nil {
 		radarrItems, err = e.radarr.GetItems(ctx, jellyfinItems)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get radarr items: %w", err)
+			return nil, nil, fmt.Errorf("failed to get radarr items: %w", err)
 		}
 	}
 
@@ -433,13 +468,29 @@ func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) 
 	mediaItems = append(mediaItems, sonarrItems...)
 	mediaItems = append(mediaItems, radarrItems...)
 
+	// Update the shared reference so the sweep_until filter sees current paths.
+	e.libraryFolders.Set(libraryFoldersMap)
+
 	// Set deletion policies with freshly gathered library folders map
 	e.policy.SetPolicies(
 		policy.NewDefaultDelete(e.cfg),
 		policy.NewDiskUsageDelete(e.cfg, libraryFoldersMap),
 	)
 
-	return mediaItems, nil
+	return mediaItems, failedLibraries, nil
+}
+
+// stampQuotaAccounting records the sweep_until accounting on a database row at creation
+// time: the keep-mode-aware freeable estimate and the quota group the item was budgeted
+// against. The stored group keeps the budget seed correct across library renames and
+// config regrouping. Every code path that creates Media rows from arr items must call
+// this so pending rows are never missing the accounting.
+func (e *Engine) stampQuotaAccounting(dbItem *database.Media, item arr.MediaItem) {
+	freeable := sweepuntilfilter.FreeableSize(item, e.cfg.GetCleanupMode(), e.cfg.GetKeepCount())
+	dbItem.FreeableSize = &freeable
+	if libCfg := e.cfg.GetLibraryConfig(item.LibraryName); libCfg != nil {
+		dbItem.QuotaGroup = strings.ToLower(libCfg.Filter.SweepUntilQuotaGroup)
+	}
 }
 
 func arrMediaToDBMediaItem(item arr.MediaItem) database.Media {
@@ -490,6 +541,7 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
 
 	for _, item := range mediaItems {
 		dbItem := arrMediaToDBMediaItem(item)
+		e.stampQuotaAccounting(&dbItem, item)
 		if err := e.policy.ApplyAll(&dbItem); err != nil {
 			log.Error("failed to apply policies to media item", "title", dbItem.Title, "error", err)
 			continue
@@ -563,7 +615,7 @@ func (e *Engine) resetAllTags(ctx context.Context, additionalTags []string) erro
 func (e *Engine) migrateTagsToDatabase(ctx context.Context) error {
 	log.Info("Starting migration of jellysweep tags to database...")
 
-	jellyfinItems, _, err := e.jellyfin.GetJellyfinItems(ctx)
+	jellyfinItems, _, _, err := e.jellyfin.GetJellyfinItems(ctx)
 	if err != nil {
 		log.Error("Failed to get jellyfin items for migration", "error", err)
 		return err
@@ -591,6 +643,7 @@ func (e *Engine) migrateTagsToDatabase(ctx context.Context) error {
 	for _, item := range legacyitems {
 		mustMigrate := false
 		dbItem := arrMediaToDBMediaItem(item)
+		e.stampQuotaAccounting(&dbItem, item)
 		for _, tagName := range item.Tags {
 			tag, err := tags.ParseJellysweepTag(tagName)
 			if err != nil {

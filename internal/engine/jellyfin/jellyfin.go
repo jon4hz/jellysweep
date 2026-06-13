@@ -43,19 +43,22 @@ func newJellyfinClient(cfg *config.JellyfinConfig) *jellyfin.APIClient {
 }
 
 // GetJellyfinItems retrieves all media items from enabled Jellyfin libraries.
-// It returns JellyfinItem objects that include the library name for easier processing.
-func (c *Client) GetJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, map[string][]string, error) {
-	allItems, err := c.fetchJellyfinItems(ctx)
+// It returns JellyfinItem objects that include the library name for easier processing,
+// plus the names of libraries whose item fetch failed. Callers must treat items from
+// failed libraries as UNKNOWN rather than absent: cleanup steps that act on "missing"
+// items (and budget accounting) would otherwise misfire on a transient Jellyfin error.
+func (c *Client) GetJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, map[string][]string, []string, error) {
+	allItems, failedLibraries, err := c.fetchJellyfinItems(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	libraryFoldersMap, err := c.GetLibraryFoldersMap(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return allItems, libraryFoldersMap, nil
+	return allItems, libraryFoldersMap, failedLibraries, nil
 }
 
 // GetLibraryFoldersMap retrieves the mapping of library names to their folder paths.
@@ -87,21 +90,23 @@ func (c *Client) GetLibraryFoldersMap(ctx context.Context) (map[string][]string,
 	return libraryFoldersMap, nil
 }
 
-// fetchJellyfinItems fetches items from the Jellyfin API (extracted from original GetJellyfinItems).
-func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, error) {
+// fetchJellyfinItems fetches items from the Jellyfin API (extracted from original
+// GetJellyfinItems). The second return value lists libraries whose fetch failed.
+func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, []string, error) {
 	var allItems []arr.JellyfinItem
+	var failedLibraries []string
 
 	// First, get all media folders (libraries)
 	mediaFoldersResp, resp, err := c.jellyfin.LibraryAPI.GetMediaFolders(ctx).Execute()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get media folders: %w", err)
+		return nil, nil, fmt.Errorf("failed to get media folders: %w", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
 	// Check if we have items in the response
 	mediaFolders := mediaFoldersResp.GetItems()
 	if len(mediaFolders) == 0 {
-		return nil, fmt.Errorf("no media folders found")
+		return nil, nil, fmt.Errorf("no media folders found")
 	}
 
 	// Process each enabled library
@@ -125,7 +130,9 @@ func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, er
 		// Get all items from this library
 		libraryItems, err := c.getJellyfinItemsFromLibrary(ctx, libraryID, libraryName)
 		if err != nil {
-			log.Error("Failed to get items from library", "library", libraryName, "error", err)
+			log.Error("Failed to get items from library; its items will be treated as unknown, not missing",
+				"library", libraryName, "error", err)
+			failedLibraries = append(failedLibraries, libraryName)
 			continue
 		}
 
@@ -139,7 +146,7 @@ func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, er
 		}
 	}
 
-	return allItems, nil
+	return allItems, failedLibraries, nil
 }
 
 // getJellyfinItemsFromLibrary retrieves all items from a specific Jellyfin library.
