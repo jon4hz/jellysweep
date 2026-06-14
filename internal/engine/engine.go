@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -221,6 +222,8 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 		log.Error("An error occurred while removing items not found in Jellyfin")
 	}
 
+	e.removeItemsWithExcludedTags(ctx, mediaItems)
+
 	if err = e.markForDeletion(ctx, mediaItems); err != nil {
 		log.Error("An error occurred while marking media for deletion")
 	}
@@ -357,6 +360,64 @@ func (e *Engine) removeItemsNotFoundAnymore(ctx context.Context, mediaItems []ar
 
 	log.Info("Removed items not found in Jellyfin from database successfully")
 	return nil
+}
+
+// removeItemsWithExcludedTags checks all items currently marked for deletion in the database
+// against their current tag state (freshly fetched from Sonarr/Radarr). If an item now has an
+// exclude tag, it is removed from the deletion queue so the user's intent is respected without
+// requiring a database reset.
+func (e *Engine) removeItemsWithExcludedTags(ctx context.Context, mediaItems []arr.MediaItem) {
+	log.Info("Checking marked items for newly added exclude tags")
+
+	dbItems, err := e.db.GetMediaItems(ctx, true)
+	if err != nil {
+		log.Error("Failed to get media items from database", "error", err)
+		return
+	}
+
+	if len(dbItems) == 0 {
+		return
+	}
+
+	// Build a map from ArrID -> fresh MediaItem for O(1) lookup.
+	// ArrID is unique within a media type, so key on both.
+	type arrKey struct {
+		id        int32
+		mediaType database.MediaType
+	}
+	freshItemMap := make(map[arrKey]arr.MediaItem, len(mediaItems))
+	for _, item := range mediaItems {
+		switch item.MediaType {
+		case models.MediaTypeTV:
+			freshItemMap[arrKey{item.SeriesResource.GetId(), database.MediaTypeTV}] = item
+		case models.MediaTypeMovie:
+			freshItemMap[arrKey{item.MovieResource.GetId(), database.MediaTypeMovie}] = item
+		}
+	}
+
+	for _, dbItem := range dbItems {
+		freshItem, found := freshItemMap[arrKey{dbItem.ArrID, dbItem.MediaType}]
+		if !found {
+			continue // will be handled by removeItemsNotFoundAnymore
+		}
+
+		libraryConfig := e.cfg.GetLibraryConfig(dbItem.LibraryName)
+		for _, tagName := range freshItem.Tags {
+			shouldRemove := tagName == tags.JellysweepIgnoreTag ||
+				(libraryConfig != nil && slices.Contains(libraryConfig.GetExcludeTags(), tagName))
+
+			if shouldRemove {
+				log.Info("Removing item from deletion queue due to exclude tag", "title", dbItem.Title, "tag", tagName)
+				dbItem.DBDeleteReason = database.DBDeleteReasonExcludeTag
+				if err := e.db.DeleteMediaItem(ctx, &dbItem); err != nil {
+					log.Error("Failed to remove item from database", "title", dbItem.Title, "error", err)
+				}
+				break
+			}
+		}
+	}
+
+	log.Info("Exclude tag check completed")
 }
 
 func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem) error {
