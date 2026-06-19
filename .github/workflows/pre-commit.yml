@@ -15,7 +15,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Remove pre-commit ci run label
         if: github.event.action == 'labeled' && github.event.label.name == 'pre-commit ci run'
