@@ -8,6 +8,7 @@ import (
 	"github.com/devopsarr/radarr-go/radarr"
 	"github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/jon4hz/jellysweep/internal/api/models"
+	"github.com/jon4hz/jellysweep/pkg/jellyseerr"
 	jellyfin "github.com/sj14/jellyfin-go/api"
 )
 
@@ -22,8 +23,7 @@ type MediaItem struct {
 	Year           int32
 	Tags           []string
 	MediaType      models.MediaType
-	// User information for the person who requested this media
-	RequestedBy string // User email or username
+	RequestedBy    *jellyseerr.RequestInfo // User information for who requested this media
 }
 
 type Arrer interface {
