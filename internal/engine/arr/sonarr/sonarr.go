@@ -258,6 +258,47 @@ func (s *Sonarr) ensureTagExists(ctx context.Context, deleteTagLabel string) err
 	return nil
 }
 
+// UnmonitorMedia unmonitors all episodes with files for a Sonarr series
+// to prevent them from being re-downloaded after deletion.
+func (s *Sonarr) UnmonitorMedia(ctx context.Context, seriesID int32, title string) error {
+	episodes, err := s.getEpisodes(ctx, seriesID)
+	if err != nil {
+		return fmt.Errorf("failed to get episodes for series %s: %w", title, err)
+	}
+
+	if s.cfg.DryRun {
+		log.Info("dry run: would unmonitor episodes for series", "title", title, "count", len(episodes))
+		return nil
+	}
+
+	var episodesToUnmonitor []int32
+	for _, ep := range episodes {
+		if ep.GetHasFile() {
+			episodesToUnmonitor = append(episodesToUnmonitor, ep.GetId())
+		}
+	}
+
+	if len(episodesToUnmonitor) == 0 {
+		return nil
+	}
+
+	monitored := false
+	resource := sonarrAPI.NewEpisodesMonitoredResource()
+	resource.SetEpisodeIds(episodesToUnmonitor)
+	resource.SetMonitored(monitored)
+
+	resp, err := s.client.EpisodeAPI.PutEpisodeMonitor(s.sonarrAuthCtx(ctx)).
+		EpisodesMonitoredResource(*resource).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to unmonitor %d episodes for series %s: %w", len(episodesToUnmonitor), title, err)
+	}
+	defer resp.Body.Close() //nolint: errcheck
+
+	log.Info("unmonitored episodes to prevent redownload", "title", title, "count", len(episodesToUnmonitor))
+	return nil
+}
+
 // ResetTags removes jellysweep-related tags (and additionalTags) from all series.
 func (s *Sonarr) ResetTags(ctx context.Context, additionalTags []string) error {
 	series, err := s.getItems(ctx)

@@ -310,6 +310,10 @@ type SonarrConfig struct {
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
 	// Timeout is the HTTP client timeout in seconds.
 	Timeout int `yaml:"timeout" mapstructure:"timeout"`
+	// Unmonitor controls whether deleted items are automatically unmonitored
+	// in Sonarr before deletion. When enabled, episodes with files are
+	// unmonitored to prevent re-downloading.
+	Unmonitor bool `yaml:"unmonitor" mapstructure:"unmonitor"`
 }
 
 // RadarrConfig holds the configuration for the Radarr server.
@@ -320,6 +324,9 @@ type RadarrConfig struct {
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
 	// Timeout is the HTTP client timeout in seconds.
 	Timeout int `yaml:"timeout" mapstructure:"timeout"`
+	// Unmonitor controls whether deleted items are automatically unmonitored
+	// to prevent them from being re-downloaded.
+	Unmonitor bool `yaml:"unmonitor" mapstructure:"unmonitor"`
 }
 
 // JellystatConfig holds the configuration for the Jellystat server.
@@ -506,6 +513,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("ntfy.password", "")
 	v.SetDefault("ntfy.token", "")
 	v.SetDefault("ntfy.timeout", 30)
+
+	// Sonarr / Radarr defaults
+	v.SetDefault("sonarr.unmonitor", true)
+	v.SetDefault("radarr.unmonitor", true)
 
 	// Gravatar defaults
 	v.SetDefault("gravatar.enabled", false)
