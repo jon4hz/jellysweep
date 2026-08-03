@@ -1,0 +1,67 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":semanticCommits",
+    ":enablePreCommit",
+    "schedule:weekly",
+    "mergeConfidence:all-badges"
+  ],
+  "timezone": "Europe/Zurich",
+  "dependencyDashboard": true,
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+  "osvVulnerabilityAlerts": true,
+  "automerge": false,
+  "minimumReleaseAge": "7 days",
+  "rangeStrategy": "pin",
+  "postUpdateOptions": ["gomodTidy"],
+  "pre-commit": {
+    "enabled": true
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "semanticCommitType": "fix",
+    "schedule": ["at any time"],
+    "minimumReleaseAge": null
+  },
+  "packageRules": [
+    {
+      "description": "go",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["!github.com/a-h/templ"],
+      "groupName": "go dependencies"
+    },
+    {
+      "description": "templ",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["github.com/a-h/templ"],
+      "prBodyNotes": [
+        ":warning: Requires regenerating templates: run `make templ`."
+      ]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "description": "npm",
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies",
+      "prBodyNotes": [
+        ":warning: Requires rebuilding committed assets: run `npm install && make build`."
+      ]
+    },
+    {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "groupName": "docker"
+    },
+    {
+      "matchManagers": ["pre-commit"],
+      "groupName": "pre-commit hooks"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "groupName": "python dependencies"
+    }
+  ]
+}

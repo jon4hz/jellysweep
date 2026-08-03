@@ -30,6 +30,9 @@ type Arrer interface {
 	GetItems(ctx context.Context, jellyfinItems []JellyfinItem) ([]MediaItem, error)
 	DeleteMedia(ctx context.Context, arrID int32, title string) error
 
+	// UnmonitorMedia unmonitors a media item in the arr to prevent re-download.
+	UnmonitorMedia(ctx context.Context, arrID int32, title string) error
+
 	// Bulk tag resets/cleanup
 	ResetTags(ctx context.Context, additionalTags []string) error
 	CleanupAllTags(ctx context.Context, additionalTags []string) error

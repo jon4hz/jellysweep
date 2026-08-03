@@ -38,6 +38,13 @@ const (
 	CacheTypeRedis  CacheType = "redis"
 )
 
+type DatabaseType string
+
+const (
+	DatabaseTypeSQLite   DatabaseType = "sqlite"
+	DatabaseTypePostgres DatabaseType = "postgres"
+)
+
 type CleanupMode string
 
 const (
@@ -156,8 +163,22 @@ type JellyfinAuthConfig struct {
 
 // DatabaseConfig holds the database configuration.
 type DatabaseConfig struct {
+	// Type is the database backend to use. Options: "sqlite", "postgres".
+	Type DatabaseType `yaml:"type" mapstructure:"type"`
 	// Path is the path to the database file.
 	Path string `yaml:"path" mapstructure:"path"`
+	// Host is the PostgreSQL server host.
+	Host string `yaml:"host" mapstructure:"host"`
+	// Port is the PostgreSQL server port.
+	Port int `yaml:"port" mapstructure:"port"`
+	// Name is the PostgreSQL database name.
+	Name string `yaml:"name" mapstructure:"name"`
+	// User is the PostgreSQL user.
+	User string `yaml:"user" mapstructure:"user"`
+	// Password is the PostgreSQL password.
+	Password string `yaml:"password" mapstructure:"password"`
+	// SSLMode is the PostgreSQL sslmode connection option.
+	SSLMode string `yaml:"ssl_mode" mapstructure:"ssl_mode"`
 }
 
 // EmailConfig holds the email notification configuration.
@@ -245,6 +266,9 @@ type CleanupConfig struct {
 type FilterConfig struct {
 	// ContentAgeThreshold is the minimum age in days for content (since it was first imported) to be eligible for cleanup.
 	ContentAgeThreshold int `yaml:"content_age_threshold" mapstructure:"content_age_threshold"`
+	// MovieReleaseDateMax is the latest movie release date accepted for cleanup.
+	// Supported formats: YYYY-MM-DD and RFC3339.
+	MovieReleaseDateMax string `yaml:"movie_release_date_max" mapstructure:"movie_release_date_max"`
 	// LastStreamThreshold is the minimum time in days since the last stream for content to be eligible for cleanup.
 	LastStreamThreshold int `yaml:"last_stream_threshold" mapstructure:"last_stream_threshold"`
 	// ContentSizeThreshold is the minimum size in bytes for content to be eligible for cleanup.
@@ -289,6 +313,10 @@ type SonarrConfig struct {
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
 	// Timeout is the HTTP client timeout in seconds.
 	Timeout int `yaml:"timeout" mapstructure:"timeout"`
+	// Unmonitor controls whether deleted items are automatically unmonitored
+	// in Sonarr before deletion. When enabled, episodes with files are
+	// unmonitored to prevent re-downloading.
+	Unmonitor bool `yaml:"unmonitor" mapstructure:"unmonitor"`
 }
 
 // RadarrConfig holds the configuration for the Radarr server.
@@ -299,6 +327,9 @@ type RadarrConfig struct {
 	APIKey string `yaml:"api_key" mapstructure:"api_key"`
 	// Timeout is the HTTP client timeout in seconds.
 	Timeout int `yaml:"timeout" mapstructure:"timeout"`
+	// Unmonitor controls whether deleted items are automatically unmonitored
+	// to prevent them from being re-downloaded.
+	Unmonitor bool `yaml:"unmonitor" mapstructure:"unmonitor"`
 }
 
 // JellystatConfig holds the configuration for the Jellystat server.
@@ -448,7 +479,14 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.jellyfin.enabled", true)
 
 	// Database defaults
+	v.SetDefault("database.type", DatabaseTypeSQLite)
 	v.SetDefault("database.path", "./data/jellysweep.db")
+	v.SetDefault("database.host", "")
+	v.SetDefault("database.port", 5432)
+	v.SetDefault("database.name", "")
+	v.SetDefault("database.user", "")
+	v.SetDefault("database.password", "")
+	v.SetDefault("database.ssl_mode", "disable")
 
 	// Cache defaults
 	v.SetDefault("cache.type", CacheTypeMemory) // Default to in-memory
@@ -478,6 +516,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("ntfy.password", "")
 	v.SetDefault("ntfy.token", "")
 	v.SetDefault("ntfy.timeout", 30)
+
+	// Sonarr / Radarr defaults
+	v.SetDefault("sonarr.unmonitor", true)
+	v.SetDefault("radarr.unmonitor", true)
 
 	// Gravatar defaults
 	v.SetDefault("gravatar.enabled", false)
@@ -530,6 +572,16 @@ func bindNestedEnv(v *viper.Viper) {
 	v.MustBindEnv("jellyfin.url", "JELLYSWEEP_JELLYFIN_URL")
 	v.MustBindEnv("jellyfin.api_key", "JELLYSWEEP_JELLYFIN_API_KEY")
 	v.MustBindEnv("jellyfin.timeout", "JELLYSWEEP_JELLYFIN_TIMEOUT")
+
+	// Database
+	v.MustBindEnv("database.type", "JELLYSWEEP_DATABASE_TYPE")
+	v.MustBindEnv("database.path", "JELLYSWEEP_DATABASE_PATH")
+	v.MustBindEnv("database.host", "JELLYSWEEP_DATABASE_HOST")
+	v.MustBindEnv("database.port", "JELLYSWEEP_DATABASE_PORT")
+	v.MustBindEnv("database.name", "JELLYSWEEP_DATABASE_NAME")
+	v.MustBindEnv("database.user", "JELLYSWEEP_DATABASE_USER")
+	v.MustBindEnv("database.password", "JELLYSWEEP_DATABASE_PASSWORD")
+	v.MustBindEnv("database.ssl_mode", "JELLYSWEEP_DATABASE_SSL_MODE")
 }
 
 // validateConfig validates the configuration.
@@ -573,6 +625,48 @@ func validateConfig(c *Config) error {
 
 	if c.SessionKey == "" {
 		return fmt.Errorf("session key is required")
+	}
+
+	if c.Database == nil {
+		return fmt.Errorf("missing database config")
+	}
+	if c.Database.Type == "" {
+		c.Database.Type = DatabaseTypeSQLite
+	}
+	switch c.Database.Type {
+	case DatabaseTypeSQLite:
+		if c.Database.Path == "" {
+			return fmt.Errorf("database path is required when database type is sqlite")
+		}
+	case DatabaseTypePostgres:
+		if c.Database.Host == "" {
+			return fmt.Errorf("database host is required when database type is postgres")
+		}
+		if c.Database.Name == "" {
+			return fmt.Errorf("database name is required when database type is postgres")
+		}
+		if c.Database.User == "" {
+			return fmt.Errorf("database user is required when database type is postgres")
+		}
+		if c.Database.Port <= 0 {
+			return fmt.Errorf("database port must be greater than 0 when database type is postgres")
+		}
+		if c.Database.Port > 65535 {
+			return fmt.Errorf("database port must be less than or equal to 65535 when database type is postgres")
+		}
+		switch c.Database.SSLMode {
+		case "", "disable", "allow", "prefer", "require", "verify-ca", "verify-full":
+			// valid
+		default:
+			return fmt.Errorf("invalid database ssl_mode %q", c.Database.SSLMode)
+		}
+	default:
+		return fmt.Errorf(
+			"invalid database type %q: must be one of %q, %q",
+			c.Database.Type,
+			DatabaseTypeSQLite,
+			DatabaseTypePostgres,
+		)
 	}
 
 	if len(c.Libraries) == 0 {
@@ -856,6 +950,21 @@ func (c *CleanupConfig) GetContentAgeThreshold() int {
 	return 30 // Default to 30 days
 }
 
+// GetMovieReleaseDateMax returns the maximum movie release date cutoff.
+// An empty value disables movie release date filtering.
+func (c *CleanupConfig) GetMovieReleaseDateMax() (*time.Time, error) {
+	if strings.TrimSpace(c.Filter.MovieReleaseDateMax) == "" {
+		return nil, nil
+	}
+
+	releaseDateMax, err := parseConfigTime(c.Filter.MovieReleaseDateMax)
+	if err != nil {
+		return nil, fmt.Errorf("invalid movie_release_date_max %q: %w", c.Filter.MovieReleaseDateMax, err)
+	}
+
+	return &releaseDateMax, nil
+}
+
 // GetLastStreamThreshold returns the last stream threshold with proper defaults.
 // It first checks the new Filter.LastStreamThreshold field, and falls back to the
 // deprecated LastStreamThreshold field if the new field is not set.
@@ -918,4 +1027,21 @@ func (c *CleanupConfig) GetExcludeTags() []string {
 	}
 	// Default value
 	return []string{} // Default to empty list
+}
+
+func parseConfigTime(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	for _, layout := range []string{
+		time.RFC3339,
+		"2006-01-02",
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+	} {
+		parsed, err := time.Parse(layout, value)
+		if err == nil {
+			return parsed, nil
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("expected YYYY-MM-DD or RFC3339 timestamp")
 }

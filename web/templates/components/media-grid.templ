@@ -311,6 +311,22 @@ script MediaGridScript() {
 				return;
 			}
 
+			// Advance the cursor and hasMoreData synchronously, before the render
+			// delay below. renderItems() staggers each card's skeleton->content
+			// swap with its own per-item setTimeout, so the grid is still
+			// growing/reflowing well after this function returns. That reflow can
+			// nudge the scroll sentinel back into the IntersectionObserver's
+			// rootMargin and fire loadMore() again. If the cursor only advanced
+			// inside the delayed callback below, that re-entrant call would still
+			// see the old startIndex/endIndex and re-append the same batch,
+			// producing an endless repeat of the same items while scrolling.
+			// Locking in the cursor here means any re-entrant call always moves
+			// on to the next slice instead.
+			for (let i = startIndex; i < endIndex; i++) {
+				this.renderedItems.add(i);
+			}
+			this.hasMoreData = endIndex < this.filteredItems.length;
+
 			// Add progressive loading delay for smoother experience
 			const screenWidth = window.innerWidth;
 			const isMobile = screenWidth < 640;
@@ -318,14 +334,6 @@ script MediaGridScript() {
 
 			setTimeout(() => {
 				this.renderItems(newItems, true); // true = append
-
-				// Update rendered items tracking
-				for (let i = startIndex; i < endIndex; i++) {
-					this.renderedItems.add(i);
-				}
-
-				// Check if we have more data
-				this.hasMoreData = endIndex < this.filteredItems.length;
 
 				this.hideScrollLoading();
 				this.isLoading = false;

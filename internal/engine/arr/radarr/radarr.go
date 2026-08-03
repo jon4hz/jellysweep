@@ -249,6 +249,29 @@ func (r *Radarr) DeleteMedia(ctx context.Context, movieID int32, title string) e
 	return nil
 }
 
+// UnmonitorMedia unmonitors a Radarr movie to prevent it from being re-downloaded.
+func (r *Radarr) UnmonitorMedia(ctx context.Context, movieID int32, title string) error {
+	if r.cfg.DryRun {
+		log.Info("dry run: would unmonitor Radarr movie", "title", title)
+		return nil
+	}
+
+	resource := radarrAPI.NewMovieEditorResource()
+	resource.SetMovieIds([]int32{movieID})
+	resource.SetMonitored(false)
+
+	resp, err := r.client.MovieEditorAPI.PutMovieEditor(r.radarrAuthCtx(ctx)).
+		MovieEditorResource(*resource).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to unmonitor Radarr movie %s: %w", title, err)
+	}
+	defer resp.Body.Close() //nolint: errcheck
+
+	log.Info("unmonitored Radarr movie to prevent redownload", "title", title)
+	return nil
+}
+
 func (r *Radarr) ResetTags(ctx context.Context, additionalTags []string) error {
 	movies, err := r.getItems(ctx)
 	if err != nil {

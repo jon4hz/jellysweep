@@ -1,9 +1,9 @@
 {
     "devDependencies": {
-        "@tailwindcss/cli": "^4.2.1",
-        "@tailwindcss/forms": "^0.5.11",
-        "esbuild": "^0.27.4",
-        "tailwindcss": "^4.2.1"
+        "@tailwindcss/cli": "4.2.1",
+        "@tailwindcss/forms": "0.5.11",
+        "esbuild": "^0.28.0",
+        "tailwindcss": "4.2.1"
     },
     "scripts": {
         "build-css": "npx @tailwindcss/cli -i input.css -o internal/static/static/dist/style.css --minify",
@@ -13,7 +13,7 @@
         "dev": "npm run build-js && npm run build-css"
     },
     "dependencies": {
-        "chart.js": "^4.5.1",
-        "chartjs-adapter-date-fns": "^3.0.0"
+        "chart.js": "4.5.1",
+        "chartjs-adapter-date-fns": "3.0.0"
     }
 }

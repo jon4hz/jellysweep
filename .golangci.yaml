@@ -5,7 +5,6 @@ linters:
   enable:
     - bodyclose
     - exhaustive
-    - goconst
     - godot
     - gomoddirectives
     - goprintffuncname
