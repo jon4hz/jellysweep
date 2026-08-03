@@ -55,8 +55,8 @@ func GetUniqueLibraries(items []database.Media) []string {
 
 func MediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_MediaGridScript_13cd`,
-		Function: `function __templ_MediaGridScript_13cd(){class MediaGridManager {
+		Name: `__templ_MediaGridScript_1562`,
+		Function: `function __templ_MediaGridScript_1562(){class MediaGridManager {
 		constructor(containerId, options = {}) {
 			this.containerId = containerId;
 			this.container = document.getElementById(containerId);
@@ -321,6 +321,22 @@ func MediaGridScript() templ.ComponentScript {
 				return;
 			}
 
+			// Advance the cursor and hasMoreData synchronously, before the render
+			// delay below. renderItems() staggers each card's skeleton->content
+			// swap with its own per-item setTimeout, so the grid is still
+			// growing/reflowing well after this function returns. That reflow can
+			// nudge the scroll sentinel back into the IntersectionObserver's
+			// rootMargin and fire loadMore() again. If the cursor only advanced
+			// inside the delayed callback below, that re-entrant call would still
+			// see the old startIndex/endIndex and re-append the same batch,
+			// producing an endless repeat of the same items while scrolling.
+			// Locking in the cursor here means any re-entrant call always moves
+			// on to the next slice instead.
+			for (let i = startIndex; i < endIndex; i++) {
+				this.renderedItems.add(i);
+			}
+			this.hasMoreData = endIndex < this.filteredItems.length;
+
 			// Add progressive loading delay for smoother experience
 			const screenWidth = window.innerWidth;
 			const isMobile = screenWidth < 640;
@@ -328,14 +344,6 @@ func MediaGridScript() templ.ComponentScript {
 
 			setTimeout(() => {
 				this.renderItems(newItems, true); // true = append
-
-				// Update rendered items tracking
-				for (let i = startIndex; i < endIndex; i++) {
-					this.renderedItems.add(i);
-				}
-
-				// Check if we have more data
-				this.hasMoreData = endIndex < this.filteredItems.length;
 
 				this.hideScrollLoading();
 				this.isLoading = false;
@@ -867,8 +875,8 @@ func MediaGridScript() templ.ComponentScript {
 	// Export the class for use by other scripts
 	window.MediaGridManager = MediaGridManager;
 }`,
-		Call:       templ.SafeScript(`__templ_MediaGridScript_13cd`),
-		CallInline: templ.SafeScriptInline(`__templ_MediaGridScript_13cd`),
+		Call:       templ.SafeScript(`__templ_MediaGridScript_1562`),
+		CallInline: templ.SafeScriptInline(`__templ_MediaGridScript_1562`),
 	}
 }
 
