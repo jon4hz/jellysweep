@@ -54,7 +54,7 @@ type Engine struct {
 	db         database.DB
 	filters    *filter.Filter
 	policy     *policy.Engine
-	jellyfin   *jellyfin.Client
+	jellyfin   jellyfinClient
 	stats      stats.Statser
 	jellyseerr *jellyseerr.Client
 	sonarr     arr.Arrer
@@ -63,6 +63,10 @@ type Engine struct {
 	ntfy       *ntfy.Client
 	webpush    *webpush.Client
 	scheduler  *scheduler.Scheduler
+
+	// policyFactory builds the deletion policies for a cleanup run from the
+	// freshly gathered library folders map.
+	policyFactory func(libraryFoldersMap map[string][]string) []policy.Policy
 
 	imageCache *cache.ImageCache
 	cache      *cache.EngineCache // Cache for engine-specific data
@@ -73,6 +77,23 @@ type Engine struct {
 	data *data
 }
 
+// engineDeps holds the collaborators of an Engine. New builds the production
+// set from the config; tests inject fakes through newEngine.
+type engineDeps struct {
+	jellyfin      jellyfinClient
+	stats         stats.Statser // may be nil
+	jellyseerr    *jellyseerr.Client
+	sonarr        arr.Arrer // may be nil
+	radarr        arr.Arrer // may be nil
+	email         *email.NotificationService
+	ntfy          *ntfy.Client
+	webpush       *webpush.Client
+	filters       *filter.Filter
+	policyFactory func(libraryFoldersMap map[string][]string) []policy.Policy
+	engineCache   *cache.EngineCache
+	imageCacheDir string
+}
+
 // data contains any data collected during the cleanup process.
 type data struct {
 	// userNotifications tracks which users should be notified about which media items
@@ -81,18 +102,13 @@ type data struct {
 
 // New creates a new Engine instance.
 func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, error) {
-	// Create scheduler first
-	sched, err := scheduler.New()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create scheduler: %w", err)
-	}
-
 	var statsClient stats.Statser
 	if cfg.Jellystat != nil {
 		statsClient = jellystat.New(cfg.Jellystat)
 	}
 
 	if cfg.Streamystats != nil {
+		var err error
 		statsClient, err = streamystats.New(cfg.Streamystats, cfg.Jellyfin.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create StreamyStats client: %w", err)
@@ -105,7 +121,7 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 	}
 
 	// Create Jellyfin client
-	jellyfinClient := jellyfin.New(cfg)
+	jellyfinAPIClient := jellyfin.New(cfg)
 
 	var sonarrClient arr.Arrer
 	if cfg.Sonarr != nil {
@@ -128,7 +144,13 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		sizefilter.New(cfg),
 		moviereleasefilter.New(cfg),
 		agefilter.New(cfg, db, sonarrClient, radarrClient),
-		streamfilter.New(cfg, statsClient),
+	}
+
+	// Without a stats backend there is no stream history to filter on.
+	if statsClient != nil {
+		filterList = append(filterList, streamfilter.New(cfg, statsClient))
+	} else {
+		log.Warn("No stats backend (Jellystat/Streamystats) configured, stream history will not be considered")
 	}
 
 	if cfg.Tunarr != nil {
@@ -165,26 +187,55 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		webpushClient = webpush.NewClient(cfg.WebPush)
 	}
 
+	return newEngine(cfg, db, initialDBMigration, engineDeps{
+		jellyfin:   jellyfinAPIClient,
+		stats:      statsClient,
+		jellyseerr: jellyseerrClient,
+		sonarr:     sonarrClient,
+		radarr:     radarrClient,
+		email:      emailService,
+		ntfy:       ntfyClient,
+		webpush:    webpushClient,
+		filters:    filters,
+		policyFactory: func(libraryFoldersMap map[string][]string) []policy.Policy {
+			return []policy.Policy{
+				policy.NewDefaultDelete(cfg),
+				policy.NewDiskUsageDelete(cfg, libraryFoldersMap),
+			}
+		},
+		engineCache:   engineCache,
+		imageCacheDir: "./data/cache/images",
+	})
+}
+
+// newEngine wires an Engine from explicit dependencies.
+func newEngine(cfg *config.Config, db database.DB, initialDBMigration bool, deps engineDeps) (*Engine, error) {
+	sched, err := scheduler.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scheduler: %w", err)
+	}
+
 	engine := &Engine{
 		cfg:                cfg,
 		db:                 db,
 		initialDBMigration: initialDBMigration,
-		filters:            filters,
+		filters:            deps.filters,
 		policy:             policy.NewEngine(),
-		jellyfin:           jellyfinClient,
-		stats:              statsClient,
-		jellyseerr:         jellyseerrClient,
-		sonarr:             sonarrClient,
-		radarr:             radarrClient,
-		email:              emailService,
-		ntfy:               ntfyClient,
-		webpush:            webpushClient,
+		policyFactory:      deps.policyFactory,
+		jellyfin:           deps.jellyfin,
+		stats:              deps.stats,
+		jellyseerr:         deps.jellyseerr,
+		sonarr:             deps.sonarr,
+		radarr:             deps.radarr,
+		email:              deps.email,
+		ntfy:               deps.ntfy,
+		webpush:            deps.webpush,
 		scheduler:          sched,
 		data: &data{
 			userNotifications: make(map[string][]arr.MediaItem),
 		},
-		imageCache: cache.NewImageCache("./data/cache/images", db),
-		cache:      engineCache,
+		imageCache: cache.NewImageCache(deps.imageCacheDir, db),
+		cache:      deps.engineCache,
 	}
 
 	// Setup scheduled jobs
@@ -274,9 +325,16 @@ func (e *Engine) removeProtectedExpiredItems(ctx context.Context) {
 }
 
 func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
+	if e.stats == nil {
+		log.Debug("No stats backend configured, skipping recently played check")
+		return
+	}
+
 	log.Info("Removing recently played items from database")
 
-	mediaItems, err := e.db.GetMediaItems(ctx, true)
+	// Exclude protected items: a keep request must survive the item being
+	// streamed, otherwise protection and request history are silently lost.
+	mediaItems, err := e.db.GetMediaItems(ctx, false)
 	if err != nil {
 		log.Error("Failed to get media items from database", "error", err)
 		return
@@ -389,7 +447,7 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 	}
 
 	// save items to database
-	if err := e.saveMediaItemsToDatabase(mediaItems); err != nil {
+	if err := e.saveMediaItemsToDatabase(ctx, mediaItems); err != nil {
 		log.Error("failed to save media items to database", "error", err)
 		return err
 	}
@@ -436,10 +494,7 @@ func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) 
 	mediaItems = append(mediaItems, radarrItems...)
 
 	// Set deletion policies with freshly gathered library folders map
-	e.policy.SetPolicies(
-		policy.NewDefaultDelete(e.cfg),
-		policy.NewDiskUsageDelete(e.cfg, libraryFoldersMap),
-	)
+	e.policy.SetPolicies(e.policyFactory(libraryFoldersMap)...)
 
 	return mediaItems, nil
 }
@@ -487,7 +542,7 @@ func arrMediaToDBMediaItem(item arr.MediaItem) database.Media {
 	return dbItem
 }
 
-func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
+func (e *Engine) saveMediaItemsToDatabase(ctx context.Context, mediaItems []arr.MediaItem) error {
 	dbMediaItems := make([]database.Media, 0)
 
 	for _, item := range mediaItems {
@@ -499,13 +554,13 @@ func (e *Engine) saveMediaItemsToDatabase(mediaItems []arr.MediaItem) error {
 		dbMediaItems = append(dbMediaItems, dbItem)
 	}
 
-	if err := e.db.CreateMediaItems(context.Background(), dbMediaItems); err != nil {
+	if err := e.db.CreateMediaItems(ctx, dbMediaItems); err != nil {
 		return fmt.Errorf("failed to create media items to database: %w", err)
 	}
 
 	// Create history events for newly picked up items
 	for i := range dbMediaItems {
-		if err := e.CreatePickedUpEvent(context.Background(), &dbMediaItems[i]); err != nil {
+		if err := e.CreatePickedUpEvent(ctx, &dbMediaItems[i]); err != nil {
 			log.Error("failed to create picked up event", "title", dbMediaItems[i].Title, "error", err)
 		}
 	}

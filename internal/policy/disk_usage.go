@@ -11,20 +11,39 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 )
 
+// UsageFunc reports the disk usage of a path in percent.
+type UsageFunc func(ctx context.Context, path string) (float64, error)
+
 // DiskUsageDelete applies when disk usage exceeds a certain threshold.
 type DiskUsageDelete struct {
 	cfg               *config.Config
 	libraryFoldersMap map[string][]string
+	usageFunc         UsageFunc
 }
 
 var _ Policy = (*DiskUsageDelete)(nil)
 
+// DiskUsageOption configures a DiskUsageDelete policy.
+type DiskUsageOption func(*DiskUsageDelete)
+
+// WithUsageFunc overrides how disk usage is determined. Used by tests.
+func WithUsageFunc(fn UsageFunc) DiskUsageOption {
+	return func(p *DiskUsageDelete) {
+		p.usageFunc = fn
+	}
+}
+
 // NewDiskUsageDelete creates a new instance of DiskUsageDelete.
-func NewDiskUsageDelete(cfg *config.Config, libraryFoldersMap map[string][]string) *DiskUsageDelete {
-	return &DiskUsageDelete{
+func NewDiskUsageDelete(cfg *config.Config, libraryFoldersMap map[string][]string, opts ...DiskUsageOption) *DiskUsageDelete {
+	p := &DiskUsageDelete{
 		cfg:               cfg,
 		libraryFoldersMap: libraryFoldersMap,
+		usageFunc:         getLibraryDiskUsage,
 	}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
 }
 
 // Apply adds a DiskUsageDeletePolicy if the library has a disk usage threshold set.
@@ -78,7 +97,7 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media datab
 	var currentDiskUsage float64
 	var diskUsageError error
 	for _, path := range folders {
-		usage, err := getLibraryDiskUsage(ctx, path)
+		usage, err := p.usageFunc(ctx, path)
 		if err != nil {
 			log.Error("failed to get disk usage", "path", path, "error", err)
 			diskUsageError = err

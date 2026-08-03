@@ -141,7 +141,7 @@ func (s *IntegrationTestSuite) TestAuthProvider_Interface() {
 	assert.NoError(s.T(), err)
 
 	// Test that provider implements all interface methods
-var _ AuthProvider = (*MultiProvider)(nil)
+	var _ AuthProvider = (*MultiProvider)(nil)
 
 	// Test each method exists and can be called
 	assert.NotNil(s.T(), provider.RequireAuth())
