@@ -413,6 +413,8 @@ func (e *Engine) removeItemsWithExcludedTags(ctx context.Context, mediaItems []a
 				dbItem.DBDeleteReason = database.DBDeleteReasonExcludeTag
 				if err := e.db.DeleteMediaItem(ctx, &dbItem); err != nil {
 					log.Error("Failed to remove item from database", "title", dbItem.Title, "error", err)
+				} else if err := e.CreateIgnoredEvent(ctx, &dbItem); err != nil {
+					log.Error("failed to create ignored event", "title", dbItem.Title, "error", err)
 				}
 				break
 			}
