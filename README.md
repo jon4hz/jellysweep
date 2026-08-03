@@ -79,6 +79,7 @@ Filters can be configured per library and include:
 | Filter                   | Description                                                                      |
 | ------------------------ | -------------------------------------------------------------------------------- |
 | `content_age_threshold`  | Minimum age of the content in days                                               |
+| `movie_release_date_max` | Only accept movies released before this date (YYYY-MM-DD or RFC3339)             |
 | `last_stream_threshold`  | Minimum days since the content was last streamed                                 |
 | `content_size_threshold` | Minimum size of the content in bytes (0 = no minimum)                            |
 | `tunarr_enabled`         | Whether to protect items used by Tunarr channels (requires Tunarr configuration) |
@@ -385,7 +386,7 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_LEAVING_COLLECTIONS_TV_NAME`    | `Leaving TV Shows`              | Name of the leaving TV shows collection                                                |
 | **Database Configuration**                  |                                 |                                                                                        |
 | `JELLYSWEEP_DATABASE_TYPE`                  | `sqlite`                        | Database backend: `sqlite` or `postgres`                                               |
-| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file (for SQLite)                                                |
+| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file (for SQLite)                                                 |
 | `JELLYSWEEP_DATABASE_HOST`                  | *(required for postgres)*       | PostgreSQL server host                                                                 |
 | `JELLYSWEEP_DATABASE_PORT`                  | `5432`                          | PostgreSQL server port                                                                 |
 | `JELLYSWEEP_DATABASE_NAME`                  | *(required for postgres)*       | PostgreSQL database name                                                               |
@@ -540,6 +541,7 @@ libraries:
     # Filter configuration
     filter:
       content_age_threshold: 120        # Content must be at least 120 days old
+      movie_release_date_max: "2024-01-01"  # Movies must be released before this date
       last_stream_threshold: 90         # Last watched at least 90 days ago
       content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
       tunarr_enabled: true              # Protect items used by Tunarr channels (requires tunarr config)
