@@ -32,7 +32,9 @@ test-race:
 # Run all tests with race detector and coverage report
 test-cover:
 	go test -race -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out | tail -1
+	go tool cover -func=coverage.out > coverage.func
+	tail -1 coverage.func
+	rm -f coverage.func
 
 # Clean generated files
 clean:
