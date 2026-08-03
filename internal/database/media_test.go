@@ -70,6 +70,147 @@ func TestSetMediaProtectedUntilClearsUnkeepable(t *testing.T) {
 	require.Nil(t, got.ProtectedUntil)
 }
 
+func TestGetMediaItemsProtectedFiltering(t *testing.T) {
+	db, _ := databasetest.New(t)
+
+	future := time.Now().Add(time.Hour)
+	past := time.Now().Add(-time.Hour)
+	createMediaItem(t, db, database.Media{Title: "Unprotected", ArrID: 1})
+	createMediaItem(t, db, database.Media{Title: "Protected", ArrID: 2, ProtectedUntil: &future})
+	createMediaItem(t, db, database.Media{Title: "Expired Protection", ArrID: 3, ProtectedUntil: &past})
+
+	all, err := db.GetMediaItems(t.Context(), true)
+	require.NoError(t, err)
+	require.Len(t, all, 3)
+
+	unprotected, err := db.GetMediaItems(t.Context(), false)
+	require.NoError(t, err)
+	titles := make([]string, 0, len(unprotected))
+	for _, m := range unprotected {
+		titles = append(titles, m.Title)
+	}
+	require.ElementsMatch(t, []string{"Unprotected", "Expired Protection"}, titles,
+		"actively protected items must be excluded; expired protection must not")
+}
+
+func TestGetMediaExpiredProtectionBoundary(t *testing.T) {
+	db, _ := databasetest.New(t)
+
+	asOf := time.Now()
+	before := asOf.Add(-time.Minute)
+	after := asOf.Add(time.Minute)
+	createMediaItem(t, db, database.Media{Title: "Expired", ArrID: 1, ProtectedUntil: &before})
+	createMediaItem(t, db, database.Media{Title: "Exactly Now", ArrID: 2, ProtectedUntil: &asOf})
+	createMediaItem(t, db, database.Media{Title: "Still Protected", ArrID: 3, ProtectedUntil: &after})
+	createMediaItem(t, db, database.Media{Title: "Never Protected", ArrID: 4})
+
+	expired, err := db.GetMediaExpiredProtection(t.Context(), asOf)
+	require.NoError(t, err)
+	titles := make([]string, 0, len(expired))
+	for _, m := range expired {
+		titles = append(titles, m.Title)
+	}
+	require.ElementsMatch(t, []string{"Expired", "Exactly Now"}, titles,
+		"protected_until <= asOf is expired; NULL never expires")
+}
+
+func TestDeleteMediaItemWritesReasonAndTombstone(t *testing.T) {
+	db, gdb := databasetest.New(t)
+
+	tmdbID := int32(4242)
+	media := createMediaItem(t, db, database.Media{
+		Title:  "Doomed Movie",
+		ArrID:  1,
+		TmdbId: &tmdbID,
+		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{
+			{Threshold: 90, DeleteDate: time.Now().Add(48 * time.Hour)},
+		},
+	})
+
+	media.DBDeleteReason = database.DBDeleteReasonDefault
+	require.NoError(t, db.DeleteMediaItem(t.Context(), &media))
+
+	// Gone from the live set.
+	live, err := db.GetMediaItems(t.Context(), true)
+	require.NoError(t, err)
+	require.Empty(t, live)
+
+	// Present as a tombstone with the reason recorded.
+	var tombstone database.Media
+	require.NoError(t, gdb.Unscoped().First(&tombstone, media.ID).Error)
+	require.True(t, tombstone.DeletedAt.Valid)
+	require.Equal(t, database.DBDeleteReasonDefault, tombstone.DBDeleteReason)
+
+	// Tombstone queries find it by TMDB ID.
+	deleted, err := db.GetDeletedMediaByTMDBID(t.Context(), tmdbID)
+	require.NoError(t, err)
+	require.Len(t, deleted, 1)
+	require.Equal(t, media.ID, deleted[0].ID)
+}
+
+func TestGetDeletedMediaOnlyReturnsTombstones(t *testing.T) {
+	db, _ := databasetest.New(t)
+
+	tmdbID := int32(7)
+	createMediaItem(t, db, database.Media{Title: "Alive", ArrID: 1, TmdbId: &tmdbID})
+
+	deleted, err := db.GetDeletedMediaByTMDBID(t.Context(), tmdbID)
+	require.NoError(t, err)
+	require.Empty(t, deleted, "live rows must not appear in the deletion history")
+}
+
+func TestReMarkAfterDeletionCreatesNewRow(t *testing.T) {
+	// The mark -> delete -> re-pickup cycle must work: the unique index
+	// includes DefaultDeleteAt, and tombstones don't block new rows.
+	db, _ := databasetest.New(t)
+
+	first := createMediaItem(t, db, database.Media{Title: "Cycled Movie", ArrID: 1})
+	first.DBDeleteReason = database.DBDeleteReasonStreamed
+	require.NoError(t, db.DeleteMediaItem(t.Context(), &first))
+
+	second := createMediaItem(t, db, database.Media{
+		Title:           "Cycled Movie",
+		ArrID:           1,
+		DefaultDeleteAt: time.Now().Add(31 * 24 * time.Hour),
+	})
+	require.NotEqual(t, first.ID, second.ID, "a re-pickup is a fresh row, not a resurrection")
+}
+
+func TestGetMediaWithPendingRequest(t *testing.T) {
+	db, _ := databasetest.New(t)
+
+	user, err := db.CreateUser(t.Context(), "alice")
+	require.NoError(t, err)
+
+	requested := createMediaItem(t, db, database.Media{Title: "Requested", ArrID: 1})
+	createMediaItem(t, db, database.Media{Title: "Unrequested", ArrID: 2})
+	future := time.Now().Add(time.Hour)
+	protectedRequested := createMediaItem(t, db, database.Media{Title: "Protected Requested", ArrID: 3, ProtectedUntil: &future})
+
+	_, err = db.CreateRequest(t.Context(), requested.ID, user.ID)
+	require.NoError(t, err)
+	_, err = db.CreateRequest(t.Context(), protectedRequested.ID, user.ID)
+	require.NoError(t, err)
+
+	pending, err := db.GetMediaWithPendingRequest(t.Context())
+	require.NoError(t, err)
+	require.Len(t, pending, 1, "protected media must not show up as pending")
+	require.Equal(t, requested.ID, pending[0].ID)
+	require.Equal(t, user.ID, pending[0].Request.UserID)
+
+	// Approving removes it from the pending set.
+	require.NoError(t, db.UpdateRequestStatus(t.Context(), pending[0].Request.ID, database.RequestStatusApproved))
+	pending, err = db.GetMediaWithPendingRequest(t.Context())
+	require.NoError(t, err)
+	require.Empty(t, pending)
+}
+
+func TestUpdateRequestStatusUnknownRequest(t *testing.T) {
+	db, _ := databasetest.New(t)
+	err := db.UpdateRequestStatus(t.Context(), 999, database.RequestStatusApproved)
+	require.Error(t, err)
+}
+
 func TestMarkMediaAsUnkeepableClearsProtection(t *testing.T) {
 	db, _ := databasetest.New(t)
 
