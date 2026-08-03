@@ -19,6 +19,8 @@
     "enabled": true
   },
   "vulnerabilityAlerts": {
+    "enabled": true,
+    "semanticCommitType": "fix",
     "schedule": ["at any time"],
     "minimumReleaseAge": null
   },
