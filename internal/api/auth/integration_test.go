@@ -141,7 +141,7 @@ func (s *IntegrationTestSuite) TestAuthProvider_Interface() {
 	assert.NoError(s.T(), err)
 
 	// Test that provider implements all interface methods
-	var _ AuthProvider = provider //nolint:staticcheck // explicit interface assertion is the point here
+var _ AuthProvider = (*MultiProvider)(nil)
 
 	// Test each method exists and can be called
 	assert.NotNil(s.T(), provider.RequireAuth())
