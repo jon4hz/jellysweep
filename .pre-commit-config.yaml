@@ -35,7 +35,7 @@ repos:
 
   # Markdown formatter
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.22
+    rev: 1.0.0
     hooks:
       - id: mdformat
         additional_dependencies:
