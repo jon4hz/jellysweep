@@ -1,6 +1,6 @@
 version: "2"
 run:
-  tests: false
+  tests: true
 linters:
   enable:
     - bodyclose
@@ -26,6 +26,13 @@ linters:
     generated: lax
     presets:
       - common-false-positives
+    rules:
+      # httptest.NewRequest without a context is idiomatic in tests,
+      # and gosec targets production code, not test helpers.
+      - path: _test\.go
+        linters:
+          - noctx
+          - gosec
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
