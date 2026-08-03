@@ -12,8 +12,18 @@ if [[ ! -f "$FLOOR_FILE" ]]; then
     exit 0
 fi
 
+if [[ ! -f "$PROFILE" ]]; then
+    echo "::error::Coverage profile $PROFILE not found."
+    exit 1
+fi
+
 floor=$(<"$FLOOR_FILE")
 total=$(go tool cover -func="$PROFILE" | awk '/^total:/ {sub(/%/, "", $3); print $3}')
+
+if [[ -z "$total" ]]; then
+    echo "::error::Unable to parse total coverage from $PROFILE."
+    exit 1
+fi
 
 echo "total coverage: ${total}% (floor: ${floor}%)"
 
