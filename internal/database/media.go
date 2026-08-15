@@ -20,14 +20,23 @@ type DiskUsageDeletePolicy struct {
 // Media represents a media item in the database.
 type Media struct {
 	gorm.Model
-	JellyfinID      string `gorm:"not null;uniqueIndex:idx_media_arr"`
-	LibraryName     string
-	ArrID           int32 `gorm:"not null;uniqueIndex:idx_media_arr"` // Sonarr or Radarr ID
-	Title           string
-	TmdbId          *int32 `gorm:"index"`
-	TvdbId          *int32 `gorm:"index"`
-	Year            int32
-	FileSize        int64
+	JellyfinID  string `gorm:"not null;uniqueIndex:idx_media_arr"`
+	LibraryName string
+	ArrID       int32 `gorm:"not null;uniqueIndex:idx_media_arr"` // Sonarr or Radarr ID
+	Title       string
+	TmdbId      *int32 `gorm:"index"`
+	TvdbId      *int32 `gorm:"index"`
+	Year        int32
+	FileSize    int64
+	// FreeableSize is the estimated number of bytes a deletion of this item will actually
+	// free, accounting for cleanup modes that keep part of a series (keep_episodes /
+	// keep_seasons). nil means unknown (rows from older versions); consumers should then
+	// fall back to FileSize. A stored 0 is a genuine estimate (deletion frees nothing).
+	FreeableSize *int64
+	// QuotaGroup is the sweep_until quota group this item was budgeted against when it
+	// was marked, so the budget seed survives library renames and config regrouping.
+	// Empty for items marked outside any quota group (or by older versions).
+	QuotaGroup      string
 	PosterURL       string
 	MediaType       MediaType `gorm:"not null;uniqueIndex:idx_media_arr"`
 	RequestedBy     string
