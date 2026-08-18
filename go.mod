@@ -26,7 +26,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mergestat/timediff v0.0.4
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/redis/go-redis/v9 v9.21.0
+	github.com/redis/go-redis/v9 v9.22.0
 	github.com/samber/lo v1.53.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sj14/jellyfin-go v0.4.4
@@ -37,7 +37,7 @@ require (
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
-	gorm.io/driver/postgres v1.6.1
+	gorm.io/driver/postgres v1.6.2
 	gorm.io/gorm v1.31.2
 )
 
