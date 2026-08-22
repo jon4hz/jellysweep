@@ -65,3 +65,28 @@ func TestApplyExcludeTagsAreScopedPerLibrary(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1, "exclude tags from another library must not apply")
 }
+
+func TestExcludedTag(t *testing.T) {
+	cfg := &config.Config{
+		Libraries: map[string]*config.CleanupConfig{
+			"Movies": {Filter: config.FilterConfig{ExcludeTags: []string{"favorite"}}},
+		},
+	}
+
+	tag, ok := ExcludedTag(cfg, "Movies", []string{"4k", "favorite"})
+	require.True(t, ok)
+	require.Equal(t, "favorite", tag)
+
+	tag, ok = ExcludedTag(cfg, "TV", []string{"favorite", "jellysweep-ignore"})
+	require.True(t, ok, "the ignore tag applies to every library")
+	require.Equal(t, "jellysweep-ignore", tag)
+
+	_, ok = ExcludedTag(cfg, "TV", []string{"favorite"})
+	require.False(t, ok, "exclude tags are scoped per library")
+
+	_, ok = ExcludedTag(cfg, "Unknown", []string{"jellysweep-ignore"})
+	require.True(t, ok, "the ignore tag applies without a library config")
+
+	_, ok = ExcludedTag(cfg, "Movies", nil)
+	require.False(t, ok)
+}

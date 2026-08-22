@@ -142,11 +142,12 @@ func (e *Engine) CreateNotFoundAnymoreEvent(ctx context.Context, media *database
 	return e.db.CreateHistoryEvent(ctx, event)
 }
 
-// CreateIgnoredEvent creates a history event when a media item is ignored.
-func (e *Engine) CreateIgnoredEvent(ctx context.Context, media *database.Media) error {
+// CreateExcludedByTagEvent creates a history event when a media item is removed
+// from the deletion queue because it gained an exclude tag in Sonarr/Radarr.
+func (e *Engine) CreateExcludedByTagEvent(ctx context.Context, media *database.Media) error {
 	event := database.HistoryEvent{
 		MediaID:   media.ID,
-		EventType: database.HistoryEventIgnored,
+		EventType: database.HistoryEventExcludedByTag,
 	}
 
 	return e.db.CreateHistoryEvent(ctx, event)

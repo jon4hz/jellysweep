@@ -360,3 +360,77 @@ func requireNoHistoryEvent(t *testing.T, h *harness, m *mediaRef, unwanted datab
 		require.NotEqual(t, unwanted, event.EventType)
 	}
 }
+
+// Scenario 15: an exclude tag added in the arr after the item was marked
+// removes it from the queue; removing the tag again makes it a candidate.
+func TestLifecycleExcludeTagAddedDuringWait(t *testing.T) {
+	h := newHarness(t)
+	h.cfg.Libraries["TV"].Filter.ExcludeTags = []string{"keep"}
+	movie := h.addMovie("Tagged Later Movie")
+	series := h.addSeries("Tagged Later Series")
+	h.mustRunCleanup()
+	h.assertMarked(movie)
+	h.assertMarked(series)
+
+	h.setArrTags(movie, "jellysweep-ignore")
+	h.setArrTags(series, "4k", "keep")
+	h.mustRunCleanup()
+
+	for _, m := range []*mediaRef{movie, series} {
+		h.assertNotMarked(m)
+		h.assertTombstone(m, database.DBDeleteReasonExcludedByTag)
+		h.assertHistory(m, database.HistoryEventExcludedByTag)
+		h.assertNotDeletedAnywhere(m)
+	}
+
+	// Even once the delay would have passed, nothing is deleted.
+	h.mustRunCleanup()
+	h.assertNotMarked(movie)
+	h.assertNotDeletedAnywhere(movie)
+
+	// Dropping the tag makes the item a fresh candidate again.
+	h.setArrTags(movie)
+	h.mustRunCleanup()
+	h.assertMarked(movie)
+}
+
+// Scenario 16: an exclude tag on a protected item must not strip the
+// protection or orphan the keep request.
+func TestLifecycleExcludeTagOnProtectedItem(t *testing.T) {
+	h := newHarness(t)
+	movie := h.addMovie("Protected Then Tagged")
+	h.mustRunCleanup()
+
+	_, err := h.requestKeep(movie)
+	require.NoError(t, err)
+	require.NoError(t, h.decideKeep(movie, true))
+
+	h.setArrTags(movie, "jellysweep-ignore")
+	h.mustRunCleanup()
+
+	row := h.assertMarked(movie)
+	require.NotNil(t, row.ProtectedUntil, "an exclude tag must not strip protection")
+	require.NotZero(t, row.Request.ID, "the keep request history must survive")
+
+	// Once the protection expires the row is dropped, and the tag keeps the
+	// item out of the queue from then on.
+	h.elapseProtection(movie)
+	h.mustRunCleanup()
+	h.assertNotMarked(movie)
+	h.assertNotDeletedAnywhere(movie)
+}
+
+// Scenario 17: a queued item removed and re-added in the arr (new arr ID, same
+// Jellyfin item) with an exclude tag is still dequeued.
+func TestLifecycleExcludeTagAfterArrReadd(t *testing.T) {
+	h := newHarness(t)
+	movie := h.addMovie("Re-added Movie")
+	h.mustRunCleanup()
+	h.assertMarked(movie)
+
+	h.readdToArr(movie, "jellysweep-ignore")
+	h.mustRunCleanup()
+	h.assertNotMarked(movie)
+	h.assertTombstone(movie, database.DBDeleteReasonExcludedByTag)
+	h.assertNotDeletedAnywhere(movie)
+}
