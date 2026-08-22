@@ -3,6 +3,19 @@ package templates
 // Shared utility scripts for common functionality across templates
 templ ToastScript() {
 	<script>
+		if (!window.escapeHtml) {
+			// escapeHtml makes a string safe for interpolation into innerHTML,
+			// in both text and single/double-quoted attribute contexts.
+			window.escapeHtml = function(text) {
+				if (text == null) return '';
+				return String(text)
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/'/g, '&#39;');
+			};
+		}
 		if (!window.showToast) {
 			window.showToast = function(message, toastType = 'info') {
 				// Remove existing toasts
@@ -34,7 +47,7 @@ templ ToastScript() {
 						<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							${icons[toastType] || icons.info}
 						</svg>
-						<span>${message}</span>
+						<span>${window.escapeHtml(message)}</span>
 						<button class="ml-4 text-current hover:opacity-70" onclick="this.parentElement.parentElement.remove()">
 							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>

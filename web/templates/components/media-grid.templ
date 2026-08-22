@@ -471,9 +471,21 @@ script MediaGridScript() {
 			return div;
 		}
 
+		// escapeHtml makes a server-provided string safe for interpolation into
+		// innerHTML, both in text and in double/single-quoted attribute contexts.
+		escapeHtml(text) {
+			if (text == null) return '';
+			return String(text)
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#39;');
+		}
+
 		createCardHTML(item) {
 			// Default implementation - should be overridden
-			return `<div class="card p-4"><h3>${item.title}</h3><p>${item.library}</p></div>`;
+			return `<div class="card p-4"><h3>${this.escapeHtml(item.title)}</h3><p>${this.escapeHtml(item.library)}</p></div>`;
 		}
 
 		createSkeletonElement() {

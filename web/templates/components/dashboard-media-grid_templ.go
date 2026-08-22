@@ -181,8 +181,8 @@ func DashboardFilters(mediaItems []models.UserMediaItem) templ.Component {
 
 func DashboardMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_DashboardMediaGridScript_2b58`,
-		Function: `function __templ_DashboardMediaGridScript_2b58(){class DashboardMediaGridManager extends MediaGridManager {
+		Name: `__templ_DashboardMediaGridScript_47a6`,
+		Function: `function __templ_DashboardMediaGridScript_47a6(){class DashboardMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -271,7 +271,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 			const relativeTime = this.formatRelativeTime(deletionDate);
 
 			// Use image cache API endpoint
-			const posterUrl = item.id ? ` + "`" + `/api/images/cache?id=${item.id}` + "`" + ` : '';
+			const posterUrl = item.id ? ` + "`" + `/api/images/cache?id=${encodeURIComponent(item.id)}` + "`" + ` : '';
 			const posterImg = posterUrl
 				? ` + "`" + `<img src="${posterUrl}" class="w-full h-64 object-cover" loading="lazy"/>` + "`" + `
 				: ` + "`" + `<div class="w-full h-64 bg-gray-800 flex items-center justify-center">
@@ -302,12 +302,12 @@ func DashboardMediaGridScript() templ.ComponentScript {
 						Keep ${item.keepCount} ${seasonText}
 					</span>` + "`" + `;
 				} else {
-					const tooltip = ` + "`" + `Cleanup mode: ${item.cleanupMode}` + "`" + `;
+					const tooltip = ` + "`" + `Cleanup mode: ${this.escapeHtml(item.cleanupMode)}` + "`" + `;
 					cleanupPillHTML = ` + "`" + `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-600 text-blue-100" title="${tooltip}">
 						<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 						</svg>
-						${item.cleanupMode}
+						${this.escapeHtml(item.cleanupMode)}
 					</span>` + "`" + `;
 				}
 			}
@@ -320,7 +320,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 					Request Submitted
 				</span>` + "`" + `
 				: item.canRequest && !item.mustDelete
-				? ` + "`" + `<button id="keep-btn-desktop-${item.id}" data-media-id="${item.id}" class="w-full flex items-center justify-center btn-primary active:scale-95 active:bg-indigo-700 transition-all duration-150 ease-out touch-manipulation">
+				? ` + "`" + `<button id="keep-btn-desktop-${this.escapeHtml(item.id)}" data-media-id="${this.escapeHtml(item.id)}" class="w-full flex items-center justify-center btn-primary active:scale-95 active:bg-indigo-700 transition-all duration-150 ease-out touch-manipulation">
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
 					</svg>
@@ -338,7 +338,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 					Request Submitted
 				</span>` + "`" + `
 				: item.canRequest && !item.mustDelete
-				? ` + "`" + `<button id="keep-btn-mobile-${item.id}" data-media-id="${item.id}" class="w-full flex items-center justify-center btn-primary active:scale-95 active:bg-indigo-700 transition-all duration-150 ease-out touch-manipulation">
+				? ` + "`" + `<button id="keep-btn-mobile-${this.escapeHtml(item.id)}" data-media-id="${this.escapeHtml(item.id)}" class="w-full flex items-center justify-center btn-primary active:scale-95 active:bg-indigo-700 transition-all duration-150 ease-out touch-manipulation">
 					<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
 					</svg>
@@ -357,10 +357,10 @@ func DashboardMediaGridScript() templ.ComponentScript {
 					<div class="p-4">
 						<div class="flex items-start justify-between">
 							<div class="flex-1 min-w-0">
-								<h3 class="text-lg font-semibold text-gray-100 truncate">${item.title}</h3>
+								<h3 class="text-lg font-semibold text-gray-100 truncate">${this.escapeHtml(item.title)}</h3>
 								<div class="flex items-center space-x-2 mt-1">
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
-										${item.type}
+										${this.escapeHtml(item.type)}
 									</span>
 									${item.year ? ` + "`" + `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-600 text-gray-300">${item.year}</span>` + "`" + ` : ''}
 									${cleanupPillHTML}
@@ -372,7 +372,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
 								</svg>
-								${item.library}
+								${this.escapeHtml(item.library)}
 							</div>
 							<div class="flex items-center text-sm text-gray-400">
 								<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,7 +398,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 					<div class="flex items-center p-4 gap-4">
 						<div class="shrink-0">
 							${posterUrl
-								? ` + "`" + `<img src="${posterUrl}" alt="${item.title}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
+								? ` + "`" + `<img src="${posterUrl}" alt="${this.escapeHtml(item.title)}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
 								: ` + "`" + `<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
 									<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
@@ -407,13 +407,13 @@ func DashboardMediaGridScript() templ.ComponentScript {
 							}
 						</div>
 						<div class="flex-1 min-w-0">
-							<h4 class="text-lg font-medium text-gray-100 truncate">${item.title}</h4>
+							<h4 class="text-lg font-medium text-gray-100 truncate">${this.escapeHtml(item.title)}</h4>
 							<div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-400">
 								<div class="flex items-center">
 									<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
 									</svg>
-									${item.library}
+									${this.escapeHtml(item.library)}
 								</div>
 								<div class="flex items-center">
 									<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -430,7 +430,7 @@ func DashboardMediaGridScript() templ.ComponentScript {
 							</div>
 							<div class="mt-2 flex flex-wrap items-center gap-2">
 								<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
-									${item.type}
+									${this.escapeHtml(item.type)}
 								</span>
 								${item.year ? ` + "`" + `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-600 text-gray-300">${item.year}</span>` + "`" + ` : ''}
 								${cleanupPillHTML}
@@ -635,8 +635,8 @@ func DashboardMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_2b58`),
-		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_2b58`),
+		Call:       templ.SafeScript(`__templ_DashboardMediaGridScript_47a6`),
+		CallInline: templ.SafeScriptInline(`__templ_DashboardMediaGridScript_47a6`),
 	}
 }
 
