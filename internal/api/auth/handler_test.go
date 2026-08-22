@@ -122,7 +122,7 @@ func (s *HandlerTestSuite) TestSessionHelperFunctions() {
 		session.Set("bool_val", true)
 		session.Set("int_val", 42)
 		session.Set("nil_val", nil)
-		session.Save()
+		session.Save() //nolint:errcheck
 
 		// Test getSessionString
 		assert.Equal(s.T(), "test_string", getSessionString(session, "string_val"))

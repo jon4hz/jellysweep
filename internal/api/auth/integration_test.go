@@ -141,7 +141,7 @@ func (s *IntegrationTestSuite) TestAuthProvider_Interface() {
 	assert.NoError(s.T(), err)
 
 	// Test that provider implements all interface methods
-	var _ AuthProvider = provider
+	var _ AuthProvider = (*MultiProvider)(nil)
 
 	// Test each method exists and can be called
 	assert.NotNil(s.T(), provider.RequireAuth())
@@ -222,7 +222,7 @@ func (s *IntegrationTestSuite) TestSessionPersistence() {
 		session.Set("user_id", "test-user")
 		session.Set("user_name", "Test User")
 		session.Set("user_is_admin", true)
-		session.Save()
+		session.Save() //nolint:errcheck
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 

@@ -482,7 +482,7 @@ func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32, since tim
 		if eventType == sonarrAPI.EPISODEHISTORYEVENTTYPE_DOWNLOAD_FOLDER_IMPORTED ||
 			eventType == sonarrAPI.EPISODEHISTORYEVENTTYPE_SERIES_FOLDER_IMPORTED {
 			recordTime := record.GetDate()
-			if earliestTime == nil || (recordTime.Before(*earliestTime) && recordTime.After(since)) {
+			if recordTime.After(since) && (earliestTime == nil || recordTime.Before(*earliestTime)) {
 				earliestTime = &recordTime
 			}
 		}

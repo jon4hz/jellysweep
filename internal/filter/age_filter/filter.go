@@ -110,11 +110,19 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 }
 
 // getMediaItemAddedDate returns the first date when media content was added/imported for a given media item.
+// A nil arr client yields no added date, which keeps the item as a deletion candidate
+// (same fail-open behavior as an item without history).
 func (f *Filter) getMediaItemAddedDate(ctx context.Context, item arr.MediaItem, since time.Time) (*time.Time, error) {
 	switch item.MediaType {
 	case models.MediaTypeMovie:
+		if f.radarr == nil {
+			return nil, nil
+		}
 		return f.radarr.GetItemAddedDate(ctx, item.MovieResource.GetId(), since)
 	case models.MediaTypeTV:
+		if f.sonarr == nil {
+			return nil, nil
+		}
 		return f.sonarr.GetItemAddedDate(ctx, item.SeriesResource.GetId(), since)
 	default:
 		return nil, nil

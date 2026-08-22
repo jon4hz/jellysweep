@@ -37,7 +37,7 @@ func TestGetMovie(t *testing.T) {
 					"updatedAt": "2023-01-01T00:00:00.000Z"
 				}
 			}`
-			fmt.Fprint(w, response)
+			fmt.Fprint(w, response) //nolint:errcheck
 		} else {
 			http.NotFound(w, r)
 		}
@@ -96,7 +96,7 @@ func TestGetTvShow(t *testing.T) {
 					"updatedAt": "2023-01-02T00:00:00.000Z"
 				}
 			}`
-			fmt.Fprint(w, response)
+			fmt.Fprint(w, response) //nolint:errcheck
 		} else {
 			http.NotFound(w, r)
 		}
@@ -155,7 +155,7 @@ func TestGetRequestTime(t *testing.T) {
 					"updatedAt": "2023-01-01T00:00:00.000Z"
 				}
 			}`
-			fmt.Fprint(w, response)
+			fmt.Fprint(w, response) //nolint:errcheck
 		} else {
 			http.NotFound(w, r)
 		}
@@ -198,7 +198,7 @@ func TestGetRequestTimeNoRequests(t *testing.T) {
 					"updatedAt": "2023-01-01T00:00:00.000Z"
 				}
 			}`
-			fmt.Fprint(w, response)
+			fmt.Fprint(w, response) //nolint:errcheck
 		} else {
 			http.NotFound(w, r)
 		}

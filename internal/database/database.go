@@ -31,6 +31,12 @@ func New(cfg *config.DatabaseConfig) (*Client, bool, error) {
 		return nil, false, fmt.Errorf("failed to connect database: %w", err)
 	}
 
+	return NewFromGorm(db)
+}
+
+// NewFromGorm wraps an existing gorm connection and performs migrations.
+// The boolean return reports whether the database was newly created.
+func NewFromGorm(db *gorm.DB) (*Client, bool, error) {
 	isNew := isNewDatabase(db)
 
 	if err := db.AutoMigrate(

@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -42,7 +41,7 @@ type Media struct {
 
 func (c *Client) CreateMediaItems(ctx context.Context, mediaItems []Media) error {
 	if len(mediaItems) == 0 {
-		return errors.New("no media items to create")
+		return nil
 	}
 	result := c.db.WithContext(ctx).Create(&mediaItems)
 	if result.Error != nil {
@@ -147,9 +146,11 @@ func (c *Client) GetDeletedMediaByTVDBID(ctx context.Context, tvdbID int32) ([]M
 }
 
 func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error {
+	// Use a map so zero values (NULL protected_until, false unkeepable) are
+	// written as well; gorm skips zero-valued struct fields in Updates.
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).
-		Updates(Media{ProtectedUntil: protectedUntil, Unkeepable: false})
+		Updates(map[string]any{"protected_until": protectedUntil, "unkeepable": false})
 	if result.Error != nil {
 		log.Error("failed to set media protected until", "error", result.Error)
 		return result.Error
@@ -158,9 +159,11 @@ func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, prote
 }
 
 func (c *Client) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error {
+	// Use a map so the NULL protected_until is written as well; gorm skips
+	// zero-valued struct fields in Updates.
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).
-		Updates(Media{Unkeepable: true, ProtectedUntil: nil})
+		Updates(map[string]any{"unkeepable": true, "protected_until": nil})
 	if result.Error != nil {
 		log.Error("failed to mark media as unkeepable", "error", result.Error)
 		return result.Error
