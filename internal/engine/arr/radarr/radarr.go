@@ -161,18 +161,12 @@ func (r *Radarr) getItems(ctx context.Context) ([]radarrAPI.MovieResource, error
 }
 
 func (r *Radarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
-	if forceRefresh {
-		if err := r.tagsCache.Clear(ctx); err != nil {
-			log.Debug("Failed to clear Radarr tags cache, fetching from API", "error", err)
+	if !forceRefresh {
+		cachedTags, err := r.tagsCache.Get(ctx, "all")
+		if err == nil && len(cachedTags) != 0 {
+			return cachedTags, nil
 		}
-	}
-
-	cachedTags, err := r.tagsCache.Get(ctx, "all")
-	if err != nil {
 		log.Debug("Failed to get Radarr tags from cache, fetching from API", "error", err)
-	}
-	if len(cachedTags) != 0 && !forceRefresh {
-		return cachedTags, nil
 	}
 
 	tagList, resp, err := r.client.TagAPI.ListTag(r.radarrAuthCtx(ctx)).Execute()

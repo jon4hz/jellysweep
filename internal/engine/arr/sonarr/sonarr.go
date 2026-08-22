@@ -182,18 +182,12 @@ func (s *Sonarr) getItems(ctx context.Context) ([]sonarrAPI.SeriesResource, erro
 }
 
 func (s *Sonarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
-	if forceRefresh {
-		if err := s.tagsCache.Clear(ctx); err != nil {
-			log.Debug("Failed to clear Sonarr tags cache, fetching from API", "error", err)
+	if !forceRefresh {
+		cachedTags, err := s.tagsCache.Get(ctx, "all")
+		if err == nil && len(cachedTags) != 0 {
+			return cachedTags, nil
 		}
-	}
-
-	cachedTags, err := s.tagsCache.Get(ctx, "all")
-	if err != nil {
 		log.Debug("Failed to get Sonarr tags from cache, fetching from API", "error", err)
-	}
-	if len(cachedTags) != 0 && !forceRefresh {
-		return cachedTags, nil
 	}
 
 	tagList, resp, err := s.client.TagAPI.ListTag(s.sonarrAuthCtx(ctx)).Execute()

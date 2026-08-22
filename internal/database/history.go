@@ -38,6 +38,8 @@ const (
 	HistoryEventRequestDenied HistoryEventType = "request_denied"
 	// HistoryEventNotFoundAnymore indicates a media item was not found anymore in Jellyfin.
 	HistoryEventNotFoundAnymore HistoryEventType = "not_found_anymore"
+	// HistoryEventIgnored indicates a media item was removed from the queue because it is ignored.
+	HistoryEventIgnored HistoryEventType = "ignored"
 )
 
 // HistoryEvent represents a historical event for a media item.
