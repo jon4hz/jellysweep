@@ -17,15 +17,24 @@ if [[ ! -f "$PROFILE" ]]; then
     exit 1
 fi
 
+# Packages excluded from the coverage calculation: generated templ output,
+# CLI wiring and embedded static assets carry no testable logic, and the test
+# helper packages are only ever exercised by other packages' tests.
+EXCLUDE_PATTERN='/web/templates/|/cmd/|/internal/static/|/internal/database/databasetest/|/internal/httptestutil/'
+
+filtered=$(mktemp)
+trap 'rm -f "$filtered"' EXIT
+grep -Ev "$EXCLUDE_PATTERN" "$PROFILE" > "$filtered"
+
 floor=$(<"$FLOOR_FILE")
-total=$(go tool cover -func="$PROFILE" | awk '/^total:/ {sub(/%/, "", $3); print $3}')
+total=$(go tool cover -func="$filtered" | awk '/^total:/ {sub(/%/, "", $3); print $3}')
 
 if [[ -z "$total" ]]; then
     echo "::error::Unable to parse total coverage from $PROFILE."
     exit 1
 fi
 
-echo "total coverage: ${total}% (floor: ${floor}%)"
+echo "total coverage: ${total}% (floor: ${floor}%, excluding ${EXCLUDE_PATTERN})"
 
 if awk -v t="$total" -v f="$floor" 'BEGIN {exit !(t < f)}'; then
     echo "::error::Coverage ${total}% fell below the floor of ${floor}%." \
