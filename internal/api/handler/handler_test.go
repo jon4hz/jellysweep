@@ -55,7 +55,7 @@ func newFixture(t *testing.T) *fixture {
 
 	f.router = gin.New()
 	f.router.GET("/api/media", h.GetMediaItems)
-	f.router.POST("/api/media/:id/keep", f.as(f.user, false), h.RequestKeepMedia)
+	f.router.POST("/api/media/:id/request-keep", f.as(f.user, false), h.RequestKeepMedia) // same path as production
 	f.router.POST("/api/media/:id/keep-anonymous", h.RequestKeepMedia)
 	f.router.GET("/api/me", f.as(f.user, false), h.Me)
 	adminAPI := f.router.Group("/admin/api", f.as(f.admin, true))
@@ -129,7 +129,7 @@ func TestRequestKeepMediaFlow(t *testing.T) {
 	media := f.createMedia(t, "Movie", false)
 	id := itoa(media.ID)
 
-	code, body := f.do(t, http.MethodPost, "/api/media/"+id+"/keep")
+	code, body := f.do(t, http.MethodPost, "/api/media/"+id+"/request-keep")
 	require.Equal(t, http.StatusOK, code)
 	require.Equal(t, false, body["autoApproved"])
 
@@ -139,7 +139,7 @@ func TestRequestKeepMediaFlow(t *testing.T) {
 	require.Len(t, body["keepRequests"].([]any), 1)
 
 	// Second request is rejected.
-	code, body = f.do(t, http.MethodPost, "/api/media/"+id+"/keep")
+	code, body = f.do(t, http.MethodPost, "/api/media/"+id+"/request-keep")
 	require.Equal(t, http.StatusBadRequest, code)
 	require.Equal(t, false, body["success"])
 
@@ -161,7 +161,7 @@ func TestDeclineKeepRequestMarksUnkeepable(t *testing.T) {
 	media := f.createMedia(t, "Movie", false)
 	id := itoa(media.ID)
 
-	code, _ := f.do(t, http.MethodPost, "/api/media/"+id+"/keep")
+	code, _ := f.do(t, http.MethodPost, "/api/media/"+id+"/request-keep")
 	require.Equal(t, http.StatusOK, code)
 	code, _ = f.do(t, http.MethodPost, "/admin/api/keep-requests/"+id+"/decline")
 	require.Equal(t, http.StatusOK, code)
@@ -176,14 +176,14 @@ func TestRequestKeepMediaErrors(t *testing.T) {
 	f := newFixture(t)
 	unkeepable := f.createMedia(t, "Doomed", true)
 
-	code, body := f.do(t, http.MethodPost, "/api/media/"+itoa(unkeepable.ID)+"/keep")
+	code, body := f.do(t, http.MethodPost, "/api/media/"+itoa(unkeepable.ID)+"/request-keep")
 	require.Equal(t, http.StatusBadRequest, code)
 	require.Contains(t, body["error"], "cannot be kept")
 
-	code, _ = f.do(t, http.MethodPost, "/api/media/not-a-number/keep")
+	code, _ = f.do(t, http.MethodPost, "/api/media/not-a-number/request-keep")
 	require.Equal(t, http.StatusBadRequest, code)
 
-	code, _ = f.do(t, http.MethodPost, "/api/media/999/keep")
+	code, _ = f.do(t, http.MethodPost, "/api/media/999/request-keep")
 	require.Equal(t, http.StatusBadRequest, code)
 
 	code, _ = f.do(t, http.MethodPost, "/api/media/1/keep-anonymous")

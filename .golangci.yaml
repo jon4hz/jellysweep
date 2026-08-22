@@ -27,14 +27,15 @@ linters:
     presets:
       - common-false-positives
     rules:
-      # httptest.NewRequest without a context is idiomatic in tests,
-      # gosec targets production code, and preallocation hints are noise in
-      # test helpers.
+      # httptest.NewRequest without a context is idiomatic in tests, gosec
+      # targets production code, preallocation hints are noise in test helpers,
+      # and bodyclose cannot see bodies closed inside shared test helpers.
       - path: _test\.go
         linters:
           - noctx
           - gosec
           - prealloc
+          - bodyclose
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

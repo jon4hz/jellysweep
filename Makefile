@@ -32,7 +32,7 @@ test-race:
 # Run all tests with race detector and coverage report
 # The printed total matches CI: see scripts/coverage-ratchet.sh for excluded packages.
 test-cover:
-	go test -race -coverprofile=coverage.out ./...
+	go test -race -coverpkg=./... -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out > coverage.func
 	./scripts/coverage-ratchet.sh coverage.out coverage.floor
 	rm -f coverage.func
