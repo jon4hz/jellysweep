@@ -415,8 +415,8 @@ func getAdminMediaUniqueTypes(items []models.AdminMediaItem) []models.MediaType 
 
 func AdminKeepRequestGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminKeepRequestGridScript_044b`,
-		Function: `function __templ_AdminKeepRequestGridScript_044b(){class AdminKeepRequestGridManager extends MediaGridManager {
+		Name: `__templ_AdminKeepRequestGridScript_4ddc`,
+		Function: `function __templ_AdminKeepRequestGridScript_4ddc(){class AdminKeepRequestGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -524,7 +524,7 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 			const deletionTime = this.formatRelativeTime(deletionDate);
 
 			// Use image cache API endpoint
-			const posterUrl = item.id ? ` + "`" + `/api/images/cache?id=${item.id}` + "`" + ` : '';
+			const posterUrl = item.id ? ` + "`" + `/api/images/cache?id=${encodeURIComponent(item.id)}` + "`" + ` : '';
 			const posterImg = posterUrl
 				? ` + "`" + `<img src="${posterUrl}" class="w-full h-64 object-cover" loading="lazy"/>` + "`" + `
 				: ` + "`" + `<div class="w-full h-64 bg-gray-700 flex items-center justify-center">
@@ -542,10 +542,10 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 						</div>
 						<div class="p-4 flex-1 flex flex-col">
 							<div class="flex-1">
-								<h3 class="text-lg font-semibold text-gray-100 truncate">${item.title}</h3>
+								<h3 class="text-lg font-semibold text-gray-100 truncate">${this.escapeHtml(item.title)}</h3>
 								<div class="flex items-center space-x-2 mt-1">
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
-										${item.type}
+										${this.escapeHtml(item.type)}
 									</span>
 									${item.year > 0 ? ` + "`" + `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-600 text-gray-300">${item.year}</span>` + "`" + ` : ''}
 								</div>
@@ -554,14 +554,14 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
 										</svg>
-										${item.library}
+										${this.escapeHtml(item.library)}
 									</div>
 									${item.requestUser ? ` + "`" + `
 									<div class="flex items-center text-sm text-blue-400">
 										<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
 										</svg>
-										Requested by ${item.requestUser}
+										Requested by ${this.escapeHtml(item.requestUser)}
 									</div>
 									` + "`" + ` : ''}
 									<div class="flex items-center text-sm text-red-400">
@@ -574,8 +574,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 							</div>
 							<div class="mt-4 flex gap-2">
 								<button
-									id="accept-desktop-${item.id}"
-									data-media-id="${item.id}"
+									id="accept-desktop-${this.escapeHtml(item.id)}"
+									data-media-id="${this.escapeHtml(item.id)}"
 									class="admin-action-btn accept-btn flex-1 inline-flex items-center justify-center px-3 py-2 rounded-lg font-medium transition-colors duration-200 text-sm"
 									style="background-color: #16a34a; color: white;"
 									onmouseover="this.style.backgroundColor='#15803d'"
@@ -587,8 +587,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 									Accept
 								</button>
 								<button
-									id="decline-desktop-${item.id}"
-									data-media-id="${item.id}"
+									id="decline-desktop-${this.escapeHtml(item.id)}"
+									data-media-id="${this.escapeHtml(item.id)}"
 									class="admin-action-btn decline-btn flex-1 inline-flex items-center justify-center px-3 py-2 rounded-lg font-medium transition-colors duration-200 text-sm"
 									style="background-color: #dc2626; color: white;"
 									onmouseover="this.style.backgroundColor='#b91c1c'"
@@ -610,7 +610,7 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 						<div class="flex items-center p-4 gap-4">
 							<div class="shrink-0">
 								${posterUrl
-									? ` + "`" + `<img src="${posterUrl}" alt="${item.title}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
+									? ` + "`" + `<img src="${posterUrl}" alt="${this.escapeHtml(item.title)}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
 									: ` + "`" + `<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
 										<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
@@ -619,20 +619,20 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 								}
 							</div>
 							<div class="flex-1 min-w-0">
-								<h4 class="text-lg font-medium text-gray-100 truncate">${item.title}</h4>
+								<h4 class="text-lg font-medium text-gray-100 truncate">${this.escapeHtml(item.title)}</h4>
 								<div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-400">
 									<div class="flex items-center">
 										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
 										</svg>
-										${item.library}
+										${this.escapeHtml(item.library)}
 									</div>
 									${item.requestUser ? ` + "`" + `
 									<div class="flex items-center text-blue-400">
 										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
 										</svg>
-										${item.requestUser}
+										${this.escapeHtml(item.requestUser)}
 									</div>
 									` + "`" + ` : ''}
 									<div class="flex items-center text-red-400">
@@ -644,14 +644,14 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 								</div>
 								<div class="mt-2 flex flex-wrap items-center gap-2">
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
-										${item.type}
+										${this.escapeHtml(item.type)}
 									</span>
 									${item.year > 0 ? ` + "`" + `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-600 text-gray-300">${item.year}</span>` + "`" + ` : ''}
 								</div>
 								<div class="mt-3 flex gap-2">
 									<button
-										id="accept-mobile-${item.id}"
-										data-media-id="${item.id}"
+										id="accept-mobile-${this.escapeHtml(item.id)}"
+										data-media-id="${this.escapeHtml(item.id)}"
 										class="admin-action-btn accept-btn flex-1 inline-flex items-center justify-center px-3 py-2 rounded-lg font-medium transition-colors duration-200 text-sm"
 										style="background-color: #16a34a; color: white;"
 										onmouseover="this.style.backgroundColor='#15803d'"
@@ -663,8 +663,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 										Accept
 									</button>
 									<button
-										id="decline-mobile-${item.id}"
-										data-media-id="${item.id}"
+										id="decline-mobile-${this.escapeHtml(item.id)}"
+										data-media-id="${this.escapeHtml(item.id)}"
 										class="admin-action-btn decline-btn flex-1 inline-flex items-center justify-center px-3 py-2 rounded-lg font-medium transition-colors duration-200 text-sm"
 										style="background-color: #dc2626; color: white;"
 										onmouseover="this.style.backgroundColor='#b91c1c'"
@@ -944,15 +944,15 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_044b`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_044b`),
+		Call:       templ.SafeScript(`__templ_AdminKeepRequestGridScript_4ddc`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminKeepRequestGridScript_4ddc`),
 	}
 }
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_f26c`,
-		Function: `function __templ_AdminMediaGridScript_f26c(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_67cb`,
+		Function: `function __templ_AdminMediaGridScript_67cb(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -1067,7 +1067,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 			const relativeTime = this.formatRelativeTime(deletionDate);
 
 			// Use image cache API endpoint
-			const posterUrl = item.id ? ` + "`" + `/api/images/cache?id=${item.id}` + "`" + ` : '';
+			const posterUrl = item.id ? ` + "`" + `/api/images/cache?id=${encodeURIComponent(item.id)}` + "`" + ` : '';
 			const posterImg = posterUrl
 				? ` + "`" + `<img src="${posterUrl}" class="w-full h-64 object-cover" loading="lazy"/>` + "`" + `
 				: ` + "`" + `<div class="w-full h-64 bg-gray-700 flex items-center justify-center">
@@ -1085,10 +1085,10 @@ func AdminMediaGridScript() templ.ComponentScript {
 						</div>
 						<div class="p-4 flex-1 flex flex-col">
 							<div class="flex-1">
-								<h3 class="text-lg font-semibold text-gray-100 truncate">${item.title}</h3>
+								<h3 class="text-lg font-semibold text-gray-100 truncate">${this.escapeHtml(item.title)}</h3>
 								<div class="flex items-center space-x-2 mt-1">
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
-										${item.type}
+										${this.escapeHtml(item.type)}
 									</span>
 									${item.year > 0 ? ` + "`" + `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-600 text-gray-300">${item.year}</span>` + "`" + ` : ''}
 								</div>
@@ -1098,7 +1098,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 											<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
 											</svg>
-											${item.library}
+											${this.escapeHtml(item.library)}
 										</div>
 										<div class="flex items-center">
 											<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1149,8 +1149,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 							</div>
 							<div class="mt-4 flex flex-col gap-2">
 								<button
-									id="keep-desktop-${item.id}"
-									data-media-id="${item.id}"
+									id="keep-desktop-${this.escapeHtml(item.id)}"
+									data-media-id="${this.escapeHtml(item.id)}"
 									class="admin-action-btn keep-btn w-full inline-flex items-center justify-center px-3 py-2 rounded-lg font-medium transition-colors duration-200 text-sm"
 									style="background-color: #16a34a; color: white;"
 									onmouseover="this.style.backgroundColor='#15803d'"
@@ -1162,8 +1162,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 									Keep
 								</button>
 								<button
-									id="keep-forever-desktop-${item.id}"
-									data-media-id="${item.id}"
+									id="keep-forever-desktop-${this.escapeHtml(item.id)}"
+									data-media-id="${this.escapeHtml(item.id)}"
 									class="admin-action-btn keep-forever-btn w-full inline-flex items-center justify-center px-3 py-2 rounded-lg font-medium transition-colors duration-200 text-sm"
 									style="background-color: #4f46e5; color: white;"
 									onmouseover="this.style.backgroundColor='#3730a3'"
@@ -1175,8 +1175,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 									Keep Forever
 								</button>
 								<button
-									id="delete-desktop-${item.id}"
-									data-media-id="${item.id}"
+									id="delete-desktop-${this.escapeHtml(item.id)}"
+									data-media-id="${this.escapeHtml(item.id)}"
 									class="admin-action-btn delete-btn w-full inline-flex items-center justify-center px-3 py-2 rounded-lg font-medium transition-colors duration-200 text-sm"
 									style="background-color: #dc2626; color: white;"
 									onmouseover="this.style.backgroundColor='#b91c1c'"
@@ -1198,7 +1198,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 						<div class="flex items-center p-4 gap-4">
 							<div class="shrink-0">
 								${posterUrl
-									? ` + "`" + `<img src="${posterUrl}" alt="${item.title}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
+									? ` + "`" + `<img src="${posterUrl}" alt="${this.escapeHtml(item.title)}" class="w-16 h-24 object-cover rounded" loading="lazy"/>` + "`" + `
 									: ` + "`" + `<div class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center">
 										<svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 011 1v2a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V8H3a1 1 0 01-1-1V5a1 1 0 011-1h3z"></path>
@@ -1207,13 +1207,13 @@ func AdminMediaGridScript() templ.ComponentScript {
 								}
 							</div>
 							<div class="flex-1 min-w-0">
-								<h4 class="text-lg font-medium text-gray-100 truncate">${item.title}</h4>
+								<h4 class="text-lg font-medium text-gray-100 truncate">${this.escapeHtml(item.title)}</h4>
 								<div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-400">
 									<div class="flex items-center">
 										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
 										</svg>
-										${item.library}
+										${this.escapeHtml(item.library)}
 									</div>
 									<div class="flex items-center">
 										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1230,7 +1230,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 								</div>
 								<div class="mt-2 flex flex-wrap items-center gap-2">
 									<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300">
-										${item.type}
+										${this.escapeHtml(item.type)}
 									</span>
 									${item.year > 0 ? ` + "`" + `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-600 text-gray-300">${item.year}</span>` + "`" + ` : ''}
 									${item.hasRequested && !item.mustDelete ? ` + "`" + `
@@ -1258,8 +1258,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 								</div>
 								<div class="mt-3 flex gap-2">
 									<button
-										id="keep-mobile-${item.id}"
-										data-media-id="${item.id}"
+										id="keep-mobile-${this.escapeHtml(item.id)}"
+										data-media-id="${this.escapeHtml(item.id)}"
 										class="admin-action-btn keep-btn flex-1 inline-flex items-center justify-center px-2 py-2 rounded-lg font-medium transition-colors duration-200 text-xs"
 										style="background-color: #16a34a; color: white;"
 										onmouseover="this.style.backgroundColor='#15803d'"
@@ -1271,8 +1271,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 										Keep
 									</button>
 									<button
-										id="keep-forever-mobile-${item.id}"
-										data-media-id="${item.id}"
+										id="keep-forever-mobile-${this.escapeHtml(item.id)}"
+										data-media-id="${this.escapeHtml(item.id)}"
 										class="admin-action-btn keep-forever-btn flex-1 inline-flex items-center justify-center px-2 py-2 rounded-lg font-medium transition-colors duration-200 text-xs"
 										style="background-color: #4f46e5; color: white;"
 										onmouseover="this.style.backgroundColor='#3730a3'"
@@ -1284,8 +1284,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 										Forever
 									</button>
 									<button
-										id="delete-mobile-${item.id}"
-										data-media-id="${item.id}"
+										id="delete-mobile-${this.escapeHtml(item.id)}"
+										data-media-id="${this.escapeHtml(item.id)}"
 										class="admin-action-btn delete-btn flex-1 inline-flex items-center justify-center px-2 py-2 rounded-lg font-medium transition-colors duration-200 text-xs"
 										style="background-color: #dc2626; color: white;"
 										onmouseover="this.style.backgroundColor='#b91c1c'"
@@ -1583,8 +1583,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_f26c`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_f26c`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_67cb`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_67cb`),
 	}
 }
 

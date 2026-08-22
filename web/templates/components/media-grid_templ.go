@@ -55,8 +55,8 @@ func GetUniqueLibraries(items []database.Media) []string {
 
 func MediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_MediaGridScript_1562`,
-		Function: `function __templ_MediaGridScript_1562(){class MediaGridManager {
+		Name: `__templ_MediaGridScript_e430`,
+		Function: `function __templ_MediaGridScript_e430(){class MediaGridManager {
 		constructor(containerId, options = {}) {
 			this.containerId = containerId;
 			this.container = document.getElementById(containerId);
@@ -481,9 +481,21 @@ func MediaGridScript() templ.ComponentScript {
 			return div;
 		}
 
+		// escapeHtml makes a server-provided string safe for interpolation into
+		// innerHTML, both in text and in double/single-quoted attribute contexts.
+		escapeHtml(text) {
+			if (text == null) return '';
+			return String(text)
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#39;');
+		}
+
 		createCardHTML(item) {
 			// Default implementation - should be overridden
-			return ` + "`" + `<div class="card p-4"><h3>${item.title}</h3><p>${item.library}</p></div>` + "`" + `;
+			return ` + "`" + `<div class="card p-4"><h3>${this.escapeHtml(item.title)}</h3><p>${this.escapeHtml(item.library)}</p></div>` + "`" + `;
 		}
 
 		createSkeletonElement() {
@@ -875,8 +887,8 @@ func MediaGridScript() templ.ComponentScript {
 	// Export the class for use by other scripts
 	window.MediaGridManager = MediaGridManager;
 }`,
-		Call:       templ.SafeScript(`__templ_MediaGridScript_1562`),
-		CallInline: templ.SafeScriptInline(`__templ_MediaGridScript_1562`),
+		Call:       templ.SafeScript(`__templ_MediaGridScript_e430`),
+		CallInline: templ.SafeScriptInline(`__templ_MediaGridScript_e430`),
 	}
 }
 
