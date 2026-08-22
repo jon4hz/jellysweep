@@ -303,6 +303,36 @@ func (h *harness) stream(m *mediaRef, when time.Time) {
 	h.stats.setLastPlayed(m.jellyfinID, when)
 }
 
+// setArrTags replaces the item's tags in its arr, simulating a user tagging it
+// in Sonarr/Radarr after the fact.
+func (h *harness) setArrTags(m *mediaRef, tags ...string) {
+	a := h.arrFor(m)
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	item := a.items[m.arrID]
+	item.Tags = tags
+	a.items[m.arrID] = item
+}
+
+// readdToArr simulates the item being removed and re-added in its arr: it keeps
+// the same Jellyfin ID but gets a fresh arr ID.
+func (h *harness) readdToArr(m *mediaRef, tags ...string) {
+	a := h.arrFor(m)
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	item := a.items[m.arrID]
+	delete(a.items, m.arrID)
+	h.nextArrID++
+	m.arrID = h.nextArrID
+	item.Tags = tags
+	if m.mediaType == database.MediaTypeTV {
+		item.SeriesResource.SetId(m.arrID)
+	} else {
+		item.MovieResource.SetId(m.arrID)
+	}
+	a.items[m.arrID] = item
+}
+
 func (h *harness) vanishFromJellyfin(m *mediaRef) {
 	h.jf.mu.Lock()
 	defer h.jf.mu.Unlock()

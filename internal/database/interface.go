@@ -36,8 +36,8 @@ const (
 	DBDeleteReasonProtectionExpired DBDeleteReason = "protection_expired"
 	// DBDeleteReasonMissingInJellyfin indicates the media was deleted in the database only because it was missing in Jellyfin.
 	DBDeleteReasonMissingInJellyfin DBDeleteReason = "missing_in_jellyfin"
-	// DBDeleteReasonExcludeTag indicates the media was removed from the deletion queue because an exclude tag was added in Sonarr/Radarr.
-	DBDeleteReasonExcludeTag DBDeleteReason = "exclude_tag"
+	// DBDeleteReasonExcludedByTag indicates the media was removed from the deletion queue because an exclude tag was added in Sonarr/Radarr.
+	DBDeleteReasonExcludedByTag DBDeleteReason = "excluded_by_tag"
 )
 
 // DB defines the interface for database operations.

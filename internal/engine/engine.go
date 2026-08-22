@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -422,60 +421,61 @@ func (e *Engine) removeItemsNotFoundAnymore(ctx context.Context, mediaItems []ar
 	return nil
 }
 
-// removeItemsWithExcludedTags checks all items currently marked for deletion in the database
-// against their current tag state (freshly fetched from Sonarr/Radarr). If an item now has an
-// exclude tag, it is removed from the deletion queue so the user's intent is respected without
-// requiring a database reset.
+// removeItemsWithExcludedTags re-evaluates items already marked for deletion
+// against their current tags, freshly fetched from Sonarr/Radarr. The database
+// filter hides queued items from the tags filter, so without this step an
+// exclude tag added after marking would never be honored. Items that now carry
+// an exclude tag are dequeued.
+//
+// Protected items are skipped, mirroring the other dequeue steps: dropping the
+// row would orphan a pending keep request and discard admin protection. Once
+// the protection expires the row is removed anyway and the tags filter keeps
+// the item out of the queue from then on.
 func (e *Engine) removeItemsWithExcludedTags(ctx context.Context, mediaItems []arr.MediaItem) {
 	log.Info("Checking marked items for newly added exclude tags")
 
-	dbItems, err := e.db.GetMediaItems(ctx, true)
+	dbItems, err := e.db.GetMediaItems(ctx, false)
 	if err != nil {
 		log.Error("Failed to get media items from database", "error", err)
 		return
 	}
 
 	if len(dbItems) == 0 {
+		log.Debug("No media items found in database to check for exclude tags")
 		return
 	}
 
-	// Build a map from ArrID -> fresh MediaItem for O(1) lookup.
-	// ArrID is unique within a media type, so key on both.
-	type arrKey struct {
-		id        int32
-		mediaType database.MediaType
-	}
-	freshItemMap := make(map[arrKey]arr.MediaItem, len(mediaItems))
+	// Key on the Jellyfin ID like removeItemsNotFoundAnymore does: the arr ID
+	// changes when an item is removed and re-added in Sonarr/Radarr, and items
+	// absent from this map are exactly the ones that sibling step dequeues.
+	freshTags := make(map[string][]string, len(mediaItems))
 	for _, item := range mediaItems {
-		switch item.MediaType {
-		case models.MediaTypeTV:
-			freshItemMap[arrKey{item.SeriesResource.GetId(), database.MediaTypeTV}] = item
-		case models.MediaTypeMovie:
-			freshItemMap[arrKey{item.MovieResource.GetId(), database.MediaTypeMovie}] = item
-		}
+		freshTags[item.JellyfinID] = item.Tags
 	}
 
 	for _, dbItem := range dbItems {
-		freshItem, found := freshItemMap[arrKey{dbItem.ArrID, dbItem.MediaType}]
+		tagNames, found := freshTags[dbItem.JellyfinID]
 		if !found {
-			continue // will be handled by removeItemsNotFoundAnymore
+			continue
 		}
 
-		libraryConfig := e.cfg.GetLibraryConfig(dbItem.LibraryName)
-		for _, tagName := range freshItem.Tags {
-			shouldRemove := tagName == tags.JellysweepIgnoreTag ||
-				(libraryConfig != nil && slices.Contains(libraryConfig.GetExcludeTags(), tagName))
+		tagName, excluded := tagsfilter.ExcludedTag(e.cfg, dbItem.LibraryName, tagNames)
+		if !excluded {
+			continue
+		}
 
-			if shouldRemove {
-				log.Info("Removing item from deletion queue due to exclude tag", "title", dbItem.Title, "tag", tagName)
-				dbItem.DBDeleteReason = database.DBDeleteReasonExcludeTag
-				if err := e.db.DeleteMediaItem(ctx, &dbItem); err != nil {
-					log.Error("Failed to remove item from database", "title", dbItem.Title, "error", err)
-				} else if err := e.CreateIgnoredEvent(ctx, &dbItem); err != nil {
-					log.Error("failed to create ignored event", "title", dbItem.Title, "error", err)
-				}
-				break
-			}
+		log.Info("Removing item from deletion queue due to exclude tag", "title", dbItem.Title, "jellyfinID", dbItem.JellyfinID, "tag", tagName)
+		dbItem.DBDeleteReason = database.DBDeleteReasonExcludedByTag
+
+		// Record the event first so a failed delete leaves the row queued and
+		// the next run retries, consistent with the other dequeue steps.
+		if err := e.CreateExcludedByTagEvent(ctx, &dbItem); err != nil {
+			log.Error("failed to create excluded by tag event", "title", dbItem.Title, "error", err)
+		}
+
+		if err := e.db.DeleteMediaItem(ctx, &dbItem); err != nil {
+			log.Error("Failed to remove item with exclude tag from database", "title", dbItem.Title, "jellyfinID", dbItem.JellyfinID, "error", err)
+			continue
 		}
 	}
 

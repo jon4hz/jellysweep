@@ -1,6 +1,6 @@
 module github.com/jon4hz/jellysweep
 
-go 1.25.8
+go 1.26.7
 
 tool github.com/a-h/templ/cmd/templ
 

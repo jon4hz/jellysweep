@@ -2,6 +2,7 @@ package radarr
 
 import (
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -239,4 +240,80 @@ func TestGetItemAddedDateNoImports(t *testing.T) {
 	got, err := r.GetItemAddedDate(t.Context(), 42, time.Time{})
 	require.NoError(t, err)
 	require.Nil(t, got)
+}
+
+// tagServer registers a single /tag handler whose response can be swapped by
+// the test (the mux does not allow re-registering a pattern).
+func tagServer(t *testing.T, server *httptestutil.Server) (setTags func(...radarrAPI.TagResource), fail func()) {
+	var (
+		mu     sync.Mutex
+		tags   []radarrAPI.TagResource
+		status = http.StatusOK
+	)
+	server.Handle("GET /api/v3/tag", func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if status != http.StatusOK {
+			w.WriteHeader(status)
+			return
+		}
+		httptestutil.WriteJSON(t, w, tags)
+	})
+	setTags = func(t ...radarrAPI.TagResource) {
+		mu.Lock()
+		defer mu.Unlock()
+		tags, status = t, http.StatusOK
+	}
+	fail = func() {
+		mu.Lock()
+		defer mu.Unlock()
+		status = http.StatusBadGateway
+	}
+	return setTags, fail
+}
+
+func TestGetTagsCacheSemantics(t *testing.T) {
+	r, server := newTestRadarr(t)
+	setTags, _ := tagServer(t, server)
+	setTags(tag(1, "old"))
+
+	first, err := r.getTags(t.Context(), false)
+	require.NoError(t, err)
+	require.Equal(t, cache.TagMap{1: "old"}, first)
+	require.Len(t, server.Requests(http.MethodGet, "/api/v3/tag"), 1)
+
+	// Cached reads are served without an API call.
+	cached, err := r.getTags(t.Context(), false)
+	require.NoError(t, err)
+	require.Equal(t, first, cached)
+	require.Len(t, server.Requests(http.MethodGet, "/api/v3/tag"), 1)
+
+	// A forced refresh bypasses the cache and replaces it.
+	setTags(tag(1, "new"))
+	fresh, err := r.getTags(t.Context(), true)
+	require.NoError(t, err)
+	require.Equal(t, cache.TagMap{1: "new"}, fresh)
+	require.Len(t, server.Requests(http.MethodGet, "/api/v3/tag"), 2)
+
+	cached, err = r.getTags(t.Context(), false)
+	require.NoError(t, err)
+	require.Equal(t, fresh, cached)
+	require.Len(t, server.Requests(http.MethodGet, "/api/v3/tag"), 2)
+}
+
+func TestGetTagsFailedRefreshDropsStaleCache(t *testing.T) {
+	r, server := newTestRadarr(t)
+	setTags, fail := tagServer(t, server)
+	setTags(tag(1, "old"))
+	_, err := r.getTags(t.Context(), true)
+	require.NoError(t, err)
+
+	fail()
+	_, err = r.getTags(t.Context(), true)
+	require.Error(t, err)
+
+	// The stale map must not be served to cached readers after a failed refresh.
+	_, err = r.getTags(t.Context(), false)
+	require.Error(t, err, "cached read must refetch, not serve the stale map")
+	require.Len(t, server.Requests(http.MethodGet, "/api/v3/tag"), 3)
 }
