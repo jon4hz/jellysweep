@@ -94,6 +94,49 @@ func TestGetJellyfinItemsFiltersLibrariesAndPaginates(t *testing.T) {
 	}
 }
 
+func TestGetJellyfinItemsRequestsPagesOf100(t *testing.T) {
+	c, server := newTestClient(t)
+	server.JSON("GET /Library/MediaFolders", queryResult([]jellyfinAPI.BaseItemDto{
+		item("lib-movies", "Movies", jellyfinAPI.BASEITEMKIND_COLLECTION_FOLDER),
+	}, 1))
+	server.JSON("GET /Library/VirtualFolders", []jellyfinAPI.VirtualFolderInfo{virtualFolder("Movies", "/data/movies")})
+	server.JSON("GET /Items", queryResult([]jellyfinAPI.BaseItemDto{item("m1", "Movie 1", jellyfinAPI.BASEITEMKIND_MOVIE)}, 1))
+
+	_, _, err := c.GetJellyfinItems(t.Context())
+	require.NoError(t, err)
+
+	itemCalls := server.Requests(http.MethodGet, "/Items")
+	require.Len(t, itemCalls, 1)
+	require.Equal(t, "100", itemCalls[0].Query.Get("limit"), "large pages time out on big libraries")
+}
+
+// A failed library fetch must abort the whole gather: returning the remaining
+// libraries as if they were the complete set makes the engine purge every item
+// of the failed library as "not found anymore".
+func TestGetJellyfinItemsLibraryFailureAbortsGather(t *testing.T) {
+	c, server := newTestClient(t)
+	server.JSON("GET /Library/MediaFolders", queryResult([]jellyfinAPI.BaseItemDto{
+		item("lib-movies", "Movies", jellyfinAPI.BASEITEMKIND_COLLECTION_FOLDER),
+		item("lib-tv", "TV", jellyfinAPI.BASEITEMKIND_COLLECTION_FOLDER),
+	}, 2))
+	server.JSON("GET /Library/VirtualFolders", []jellyfinAPI.VirtualFolderInfo{
+		virtualFolder("Movies", "/data/movies"),
+		virtualFolder("TV", "/data/tv"),
+	})
+	server.Handle("GET /Items", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("parentId") == "lib-movies" {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		httptestutil.WriteJSON(t, w, queryResult([]jellyfinAPI.BaseItemDto{item("s1", "Show 1", jellyfinAPI.BASEITEMKIND_SERIES)}, 1))
+	})
+
+	items, _, err := c.GetJellyfinItems(t.Context())
+	require.Error(t, err)
+	require.ErrorContains(t, err, "Movies")
+	require.Nil(t, items, "a partial item list must never be returned")
+}
+
 func TestGetJellyfinItemsNoMediaFolders(t *testing.T) {
 	c, server := newTestClient(t)
 	server.JSON("GET /Library/MediaFolders", queryResult(nil, 0))

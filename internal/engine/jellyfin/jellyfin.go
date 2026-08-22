@@ -125,8 +125,7 @@ func (c *Client) fetchJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, er
 		// Get all items from this library
 		libraryItems, err := c.getJellyfinItemsFromLibrary(ctx, libraryID, libraryName)
 		if err != nil {
-			log.Error("Failed to get items from library", "library", libraryName, "error", err)
-			continue
+			return nil, fmt.Errorf("jellyfin library %q: %w", libraryName, err)
 		}
 
 		// Wrap the jellyfin item dto to include the library name instead of ID
@@ -150,7 +149,7 @@ func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 
 	// We'll paginate through all items in the library
 	startIndex := int32(0)
-	limit := int32(1000) // Get items in batches of 1000
+	limit := int32(100)
 
 	for {
 		// Get items from this library
