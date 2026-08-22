@@ -456,7 +456,7 @@ func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32, since time
 		if eventType == radarrAPI.MOVIEHISTORYEVENTTYPE_DOWNLOAD_FOLDER_IMPORTED ||
 			eventType == radarrAPI.MOVIEHISTORYEVENTTYPE_MOVIE_FOLDER_IMPORTED {
 			recordTime := record.GetDate()
-			if earliestTime == nil || (recordTime.Before(*earliestTime) && recordTime.After(since)) {
+			if recordTime.After(since) && (earliestTime == nil || recordTime.Before(*earliestTime)) {
 				earliestTime = &recordTime
 			}
 		}
