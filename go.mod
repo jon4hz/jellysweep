@@ -9,7 +9,7 @@ require (
 	github.com/a-h/templ v0.3.1020
 	github.com/ccoveille/go-safecast v1.8.2
 	github.com/charmbracelet/fang v1.0.0
-	github.com/charmbracelet/log v1.0.0
+	github.com/charmbracelet/log/v2 v2.0.0
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/devopsarr/radarr-go v1.2.1
 	github.com/devopsarr/sonarr-go v1.1.1
