@@ -19,18 +19,20 @@ type DiskUsageDeletePolicy struct {
 // Media represents a media item in the database.
 type Media struct {
 	gorm.Model
-	JellyfinID        string `gorm:"not null;uniqueIndex:idx_media_arr"`
-	LibraryName       string
-	ArrID             int32 `gorm:"not null;uniqueIndex:idx_media_arr"` // Sonarr or Radarr ID
-	Title             string
-	TmdbId            *int32 `gorm:"index"`
-	TvdbId            *int32 `gorm:"index"`
-	Year              int32
-	FileSize          int64
-	PosterURL         string
-	MediaType         MediaType `gorm:"not null;uniqueIndex:idx_media_arr"`
-	RequestedBy       string
-	DefaultDeleteAt   time.Time `gorm:"not null;index;uniqueIndex:idx_media_arr"`
+	JellyfinID      string `gorm:"not null;uniqueIndex:idx_media_arr"`
+	LibraryName     string
+	ArrID           int32 `gorm:"not null;uniqueIndex:idx_media_arr"` // Sonarr or Radarr ID
+	Title           string
+	TmdbId          *int32 `gorm:"index"`
+	TvdbId          *int32 `gorm:"index"`
+	Year            int32
+	FileSize        int64
+	PosterURL       string
+	MediaType       MediaType `gorm:"not null;uniqueIndex:idx_media_arr"`
+	RequestedBy     string
+	DefaultDeleteAt time.Time `gorm:"not null;index;uniqueIndex:idx_media_arr"`
+	// EstimatedDeleteAt is the earliest deletion date across all policies
+	// (e.g. disk usage thresholds). Zero if not yet computed.
 	EstimatedDeleteAt time.Time
 	ProtectedUntil    *time.Time
 	Unkeepable        bool
@@ -159,10 +161,13 @@ func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, prote
 	return nil
 }
 
+// SetMediaEstimatedDeleteAt stores the estimated deletion date for a media item.
+// Update is used (rather than Updates with a struct) so a zero time is written
+// as well, clearing a stale estimate once no policy applies anymore.
 func (c *Client) SetMediaEstimatedDeleteAt(ctx context.Context, mediaID uint, estimatedDeleteAt time.Time) error {
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).
-		Updates(Media{EstimatedDeleteAt: estimatedDeleteAt})
+		Update("estimated_delete_at", estimatedDeleteAt)
 	if result.Error != nil {
 		log.Error("failed to set media estimated delete at", "error", result.Error)
 		return result.Error
