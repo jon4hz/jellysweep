@@ -44,47 +44,8 @@ func newJellyfinClient(cfg *config.JellyfinConfig) *jellyfin.APIClient {
 
 // GetJellyfinItems retrieves all media items from enabled Jellyfin libraries.
 // It returns JellyfinItem objects that include the library name for easier processing.
-func (c *Client) GetJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, map[string][]string, error) {
-	allItems, err := c.fetchJellyfinItems(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	libraryFoldersMap, err := c.GetLibraryFoldersMap(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return allItems, libraryFoldersMap, nil
-}
-
-// GetLibraryFoldersMap retrieves the mapping of library names to their folder paths.
-func (c *Client) GetLibraryFoldersMap(ctx context.Context) (map[string][]string, error) {
-	libraryFoldersMap := make(map[string][]string)
-
-	// fetch virtual folders (required for the thresholds based on disk usage)
-	virtualFolders, resp, err := c.jellyfin.LibraryStructureAPI.GetVirtualFolders(ctx).Execute()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get virtual folders: %w", err)
-	}
-	defer resp.Body.Close() //nolint:errcheck
-	if len(virtualFolders) == 0 {
-		log.Warn("No virtual folders found")
-	}
-
-	// Build library folders map
-	for _, folder := range virtualFolders {
-		log.Debug("Found virtual folder", "name", folder.GetName())
-		libraryName := folder.GetName()
-		libraryConfig := c.cfg.GetLibraryConfig(libraryName)
-		if libraryConfig == nil || !libraryConfig.Enabled {
-			log.Debug("Skipping virtual folder for disabled library", "library", libraryName)
-			continue
-		}
-		libraryFoldersMap[libraryName] = folder.GetLocations()
-	}
-
-	return libraryFoldersMap, nil
+func (c *Client) GetJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, error) {
+	return c.fetchJellyfinItems(ctx)
 }
 
 // fetchJellyfinItems fetches items from the Jellyfin API (extracted from original GetJellyfinItems).

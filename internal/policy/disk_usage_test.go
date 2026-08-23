@@ -20,19 +20,23 @@ func diskUsageConfig(thresholds ...config.DiskUsageThreshold) *config.Config {
 }
 
 func staticUsage(percent float64) UsageFunc {
-	return func(context.Context, string) (float64, error) {
-		return percent, nil
+	return func(context.Context, database.MediaType) (float64, bool, error) {
+		return percent, true, nil
 	}
 }
 
-var moviesFolders = map[string][]string{"Movies": {"/data/movies"}}
+func unavailableUsage() UsageFunc {
+	return func(context.Context, database.MediaType) (float64, bool, error) {
+		return 0, false, nil
+	}
+}
 
 func TestDiskUsageApplyCreatesPolicies(t *testing.T) {
 	cfg := diskUsageConfig(
 		config.DiskUsageThreshold{UsagePercent: 80, MaxCleanupDelay: 10},
 		config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 2},
 	)
-	p := NewDiskUsageDelete(cfg, moviesFolders)
+	p := NewDiskUsageDelete(cfg, staticUsage(0))
 
 	media := database.Media{Title: "A Movie", LibraryName: "Movies"}
 	require.NoError(t, p.Apply(&media))
@@ -44,7 +48,7 @@ func TestDiskUsageApplyCreatesPolicies(t *testing.T) {
 }
 
 func TestDiskUsageApplyClearsStalePolicies(t *testing.T) {
-	p := NewDiskUsageDelete(diskUsageConfig(), moviesFolders)
+	p := NewDiskUsageDelete(diskUsageConfig(), staticUsage(0))
 
 	media := database.Media{
 		Title:       "A Movie",
@@ -58,7 +62,7 @@ func TestDiskUsageApplyClearsStalePolicies(t *testing.T) {
 }
 
 func TestDiskUsageApplyUnknownLibraryErrors(t *testing.T) {
-	p := NewDiskUsageDelete(&config.Config{}, moviesFolders)
+	p := NewDiskUsageDelete(&config.Config{}, staticUsage(0))
 	media := database.Media{Title: "A Movie", LibraryName: "Nope"}
 	require.Error(t, p.Apply(&media))
 }
@@ -79,10 +83,11 @@ func TestDiskUsageShouldTriggerDeletion(t *testing.T) {
 		{"above threshold but future date waits", staticUsage(95), futureDate, false},
 		{"below threshold never triggers", staticUsage(50), pastDate, false},
 		{"exactly at threshold triggers", staticUsage(90), pastDate, true},
+		{"unavailable usage never triggers", unavailableUsage(), pastDate, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewDiskUsageDelete(cfg, moviesFolders, WithUsageFunc(tt.usage))
+			p := NewDiskUsageDelete(cfg, tt.usage)
 			media := database.Media{
 				Title:       "A Movie",
 				LibraryName: "Movies",
@@ -97,8 +102,27 @@ func TestDiskUsageShouldTriggerDeletion(t *testing.T) {
 	}
 }
 
+func TestDiskUsageShouldTriggerDeletionPassesMediaType(t *testing.T) {
+	cfg := diskUsageConfig(config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 2})
+	var seen database.MediaType
+	p := NewDiskUsageDelete(cfg, func(_ context.Context, mt database.MediaType) (float64, bool, error) {
+		seen = mt
+		return 0, true, nil
+	})
+	media := database.Media{
+		LibraryName: "Movies",
+		MediaType:   database.MediaTypeMovie,
+		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{
+			{Threshold: 90, DeleteDate: time.Now().Add(-time.Hour)},
+		},
+	}
+	_, err := p.ShouldTriggerDeletion(t.Context(), media)
+	require.NoError(t, err)
+	require.Equal(t, database.MediaTypeMovie, seen)
+}
+
 func TestDiskUsageShouldTriggerDeletionNoPolicies(t *testing.T) {
-	p := NewDiskUsageDelete(diskUsageConfig(), moviesFolders, WithUsageFunc(staticUsage(100)))
+	p := NewDiskUsageDelete(diskUsageConfig(), staticUsage(100))
 	got, err := p.ShouldTriggerDeletion(t.Context(), database.Media{LibraryName: "Movies"})
 	require.NoError(t, err)
 	require.False(t, got)
@@ -106,7 +130,7 @@ func TestDiskUsageShouldTriggerDeletionNoPolicies(t *testing.T) {
 
 func TestDiskUsageShouldTriggerDeletionNoThresholdsConfigured(t *testing.T) {
 	// Policies stored on the media but thresholds removed from the config.
-	p := NewDiskUsageDelete(diskUsageConfig(), moviesFolders, WithUsageFunc(staticUsage(100)))
+	p := NewDiskUsageDelete(diskUsageConfig(), staticUsage(100))
 	media := database.Media{
 		LibraryName: "Movies",
 		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{
@@ -118,9 +142,12 @@ func TestDiskUsageShouldTriggerDeletionNoThresholdsConfigured(t *testing.T) {
 	require.False(t, got)
 }
 
-func TestDiskUsageShouldTriggerDeletionMissingFoldersErrors(t *testing.T) {
+func TestDiskUsageShouldTriggerDeletionUsageErrorPropagates(t *testing.T) {
 	cfg := diskUsageConfig(config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 2})
-	p := NewDiskUsageDelete(cfg, map[string][]string{}, WithUsageFunc(staticUsage(100)))
+	failing := func(context.Context, database.MediaType) (float64, bool, error) {
+		return 0, false, errors.New("boom")
+	}
+	p := NewDiskUsageDelete(cfg, failing)
 	media := database.Media{
 		LibraryName: "Movies",
 		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{
@@ -131,47 +158,9 @@ func TestDiskUsageShouldTriggerDeletionMissingFoldersErrors(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestDiskUsageShouldTriggerDeletionUnreadableDiskFailsClosed(t *testing.T) {
-	cfg := diskUsageConfig(config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 2})
-	failing := func(context.Context, string) (float64, error) {
-		return 0, errors.New("disk gone")
-	}
-	p := NewDiskUsageDelete(cfg, moviesFolders, WithUsageFunc(failing))
-	media := database.Media{
-		LibraryName: "Movies",
-		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{
-			{Threshold: 90, DeleteDate: time.Now().Add(-time.Hour)},
-		},
-	}
-	got, err := p.ShouldTriggerDeletion(t.Context(), media)
-	require.NoError(t, err, "unreadable disk must not fail the run")
-	require.False(t, got, "unreadable disk must never trigger a deletion")
-}
-
-func TestDiskUsageShouldTriggerDeletionHighestUsageWins(t *testing.T) {
-	cfg := diskUsageConfig(config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 2})
-	folders := map[string][]string{"Movies": {"/data/a", "/data/b"}}
-	usageByPath := func(_ context.Context, path string) (float64, error) {
-		if path == "/data/b" {
-			return 95, nil
-		}
-		return 10, nil
-	}
-	p := NewDiskUsageDelete(cfg, folders, WithUsageFunc(usageByPath))
-	media := database.Media{
-		LibraryName: "Movies",
-		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{
-			{Threshold: 90, DeleteDate: time.Now().Add(-time.Hour)},
-		},
-	}
-	got, err := p.ShouldTriggerDeletion(t.Context(), media)
-	require.NoError(t, err)
-	require.True(t, got, "the fullest folder determines the usage")
-}
-
 func TestDiskUsageShouldTriggerDeletionZeroDeleteDateSkipped(t *testing.T) {
 	cfg := diskUsageConfig(config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 2})
-	p := NewDiskUsageDelete(cfg, moviesFolders, WithUsageFunc(staticUsage(95)))
+	p := NewDiskUsageDelete(cfg, staticUsage(95))
 	media := database.Media{
 		LibraryName: "Movies",
 		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{
@@ -203,13 +192,11 @@ func TestDiskUsageGetEstimatedDeleteAt(t *testing.T) {
 		{"both thresholds exceeded picks earliest", staticUsage(95), in2Days},
 		{"only lower threshold exceeded", staticUsage(85), in10Days},
 		{"below all thresholds estimates nothing", staticUsage(50), time.Time{}},
-		{"usage unavailable estimates nothing", func(context.Context, string) (float64, error) {
-			return 0, errors.New("statfs failed")
-		}, time.Time{}},
+		{"usage unavailable estimates nothing", unavailableUsage(), time.Time{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewDiskUsageDelete(cfg, moviesFolders, WithUsageFunc(tt.usage))
+			p := NewDiskUsageDelete(cfg, tt.usage)
 			media := database.Media{Title: "A Movie", LibraryName: "Movies", DiskUsageDeletePolicies: policies}
 
 			got, err := p.GetEstimatedDeleteAt(t.Context(), media)
@@ -219,20 +206,32 @@ func TestDiskUsageGetEstimatedDeleteAt(t *testing.T) {
 	}
 }
 
+func TestDiskUsageGetEstimatedDeleteAtUsageErrorPropagates(t *testing.T) {
+	cfg := diskUsageConfig(config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 1})
+	p := NewDiskUsageDelete(cfg, func(context.Context, database.MediaType) (float64, bool, error) {
+		return 0, false, errors.New("boom")
+	})
+	_, err := p.GetEstimatedDeleteAt(t.Context(), database.Media{
+		LibraryName:             "Movies",
+		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{{Threshold: 90, DeleteDate: time.Now()}},
+	})
+	require.Error(t, err)
+}
+
 func TestDiskUsageGetEstimatedDeleteAtWithoutPoliciesOrThresholds(t *testing.T) {
-	// Neither stored policies nor configured thresholds must touch the disk.
+	// Neither stored policies nor configured thresholds must consult the usage.
 	touched := false
-	usage := func(context.Context, string) (float64, error) {
+	usage := func(context.Context, database.MediaType) (float64, bool, error) {
 		touched = true
-		return 99, nil
+		return 99, true, nil
 	}
 
-	p := NewDiskUsageDelete(diskUsageConfig(config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 1}), moviesFolders, WithUsageFunc(usage))
+	p := NewDiskUsageDelete(diskUsageConfig(config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 1}), usage)
 	got, err := p.GetEstimatedDeleteAt(t.Context(), database.Media{LibraryName: "Movies"})
 	require.NoError(t, err)
 	require.True(t, got.IsZero())
 
-	p = NewDiskUsageDelete(diskUsageConfig(), moviesFolders, WithUsageFunc(usage))
+	p = NewDiskUsageDelete(diskUsageConfig(), usage)
 	got, err = p.GetEstimatedDeleteAt(t.Context(), database.Media{
 		LibraryName:             "Movies",
 		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{{Threshold: 90, DeleteDate: time.Now()}},
@@ -240,13 +239,4 @@ func TestDiskUsageGetEstimatedDeleteAtWithoutPoliciesOrThresholds(t *testing.T) 
 	require.NoError(t, err)
 	require.True(t, got.IsZero(), "stale policies without configured thresholds must be ignored")
 	require.False(t, touched)
-}
-
-func TestDiskUsageGetEstimatedDeleteAtUnknownLibraryErrors(t *testing.T) {
-	p := NewDiskUsageDelete(diskUsageConfig(config.DiskUsageThreshold{UsagePercent: 90, MaxCleanupDelay: 1}), map[string][]string{}, WithUsageFunc(staticUsage(95)))
-	_, err := p.GetEstimatedDeleteAt(t.Context(), database.Media{
-		LibraryName:             "Movies",
-		DiskUsageDeletePolicies: []database.DiskUsageDeletePolicy{{Threshold: 90, DeleteDate: time.Now()}},
-	})
-	require.Error(t, err)
 }

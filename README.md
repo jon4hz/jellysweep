@@ -107,8 +107,8 @@ Both selective modes automatically unmonitor deleted episodes in Sonarr to preve
 
 Jellysweep monitors disk usage and speeds up cleanup when you're running low on storage. When disk space is tight, it reduces the grace period for deletions while still giving you time to save anything important during normal operation.
 
-> [!IMPORTANT]
-> For disk usage monitoring to work in Docker containers, Jellyfin library paths must be mounted at the same locations inside the Jellysweep container. For example, if Jellyfin has `/data/movies` mapped to `/movies`, Jellysweep also needs `/data/movies` mapped to `/movies`
+> [!NOTE]
+> Disk usage is read from Sonarr and Radarr (their root folders and disk space reports), so Jellysweep does not need access to the media files themselves. TV libraries use Sonarr's root folders, movie libraries use Radarr's; when an arr has several root folders, the fullest one counts.
 
 ### Configuration Example
 
@@ -195,10 +195,6 @@ services:
     volumes:
       - ./config.yml:/app/config.yml:ro # use config file or env vars
       - ./data:/app/data
-      # Mount Jellyfin library paths at the same locations for disk usage monitoring
-      # Example: if Jellyfin has /data/movies, mount it the same way here
-      # - /data/movies:/data/movies:ro
-      # - /data/tv:/data/tv:ro
     environment:
       # You can also override config options with env vars
       - JELLYSWEEP_DRY_RUN=false

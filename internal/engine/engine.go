@@ -65,8 +65,8 @@ type Engine struct {
 	scheduler  *scheduler.Scheduler
 
 	// policyFactory builds the deletion policies for a cleanup run from the
-	// freshly gathered library folders map.
-	policyFactory func(libraryFoldersMap map[string][]string) []policy.Policy
+	// disk usage snapshot taken at the start of the run.
+	policyFactory func(usage policy.UsageFunc) []policy.Policy
 
 	imageCache *cache.ImageCache
 	cache      *cache.EngineCache // Cache for engine-specific data
@@ -89,7 +89,7 @@ type engineDeps struct {
 	ntfy          *ntfy.Client
 	webpush       *webpush.Client
 	filters       *filter.Filter
-	policyFactory func(libraryFoldersMap map[string][]string) []policy.Policy
+	policyFactory func(usage policy.UsageFunc) []policy.Policy
 	engineCache   *cache.EngineCache
 	imageCacheDir string
 }
@@ -197,10 +197,10 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		ntfy:       ntfyClient,
 		webpush:    webpushClient,
 		filters:    filters,
-		policyFactory: func(libraryFoldersMap map[string][]string) []policy.Policy {
+		policyFactory: func(usage policy.UsageFunc) []policy.Policy {
 			return []policy.Policy{
 				policy.NewDefaultDelete(cfg),
-				policy.NewDiskUsageDelete(cfg, libraryFoldersMap),
+				policy.NewDiskUsageDelete(cfg, usage),
 			}
 		},
 		engineCache:   engineCache,
@@ -533,7 +533,7 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 // gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
 // It merges them into a single collection grouped by library.
 func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) {
-	jellyfinItems, libraryFoldersMap, err := e.jellyfin.GetJellyfinItems(ctx)
+	jellyfinItems, err := e.jellyfin.GetJellyfinItems(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jellyfin items: %w", err)
 	}
@@ -559,8 +559,8 @@ func (e *Engine) gatherMediaItems(ctx context.Context) ([]arr.MediaItem, error) 
 	mediaItems = append(mediaItems, sonarrItems...)
 	mediaItems = append(mediaItems, radarrItems...)
 
-	// Set deletion policies with freshly gathered library folders map
-	e.policy.SetPolicies(e.policyFactory(libraryFoldersMap)...)
+	// Set deletion policies with a fresh disk usage snapshot from the arrs
+	e.policy.SetPolicies(e.policyFactory(e.newDiskUsageFunc(ctx))...)
 
 	return mediaItems, nil
 }
@@ -686,7 +686,7 @@ func (e *Engine) resetAllTags(ctx context.Context, additionalTags []string) erro
 func (e *Engine) migrateTagsToDatabase(ctx context.Context) error {
 	log.Info("Starting migration of jellysweep tags to database...")
 
-	jellyfinItems, _, err := e.jellyfin.GetJellyfinItems(ctx)
+	jellyfinItems, err := e.jellyfin.GetJellyfinItems(ctx)
 	if err != nil {
 		log.Error("Failed to get jellyfin items for migration", "error", err)
 		return err

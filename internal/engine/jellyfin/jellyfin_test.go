@@ -42,13 +42,6 @@ func queryResult(items []jellyfinAPI.BaseItemDto, total int32) jellyfinAPI.BaseI
 	return *result
 }
 
-func virtualFolder(name string, locations ...string) jellyfinAPI.VirtualFolderInfo {
-	folder := jellyfinAPI.NewVirtualFolderInfo()
-	folder.SetName(name)
-	folder.SetLocations(locations)
-	return *folder
-}
-
 func TestGetJellyfinItemsFiltersLibrariesAndPaginates(t *testing.T) {
 	c, server := newTestClient(t)
 	server.JSON("GET /Library/MediaFolders", queryResult([]jellyfinAPI.BaseItemDto{
@@ -56,10 +49,6 @@ func TestGetJellyfinItemsFiltersLibrariesAndPaginates(t *testing.T) {
 		item("lib-music", "Music", jellyfinAPI.BASEITEMKIND_COLLECTION_FOLDER),
 		item("lib-unknown", "Photos", jellyfinAPI.BASEITEMKIND_COLLECTION_FOLDER),
 	}, 3))
-	server.JSON("GET /Library/VirtualFolders", []jellyfinAPI.VirtualFolderInfo{
-		virtualFolder("Movies", "/data/movies", "/data/movies2"),
-		virtualFolder("Music", "/data/music"),
-	})
 	// Movies library: 3 items served across two pages.
 	server.Handle("GET /Items", func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "lib-movies", r.URL.Query().Get("parentId"), "only enabled libraries may be queried")
@@ -74,15 +63,13 @@ func TestGetJellyfinItemsFiltersLibrariesAndPaginates(t *testing.T) {
 		httptestutil.WriteJSON(t, w, queryResult(page, 3))
 	})
 
-	items, folders, err := c.GetJellyfinItems(t.Context())
+	items, err := c.GetJellyfinItems(t.Context())
 	require.NoError(t, err)
 
 	require.Len(t, items, 3, "both pages must be collected")
 	for _, it := range items {
 		require.Equal(t, "Movies", it.ParentLibraryName)
 	}
-	require.Equal(t, map[string][]string{"Movies": {"/data/movies", "/data/movies2"}}, folders,
-		"disabled libraries must not appear in the folders map")
 
 	itemCalls := server.Requests(http.MethodGet, "/Items")
 	require.Len(t, itemCalls, 2, "pagination must stop once all records are fetched")
@@ -99,10 +86,9 @@ func TestGetJellyfinItemsRequestsPagesOf100(t *testing.T) {
 	server.JSON("GET /Library/MediaFolders", queryResult([]jellyfinAPI.BaseItemDto{
 		item("lib-movies", "Movies", jellyfinAPI.BASEITEMKIND_COLLECTION_FOLDER),
 	}, 1))
-	server.JSON("GET /Library/VirtualFolders", []jellyfinAPI.VirtualFolderInfo{virtualFolder("Movies", "/data/movies")})
 	server.JSON("GET /Items", queryResult([]jellyfinAPI.BaseItemDto{item("m1", "Movie 1", jellyfinAPI.BASEITEMKIND_MOVIE)}, 1))
 
-	_, _, err := c.GetJellyfinItems(t.Context())
+	_, err := c.GetJellyfinItems(t.Context())
 	require.NoError(t, err)
 
 	itemCalls := server.Requests(http.MethodGet, "/Items")
@@ -119,10 +105,6 @@ func TestGetJellyfinItemsLibraryFailureAbortsGather(t *testing.T) {
 		item("lib-movies", "Movies", jellyfinAPI.BASEITEMKIND_COLLECTION_FOLDER),
 		item("lib-tv", "TV", jellyfinAPI.BASEITEMKIND_COLLECTION_FOLDER),
 	}, 2))
-	server.JSON("GET /Library/VirtualFolders", []jellyfinAPI.VirtualFolderInfo{
-		virtualFolder("Movies", "/data/movies"),
-		virtualFolder("TV", "/data/tv"),
-	})
 	server.Handle("GET /Items", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("parentId") == "lib-movies" {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -131,7 +113,7 @@ func TestGetJellyfinItemsLibraryFailureAbortsGather(t *testing.T) {
 		httptestutil.WriteJSON(t, w, queryResult([]jellyfinAPI.BaseItemDto{item("s1", "Show 1", jellyfinAPI.BASEITEMKIND_SERIES)}, 1))
 	})
 
-	items, _, err := c.GetJellyfinItems(t.Context())
+	items, err := c.GetJellyfinItems(t.Context())
 	require.Error(t, err)
 	require.ErrorContains(t, err, "Movies")
 	require.Nil(t, items, "a partial item list must never be returned")
@@ -141,7 +123,7 @@ func TestGetJellyfinItemsNoMediaFolders(t *testing.T) {
 	c, server := newTestClient(t)
 	server.JSON("GET /Library/MediaFolders", queryResult(nil, 0))
 
-	_, _, err := c.GetJellyfinItems(t.Context())
+	_, err := c.GetJellyfinItems(t.Context())
 	require.Error(t, err)
 }
 

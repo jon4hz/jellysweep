@@ -8,42 +8,27 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/database"
-	"github.com/shirou/gopsutil/v3/disk"
 )
 
-// UsageFunc reports the disk usage of a path in percent.
-type UsageFunc func(ctx context.Context, path string) (float64, error)
+// UsageFunc reports the current disk usage in percent for a media type.
+// ok is false when the usage could not be determined; that is not an error.
+type UsageFunc func(ctx context.Context, mediaType database.MediaType) (usage float64, ok bool, err error)
 
 // DiskUsageDelete applies when disk usage exceeds a certain threshold.
 type DiskUsageDelete struct {
-	cfg               *config.Config
-	libraryFoldersMap map[string][]string
-	usageFunc         UsageFunc
+	cfg       *config.Config
+	usageFunc UsageFunc
 }
 
 var _ Policy = (*DiskUsageDelete)(nil)
 
-// DiskUsageOption configures a DiskUsageDelete policy.
-type DiskUsageOption func(*DiskUsageDelete)
-
-// WithUsageFunc overrides how disk usage is determined. Used by tests.
-func WithUsageFunc(fn UsageFunc) DiskUsageOption {
-	return func(p *DiskUsageDelete) {
-		p.usageFunc = fn
-	}
-}
-
 // NewDiskUsageDelete creates a new instance of DiskUsageDelete.
-func NewDiskUsageDelete(cfg *config.Config, libraryFoldersMap map[string][]string, opts ...DiskUsageOption) *DiskUsageDelete {
-	p := &DiskUsageDelete{
-		cfg:               cfg,
-		libraryFoldersMap: libraryFoldersMap,
-		usageFunc:         getLibraryDiskUsage,
+// usageFunc provides the current disk usage per media type.
+func NewDiskUsageDelete(cfg *config.Config, usageFunc UsageFunc) *DiskUsageDelete {
+	return &DiskUsageDelete{
+		cfg:       cfg,
+		usageFunc: usageFunc,
 	}
-	for _, opt := range opts {
-		opt(p)
-	}
-	return p
 }
 
 // Apply adds a DiskUsageDeletePolicy if the library has a disk usage threshold set.
@@ -88,7 +73,7 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media datab
 		return false, nil
 	}
 
-	currentDiskUsage, ok, err := p.getCurrentDiskUsage(ctx, media.LibraryName)
+	currentDiskUsage, ok, err := p.usageFunc(ctx, media.MediaType)
 	if err != nil {
 		return false, err
 	}
@@ -148,7 +133,7 @@ func (p *DiskUsageDelete) GetEstimatedDeleteAt(ctx context.Context, media databa
 		return time.Time{}, nil
 	}
 
-	currentDiskUsage, ok, err := p.getCurrentDiskUsage(ctx, media.LibraryName)
+	currentDiskUsage, ok, err := p.usageFunc(ctx, media.MediaType)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -170,42 +155,4 @@ func (p *DiskUsageDelete) GetEstimatedDeleteAt(ctx context.Context, media databa
 		}
 	}
 	return earliest, nil
-}
-
-// getCurrentDiskUsage returns the highest disk usage percentage among all folders of a library.
-// ok is false if the usage could not be determined for any folder; this is not treated as an error.
-func (p *DiskUsageDelete) getCurrentDiskUsage(ctx context.Context, libraryName string) (usage float64, ok bool, err error) {
-	folders, found := p.libraryFoldersMap[libraryName]
-	if !found || len(folders) == 0 {
-		return 0, false, fmt.Errorf("no library folders found for library: %s", libraryName)
-	}
-
-	var diskUsageError error
-	for _, path := range folders {
-		u, err := p.usageFunc(ctx, path)
-		if err != nil {
-			log.Error("failed to get disk usage", "path", path, "error", err)
-			diskUsageError = err
-			continue
-		}
-		// Use the highest disk usage among all paths
-		if u > usage {
-			usage = u
-		}
-	}
-
-	if diskUsageError != nil && usage == 0 {
-		log.Warn("could not determine disk usage for library", "library", libraryName)
-		return 0, false, nil
-	}
-	return usage, true, nil
-}
-
-// getLibraryDiskUsage gets disk usage in percentage for a given library path.
-func getLibraryDiskUsage(ctx context.Context, path string) (float64, error) {
-	usage, err := disk.UsageWithContext(ctx, path)
-	if err != nil {
-		return 0, err
-	}
-	return usage.UsedPercent, nil
 }

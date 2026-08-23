@@ -11,7 +11,7 @@ import (
 
 // jellyfinClient is the subset of *jellyfin.Client used by the engine.
 type jellyfinClient interface {
-	GetJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, map[string][]string, error)
+	GetJellyfinItems(ctx context.Context) ([]arr.JellyfinItem, error)
 	RemoveItemWithCleanupMode(ctx context.Context, itemID, title string, itemType jellyfinAPI.BaseItemKind, cleanupMode config.CleanupMode, keepCount int) error
 	FindCollectionByName(ctx context.Context, name string) (string, error)
 	GetCollectionItems(ctx context.Context, collectionID string) (map[string]bool, error)

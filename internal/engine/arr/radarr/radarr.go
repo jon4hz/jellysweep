@@ -469,3 +469,40 @@ func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32, since time
 
 	return earliestTime, nil
 }
+
+// GetRootFolderUsage returns the disk usage in percent for every accessible
+// root folder configured in Radarr, keyed by root folder path.
+func (r *Radarr) GetRootFolderUsage(ctx context.Context) (map[string]float64, error) {
+	rootFolders, resp, err := r.client.RootFolderAPI.ListRootFolder(r.radarrAuthCtx(ctx)).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list radarr root folders: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	diskSpace, resp, err := r.client.DiskSpaceAPI.ListDiskSpace(r.radarrAuthCtx(ctx)).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list radarr disk space: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	roots := make([]string, 0, len(rootFolders))
+	for _, rf := range rootFolders {
+		if !rf.GetAccessible() {
+			log.Warn("Skipping inaccessible radarr root folder", "path", rf.GetPath())
+			continue
+		}
+		roots = append(roots, rf.GetPath())
+	}
+	mounts := make([]arr.Mount, 0, len(diskSpace))
+	for _, ds := range diskSpace {
+		mounts = append(mounts, arr.Mount{Path: ds.GetPath(), Free: ds.GetFreeSpace(), Total: ds.GetTotalSpace()})
+	}
+
+	usage := arr.RootFolderUsage(roots, mounts)
+	for _, root := range roots {
+		if _, ok := usage[root]; !ok {
+			log.Warn("No disk space information for radarr root folder", "path", root)
+		}
+	}
+	return usage, nil
+}
