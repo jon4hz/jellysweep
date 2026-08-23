@@ -41,6 +41,10 @@ type Arrer interface {
 
 	// History methods for getting import dates
 	GetItemAddedDate(ctx context.Context, itemID int32, since time.Time) (*time.Time, error)
+
+	// GetRootFolderUsage returns the disk usage in percent for every root folder
+	// configured in the arr, keyed by root folder path.
+	GetRootFolderUsage(ctx context.Context) (map[string]float64, error)
 }
 
 type JellyfinItem struct {

@@ -47,7 +47,8 @@ type harness struct {
 	user   *database.User
 	admin  *database.User
 
-	// usageFn is consulted by the disk usage policy; swappable per test.
+	// usageFn overrides the disk usage consulted by the disk usage policy;
+	// swappable per test. When nil the engine's real arr-backed snapshot is used.
 	usageFn policy.UsageFunc
 
 	initialDBMigration bool
@@ -73,6 +74,12 @@ func withDiskThresholds(library string, usagePercent float64, maxDelayDays int) 
 			{UsagePercent: usagePercent, MaxCleanupDelay: maxDelayDays},
 		}
 	}
+}
+
+// withEngineDiskUsage makes the disk usage policy use the engine's real
+// arr-backed snapshot instead of the harness override.
+func withEngineDiskUsage() harnessOpt {
+	return func(h *harness) { h.usageFn = nil }
 }
 
 func withNilStats() harnessOpt {
@@ -101,15 +108,13 @@ func newHarness(t *testing.T, opts ...harnessOpt) *harness {
 				"TV":     {Enabled: true},
 			},
 		},
-		db:     db,
-		gdb:    gdb,
-		sonarr: newFakeArr(),
-		radarr: newFakeArr(),
-		stats:  newFakeStats(),
-		jf:     newFakeJellyfin(),
-		usageFn: func(context.Context, string) (float64, error) {
-			return 0, nil
-		},
+		db:      db,
+		gdb:     gdb,
+		sonarr:  newFakeArr(),
+		radarr:  newFakeArr(),
+		stats:   newFakeStats(),
+		jf:      newFakeJellyfin(),
+		usageFn: staticDiskUsage(0),
 	}
 
 	for _, opt := range opts {
@@ -137,14 +142,15 @@ func newHarness(t *testing.T, opts ...harnessOpt) *harness {
 		sonarr:   h.sonarr,
 		radarr:   h.radarr,
 		filters:  filter.New(filterList...),
-		policyFactory: func(libraryFoldersMap map[string][]string) []policy.Policy {
+		policyFactory: func(usage policy.UsageFunc) []policy.Policy {
 			return []policy.Policy{
 				policy.NewDefaultDelete(h.cfg),
-				policy.NewDiskUsageDelete(h.cfg, libraryFoldersMap, policy.WithUsageFunc(
-					func(ctx context.Context, path string) (float64, error) {
-						return h.usageFn(ctx, path)
-					},
-				)),
+				policy.NewDiskUsageDelete(h.cfg, func(ctx context.Context, mt database.MediaType) (float64, bool, error) {
+					if h.usageFn != nil {
+						return h.usageFn(ctx, mt)
+					}
+					return usage(ctx, mt)
+				}),
 			}
 		},
 		engineCache:   engineCache,

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jon4hz/jellysweep/internal/database"
+	"github.com/jon4hz/jellysweep/internal/policy"
 	"github.com/stretchr/testify/require"
 )
 
@@ -367,8 +368,8 @@ func TestLifecycleTagMigration(t *testing.T) {
 
 // --- helpers ---
 
-func staticDiskUsage(percent float64) func(ctx context.Context, path string) (float64, error) {
-	return func(context.Context, string) (float64, error) { return percent, nil }
+func staticDiskUsage(percent float64) policy.UsageFunc {
+	return func(context.Context, database.MediaType) (float64, bool, error) { return percent, true, nil }
 }
 
 func requireNoHistoryEvent(t *testing.T, h *harness, m *mediaRef, unwanted database.HistoryEventType) {

@@ -58,6 +58,10 @@ type fakeArr struct {
 	deleteErr   map[int32]error
 	getItemsErr error
 	addedDates  map[int32]*time.Time
+
+	rootFolderUsage      map[string]float64 // GetRootFolderUsage result
+	rootFolderUsageErr   error
+	rootFolderUsageCalls int
 }
 
 var _ arr.Arrer = (*fakeArr)(nil)
@@ -135,6 +139,16 @@ func (f *fakeArr) GetItemAddedDate(_ context.Context, itemID int32, _ time.Time)
 	return f.addedDates[itemID], nil
 }
 
+func (f *fakeArr) GetRootFolderUsage(context.Context) (map[string]float64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.rootFolderUsageCalls++
+	if f.rootFolderUsageErr != nil {
+		return nil, f.rootFolderUsageErr
+	}
+	return f.rootFolderUsage, nil
+}
+
 func (f *fakeArr) hasDeleted(arrID int32) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -143,12 +157,11 @@ func (f *fakeArr) hasDeleted(arrID int32) bool {
 
 // fakeJellyfin implements the jellyfinClient interface.
 type fakeJellyfin struct {
-	mu         sync.Mutex
-	items      []arr.JellyfinItem
-	foldersMap map[string][]string
-	removed    []string // RemoveItemWithCleanupMode calls
-	removeErr  map[string]error
-	getErr     error
+	mu        sync.Mutex
+	items     []arr.JellyfinItem
+	removed   []string // RemoveItemWithCleanupMode calls
+	removeErr map[string]error
+	getErr    error
 	// collections, keyed by name: itemID -> present
 	collections map[string]map[string]bool
 }
@@ -157,19 +170,18 @@ var _ jellyfinClient = (*fakeJellyfin)(nil)
 
 func newFakeJellyfin() *fakeJellyfin {
 	return &fakeJellyfin{
-		foldersMap:  map[string][]string{"Movies": {"/data/movies"}, "TV": {"/data/tv"}},
 		removeErr:   make(map[string]error),
 		collections: make(map[string]map[string]bool),
 	}
 }
 
-func (f *fakeJellyfin) GetJellyfinItems(context.Context) ([]arr.JellyfinItem, map[string][]string, error) {
+func (f *fakeJellyfin) GetJellyfinItems(context.Context) ([]arr.JellyfinItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.getErr != nil {
-		return nil, nil, f.getErr
+		return nil, f.getErr
 	}
-	return slices.Clone(f.items), f.foldersMap, nil
+	return slices.Clone(f.items), nil
 }
 
 func (f *fakeJellyfin) RemoveItemWithCleanupMode(_ context.Context, itemID, _ string, _ jellyfinAPI.BaseItemKind, _ config.CleanupMode, _ int) error {

@@ -317,3 +317,28 @@ func TestGetTagsFailedRefreshDropsStaleCache(t *testing.T) {
 	require.Error(t, err, "cached read must refetch, not serve the stale map")
 	require.Len(t, server.Requests(http.MethodGet, "/api/v3/tag"), 3)
 }
+
+func TestGetRootFolderUsage(t *testing.T) {
+	r, server := newTestRadarr(t)
+	server.JSON("GET /api/v3/rootfolder", []map[string]any{
+		{"id": 1, "path": "/data/movies", "accessible": true, "freeSpace": 10, "totalSpace": 100},
+		{"id": 2, "path": "/mnt/offline", "accessible": false, "freeSpace": 0},
+		{"id": 3, "path": "/elsewhere", "accessible": true, "freeSpace": 0},
+	})
+	server.JSON("GET /api/v3/diskspace", []map[string]any{
+		{"id": 1, "path": "/data", "label": "data", "freeSpace": 10, "totalSpace": 100},
+	})
+
+	got, err := r.GetRootFolderUsage(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, map[string]float64{"/data/movies": 90}, got)
+}
+
+func TestGetRootFolderUsageAPIError(t *testing.T) {
+	r, server := newTestRadarr(t)
+	server.Handle("GET /api/v3/rootfolder", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	_, err := r.GetRootFolderUsage(t.Context())
+	require.Error(t, err)
+}

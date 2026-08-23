@@ -495,3 +495,40 @@ func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32, since tim
 
 	return earliestTime, nil
 }
+
+// GetRootFolderUsage returns the disk usage in percent for every accessible
+// root folder configured in Sonarr, keyed by root folder path.
+func (s *Sonarr) GetRootFolderUsage(ctx context.Context) (map[string]float64, error) {
+	rootFolders, resp, err := s.client.RootFolderAPI.ListRootFolder(s.sonarrAuthCtx(ctx)).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list sonarr root folders: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	diskSpace, resp, err := s.client.DiskSpaceAPI.ListDiskSpace(s.sonarrAuthCtx(ctx)).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list sonarr disk space: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	roots := make([]string, 0, len(rootFolders))
+	for _, rf := range rootFolders {
+		if !rf.GetAccessible() {
+			log.Warn("Skipping inaccessible sonarr root folder", "path", rf.GetPath())
+			continue
+		}
+		roots = append(roots, rf.GetPath())
+	}
+	mounts := make([]arr.Mount, 0, len(diskSpace))
+	for _, ds := range diskSpace {
+		mounts = append(mounts, arr.Mount{Path: ds.GetPath(), Free: ds.GetFreeSpace(), Total: ds.GetTotalSpace()})
+	}
+
+	usage := arr.RootFolderUsage(roots, mounts)
+	for _, root := range roots {
+		if _, ok := usage[root]; !ok {
+			log.Warn("No disk space information for sonarr root folder", "path", root)
+		}
+	}
+	return usage, nil
+}
