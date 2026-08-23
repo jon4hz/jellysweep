@@ -24,6 +24,9 @@ func (e *Engine) estimateDeletions(ctx context.Context) error {
 			log.Error("failed to estimate deletion date for media item", "title", item.Title, "error", err)
 			continue
 		}
+		if item.EstimatedDeleteAt.Equal(estimatedDeleteAt) {
+			continue
+		}
 		if err := e.db.SetMediaEstimatedDeleteAt(ctx, item.ID, estimatedDeleteAt); err != nil {
 			log.Error("failed to store estimated deletion date for media item", "title", item.Title, "error", err)
 			continue
