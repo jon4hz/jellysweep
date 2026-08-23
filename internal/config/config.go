@@ -53,6 +53,13 @@ const (
 	CleanupModeKeepSeasons  CleanupMode = "keep_seasons"
 )
 
+type EventType string
+
+const (
+	EventTypeMarkedForDeletion EventType = "marked_for_deletion"
+	EventTypeDeleted           EventType = "deleted"
+)
+
 // Config holds the configuration for the Jellysweep server and its dependencies.
 type Config struct {
 	// LogLevel sets the log verbosity. Options: "debug", "info", "warn", "error". Defaults to "info".
@@ -92,6 +99,8 @@ type Config struct {
 	Ntfy *NtfyConfig `yaml:"ntfy" mapstructure:"ntfy"`
 	// WebPush holds the webpush notification configuration.
 	WebPush *WebPushConfig `yaml:"webpush" mapstructure:"webpush"`
+	// Telegram holds the Telegram notification configuration.
+	Telegram *TelegramConfig `yaml:"telegram" mapstructure:"telegram"`
 	// ServerURL is the base URL of the Jellysweep server.
 	ServerURL string `yaml:"server_url" mapstructure:"server_url"`
 	// Cache holds the cache engine configuration.
@@ -235,6 +244,17 @@ type WebPushConfig struct {
 	PrivateKey string `yaml:"private_key" mapstructure:"private_key"`
 	// Timeout is the HTTP client timeout in seconds.
 	Timeout int `yaml:"timeout" mapstructure:"timeout"`
+}
+
+type TelegramConfig struct {
+	// Enabled indicates whether Telegram notifications are enabled.
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+	// BotID is the Telegram bot ID, that will send notifications
+	BotID string `yaml:"bot_id" mapstructure:"bot_id"`
+	// ChatID is the Telegram chat ID where notifications will be sent
+	ChatID string `yaml:"chat_id" mapstructure:"chat_id"`
+	// TopicID is the optional Telegram chat's topic ID
+	TopicIDsByEvents map[EventType]int `yaml:"topic_ids_by_events" mapstructure:"topic_ids_by_events"`
 }
 
 // CleanupConfig holds the configuration for the cleanup job.
@@ -533,6 +553,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("webpush.public_key", "")
 	v.SetDefault("webpush.private_key", "")
 	v.SetDefault("webpush.timeout", 30)
+
+	// Telegram
+	v.SetDefault("telegram.enabled", false)
+	v.SetDefault("telegram.bot_id", "")
+	v.SetDefault("telegram.chat_id", "")
+	v.SetDefault("telegram.topic_ids_by_events", nil)
 }
 
 // the auto env function from viper only works for nested structs, if the struct to which a value binds isn't nil.

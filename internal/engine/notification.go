@@ -3,10 +3,12 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/api/models"
+	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
 	"github.com/jon4hz/jellysweep/internal/notify/email"
 	"github.com/jon4hz/jellysweep/internal/notify/ntfy"
@@ -167,4 +169,80 @@ func (e *Engine) sendNtfyDeletionCompletedNotification(ctx context.Context, dele
 
 	log.Info("sent deletion completed notification", "items", totalItems, "libraries", len(libraries))
 	return nil
+}
+
+func (e *Engine) sendTelegramDeletionSummary(ctx context.Context, markedForDeletionItems []arr.MediaItem) error {
+	if e.telegram == nil {
+		log.Debug("Telegram notifications are disabled")
+		return nil
+	}
+
+	var message strings.Builder
+	message.WriteString("### Following media was marked for deletion\n\n")
+
+	var moviesList strings.Builder
+	var seriesList strings.Builder
+
+	for _, item := range markedForDeletionItems {
+		var list *strings.Builder
+		if item.MediaType == models.MediaTypeMovie {
+			list = &moviesList
+		} else {
+			list = &seriesList
+		}
+		list.WriteString("- [")
+		list.WriteString(item.Title)
+		list.WriteString("](")
+		list.WriteString(strings.TrimLeft(e.cfg.Jellyfin.URL, "/"))
+		list.WriteString("/web/#/details?id=")
+		list.WriteString(item.JellyfinID)
+		list.WriteString(")\n")
+	}
+
+	message.WriteString("#### Movies\n\n")
+	message.WriteString(moviesList.String())
+	message.WriteRune('\n')
+
+	message.WriteString("#### TV Series\n\n")
+	message.WriteString(seriesList.String())
+	message.WriteRune('\n')
+
+	return e.telegram.SendNotification(ctx, config.EventTypeMarkedForDeletion, message.String())
+}
+
+func (e *Engine) sendTelegramDeletionCompletedNotification(ctx context.Context, deletedItems map[string][]arr.MediaItem) error {
+	if e.telegram == nil {
+		log.Debug("Telegram notifications are disabled")
+		return nil
+	}
+
+	var message strings.Builder
+	message.WriteString("### Following media was deleted\n\n")
+
+	var moviesList strings.Builder
+	var seriesList strings.Builder
+
+	for _, items := range deletedItems {
+		for _, item := range items {
+			var list *strings.Builder
+			if item.MediaType == models.MediaTypeMovie {
+				list = &moviesList
+			} else {
+				list = &seriesList
+			}
+			list.WriteString("- ")
+			list.WriteString(item.Title)
+			list.WriteString("\n")
+		}
+	}
+
+	message.WriteString("#### Movies\n\n")
+	message.WriteString(moviesList.String())
+	message.WriteRune('\n')
+
+	message.WriteString("#### TV Series\n\n")
+	message.WriteString(seriesList.String())
+	message.WriteRune('\n')
+
+	return e.telegram.SendNotification(ctx, config.EventTypeDeleted, message.String())
 }

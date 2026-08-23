@@ -31,6 +31,7 @@ import (
 	tunarrfilter "github.com/jon4hz/jellysweep/internal/filter/tunarr_filter"
 	"github.com/jon4hz/jellysweep/internal/notify/email"
 	"github.com/jon4hz/jellysweep/internal/notify/ntfy"
+	"github.com/jon4hz/jellysweep/internal/notify/telegram"
 	"github.com/jon4hz/jellysweep/internal/notify/webpush"
 	"github.com/jon4hz/jellysweep/internal/policy"
 	"github.com/jon4hz/jellysweep/internal/scheduler"
@@ -62,6 +63,7 @@ type Engine struct {
 	email      *email.NotificationService
 	ntfy       *ntfy.Client
 	webpush    *webpush.Client
+	telegram   telegramClient
 	scheduler  *scheduler.Scheduler
 
 	// policyFactory builds the deletion policies for a cleanup run from the
@@ -77,6 +79,10 @@ type Engine struct {
 	data *data
 }
 
+type telegramClient interface {
+	SendNotification(context.Context, config.EventType, string) error
+}
+
 // engineDeps holds the collaborators of an Engine. New builds the production
 // set from the config; tests inject fakes through newEngine.
 type engineDeps struct {
@@ -88,6 +94,7 @@ type engineDeps struct {
 	email         *email.NotificationService
 	ntfy          *ntfy.Client
 	webpush       *webpush.Client
+	telegram      telegramClient
 	filters       *filter.Filter
 	policyFactory func(usage policy.UsageFunc) []policy.Policy
 	engineCache   *cache.EngineCache
@@ -187,6 +194,13 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		webpushClient = webpush.NewClient(cfg.WebPush)
 	}
 
+	var telegramClient *telegram.Client
+	if cfg.Telegram != nil && cfg.Telegram.Enabled {
+		if telegramClient, err = telegram.NewClient(cfg.Telegram); err != nil {
+			return nil, fmt.Errorf("failed to create Telegram client: %w", err)
+		}
+	}
+
 	return newEngine(cfg, db, initialDBMigration, engineDeps{
 		jellyfin:   jellyfinAPIClient,
 		stats:      statsClient,
@@ -196,6 +210,7 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 		email:      emailService,
 		ntfy:       ntfyClient,
 		webpush:    webpushClient,
+		telegram:   telegramClient,
 		filters:    filters,
 		policyFactory: func(usage policy.UsageFunc) []policy.Policy {
 			return []policy.Policy{
@@ -230,6 +245,7 @@ func newEngine(cfg *config.Config, db database.DB, initialDBMigration bool, deps
 		email:              deps.email,
 		ntfy:               deps.ntfy,
 		webpush:            deps.webpush,
+		telegram:           deps.telegram,
 		scheduler:          sched,
 		data: &data{
 			userNotifications: make(map[string][]arr.MediaItem),
@@ -526,6 +542,10 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 	if err := e.sendNtfyDeletionSummary(ctx, mediaItems); err != nil {
 		log.Error("failed to send ntfy deletion summary", "error", err)
 		// Don't return here, continue with the cleanup process
+	}
+
+	if err := e.sendTelegramDeletionSummary(ctx, mediaItems); err != nil {
+		log.Error("failed to send Telegram deletion summary", "error", err)
 	}
 	return nil
 }
