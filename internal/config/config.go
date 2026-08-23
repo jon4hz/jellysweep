@@ -553,6 +553,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("webpush.public_key", "")
 	v.SetDefault("webpush.private_key", "")
 	v.SetDefault("webpush.timeout", 30)
+
+	// Telegram
+	v.SetDefault("telegram.enabled", false)
+	v.SetDefault("telegram.bot_id", "")
+	v.SetDefault("telegram.chat_id", "")
+	v.SetDefault("telegram.topic_ids_by_events", nil)
 }
 
 // the auto env function from viper only works for nested structs, if the struct to which a value binds isn't nil.
