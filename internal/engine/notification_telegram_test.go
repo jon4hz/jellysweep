@@ -74,13 +74,13 @@ func TestNotification_sendTelegramDeletionCompletedNotification(t *testing.T) {
 
 #### Movies
 
-- [movie 1](http://jellyfin:80/web/#/details?id=1)
-- [movie 2](http://jellyfin:80/web/#/details?id=2)
+- movie 1
+- movie 2
 
 #### TV Series
 
-- [series 1](http://jellyfin:80/web/#/details?id=11)
-- [series 2](http://jellyfin:80/web/#/details?id=12)
+- series 1
+- series 2
 
 `)
 }

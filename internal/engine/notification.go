@@ -230,13 +230,9 @@ func (e *Engine) sendTelegramDeletionCompletedNotification(ctx context.Context, 
 			} else {
 				list = &seriesList
 			}
-			list.WriteString("- [")
+			list.WriteString("- ")
 			list.WriteString(item.Title)
-			list.WriteString("](")
-			list.WriteString(strings.TrimLeft(e.cfg.Jellyfin.URL, "/"))
-			list.WriteString("/web/#/details?id=")
-			list.WriteString(item.JellyfinID)
-			list.WriteString(")\n")
+			list.WriteString("\n")
 		}
 	}
 
