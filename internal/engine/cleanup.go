@@ -113,6 +113,10 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 		if err := e.sendNtfyDeletionCompletedNotification(ctx, deletedItems); err != nil {
 			log.Error("failed to send deletion completed notification", "error", err)
 		}
+
+		if err := e.sendTelegramDeletionCompletedNotification(ctx, deletedItems); err != nil {
+			log.Error("failed to send deletion completed notification", "error", err)
+		}
 	}
 
 	return nil
