@@ -12,11 +12,14 @@ import (
 
 // stubPolicy is a controllable Policy implementation.
 type stubPolicy struct {
-	applyErr   error
-	trigger    bool
-	triggerErr error
-	applied    int
-	checked    int
+	applyErr    error
+	trigger     bool
+	triggerErr  error
+	estimate    time.Time
+	estimateErr error
+	applied     int
+	checked     int
+	estimated   int
 }
 
 func (s *stubPolicy) Apply(*database.Media) error {
@@ -27,6 +30,11 @@ func (s *stubPolicy) Apply(*database.Media) error {
 func (s *stubPolicy) ShouldTriggerDeletion(context.Context, database.Media) (bool, error) {
 	s.checked++
 	return s.trigger, s.triggerErr
+}
+
+func (s *stubPolicy) GetEstimatedDeleteAt(context.Context, database.Media) (time.Time, error) {
+	s.estimated++
+	return s.estimate, s.estimateErr
 }
 
 func TestEngineApplyAll(t *testing.T) {
@@ -103,4 +111,38 @@ func TestEngineNoPoliciesNeverTriggers(t *testing.T) {
 	got, err := e.ShouldTriggerDeletion(t.Context(), database.Media{DefaultDeleteAt: time.Now().Add(-time.Hour)})
 	require.NoError(t, err)
 	require.False(t, got)
+}
+
+func TestEngineGetEstimatedDeleteAtPicksEarliest(t *testing.T) {
+	early := time.Now().Add(time.Hour)
+	late := time.Now().Add(48 * time.Hour)
+	a := &stubPolicy{estimate: late}
+	b := &stubPolicy{} // zero estimate: policy does not apply
+	c := &stubPolicy{estimate: early}
+	e := NewEngine()
+	e.SetPolicies(a, b, c)
+
+	got, err := e.GetEstimatedDeleteAt(t.Context(), database.Media{})
+	require.NoError(t, err)
+	require.Equal(t, early, got)
+	require.Equal(t, 1, a.estimated)
+	require.Equal(t, 1, b.estimated)
+	require.Equal(t, 1, c.estimated, "all policies must be consulted")
+}
+
+func TestEngineGetEstimatedDeleteAtNoPolicyApplies(t *testing.T) {
+	e := NewEngine()
+	e.SetPolicies(&stubPolicy{}, &stubPolicy{})
+
+	got, err := e.GetEstimatedDeleteAt(t.Context(), database.Media{})
+	require.NoError(t, err)
+	require.True(t, got.IsZero())
+}
+
+func TestEngineGetEstimatedDeleteAtPropagatesError(t *testing.T) {
+	e := NewEngine()
+	e.SetPolicies(&stubPolicy{estimate: time.Now()}, &stubPolicy{estimateErr: errors.New("boom")})
+
+	_, err := e.GetEstimatedDeleteAt(t.Context(), database.Media{})
+	require.Error(t, err)
 }

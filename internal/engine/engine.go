@@ -289,6 +289,9 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 			return err
 		}
 	}
+	if err := e.estimateDeletions(ctx); err != nil {
+		log.Error("An error occurred while estimating deletion dates", "error", err)
+	}
 
 	if err := e.createJellyfinLeavingCollections(ctx); err != nil {
 		log.Error("An error occurred while creating Jellyfin leaving collections")

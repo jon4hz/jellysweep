@@ -63,3 +63,12 @@ func TestDefaultDeleteShouldTriggerDeletion(t *testing.T) {
 		})
 	}
 }
+
+func TestDefaultDeleteGetEstimatedDeleteAt(t *testing.T) {
+	p := NewDefaultDelete(&config.Config{})
+	deleteAt := time.Now().Add(7 * 24 * time.Hour)
+
+	got, err := p.GetEstimatedDeleteAt(t.Context(), database.Media{DefaultDeleteAt: deleteAt})
+	require.NoError(t, err)
+	require.Equal(t, deleteAt, got, "the default policy always estimates its own delete date")
+}

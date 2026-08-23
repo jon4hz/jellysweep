@@ -124,3 +124,20 @@ func TestToHistoryEventItem(t *testing.T) {
 
 	require.Len(t, ToHistoryEventItems([]database.HistoryEvent{event, event}), 2)
 }
+
+func TestEstimatedDeleteAtFallsBackToDefault(t *testing.T) {
+	// Before the first estimation run the stored estimate is zero; the API
+	// must expose the default date instead of 0001-01-01.
+	m := sampleMedia()
+	require.True(t, m.EstimatedDeleteAt.IsZero())
+
+	user := ToUserMediaItem(m, &config.Config{})
+	require.Equal(t, m.DefaultDeleteAt, user.EstimatedDeleteAt)
+	admin := ToAdminMediaItem(m, &config.Config{})
+	require.Equal(t, m.DefaultDeleteAt, admin.EstimatedDeleteAt)
+
+	estimate := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
+	m.EstimatedDeleteAt = estimate
+	require.Equal(t, estimate, ToUserMediaItem(m, &config.Config{}).EstimatedDeleteAt)
+	require.Equal(t, estimate, ToAdminMediaItem(m, &config.Config{}).EstimatedDeleteAt)
+}

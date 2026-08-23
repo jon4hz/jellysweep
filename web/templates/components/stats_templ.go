@@ -63,7 +63,7 @@ func calculateDailyCleanupData(items []models.UserMediaItem) []DailyCleanupPoint
 	// Group items by date (day)
 	dailyMap := make(map[string][]models.UserMediaItem)
 	for _, item := range items {
-		dateKey := item.DefaultDeleteAt.Format("2006-01-02")
+		dateKey := item.EstimatedDeleteAt.Format("2006-01-02")
 		dailyMap[dateKey] = append(dailyMap[dateKey], item)
 	}
 
@@ -101,7 +101,7 @@ func calculateCumulativeCleanupData(items []models.UserMediaItem) []CumulativeCl
 	sortedItems := make([]models.UserMediaItem, len(items))
 	copy(sortedItems, items)
 	sort.Slice(sortedItems, func(i, j int) bool {
-		return sortedItems[i].DefaultDeleteAt.Before(sortedItems[j].DefaultDeleteAt)
+		return sortedItems[i].EstimatedDeleteAt.Before(sortedItems[j].EstimatedDeleteAt)
 	})
 
 	var points []CumulativeCleanupPoint
@@ -109,7 +109,7 @@ func calculateCumulativeCleanupData(items []models.UserMediaItem) []CumulativeCl
 	var itemsDeleted int
 
 	// Start from the first deletion date
-	firstDeletionDate := sortedItems[0].DefaultDeleteAt
+	firstDeletionDate := sortedItems[0].EstimatedDeleteAt
 	points = append(points, CumulativeCleanupPoint{
 		Date:            firstDeletionDate,
 		CumulativeBytes: 0,
@@ -122,7 +122,7 @@ func calculateCumulativeCleanupData(items []models.UserMediaItem) []CumulativeCl
 		itemsDeleted++
 
 		points = append(points, CumulativeCleanupPoint{
-			Date:            item.DefaultDeleteAt,
+			Date:            item.EstimatedDeleteAt,
 			CumulativeBytes: cumulativeBytes,
 			ItemsDeleted:    itemsDeleted,
 		})

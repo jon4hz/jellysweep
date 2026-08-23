@@ -230,3 +230,23 @@ func TestMarkMediaAsUnkeepableClearsProtection(t *testing.T) {
 	require.True(t, got.Unkeepable)
 	require.Nil(t, got.ProtectedUntil, "marking media unkeepable must remove its protection")
 }
+
+func TestSetMediaEstimatedDeleteAtWritesZeroValue(t *testing.T) {
+	db, _ := databasetest.New(t)
+
+	media := createMediaItem(t, db, database.Media{Title: "Estimated Movie", ArrID: 1})
+	require.True(t, media.EstimatedDeleteAt.IsZero())
+
+	estimate := time.Now().Add(2 * 24 * time.Hour)
+	require.NoError(t, db.SetMediaEstimatedDeleteAt(t.Context(), media.ID, estimate))
+	got, err := db.GetMediaItemByID(t.Context(), media.ID)
+	require.NoError(t, err)
+	require.WithinDuration(t, estimate, got.EstimatedDeleteAt, time.Second)
+
+	// Once no policy applies anymore the estimate is reset; the zero time must
+	// actually be written, otherwise the UI keeps showing a stale date.
+	require.NoError(t, db.SetMediaEstimatedDeleteAt(t.Context(), media.ID, time.Time{}))
+	got, err = db.GetMediaItemByID(t.Context(), media.ID)
+	require.NoError(t, err)
+	require.True(t, got.EstimatedDeleteAt.IsZero(), "zero estimate must clear the stored value")
+}

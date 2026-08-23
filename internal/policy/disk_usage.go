@@ -88,30 +88,12 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media datab
 		return false, nil
 	}
 
-	folders, ok := p.libraryFoldersMap[media.LibraryName]
-	if !ok || len(folders) == 0 {
-		return false, fmt.Errorf("no library folders found for library: %s", media.LibraryName)
+	currentDiskUsage, ok, err := p.getCurrentDiskUsage(ctx, media.LibraryName)
+	if err != nil {
+		return false, err
 	}
-
-	// Get current disk usage
-	var currentDiskUsage float64
-	var diskUsageError error
-	for _, path := range folders {
-		usage, err := p.usageFunc(ctx, path)
-		if err != nil {
-			log.Error("failed to get disk usage", "path", path, "error", err)
-			diskUsageError = err
-			continue
-		}
-		// Use the highest disk usage among all paths
-		if usage > currentDiskUsage {
-			currentDiskUsage = usage
-		}
-	}
-
-	if diskUsageError != nil && currentDiskUsage == 0 {
-		log.Warn("could not determine disk usage for library", "library", media.LibraryName)
-		// abort but dont return an error
+	if !ok {
+		// usage could not be determined: abort but dont return an error
 		return false, nil
 	}
 
@@ -150,6 +132,73 @@ func (p *DiskUsageDelete) ShouldTriggerDeletion(ctx context.Context, media datab
 	}
 
 	return false, nil
+}
+
+// GetEstimatedDeleteAt returns the earliest deletion date among disk usage policies
+// whose thresholds are currently exceeded. Returns zero time if no thresholds are exceeded,
+// if there are no disk usage policies, or if the disk usage could not be determined.
+func (p *DiskUsageDelete) GetEstimatedDeleteAt(ctx context.Context, media database.Media) (time.Time, error) {
+	if len(media.DiskUsageDeletePolicies) == 0 {
+		return time.Time{}, nil
+	}
+
+	// Skip disk usage checks if no thresholds are configured for this library.
+	libraryConfig := p.cfg.GetLibraryConfig(media.LibraryName)
+	if libraryConfig == nil || len(libraryConfig.DiskUsageThresholds) == 0 {
+		return time.Time{}, nil
+	}
+
+	currentDiskUsage, ok, err := p.getCurrentDiskUsage(ctx, media.LibraryName)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if !ok {
+		return time.Time{}, nil
+	}
+
+	var earliest time.Time
+	for _, policy := range media.DiskUsageDeletePolicies {
+		if currentDiskUsage < policy.Threshold {
+			continue
+		}
+		if policy.DeleteDate.IsZero() {
+			log.Warn("Disk usage threshold exceeded but no delete date set in policy. This should not happen.")
+			continue
+		}
+		if earliest.IsZero() || policy.DeleteDate.Before(earliest) {
+			earliest = policy.DeleteDate
+		}
+	}
+	return earliest, nil
+}
+
+// getCurrentDiskUsage returns the highest disk usage percentage among all folders of a library.
+// ok is false if the usage could not be determined for any folder; this is not treated as an error.
+func (p *DiskUsageDelete) getCurrentDiskUsage(ctx context.Context, libraryName string) (usage float64, ok bool, err error) {
+	folders, found := p.libraryFoldersMap[libraryName]
+	if !found || len(folders) == 0 {
+		return 0, false, fmt.Errorf("no library folders found for library: %s", libraryName)
+	}
+
+	var diskUsageError error
+	for _, path := range folders {
+		u, err := p.usageFunc(ctx, path)
+		if err != nil {
+			log.Error("failed to get disk usage", "path", path, "error", err)
+			diskUsageError = err
+			continue
+		}
+		// Use the highest disk usage among all paths
+		if u > usage {
+			usage = u
+		}
+	}
+
+	if diskUsageError != nil && usage == 0 {
+		log.Warn("could not determine disk usage for library", "library", libraryName)
+		return 0, false, nil
+	}
+	return usage, true, nil
 }
 
 // getLibraryDiskUsage gets disk usage in percentage for a given library path.

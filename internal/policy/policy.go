@@ -11,6 +11,7 @@ import (
 type Policy interface {
 	Apply(*database.Media) error
 	ShouldTriggerDeletion(context.Context, database.Media) (bool, error)
+	GetEstimatedDeleteAt(context.Context, database.Media) (time.Time, error)
 }
 
 // Engine is the policy engine that applies all available policies to a media item.
@@ -59,4 +60,24 @@ func (e *Engine) ShouldTriggerDeletion(ctx context.Context, media database.Media
 		}
 	}
 	return false, nil
+}
+
+// GetEstimatedDeleteAt gets the earliest deletion time from all policies for the media item.
+func (e *Engine) GetEstimatedDeleteAt(ctx context.Context, media database.Media) (time.Time, error) {
+	var earliest time.Time
+
+	for _, policy := range e.policies {
+		deleteAt, err := policy.GetEstimatedDeleteAt(ctx, media)
+		if err != nil {
+			return time.Time{}, err
+		}
+		if deleteAt.IsZero() {
+			continue
+		}
+		if earliest.IsZero() || deleteAt.Before(earliest) {
+			earliest = deleteAt
+		}
+	}
+
+	return earliest, nil
 }

@@ -31,8 +31,11 @@ type Media struct {
 	MediaType       MediaType `gorm:"not null;uniqueIndex:idx_media_arr"`
 	RequestedBy     string
 	DefaultDeleteAt time.Time `gorm:"not null;index;uniqueIndex:idx_media_arr"`
-	ProtectedUntil  *time.Time
-	Unkeepable      bool
+	// EstimatedDeleteAt is the earliest deletion date across all policies
+	// (e.g. disk usage thresholds). Zero if not yet computed.
+	EstimatedDeleteAt time.Time
+	ProtectedUntil    *time.Time
+	Unkeepable        bool
 	// Reason why this item was deleted from the database.
 	DBDeleteReason          DBDeleteReason
 	DiskUsageDeletePolicies []DiskUsageDeletePolicy `gorm:"constraint:OnDelete:CASCADE;"`
@@ -153,6 +156,20 @@ func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, prote
 		Updates(map[string]any{"protected_until": protectedUntil, "unkeepable": false})
 	if result.Error != nil {
 		log.Error("failed to set media protected until", "error", result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+// SetMediaEstimatedDeleteAt stores the estimated deletion date for a media item.
+// Update is used (rather than Updates with a struct) so a zero time is written
+// as well, clearing a stale estimate once no policy applies anymore.
+func (c *Client) SetMediaEstimatedDeleteAt(ctx context.Context, mediaID uint, estimatedDeleteAt time.Time) error {
+	result := c.db.WithContext(ctx).Model(&Media{}).
+		Where("id = ?", mediaID).
+		Update("estimated_delete_at", estimatedDeleteAt)
+	if result.Error != nil {
+		log.Error("failed to set media estimated delete at", "error", result.Error)
 		return result.Error
 	}
 	return nil

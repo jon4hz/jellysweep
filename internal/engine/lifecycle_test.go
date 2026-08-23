@@ -205,6 +205,25 @@ func TestLifecycleDiskUsageBelowThresholdWaits(t *testing.T) {
 	h.assertMarked(movie)
 }
 
+func TestLifecycleEstimatedDeleteAtFollowsDiskUsage(t *testing.T) {
+	h := newHarness(t, withDiskThresholds("Movies", 90, 2))
+	h.usageFn = staticDiskUsage(95)
+	movie := h.addMovie("Space Hog")
+
+	// Above the threshold the estimate is the (earlier) disk usage date.
+	h.mustRunCleanup()
+	row := h.assertMarked(movie)
+	require.Len(t, row.DiskUsageDeletePolicies, 1)
+	require.WithinDuration(t, row.DiskUsageDeletePolicies[0].DeleteDate, row.EstimatedDeleteAt, time.Second)
+	require.True(t, row.EstimatedDeleteAt.Before(row.DefaultDeleteAt))
+
+	// Once usage drops below the threshold the estimate falls back to the default date.
+	h.usageFn = staticDiskUsage(50)
+	h.mustRunCleanup()
+	row = h.assertMarked(movie)
+	require.WithinDuration(t, row.DefaultDeleteAt, row.EstimatedDeleteAt, time.Second)
+}
+
 // Scenario 8: a failure while marking blocks the deletion pass entirely - the
 // central safety interlock of the cleanup job.
 func TestLifecycleMarkErrorBlocksCleanup(t *testing.T) {
