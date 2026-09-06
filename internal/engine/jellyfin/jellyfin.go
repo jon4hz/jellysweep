@@ -430,3 +430,95 @@ func (c *Client) RemoveItemsFromCollection(ctx context.Context, collectionID str
 
 	return nil
 }
+
+// GetFavoriteItemIDs returns the Jellyfin IDs of every movie and series that any
+// Jellyfin user has marked as a favorite. Favorited episodes and seasons resolve to
+// their parent series, and favorited collections (box sets) are expanded so that
+// all movies and series they contain are returned as well.
+func (c *Client) GetFavoriteItemIDs(ctx context.Context) (map[string]bool, error) {
+	users, resp, err := c.jellyfin.UserAPI.GetUsers(ctx).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jellyfin users: %w", err)
+	}
+	_ = resp.Body.Close()
+
+	favorites := make(map[string]bool)
+	for _, user := range users {
+		userID := user.GetId()
+		if userID == "" {
+			continue
+		}
+
+		items, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+			UserId(userID).
+			IsFavorite(true).
+			Recursive(true).
+			IncludeItemTypes(favoriteItemKinds).
+			Execute()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get favorites for user %s: %w", user.GetName(), err)
+		}
+		_ = resp.Body.Close()
+
+		for _, item := range items.GetItems() {
+			if item.GetType() == jellyfin.BASEITEMKIND_BOX_SET {
+				if err := c.collectCollectionMedia(ctx, userID, item.GetId(), favorites); err != nil {
+					return nil, err
+				}
+				continue
+			}
+			collectMediaID(item, favorites)
+		}
+		log.Debug("Collected favorites for user", "user", user.GetName(), "favorites", len(items.GetItems()))
+	}
+
+	log.Info("Collected favorite items across all Jellyfin users", "users", len(users), "items", len(favorites))
+	return favorites, nil
+}
+
+// favoriteItemKinds are the item types considered when collecting favorites.
+var favoriteItemKinds = []jellyfin.BaseItemKind{
+	jellyfin.BASEITEMKIND_MOVIE,
+	jellyfin.BASEITEMKIND_SERIES,
+	jellyfin.BASEITEMKIND_SEASON,
+	jellyfin.BASEITEMKIND_EPISODE,
+	jellyfin.BASEITEMKIND_BOX_SET,
+}
+
+// collectCollectionMedia adds all movies and series contained in a collection to ids.
+func (c *Client) collectCollectionMedia(ctx context.Context, userID, collectionID string, ids map[string]bool) error {
+	items, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+		UserId(userID).
+		ParentId(collectionID).
+		Recursive(true).
+		IncludeItemTypes([]jellyfin.BaseItemKind{
+			jellyfin.BASEITEMKIND_MOVIE,
+			jellyfin.BASEITEMKIND_SERIES,
+			jellyfin.BASEITEMKIND_SEASON,
+			jellyfin.BASEITEMKIND_EPISODE,
+		}).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to get items of favorite collection %s: %w", collectionID, err)
+	}
+	_ = resp.Body.Close()
+
+	for _, item := range items.GetItems() {
+		collectMediaID(item, ids)
+	}
+	return nil
+}
+
+// collectMediaID records the movie or series ID an item belongs to.
+func collectMediaID(item jellyfin.BaseItemDto, ids map[string]bool) {
+	var id string
+	switch item.GetType() { //nolint:exhaustive // other item kinds (music, books, ...) are not managed by jellysweep
+	case jellyfin.BASEITEMKIND_MOVIE, jellyfin.BASEITEMKIND_SERIES:
+		id = item.GetId()
+	case jellyfin.BASEITEMKIND_SEASON, jellyfin.BASEITEMKIND_EPISODE:
+		id = item.GetSeriesId()
+	}
+	if id != "" {
+		ids[id] = true
+	}
+}

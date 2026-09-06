@@ -310,3 +310,90 @@ func TestCreateCollectionBatchesLargeItemLists(t *testing.T) {
 	require.Len(t, server.Requests(http.MethodPost, "/Collections"), 1)
 	require.Len(t, server.Requests(http.MethodPost, "/Collections/col-new/Items"), 2, "remaining 70 items in batches of 50")
 }
+
+func TestGetFavoriteItemIDsCollectsFavoritesAcrossUsers(t *testing.T) {
+	c, server := newTestClient(t)
+	server.JSON("GET /Users", []jellyfinAPI.UserDto{
+		*userDto("u1", "alice"),
+		*userDto("u2", "bob"),
+	})
+	episode := item("ep1", "Episode", jellyfinAPI.BASEITEMKIND_EPISODE)
+	episode.SetSeriesId("series-from-episode")
+	season := item("s1", "Season", jellyfinAPI.BASEITEMKIND_SEASON)
+	season.SetSeriesId("series-from-season")
+	server.Handle("GET /Items", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		require.Equal(t, "true", q.Get("isFavorite"))
+		require.Equal(t, "true", q.Get("recursive"))
+		switch q.Get("userId") {
+		case "u1":
+			httptestutil.WriteJSON(t, w, queryResult([]jellyfinAPI.BaseItemDto{
+				item("m1", "Alice Movie", jellyfinAPI.BASEITEMKIND_MOVIE),
+				episode,
+			}, 2))
+		case "u2":
+			httptestutil.WriteJSON(t, w, queryResult([]jellyfinAPI.BaseItemDto{
+				item("series1", "Bob Series", jellyfinAPI.BASEITEMKIND_SERIES),
+				season,
+			}, 2))
+		default:
+			t.Fatalf("unexpected userId %q", q.Get("userId"))
+		}
+	})
+
+	got, err := c.GetFavoriteItemIDs(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, map[string]bool{
+		"m1":                  true,
+		"series-from-episode": true,
+		"series1":             true,
+		"series-from-season":  true,
+	}, got)
+}
+
+func TestGetFavoriteItemIDsExpandsFavoritedCollections(t *testing.T) {
+	c, server := newTestClient(t)
+	server.JSON("GET /Users", []jellyfinAPI.UserDto{*userDto("u1", "alice")})
+	server.Handle("GET /Items", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		require.Equal(t, "u1", q.Get("userId"))
+		if q.Get("parentId") == "box1" {
+			require.Empty(t, q.Get("isFavorite"), "collection children are not filtered by favorite")
+			episode := item("ep1", "Episode", jellyfinAPI.BASEITEMKIND_EPISODE)
+			episode.SetSeriesId("series-in-box")
+			httptestutil.WriteJSON(t, w, queryResult([]jellyfinAPI.BaseItemDto{
+				item("m-in-box", "Boxed Movie", jellyfinAPI.BASEITEMKIND_MOVIE),
+				episode,
+			}, 2))
+			return
+		}
+		require.Equal(t, "true", q.Get("isFavorite"))
+		httptestutil.WriteJSON(t, w, queryResult([]jellyfinAPI.BaseItemDto{
+			item("box1", "Favorite Box", jellyfinAPI.BASEITEMKIND_BOX_SET),
+		}, 1))
+	})
+
+	got, err := c.GetFavoriteItemIDs(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, map[string]bool{
+		"m-in-box":      true,
+		"series-in-box": true,
+	}, got)
+}
+
+func TestGetFavoriteItemIDsFailsWhenUsersCannotBeListed(t *testing.T) {
+	c, server := newTestClient(t)
+	server.Handle("GET /Users", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	_, err := c.GetFavoriteItemIDs(t.Context())
+	require.Error(t, err)
+}
+
+func userDto(id, name string) *jellyfinAPI.UserDto {
+	u := jellyfinAPI.NewUserDto()
+	u.SetId(id)
+	u.SetName(name)
+	return u
+}

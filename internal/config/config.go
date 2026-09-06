@@ -277,6 +277,8 @@ type FilterConfig struct {
 	ExcludeTags []string `yaml:"exclude_tags" mapstructure:"exclude_tags"`
 	// TunarrEnabled enables the Tunarr filter for this library to protect items used in Tunarr channels.
 	TunarrEnabled bool `yaml:"tunarr_enabled" mapstructure:"tunarr_enabled"`
+	// FavoritesEnabled enables the favorites filter for this library to protect items any Jellyfin user has marked as favorite.
+	FavoritesEnabled bool `yaml:"favorites_enabled" mapstructure:"favorites_enabled"`
 }
 
 // DiskUsageThreshold holds the disk usage thresholds for cleanup.
