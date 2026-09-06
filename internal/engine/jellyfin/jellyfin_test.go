@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/ccoveille/go-safecast"
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/httptestutil"
 	jellyfinAPI "github.com/sj14/jellyfin-go/api"
@@ -396,4 +397,56 @@ func userDto(id, name string) *jellyfinAPI.UserDto {
 	u.SetId(id)
 	u.SetName(name)
 	return u
+}
+
+// pagedItems serves items one per page, honoring startIndex, so a client that
+// does not paginate only ever sees the first item.
+func pagedItems(t *testing.T, w http.ResponseWriter, r *http.Request, items []jellyfinAPI.BaseItemDto) {
+	t.Helper()
+	start, _ := strconv.Atoi(r.URL.Query().Get("startIndex"))
+	total, err := safecast.Convert[int32](len(items))
+	require.NoError(t, err)
+	page := []jellyfinAPI.BaseItemDto{}
+	if start < len(items) {
+		page = items[start : start+1]
+	}
+	httptestutil.WriteJSON(t, w, queryResult(page, total))
+}
+
+func TestGetFavoriteItemIDsPaginatesUserFavorites(t *testing.T) {
+	c, server := newTestClient(t)
+	server.JSON("GET /Users", []jellyfinAPI.UserDto{*userDto("u1", "alice")})
+	server.Handle("GET /Items", func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "true", r.URL.Query().Get("isFavorite"))
+		pagedItems(t, w, r, []jellyfinAPI.BaseItemDto{
+			item("m1", "Movie 1", jellyfinAPI.BASEITEMKIND_MOVIE),
+			item("m2", "Movie 2", jellyfinAPI.BASEITEMKIND_MOVIE),
+			item("m3", "Movie 3", jellyfinAPI.BASEITEMKIND_MOVIE),
+		})
+	})
+
+	got, err := c.GetFavoriteItemIDs(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, map[string]bool{"m1": true, "m2": true, "m3": true}, got)
+}
+
+func TestGetFavoriteItemIDsPaginatesCollectionItems(t *testing.T) {
+	c, server := newTestClient(t)
+	server.JSON("GET /Users", []jellyfinAPI.UserDto{*userDto("u1", "alice")})
+	server.Handle("GET /Items", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("parentId") == "box1" {
+			pagedItems(t, w, r, []jellyfinAPI.BaseItemDto{
+				item("m1", "Boxed Movie 1", jellyfinAPI.BASEITEMKIND_MOVIE),
+				item("m2", "Boxed Movie 2", jellyfinAPI.BASEITEMKIND_MOVIE),
+			})
+			return
+		}
+		pagedItems(t, w, r, []jellyfinAPI.BaseItemDto{
+			item("box1", "Favorite Box", jellyfinAPI.BASEITEMKIND_BOX_SET),
+		})
+	})
+
+	got, err := c.GetFavoriteItemIDs(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, map[string]bool{"m1": true, "m2": true}, got)
 }
