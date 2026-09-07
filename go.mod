@@ -8,7 +8,6 @@ require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/a-h/templ v0.3.1020
 	github.com/ccoveille/go-safecast v1.8.2
-	github.com/ccoveille/go-safecast/v2 v2.0.1
 	github.com/charmbracelet/fang v1.0.0
 	github.com/charmbracelet/log v1.0.0
 	github.com/coreos/go-oidc/v3 v3.20.0
@@ -112,7 +111,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.4 // indirect
@@ -137,7 +135,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/arch v0.22.0 // indirect
-	golang.org/x/crypto v0.55.0 // indirect
+	golang.org/x/crypto v0.56.0 // indirect
 	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
 	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/mod v0.40.0 // indirect
@@ -147,7 +145,6 @@ require (
 	golang.org/x/tools v0.49.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/validator.v2 v2.0.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.22.5 // indirect
 	modernc.org/mathutil v1.5.0 // indirect
 	modernc.org/memory v1.5.0 // indirect

@@ -23,6 +23,7 @@ import (
 	"github.com/jon4hz/jellysweep/internal/filter"
 	agefilter "github.com/jon4hz/jellysweep/internal/filter/age_filter"
 	databasefilter "github.com/jon4hz/jellysweep/internal/filter/database_filter"
+	favoritesfilter "github.com/jon4hz/jellysweep/internal/filter/favorites_filter"
 	moviereleasefilter "github.com/jon4hz/jellysweep/internal/filter/movie_release_filter"
 	seriesfilter "github.com/jon4hz/jellysweep/internal/filter/series_filter"
 	sizefilter "github.com/jon4hz/jellysweep/internal/filter/size_filter"
@@ -159,6 +160,8 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 	} else {
 		log.Warn("No stats backend (Jellystat/Streamystats) configured, stream history will not be considered")
 	}
+
+	filterList = append(filterList, favoritesfilter.New(cfg, jellyfinAPIClient))
 
 	if cfg.Tunarr != nil {
 		tunarrF, err := tunarrfilter.New(cfg)

@@ -76,14 +76,15 @@ If one of the filters is not met, the item will be skipped and not marked for de
 
 Filters can be configured per library and include:
 
-| Filter                   | Description                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `content_age_threshold`  | Minimum age of the content in days                                               |
-| `movie_release_date_max` | Only accept movies released before this date (YYYY-MM-DD or RFC3339)             |
-| `last_stream_threshold`  | Minimum days since the content was last streamed                                 |
-| `content_size_threshold` | Minimum size of the content in bytes (0 = no minimum)                            |
-| `tunarr_enabled`         | Whether to protect items used by Tunarr channels (requires Tunarr configuration) |
-| `exclude_tags`           | List of Sonarr/Radarr tags that exclude content from deletion                    |
+| Filter                   | Description                                                                                                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content_age_threshold`  | Minimum age of the content in days                                                                                                                                           |
+| `movie_release_date_max` | Only accept movies released before this date (YYYY-MM-DD or RFC3339)                                                                                                         |
+| `last_stream_threshold`  | Minimum days since the content was last streamed                                                                                                                             |
+| `content_size_threshold` | Minimum size of the content in bytes (0 = no minimum)                                                                                                                        |
+| `tunarr_enabled`         | Whether to protect items used by Tunarr channels (requires Tunarr configuration)                                                                                             |
+| `favorites_enabled`      | Whether to protect items (movies, series, or any of their seasons/episodes) that any Jellyfin user has marked as a favorite, including the contents of favorited collections |
+| `exclude_tags`           | List of Sonarr/Radarr tags that exclude content from deletion                                                                                                                |
 
 > [!IMPORTANT]
 > Once a media item is marked for deletion, it wont go through the filters again. Filter changes will only affect new items that are being considered for deletion.
@@ -541,6 +542,7 @@ libraries:
       last_stream_threshold: 90         # Last watched at least 90 days ago
       content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
       tunarr_enabled: true              # Protect items used by Tunarr channels (requires tunarr config)
+      favorites_enabled: true           # Protect items favorited by any Jellyfin user (incl. favorited collections)
       exclude_tags:
         - "jellysweep-exclude"
         - "keep"
@@ -566,6 +568,7 @@ libraries:
       last_stream_threshold: 90
       content_size_threshold: 2147483648  # 2GB minimum
       tunarr_enabled: false             # Disable Tunarr filter for this library
+      favorites_enabled: false          # Disable favorites filter for this library
       exclude_tags:
         - "jellysweep-exclude"
         - "ongoing"

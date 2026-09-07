@@ -430,3 +430,132 @@ func (c *Client) RemoveItemsFromCollection(ctx context.Context, collectionID str
 
 	return nil
 }
+
+// GetFavoriteItemIDs returns the Jellyfin IDs of every movie and series that any
+// Jellyfin user has marked as a favorite. Favorited episodes and seasons resolve to
+// their parent series, and favorited collections (box sets) are expanded so that
+// all movies and series they contain are returned as well.
+func (c *Client) GetFavoriteItemIDs(ctx context.Context) (map[string]bool, error) {
+	users, resp, err := c.jellyfin.UserAPI.GetUsers(ctx).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jellyfin users: %w", err)
+	}
+	_ = resp.Body.Close()
+
+	favorites := make(map[string]bool)
+	for _, user := range users {
+		userID := user.GetId()
+		if userID == "" {
+			continue
+		}
+
+		items, err := c.getAllItemPages(ctx, func(req jellyfin.ApiGetItemsRequest) jellyfin.ApiGetItemsRequest {
+			return req.
+				UserId(userID).
+				IsFavorite(true).
+				Recursive(true).
+				IncludeItemTypes(favoriteItemKinds)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get favorites for user %s: %w", user.GetName(), err)
+		}
+
+		for _, item := range items {
+			if item.GetType() == jellyfin.BASEITEMKIND_BOX_SET {
+				if err := c.collectCollectionMedia(ctx, userID, item.GetId(), favorites); err != nil {
+					return nil, err
+				}
+				continue
+			}
+			collectMediaID(item, favorites)
+		}
+		log.Debug("Collected favorites for user", "user", user.GetName(), "favorites", len(items))
+	}
+
+	log.Info("Collected favorite items across all Jellyfin users", "users", len(users), "items", len(favorites))
+	return favorites, nil
+}
+
+// favoriteItemKinds are the item types considered when collecting favorites.
+var favoriteItemKinds = []jellyfin.BaseItemKind{
+	jellyfin.BASEITEMKIND_MOVIE,
+	jellyfin.BASEITEMKIND_SERIES,
+	jellyfin.BASEITEMKIND_SEASON,
+	jellyfin.BASEITEMKIND_EPISODE,
+	jellyfin.BASEITEMKIND_BOX_SET,
+}
+
+// collectCollectionMedia adds all movies and series contained in a collection to ids.
+func (c *Client) collectCollectionMedia(ctx context.Context, userID, collectionID string, ids map[string]bool) error {
+	items, err := c.getAllItemPages(ctx, func(req jellyfin.ApiGetItemsRequest) jellyfin.ApiGetItemsRequest {
+		return req.
+			UserId(userID).
+			ParentId(collectionID).
+			Recursive(true).
+			IncludeItemTypes([]jellyfin.BaseItemKind{
+				jellyfin.BASEITEMKIND_MOVIE,
+				jellyfin.BASEITEMKIND_SERIES,
+				jellyfin.BASEITEMKIND_SEASON,
+				jellyfin.BASEITEMKIND_EPISODE,
+			})
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get items of favorite collection %s: %w", collectionID, err)
+	}
+
+	for _, item := range items {
+		collectMediaID(item, ids)
+	}
+	return nil
+}
+
+// getAllItemPages runs a configured /Items query repeatedly, advancing StartIndex
+// until all pages reported by TotalRecordCount have been fetched.
+func (c *Client) getAllItemPages(ctx context.Context, configure func(jellyfin.ApiGetItemsRequest) jellyfin.ApiGetItemsRequest) ([]jellyfin.BaseItemDto, error) {
+	var allItems []jellyfin.BaseItemDto
+
+	startIndex := int32(0)
+	limit := int32(100)
+
+	for {
+		itemsResp, resp, err := configure(c.jellyfin.ItemsAPI.GetItems(ctx)).
+			StartIndex(startIndex).
+			Limit(limit).
+			Execute()
+		if err != nil {
+			return nil, err
+		}
+		_ = resp.Body.Close()
+
+		items := itemsResp.GetItems()
+		if len(items) == 0 {
+			break
+		}
+		allItems = append(allItems, items...)
+
+		itemsLen, err := safecast.Convert[int32](len(items))
+		if err != nil {
+			return nil, fmt.Errorf("failed to cast items length: %w", err)
+		}
+		if startIndex+itemsLen >= itemsResp.GetTotalRecordCount() {
+			break
+		}
+		startIndex += itemsLen
+	}
+
+	return allItems, nil
+}
+
+// collectMediaID records the movie or series ID an item belongs to.
+func collectMediaID(item jellyfin.BaseItemDto, ids map[string]bool) {
+	var id string
+	switch item.GetType() { //nolint:exhaustive // other item kinds (music, books, ...) are not managed by jellysweep
+	case jellyfin.BASEITEMKIND_MOVIE, jellyfin.BASEITEMKIND_SERIES:
+		id = item.GetId()
+	case jellyfin.BASEITEMKIND_SEASON, jellyfin.BASEITEMKIND_EPISODE:
+		id = item.GetSeriesId()
+	}
+	if id != "" {
+		ids[id] = true
+	}
+}
