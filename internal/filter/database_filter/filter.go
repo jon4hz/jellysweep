@@ -56,9 +56,9 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 func arrItemIsEqual(a arr.MediaItem, b database.Media) bool {
 	switch a.MediaType {
 	case models.MediaTypeMovie:
-		return a.MovieResource.GetId() == b.ArrID
+		return b.MediaType == database.MediaTypeMovie && a.MovieResource.GetId() == b.ArrID
 	case models.MediaTypeTV:
-		return a.SeriesResource.GetId() == b.ArrID
+		return b.MediaType == database.MediaTypeTV && a.SeriesResource.GetId() == b.ArrID
 	default:
 		return false
 	}
