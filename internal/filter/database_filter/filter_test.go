@@ -113,3 +113,25 @@ func TestApplyIgnoresTombstones(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1, "tombstoned items must be re-picked up")
 }
+
+func TestApplyDoesNotMatchAcrossMediaTypes(t *testing.T) {
+	// Sonarr and Radarr IDs are separate sequences. A tracked movie with
+	// arr ID 19 must not hide the series that also has arr ID 19.
+	db, _ := databasetest.New(t)
+	require.NoError(t, db.CreateMediaItems(t.Context(), []database.Media{{
+		JellyfinID:      "jf-Known Movie",
+		Title:           "Known Movie",
+		ArrID:           19,
+		MediaType:       database.MediaTypeMovie,
+		DefaultDeleteAt: time.Now().Add(24 * time.Hour),
+	}}))
+
+	f := New(db)
+	got, err := f.Apply(t.Context(), []arr.MediaItem{
+		movieItem("Known Movie", 19),
+		seriesItem("New Show", 19),
+	})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "New Show", got[0].Title)
+}
