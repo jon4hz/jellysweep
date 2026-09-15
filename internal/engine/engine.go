@@ -278,6 +278,7 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 	}
 
 	e.removeItemsWithExcludedTags(ctx, mediaItems)
+	e.refreshMissingRequesterInfo(ctx, mediaItems)
 
 	if err = e.markForDeletion(ctx, mediaItems); err != nil {
 		log.Error("An error occurred while marking media for deletion")
@@ -502,8 +503,8 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 	e.data.userNotifications = make(map[string][]arr.MediaItem)
 
 	for _, item := range mediaItems {
-		if item.RequestedBy != "" {
-			e.data.userNotifications[item.RequestedBy] = append(e.data.userNotifications[item.RequestedBy], item)
+		if item.RequesterEmail != "" {
+			e.data.userNotifications[item.RequesterEmail] = append(e.data.userNotifications[item.RequesterEmail], item)
 		}
 		log.Info("Marking media item for deletion", "name", item.Title, "library", item.LibraryName)
 	}
@@ -531,6 +532,43 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 		// Don't return here, continue with the cleanup process
 	}
 	return nil
+}
+
+// refreshMissingRequesterInfo backfills queued items that were added before
+// requester identities without email addresses were retained.
+func (e *Engine) refreshMissingRequesterInfo(ctx context.Context, mediaItems []arr.MediaItem) {
+	if e.jellyseerr == nil {
+		return
+	}
+
+	dbItems, err := e.db.GetMediaItems(ctx, true)
+	if err != nil {
+		log.Error("failed to load queued media for requester refresh", "error", err)
+		return
+	}
+
+	missingByJellyfinID := make(map[string]database.Media)
+	for _, dbItem := range dbItems {
+		if dbItem.RequestedBy == "" {
+			missingByJellyfinID[dbItem.JellyfinID] = dbItem
+		}
+	}
+
+	missingItems := make([]arr.MediaItem, 0)
+	for _, item := range mediaItems {
+		if _, ok := missingByJellyfinID[item.JellyfinID]; ok {
+			missingItems = append(missingItems, item)
+		}
+	}
+
+	for _, item := range e.populateRequesterInfo(ctx, missingItems) {
+		if item.RequestedBy == "" {
+			continue
+		}
+		if err := e.db.SetMediaRequestedBy(ctx, missingByJellyfinID[item.JellyfinID].ID, item.RequestedBy); err != nil {
+			log.Error("failed to refresh requester info", "title", item.Title, "error", err)
+		}
+	}
 }
 
 // gatherMediaItems gathers all media items from Jellyfin, Sonarr, and Radarr.
