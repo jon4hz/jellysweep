@@ -1,5 +1,5 @@
 # Development Dockerfile for Jellysweep
-FROM golang:1.27@sha256:f44f6e88636cfb311f9ebace870ded69d943f227bb3cb27d32ffd84ea18c43ea AS base
+FROM golang:1.27@sha256:e432b43af23a9328d56a7c499be0476810aa344acbcf65fc7c455d4ff5a40602 AS base
 
 # Install Node.js 25 (from .nvmrc)
 RUN curl -fsSL https://deb.nodesource.com/setup_25.x | bash - \
