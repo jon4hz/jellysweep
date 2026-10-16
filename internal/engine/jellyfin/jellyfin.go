@@ -117,6 +117,8 @@ func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 		itemsResp, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
 			ParentId(libraryID).
 			Recursive(true).
+			// Scan individual titles, including members of leaving collections.
+			CollapseBoxSetItems(false).
 			StartIndex(startIndex).
 			Limit(limit).
 			Fields([]jellyfin.ItemFields{
