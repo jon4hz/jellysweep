@@ -28,11 +28,10 @@ func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.Med
 			continue
 		}
 
-		if !emailRegex.MatchString(requestInfo.UserEmail) {
-			log.Warn("invalid email address for item, skipping", "title", item.Title, "email", requestInfo.UserEmail)
-			continue
+		item.RequestedBy = requestInfo.UserName
+		if emailRegex.MatchString(requestInfo.UserEmail) {
+			item.RequesterEmail = requestInfo.UserEmail
 		}
-		item.RequestedBy = requestInfo.UserEmail
 		log.Debug("populated requester info", "title", item.Title, "requestedBy", item.RequestedBy, "requestTime", requestInfo.RequestTime.Format("2006-01-02"))
 
 		// Update the items in the map

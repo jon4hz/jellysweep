@@ -148,6 +148,16 @@ func (c *Client) GetDeletedMediaByTVDBID(ctx context.Context, tvdbID int32) ([]M
 	return mediaItems, nil
 }
 
+func (c *Client) SetMediaRequestedBy(ctx context.Context, mediaID uint, requestedBy string) error {
+	result := c.db.WithContext(ctx).Model(&Media{}).
+		Where("id = ?", mediaID).
+		Update("requested_by", requestedBy)
+	if result.Error != nil {
+		log.Error("failed to update media requester", "error", result.Error)
+	}
+	return result.Error
+}
+
 func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error {
 	// Use a map so zero values (NULL protected_until, false unkeepable) are
 	// written as well; gorm skips zero-valued struct fields in Updates.

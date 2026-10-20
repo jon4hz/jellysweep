@@ -951,8 +951,8 @@ func AdminKeepRequestGridScript() templ.ComponentScript {
 
 func AdminMediaGridScript() templ.ComponentScript {
 	return templ.ComponentScript{
-		Name: `__templ_AdminMediaGridScript_b1db`,
-		Function: `function __templ_AdminMediaGridScript_b1db(){class AdminMediaGridManager extends MediaGridManager {
+		Name: `__templ_AdminMediaGridScript_9039`,
+		Function: `function __templ_AdminMediaGridScript_9039(){class AdminMediaGridManager extends MediaGridManager {
 		constructor(containerId, options = {}) {
 			super(containerId, options);
 		}
@@ -1111,7 +1111,7 @@ func AdminMediaGridScript() templ.ComponentScript {
 											<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
 											</svg>
-											Requested by ${item.requestedBy}
+											Requested by ${this.escapeHtml(item.requestedBy)}
 										</div>
 										` + "`" + ` : ''}
 									</div>
@@ -1583,8 +1583,8 @@ func AdminMediaGridScript() templ.ComponentScript {
 		}
 	});
 }`,
-		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_b1db`),
-		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_b1db`),
+		Call:       templ.SafeScript(`__templ_AdminMediaGridScript_9039`),
+		CallInline: templ.SafeScriptInline(`__templ_AdminMediaGridScript_9039`),
 	}
 }
 
