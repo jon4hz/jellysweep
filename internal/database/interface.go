@@ -36,6 +36,8 @@ const (
 	DBDeleteReasonProtectionExpired DBDeleteReason = "protection_expired"
 	// DBDeleteReasonMissingInJellyfin indicates the media was deleted in the database only because it was missing in Jellyfin.
 	DBDeleteReasonMissingInJellyfin DBDeleteReason = "missing_in_jellyfin"
+	// DBDeleteReasonExcludedByTag indicates the media was removed from the deletion queue because an exclude tag was added in Sonarr/Radarr.
+	DBDeleteReasonExcludedByTag DBDeleteReason = "excluded_by_tag"
 )
 
 // DB defines the interface for database operations.
@@ -57,6 +59,7 @@ type MediaDB interface {
 	GetDeletedMediaByTMDBID(ctx context.Context, tmdbID int32) ([]Media, error)
 	GetDeletedMediaByTVDBID(ctx context.Context, tvdbID int32) ([]Media, error)
 	SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error
+	SetMediaEstimatedDeleteAt(ctx context.Context, mediaID uint, estimatedDeleteAt time.Time) error
 	MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error
 	DeleteMediaItem(ctx context.Context, media *Media) error
 }

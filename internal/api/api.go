@@ -191,21 +191,32 @@ func (s *Server) setupPluginRoutes() error {
 	return nil
 }
 
-func (s *Server) Run(ctx context.Context) error {
+// Handler wires all middleware and routes and returns the resulting HTTP
+// handler. Run serves it; tests drive the real route table through it.
+func (s *Server) Handler() (http.Handler, error) {
 	s.ginEngine.Use(gin.Recovery())
 	s.ginEngine.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	if err := s.setupRoutes(); err != nil {
-		return fmt.Errorf("failed to setup routes: %w", err)
+		return nil, fmt.Errorf("failed to setup routes: %w", err)
 	}
 	if err := s.setupPluginRoutes(); err != nil {
 		log.Warn("Plugin routes not enabled", "error", err)
 	}
 	s.setupAdminRoutes()
 
+	return s.ginEngine, nil
+}
+
+func (s *Server) Run(ctx context.Context) error {
+	handler, err := s.Handler()
+	if err != nil {
+		return err
+	}
+
 	srv := &http.Server{
 		Addr:              s.cfg.Listen,
-		Handler:           s.ginEngine,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

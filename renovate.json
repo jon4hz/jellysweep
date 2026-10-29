@@ -1,0 +1,8 @@
+{
+  "extends": [
+    "github>adfinis/renovate-config",
+    "github>adfinis/renovate-config:app",
+    "github>adfinis/renovate-config:quiet",
+    "github>adfinis/renovate-config:lockfile-maintenance"
+  ]
+}

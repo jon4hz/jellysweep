@@ -76,13 +76,15 @@ If one of the filters is not met, the item will be skipped and not marked for de
 
 Filters can be configured per library and include:
 
-| Filter                   | Description                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `content_age_threshold`  | Minimum age of the content in days                                               |
-| `last_stream_threshold`  | Minimum days since the content was last streamed                                 |
-| `content_size_threshold` | Minimum size of the content in bytes (0 = no minimum)                            |
-| `tunarr_enabled`         | Whether to protect items used by Tunarr channels (requires Tunarr configuration) |
-| `exclude_tags`           | List of Sonarr/Radarr tags that exclude content from deletion                    |
+| Filter                   | Description                                                                                                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content_age_threshold`  | Minimum age of the content in days                                                                                                                                           |
+| `movie_release_date_max` | Only accept movies released before this date (YYYY-MM-DD or RFC3339)                                                                                                         |
+| `last_stream_threshold`  | Minimum days since the content was last streamed                                                                                                                             |
+| `content_size_threshold` | Minimum size of the content in bytes (0 = no minimum)                                                                                                                        |
+| `tunarr_enabled`         | Whether to protect items used by Tunarr channels (requires Tunarr configuration)                                                                                             |
+| `favorites_enabled`      | Whether to protect items (movies, series, or any of their seasons/episodes) that any Jellyfin user has marked as a favorite, including the contents of favorited collections |
+| `exclude_tags`           | List of Sonarr/Radarr tags that exclude content from deletion                                                                                                                |
 
 > [!IMPORTANT]
 > Once a media item is marked for deletion, it wont go through the filters again. Filter changes will only affect new items that are being considered for deletion.
@@ -106,8 +108,8 @@ Both selective modes automatically unmonitor deleted episodes in Sonarr to preve
 
 Jellysweep monitors disk usage and speeds up cleanup when you're running low on storage. When disk space is tight, it reduces the grace period for deletions while still giving you time to save anything important during normal operation.
 
-> [!IMPORTANT]
-> For disk usage monitoring to work in Docker containers, Jellyfin library paths must be mounted at the same locations inside the Jellysweep container. For example, if Jellyfin has `/data/movies` mapped to `/movies`, Jellysweep also needs `/data/movies` mapped to `/movies`
+> [!NOTE]
+> Disk usage is read from Sonarr and Radarr (their root folders and disk space reports), so Jellysweep does not need access to the media files themselves. TV libraries use Sonarr's root folders, movie libraries use Radarr's; when an arr has several root folders, the fullest one counts.
 
 ### Configuration Example
 
@@ -194,10 +196,6 @@ services:
     volumes:
       - ./config.yml:/app/config.yml:ro # use config file or env vars
       - ./data:/app/data
-      # Mount Jellyfin library paths at the same locations for disk usage monitoring
-      # Example: if Jellyfin has /data/movies, mount it the same way here
-      # - /data/movies:/data/movies:ro
-      # - /data/tv:/data/tv:ro
     environment:
       # You can also override config options with env vars
       - JELLYSWEEP_DRY_RUN=false
@@ -384,7 +382,14 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_LEAVING_COLLECTIONS_MOVIE_NAME` | `Leaving Movies`                | Name of the leaving movies collection                                                  |
 | `JELLYSWEEP_LEAVING_COLLECTIONS_TV_NAME`    | `Leaving TV Shows`              | Name of the leaving TV shows collection                                                |
 | **Database Configuration**                  |                                 |                                                                                        |
-| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file                                                              |
+| `JELLYSWEEP_DATABASE_TYPE`                  | `sqlite`                        | Database backend: `sqlite` or `postgres`                                               |
+| `JELLYSWEEP_DATABASE_PATH`                  | `./data/jellysweep.db`          | Path to the database file (for SQLite)                                                 |
+| `JELLYSWEEP_DATABASE_HOST`                  | *(required for postgres)*       | PostgreSQL server host                                                                 |
+| `JELLYSWEEP_DATABASE_PORT`                  | `5432`                          | PostgreSQL server port                                                                 |
+| `JELLYSWEEP_DATABASE_NAME`                  | *(required for postgres)*       | PostgreSQL database name                                                               |
+| `JELLYSWEEP_DATABASE_USER`                  | *(required for postgres)*       | PostgreSQL user                                                                        |
+| `JELLYSWEEP_DATABASE_PASSWORD`              | *(optional)*                    | PostgreSQL password                                                                    |
+| `JELLYSWEEP_DATABASE_SSL_MODE`              | `disable`                       | PostgreSQL SSL mode                                                                    |
 | **OIDC Authentication**                     |                                 |                                                                                        |
 | `JELLYSWEEP_AUTH_OIDC_ENABLED`              | `false`                         | Enable OIDC/SSO authentication                                                         |
 | `JELLYSWEEP_AUTH_OIDC_NAME`                 | OIDC                            | Display name on the login page                                                         |
@@ -477,7 +482,18 @@ server_url: "http://localhost:3002"
 
 # Database configuration (optional)
 database:
+  type: "sqlite"
   path: "./data/jellysweep.db"
+
+# PostgreSQL example:
+# database:
+#   type: "postgres"
+#   host: "postgres"
+#   port: 5432
+#   name: "jellysweep"
+#   user: "jellysweep"
+#   password: "password"
+#   ssl_mode: "disable"
 
 # Authentication (optional - if no auth is configured, web interface is accessible without authentication)
 auth:
@@ -527,9 +543,11 @@ libraries:
     # Filter configuration
     filter:
       content_age_threshold: 120        # Content must be at least 120 days old
+      movie_release_date_max: "2024-01-01"  # Movies must be released before this date
       last_stream_threshold: 90         # Last watched at least 90 days ago
       content_size_threshold: 1073741824  # 1GB minimum (0 = no minimum)
       tunarr_enabled: true              # Protect items used by Tunarr channels (requires tunarr config)
+      favorites_enabled: true           # Protect items favorited by any Jellyfin user (incl. favorited collections)
       exclude_tags:
         - "jellysweep-exclude"
         - "keep"
@@ -555,6 +573,7 @@ libraries:
       last_stream_threshold: 90
       content_size_threshold: 2147483648  # 2GB minimum
       tunarr_enabled: false             # Disable Tunarr filter for this library
+      favorites_enabled: false          # Disable favorites filter for this library
       exclude_tags:
         - "jellysweep-exclude"
         - "ongoing"

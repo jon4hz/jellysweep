@@ -149,7 +149,7 @@ func (s *JellyfinProviderTestSuite) TestRequireAuth_WithValidSession() {
 		session.Set("user_name", "Test User")
 		session.Set("user_username", "testuser")
 		session.Set("user_is_admin", false)
-		session.Save()
+		session.Save() //nolint:errcheck
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 
@@ -234,7 +234,7 @@ func (s *JellyfinProviderTestSuite) Test_UserID_NotUint() {
 	router.POST("/setup-session", func(c *gin.Context) {
 		session := sessions.Default(c)
 		session.Set("user_id", "not-a-uint") // Invalid type
-		session.Save()
+		session.Save()                       //nolint:errcheck
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 

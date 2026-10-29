@@ -271,7 +271,7 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithSession() {
 		session.Set("user_name", "Test User")
 		session.Set("user_username", "testuser")
 		session.Set("user_is_admin", false)
-		session.Save()
+		session.Save() //nolint:errcheck
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 
@@ -364,7 +364,7 @@ func (s *FactoryTestSuite) TestMultiProvider_UserID_NotUint() {
 	router.POST("/setup-session", func(c *gin.Context) {
 		session := sessions.Default(c)
 		session.Set("user_id", "not-a-uint") // Invalid type
-		session.Save()
+		session.Save()                       //nolint:errcheck
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 
@@ -426,7 +426,7 @@ func (s *FactoryTestSuite) TestGetSessionString() {
 		session := sessions.Default(c)
 		session.Set("string_key", "test_value")
 		session.Set("non_string_key", 123)
-		session.Save()
+		session.Save() //nolint:errcheck
 
 		// Test existing string value
 		result1 := getSessionString(session, "string_key")
@@ -458,7 +458,7 @@ func (s *FactoryTestSuite) TestGetSessionBool() {
 		session := sessions.Default(c)
 		session.Set("bool_key", true)
 		session.Set("non_bool_key", "not_bool")
-		session.Save()
+		session.Save() //nolint:errcheck
 
 		// Test existing bool value
 		result1 := getSessionBool(session, "bool_key")
@@ -506,7 +506,7 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithGravatar() {
 		session.Set("user_name", "Test User")
 		session.Set("user_username", "testuser")
 		session.Set("user_is_admin", false)
-		session.Save()
+		session.Save() //nolint:errcheck
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 
@@ -564,7 +564,7 @@ func (s *FactoryTestSuite) TestMultiProvider_RequireAuth_WithoutEmail() {
 		session.Set("user_name", "Test User")
 		session.Set("user_username", "testuser")
 		session.Set("user_is_admin", false)
-		session.Save()
+		session.Save() //nolint:errcheck
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 

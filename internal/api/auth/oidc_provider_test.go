@@ -112,7 +112,7 @@ func (s *OIDCProviderTestSuite) TestOIDCProvider_RequireAuth_WithValidSession() 
 		session.Set("user_name", "OIDC User")
 		session.Set("user_username", "oidcuser")
 		session.Set("user_is_admin", true)
-		session.Save()
+		session.Save() //nolint:errcheck
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 
@@ -216,7 +216,7 @@ func (s *OIDCProviderTestSuite) TestOIDCProvider_UserID_NotUint() {
 	router.POST("/setup-session", func(c *gin.Context) {
 		session := sessions.Default(c)
 		session.Set("user_id", "not-a-uint") // Invalid type
-		session.Save()
+		session.Save()                       //nolint:errcheck
 		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 
@@ -315,9 +315,8 @@ func (s *OIDCProviderTestSuite) TestOIDCProvider_Callback() {
 	// Since we don't have a real OAuth config set up, this will likely panic
 	// In a real test, you would mock the OAuth2 config and OIDC verifier
 	defer func() {
-		if r := recover(); r != nil {
-			// Expected since we don't have a real config
-		}
+		// Recover is expected since we don't have a real config.
+		_ = recover()
 	}()
 
 	s.router.ServeHTTP(w, req)

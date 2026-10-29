@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -32,8 +31,11 @@ type Media struct {
 	MediaType       MediaType `gorm:"not null;uniqueIndex:idx_media_arr"`
 	RequestedBy     string
 	DefaultDeleteAt time.Time `gorm:"not null;index;uniqueIndex:idx_media_arr"`
-	ProtectedUntil  *time.Time
-	Unkeepable      bool
+	// EstimatedDeleteAt is the earliest deletion date across all policies
+	// (e.g. disk usage thresholds). Zero if not yet computed.
+	EstimatedDeleteAt time.Time
+	ProtectedUntil    *time.Time
+	Unkeepable        bool
 	// Reason why this item was deleted from the database.
 	DBDeleteReason          DBDeleteReason
 	DiskUsageDeletePolicies []DiskUsageDeletePolicy `gorm:"constraint:OnDelete:CASCADE;"`
@@ -42,7 +44,7 @@ type Media struct {
 
 func (c *Client) CreateMediaItems(ctx context.Context, mediaItems []Media) error {
 	if len(mediaItems) == 0 {
-		return errors.New("no media items to create")
+		return nil
 	}
 	result := c.db.WithContext(ctx).Create(&mediaItems)
 	if result.Error != nil {
@@ -147,9 +149,11 @@ func (c *Client) GetDeletedMediaByTVDBID(ctx context.Context, tvdbID int32) ([]M
 }
 
 func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, protectedUntil *time.Time) error {
+	// Use a map so zero values (NULL protected_until, false unkeepable) are
+	// written as well; gorm skips zero-valued struct fields in Updates.
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).
-		Updates(Media{ProtectedUntil: protectedUntil, Unkeepable: false})
+		Updates(map[string]any{"protected_until": protectedUntil, "unkeepable": false})
 	if result.Error != nil {
 		log.Error("failed to set media protected until", "error", result.Error)
 		return result.Error
@@ -157,10 +161,26 @@ func (c *Client) SetMediaProtectedUntil(ctx context.Context, mediaID uint, prote
 	return nil
 }
 
-func (c *Client) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error {
+// SetMediaEstimatedDeleteAt stores the estimated deletion date for a media item.
+// Update is used (rather than Updates with a struct) so a zero time is written
+// as well, clearing a stale estimate once no policy applies anymore.
+func (c *Client) SetMediaEstimatedDeleteAt(ctx context.Context, mediaID uint, estimatedDeleteAt time.Time) error {
 	result := c.db.WithContext(ctx).Model(&Media{}).
 		Where("id = ?", mediaID).
-		Updates(Media{Unkeepable: true, ProtectedUntil: nil})
+		Update("estimated_delete_at", estimatedDeleteAt)
+	if result.Error != nil {
+		log.Error("failed to set media estimated delete at", "error", result.Error)
+		return result.Error
+	}
+	return nil
+}
+
+func (c *Client) MarkMediaAsUnkeepable(ctx context.Context, mediaID uint) error {
+	// Use a map so the NULL protected_until is written as well; gorm skips
+	// zero-valued struct fields in Updates.
+	result := c.db.WithContext(ctx).Model(&Media{}).
+		Where("id = ?", mediaID).
+		Updates(map[string]any{"unkeepable": true, "protected_until": nil})
 	if result.Error != nil {
 		log.Error("failed to mark media as unkeepable", "error", result.Error)
 		return result.Error

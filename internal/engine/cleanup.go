@@ -40,6 +40,13 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 				log.Warn("Sonarr client not configured, cannot delete TV show", "title", item.Title)
 				continue
 			}
+			// Unmonitor before deletion when enabled
+			if e.cfg.Sonarr.Unmonitor {
+				if err := e.sonarr.UnmonitorMedia(ctx, item.ArrID, item.Title); err != nil {
+					log.Error("failed to unmonitor Sonarr media", "title", item.Title, "error", err)
+					// Continue even if unmonitor fails
+				}
+			}
 			if err := e.sonarr.DeleteMedia(ctx, item.ArrID, item.Title); err != nil {
 				log.Error("failed to delete Sonarr media", "title", item.Title, "error", err)
 				continue
@@ -61,6 +68,12 @@ func (e *Engine) cleanupMedia(ctx context.Context) error {
 			if e.radarr == nil {
 				log.Warn("Radarr client not configured, cannot delete movie", "title", item.Title)
 				continue
+			}
+			// Unmonitor before deletion when enabled
+			if e.cfg.Radarr.Unmonitor {
+				if err := e.radarr.UnmonitorMedia(ctx, item.ArrID, item.Title); err != nil {
+					log.Error("failed to unmonitor Radarr media", "title", item.Title, "error", err)
+				}
 			}
 			if err := e.radarr.DeleteMedia(ctx, item.ArrID, item.Title); err != nil {
 				log.Error("failed to delete Radarr media", "title", item.Title, "error", err)

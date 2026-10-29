@@ -161,22 +161,23 @@ func (r *Radarr) getItems(ctx context.Context) ([]radarrAPI.MovieResource, error
 }
 
 func (r *Radarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
-	if forceRefresh {
-		if err := r.tagsCache.Clear(ctx); err != nil {
-			log.Debug("Failed to clear Radarr tags cache, fetching from API", "error", err)
+	if !forceRefresh {
+		cachedTags, err := r.tagsCache.Get(ctx, "all")
+		switch {
+		case err != nil:
+			log.Debug("Failed to get Radarr tags from cache, fetching from API", "error", err)
+		case len(cachedTags) != 0:
+			return cachedTags, nil
 		}
-	}
-
-	cachedTags, err := r.tagsCache.Get(ctx, "all")
-	if err != nil {
-		log.Debug("Failed to get Radarr tags from cache, fetching from API", "error", err)
-	}
-	if len(cachedTags) != 0 && !forceRefresh {
-		return cachedTags, nil
 	}
 
 	tagList, resp, err := r.client.TagAPI.ListTag(r.radarrAuthCtx(ctx)).Execute()
 	if err != nil {
+		// A refresh was requested because the cached tags may be outdated; drop
+		// them so later cached reads do not keep serving stale labels.
+		if cerr := r.tagsCache.Clear(ctx); cerr != nil {
+			log.Debug("Failed to clear Radarr tags cache", "error", cerr)
+		}
 		return nil, err
 	}
 	defer resp.Body.Close() //nolint: errcheck
@@ -252,6 +253,29 @@ func (r *Radarr) DeleteMedia(ctx context.Context, movieID int32, title string) e
 	defer resp.Body.Close() //nolint: errcheck
 
 	log.Info("deleted Radarr movie", "title", title)
+	return nil
+}
+
+// UnmonitorMedia unmonitors a Radarr movie to prevent it from being re-downloaded.
+func (r *Radarr) UnmonitorMedia(ctx context.Context, movieID int32, title string) error {
+	if r.cfg.DryRun {
+		log.Info("dry run: would unmonitor Radarr movie", "title", title)
+		return nil
+	}
+
+	resource := radarrAPI.NewMovieEditorResource()
+	resource.SetMovieIds([]int32{movieID})
+	resource.SetMonitored(false)
+
+	resp, err := r.client.MovieEditorAPI.PutMovieEditor(r.radarrAuthCtx(ctx)).
+		MovieEditorResource(*resource).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to unmonitor Radarr movie %s: %w", title, err)
+	}
+	defer resp.Body.Close() //nolint: errcheck
+
+	log.Info("unmonitored Radarr movie to prevent redownload", "title", title)
 	return nil
 }
 
@@ -433,7 +457,7 @@ func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32, since time
 		if eventType == radarrAPI.MOVIEHISTORYEVENTTYPE_DOWNLOAD_FOLDER_IMPORTED ||
 			eventType == radarrAPI.MOVIEHISTORYEVENTTYPE_MOVIE_FOLDER_IMPORTED {
 			recordTime := record.GetDate()
-			if earliestTime == nil || (recordTime.Before(*earliestTime) && recordTime.After(since)) {
+			if recordTime.After(since) && (earliestTime == nil || recordTime.Before(*earliestTime)) {
 				earliestTime = &recordTime
 			}
 		}
@@ -444,4 +468,41 @@ func (r *Radarr) GetItemAddedDate(ctx context.Context, movieID int32, since time
 	}
 
 	return earliestTime, nil
+}
+
+// GetRootFolderUsage returns the disk usage in percent for every accessible
+// root folder configured in Radarr, keyed by root folder path.
+func (r *Radarr) GetRootFolderUsage(ctx context.Context) (map[string]float64, error) {
+	rootFolders, resp, err := r.client.RootFolderAPI.ListRootFolder(r.radarrAuthCtx(ctx)).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list radarr root folders: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	diskSpace, resp, err := r.client.DiskSpaceAPI.ListDiskSpace(r.radarrAuthCtx(ctx)).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list radarr disk space: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	roots := make([]string, 0, len(rootFolders))
+	for _, rf := range rootFolders {
+		if !rf.GetAccessible() {
+			log.Warn("Skipping inaccessible radarr root folder", "path", rf.GetPath())
+			continue
+		}
+		roots = append(roots, rf.GetPath())
+	}
+	mounts := make([]arr.Mount, 0, len(diskSpace))
+	for _, ds := range diskSpace {
+		mounts = append(mounts, arr.Mount{Path: ds.GetPath(), Free: ds.GetFreeSpace(), Total: ds.GetTotalSpace()})
+	}
+
+	usage := arr.RootFolderUsage(roots, mounts)
+	for _, root := range roots {
+		if _, ok := usage[root]; !ok {
+			log.Warn("No disk space information for radarr root folder", "path", root)
+		}
+	}
+	return usage, nil
 }
