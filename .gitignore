@@ -15,3 +15,7 @@ completions/
 .crush/
 .env.dev
 site/
+
+# test coverage profile (make test-cover)
+coverage.out
+coverage.func

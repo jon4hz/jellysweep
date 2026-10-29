@@ -182,22 +182,23 @@ func (s *Sonarr) getItems(ctx context.Context) ([]sonarrAPI.SeriesResource, erro
 }
 
 func (s *Sonarr) getTags(ctx context.Context, forceRefresh bool) (cache.TagMap, error) {
-	if forceRefresh {
-		if err := s.tagsCache.Clear(ctx); err != nil {
-			log.Debug("Failed to clear Sonarr tags cache, fetching from API", "error", err)
+	if !forceRefresh {
+		cachedTags, err := s.tagsCache.Get(ctx, "all")
+		switch {
+		case err != nil:
+			log.Debug("Failed to get Sonarr tags from cache, fetching from API", "error", err)
+		case len(cachedTags) != 0:
+			return cachedTags, nil
 		}
-	}
-
-	cachedTags, err := s.tagsCache.Get(ctx, "all")
-	if err != nil {
-		log.Debug("Failed to get Sonarr tags from cache, fetching from API", "error", err)
-	}
-	if len(cachedTags) != 0 && !forceRefresh {
-		return cachedTags, nil
 	}
 
 	tagList, resp, err := s.client.TagAPI.ListTag(s.sonarrAuthCtx(ctx)).Execute()
 	if err != nil {
+		// A refresh was requested because the cached tags may be outdated; drop
+		// them so later cached reads do not keep serving stale labels.
+		if cerr := s.tagsCache.Clear(ctx); cerr != nil {
+			log.Debug("Failed to clear Sonarr tags cache", "error", cerr)
+		}
 		return nil, err
 	}
 	defer resp.Body.Close() //nolint: errcheck
@@ -255,6 +256,47 @@ func (s *Sonarr) ensureTagExists(ctx context.Context, deleteTagLabel string) err
 	if err := s.tagsCache.Set(ctx, "all", tagMap); err != nil {
 		log.Warn("failed to cache new Sonarr tag", "label", deleteTagLabel, "error", err)
 	}
+	return nil
+}
+
+// UnmonitorMedia unmonitors all episodes with files for a Sonarr series
+// to prevent them from being re-downloaded after deletion.
+func (s *Sonarr) UnmonitorMedia(ctx context.Context, seriesID int32, title string) error {
+	episodes, err := s.getEpisodes(ctx, seriesID)
+	if err != nil {
+		return fmt.Errorf("failed to get episodes for series %s: %w", title, err)
+	}
+
+	if s.cfg.DryRun {
+		log.Info("dry run: would unmonitor episodes for series", "title", title, "count", len(episodes))
+		return nil
+	}
+
+	var episodesToUnmonitor []int32
+	for _, ep := range episodes {
+		if ep.GetHasFile() {
+			episodesToUnmonitor = append(episodesToUnmonitor, ep.GetId())
+		}
+	}
+
+	if len(episodesToUnmonitor) == 0 {
+		return nil
+	}
+
+	monitored := false
+	resource := sonarrAPI.NewEpisodesMonitoredResource()
+	resource.SetEpisodeIds(episodesToUnmonitor)
+	resource.SetMonitored(monitored)
+
+	resp, err := s.client.EpisodeAPI.PutEpisodeMonitor(s.sonarrAuthCtx(ctx)).
+		EpisodesMonitoredResource(*resource).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("failed to unmonitor %d episodes for series %s: %w", len(episodesToUnmonitor), title, err)
+	}
+	defer resp.Body.Close() //nolint: errcheck
+
+	log.Info("unmonitored episodes to prevent redownload", "title", title, "count", len(episodesToUnmonitor))
 	return nil
 }
 
@@ -441,7 +483,7 @@ func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32, since tim
 		if eventType == sonarrAPI.EPISODEHISTORYEVENTTYPE_DOWNLOAD_FOLDER_IMPORTED ||
 			eventType == sonarrAPI.EPISODEHISTORYEVENTTYPE_SERIES_FOLDER_IMPORTED {
 			recordTime := record.GetDate()
-			if earliestTime == nil || (recordTime.Before(*earliestTime) && recordTime.After(since)) {
+			if recordTime.After(since) && (earliestTime == nil || recordTime.Before(*earliestTime)) {
 				earliestTime = &recordTime
 			}
 		}
@@ -452,4 +494,41 @@ func (s *Sonarr) GetItemAddedDate(ctx context.Context, seriesID int32, since tim
 	}
 
 	return earliestTime, nil
+}
+
+// GetRootFolderUsage returns the disk usage in percent for every accessible
+// root folder configured in Sonarr, keyed by root folder path.
+func (s *Sonarr) GetRootFolderUsage(ctx context.Context) (map[string]float64, error) {
+	rootFolders, resp, err := s.client.RootFolderAPI.ListRootFolder(s.sonarrAuthCtx(ctx)).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list sonarr root folders: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	diskSpace, resp, err := s.client.DiskSpaceAPI.ListDiskSpace(s.sonarrAuthCtx(ctx)).Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list sonarr disk space: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	roots := make([]string, 0, len(rootFolders))
+	for _, rf := range rootFolders {
+		if !rf.GetAccessible() {
+			log.Warn("Skipping inaccessible sonarr root folder", "path", rf.GetPath())
+			continue
+		}
+		roots = append(roots, rf.GetPath())
+	}
+	mounts := make([]arr.Mount, 0, len(diskSpace))
+	for _, ds := range diskSpace {
+		mounts = append(mounts, arr.Mount{Path: ds.GetPath(), Free: ds.GetFreeSpace(), Total: ds.GetTotalSpace()})
+	}
+
+	usage := arr.RootFolderUsage(roots, mounts)
+	for _, root := range roots {
+		if _, ok := usage[root]; !ok {
+			log.Warn("No disk space information for sonarr root folder", "path", root)
+		}
+	}
+	return usage, nil
 }

@@ -1,4 +1,6 @@
-FROM gcr.io/distroless/static
+FROM gcr.io/distroless/static@sha256:58133991db06659feaabe0f4e97a35cebf15ef4ea08f8a4c6d2ee5f75e4aa6a0
+
+ARG TARGETPLATFORM
 
 WORKDIR /app
 
@@ -15,4 +17,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 ENTRYPOINT [ "/usr/local/bin/jellysweep"]
 CMD [ "serve" ]
 
-COPY jellysweep /usr/local/bin/jellysweep
+COPY $TARGETPLATFORM/jellysweep /usr/local/bin/jellysweep

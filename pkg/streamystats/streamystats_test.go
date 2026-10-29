@@ -82,7 +82,7 @@ func TestClient_GetItemDetails(t *testing.T) {
 				item := ItemDetails{
 					LastWatched: lastWatchedTime,
 				}
-				json.NewEncoder(w).Encode(item)
+				json.NewEncoder(w).Encode(item) //nolint:errcheck
 			},
 			wantErr: false,
 			expectedItem: &ItemDetails{
@@ -96,7 +96,7 @@ func TestClient_GetItemDetails(t *testing.T) {
 			apiKey:   "test-api-key",
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
-				json.NewEncoder(w).Encode(map[string]string{"error": "Item not found"})
+				json.NewEncoder(w).Encode(map[string]string{"error": "Item not found"}) //nolint:errcheck
 			},
 			wantErr:      true,
 			expectedItem: nil,
@@ -108,7 +108,7 @@ func TestClient_GetItemDetails(t *testing.T) {
 			apiKey:   "test-api-key",
 			serverResponse: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+				json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"}) //nolint:errcheck
 			},
 			wantErr:      true,
 			expectedItem: nil,

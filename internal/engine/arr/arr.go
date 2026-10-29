@@ -30,6 +30,9 @@ type Arrer interface {
 	GetItems(ctx context.Context, jellyfinItems []JellyfinItem) ([]MediaItem, error)
 	DeleteMedia(ctx context.Context, arrID int32, title string) error
 
+	// UnmonitorMedia unmonitors a media item in the arr to prevent re-download.
+	UnmonitorMedia(ctx context.Context, arrID int32, title string) error
+
 	// Bulk tag resets/cleanup
 	ResetTags(ctx context.Context, additionalTags []string) error
 	CleanupAllTags(ctx context.Context, additionalTags []string) error
@@ -38,6 +41,10 @@ type Arrer interface {
 
 	// History methods for getting import dates
 	GetItemAddedDate(ctx context.Context, itemID int32, since time.Time) (*time.Time, error)
+
+	// GetRootFolderUsage returns the disk usage in percent for every root folder
+	// configured in the arr, keyed by root folder path.
+	GetRootFolderUsage(ctx context.Context) (map[string]float64, error)
 }
 
 type JellyfinItem struct {
