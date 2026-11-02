@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ccoveille/go-safecast"
+	"github.com/ccoveille/go-safecast/v2"
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/internal/api/models"
