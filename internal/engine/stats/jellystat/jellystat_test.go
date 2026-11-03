@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jon4hz/jellysweep/internal/config"
+	"github.com/jon4hz/jellysweep/internal/engine/stats"
 	"github.com/jon4hz/jellysweep/internal/httptestutil"
 	"github.com/jon4hz/jellysweep/pkg/jellystat"
 	"github.com/stretchr/testify/require"
@@ -25,11 +26,11 @@ func TestGetItemLastPlayed(t *testing.T) {
 	})
 	s := New(&config.JellystatConfig{URL: server.URL, APIKey: "k"})
 
-	got, err := s.GetItemLastPlayed(t.Context(), "watched")
+	got, err := s.GetItemLastPlayed(t.Context(), stats.Item{JellyfinID: "watched"})
 	require.NoError(t, err)
 	require.Equal(t, played, got)
 
-	got, err = s.GetItemLastPlayed(t.Context(), "never")
+	got, err = s.GetItemLastPlayed(t.Context(), stats.Item{JellyfinID: "never"})
 	require.NoError(t, err)
 	require.True(t, got.IsZero(), "no history means zero time, not an error")
 }
@@ -41,6 +42,6 @@ func TestGetItemLastPlayedError(t *testing.T) {
 	})
 	s := New(&config.JellystatConfig{URL: server.URL, APIKey: "k"})
 
-	_, err := s.GetItemLastPlayed(t.Context(), "x")
+	_, err := s.GetItemLastPlayed(t.Context(), stats.Item{JellyfinID: "x"})
 	require.Error(t, err)
 }

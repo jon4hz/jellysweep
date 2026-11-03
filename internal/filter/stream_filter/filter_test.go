@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
+	"github.com/jon4hz/jellysweep/internal/engine/stats"
 	"github.com/jon4hz/jellysweep/pkg/streamystats"
 	"github.com/stretchr/testify/require"
 )
@@ -15,13 +17,15 @@ import (
 type stubStats struct {
 	lastPlayed map[string]time.Time
 	err        map[string]error
+	requested  []stats.Item
 }
 
-func (s *stubStats) GetItemLastPlayed(_ context.Context, jellyfinID string) (time.Time, error) {
-	if err := s.err[jellyfinID]; err != nil {
+func (s *stubStats) GetItemLastPlayed(_ context.Context, item stats.Item) (time.Time, error) {
+	s.requested = append(s.requested, item)
+	if err := s.err[item.JellyfinID]; err != nil {
 		return time.Time{}, err
 	}
-	return s.lastPlayed[jellyfinID], nil
+	return s.lastPlayed[item.JellyfinID], nil
 }
 
 func streamConfig() *config.Config {
@@ -47,6 +51,17 @@ func TestApplyExcludesRecentlyStreamed(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.Equal(t, "Old", got[0].Title)
+}
+
+func TestApplyPassesProviderIDs(t *testing.T) {
+	// Backends that can't look items up by Jellyfin ID match on these instead.
+	stub := &stubStats{}
+	f := New(streamConfig(), stub)
+	show := arr.MediaItem{JellyfinID: "jf-show", Title: "Show", LibraryName: "Movies", MediaType: models.MediaTypeTV, TmdbId: 1399, TvdbId: 121361}
+
+	_, err := f.Apply(t.Context(), []arr.MediaItem{show})
+	require.NoError(t, err)
+	require.Equal(t, []stats.Item{{JellyfinID: "jf-show", MediaType: models.MediaTypeTV, TmdbID: 1399, TvdbID: 121361}}, stub.requested)
 }
 
 func TestApplyNeverStreamedStaysCandidate(t *testing.T) {

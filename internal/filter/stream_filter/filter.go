@@ -42,7 +42,12 @@ func (f *Filter) Apply(ctx context.Context, mediaItems []arr.MediaItem) ([]arr.M
 		default:
 		}
 
-		lastStreamed, err := f.stats.GetItemLastPlayed(ctx, item.JellyfinID)
+		lastStreamed, err := f.stats.GetItemLastPlayed(ctx, stats.Item{
+			JellyfinID: item.JellyfinID,
+			MediaType:  item.MediaType,
+			TmdbID:     item.TmdbId,
+			TvdbID:     item.TvdbId,
+		})
 		if err != nil {
 			if errors.Is(err, streamystats.ErrItemNotFound) {
 				log.Warn("Item not found in StreamyStats", "jellyfinID", item.JellyfinID)

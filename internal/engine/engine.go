@@ -20,6 +20,7 @@ import (
 	"github.com/jon4hz/jellysweep/internal/engine/stats"
 	"github.com/jon4hz/jellysweep/internal/engine/stats/jellystat"
 	"github.com/jon4hz/jellysweep/internal/engine/stats/streamystats"
+	"github.com/jon4hz/jellysweep/internal/engine/stats/tracearr"
 	"github.com/jon4hz/jellysweep/internal/filter"
 	agefilter "github.com/jon4hz/jellysweep/internal/filter/age_filter"
 	databasefilter "github.com/jon4hz/jellysweep/internal/filter/database_filter"
@@ -104,6 +105,10 @@ type data struct {
 // New creates a new Engine instance.
 func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, error) {
 	var statsClient stats.Statser
+	if cfg.Tracearr != nil {
+		statsClient = tracearr.New(cfg)
+	}
+
 	if cfg.Jellystat != nil {
 		statsClient = jellystat.New(cfg.Jellystat)
 	}
@@ -151,7 +156,7 @@ func New(cfg *config.Config, db database.DB, initialDBMigration bool) (*Engine, 
 	if statsClient != nil {
 		filterList = append(filterList, streamfilter.New(cfg, statsClient))
 	} else {
-		log.Warn("No stats backend (Jellystat/Streamystats) configured, stream history will not be considered")
+		log.Warn("No stats backend (Jellystat/Streamystats/Tracearr) configured, stream history will not be considered")
 	}
 
 	filterList = append(filterList, favoritesfilter.New(cfg, jellyfinAPIClient))
@@ -354,7 +359,12 @@ func (e *Engine) removeRecentlyPlayedItems(ctx context.Context) {
 	}
 
 	for _, item := range mediaItems {
-		lastPlayed, err := e.stats.GetItemLastPlayed(ctx, item.JellyfinID)
+		lastPlayed, err := e.stats.GetItemLastPlayed(ctx, stats.Item{
+			JellyfinID: item.JellyfinID,
+			MediaType:  models.MediaType(item.MediaType),
+			TmdbID:     lo.FromPtr(item.TmdbId),
+			TvdbID:     lo.FromPtr(item.TvdbId),
+		})
 		if err != nil {
 			log.Error("Failed to get last played time for item", "title", item.Title, "jellyfinID", item.JellyfinID, "error", err)
 			continue

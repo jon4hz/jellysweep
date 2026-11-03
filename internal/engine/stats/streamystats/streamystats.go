@@ -23,8 +23,8 @@ func New(cfg *config.StreamystatsConfig, apiKey string) (stats.Statser, error) {
 	}, nil
 }
 
-func (s *streamystatsClient) GetItemLastPlayed(ctx context.Context, jellyfinID string) (time.Time, error) {
-	lastWatched, err := s.client.GetItemDetails(ctx, jellyfinID)
+func (s *streamystatsClient) GetItemLastPlayed(ctx context.Context, item stats.Item) (time.Time, error) {
+	lastWatched, err := s.client.GetItemDetails(ctx, item.JellyfinID)
 	if err != nil {
 		return time.Time{}, err
 	}
