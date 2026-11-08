@@ -1,6 +1,6 @@
 package scheduler
 
-import "github.com/charmbracelet/log"
+import "charm.land/log/v2"
 
 type logger struct {
 	log *log.Logger

@@ -3,7 +3,7 @@ package engine
 import (
 	"context"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 )
 
 // estimateDeletions recalculates the estimated deletion date of every unprotected

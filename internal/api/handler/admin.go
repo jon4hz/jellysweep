@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ccoveille/go-safecast"
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
+	"github.com/ccoveille/go-safecast/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/internal/cache"

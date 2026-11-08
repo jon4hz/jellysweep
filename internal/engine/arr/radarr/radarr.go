@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	radarrAPI "github.com/devopsarr/radarr-go/radarr"
 	"github.com/jon4hz/jellysweep/internal/api/models"
 	"github.com/jon4hz/jellysweep/internal/cache"
@@ -106,8 +106,8 @@ func (r *Radarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 		var matched bool
 
 		if providerIds := jf.GetProviderIds(); providerIds != nil {
-			if tmdbIdStr, ok := providerIds["Tmdb"]; ok && tmdbIdStr != "" {
-				tmdbId, err := strconv.ParseInt(tmdbIdStr, 10, 32)
+			if tmdbIdStr, ok := providerIds["Tmdb"]; ok && tmdbIdStr != nil && *tmdbIdStr != "" {
+				tmdbId, err := strconv.ParseInt(*tmdbIdStr, 10, 32)
 				if err != nil {
 					log.Warn("Failed to parse TMDB ID from Jellyfin provider IDs", "tmdbId", tmdbIdStr, "error", err)
 				} else {

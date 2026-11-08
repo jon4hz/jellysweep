@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	jellyfin "github.com/sj14/jellyfin-go/api"
 
 	"github.com/gin-contrib/sessions"
@@ -58,7 +58,7 @@ func (p *JellyfinProvider) Login(c *gin.Context) {
 	auth := *jellyfin.NewAuthenticateUserByName()
 	auth.SetUsername(username)
 	auth.SetPw(password)
-	authResp, r, err := p.client.UserAPI.AuthenticateUserByName(ctx).AuthenticateUserByName(auth).Execute()
+	authResp, r, err := p.client.AuthenticationAPI.AuthenticateUserByName(ctx).AuthenticateUserByName(auth).Execute()
 	if err != nil {
 		if r != nil {
 			log.Error("Failed to authenticate user", "error", err, "status", r.StatusCode)

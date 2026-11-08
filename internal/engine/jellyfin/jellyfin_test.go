@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/ccoveille/go-safecast"
+	"github.com/ccoveille/go-safecast/v2"
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/httptestutil"
 	jellyfinAPI "github.com/sj14/jellyfin-go/api"
@@ -76,6 +76,9 @@ func TestGetJellyfinItemsFiltersLibrariesAndPaginates(t *testing.T) {
 	require.Len(t, itemCalls, 2, "pagination must stop once all records are fetched")
 	require.Equal(t, "0", itemCalls[0].Query.Get("startIndex"))
 	require.Equal(t, "2", itemCalls[1].Query.Get("startIndex"))
+	for _, req := range itemCalls {
+		require.Equal(t, "false", req.Query.Get("collapseBoxSetItems"), "every page must include individual collection members")
+	}
 
 	for _, req := range server.Requests("", "") {
 		require.Equal(t, `MediaBrowser Token="`+testAPIKey+`"`, req.Header.Get("Authorization"))
