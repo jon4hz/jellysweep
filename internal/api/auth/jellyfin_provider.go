@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	jellyfin "github.com/sj14/jellyfin-go/api"
 
 	"github.com/gin-contrib/sessions"

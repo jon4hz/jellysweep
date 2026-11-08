@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/jon4hz/jellysweep/internal/scheduler"
 )

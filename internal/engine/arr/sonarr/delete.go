@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	sonarrAPI "github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/jon4hz/jellysweep/internal/config"
 )

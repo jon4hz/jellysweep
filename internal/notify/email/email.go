@@ -8,7 +8,7 @@ import (
 	"html/template"
 	"time"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	"github.com/jon4hz/jellysweep/internal/config"
 	mail "github.com/xhit/go-simple-mail/v2"
 )

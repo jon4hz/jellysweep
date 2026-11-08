@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"charm.land/log/v2"
 	"github.com/ccoveille/go-safecast/v2"
-	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
 	"github.com/jon4hz/jellysweep/internal/version"

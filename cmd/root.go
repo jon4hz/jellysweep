@@ -3,7 +3,7 @@ package cmd
 import (
 	"context"
 
-	"github.com/charmbracelet/fang"
+	"charm.land/fang/v2"
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/logging"
 	"github.com/spf13/cobra"

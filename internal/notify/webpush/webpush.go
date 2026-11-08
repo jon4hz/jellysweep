@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"charm.land/log/v2"
 	"github.com/SherClockHolmes/webpush-go"
-	"github.com/charmbracelet/log"
 	"github.com/jon4hz/jellysweep/internal/config"
 )
 
