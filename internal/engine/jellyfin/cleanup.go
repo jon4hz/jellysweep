@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	"github.com/jon4hz/jellysweep/internal/config"
 	jellyfin "github.com/sj14/jellyfin-go/api"
 )

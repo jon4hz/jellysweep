@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 )
 
 var currentLogFile *os.File

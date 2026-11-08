@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	radarrAPI "github.com/devopsarr/radarr-go/radarr"
 	sonarrAPI "github.com/devopsarr/sonarr-go/sonarr"
 	"github.com/jon4hz/jellysweep/internal/api/models"

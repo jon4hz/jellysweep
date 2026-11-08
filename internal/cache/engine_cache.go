@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/codec"
 	"github.com/jon4hz/jellysweep/internal/config"
