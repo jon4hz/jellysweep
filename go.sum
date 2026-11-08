@@ -238,8 +238,8 @@ github.com/sagikazarmark/locafero v0.11.0 h1:1iurJgmM9G3PA/I+wWYIOw/5SyBtxapeHDc
 github.com/sagikazarmark/locafero v0.11.0/go.mod h1:nVIGvgyzw595SUSUE6tvCp3YYTeHs15MvlmU87WwIik=
 github.com/samber/lo v1.53.0 h1:t975lj2py4kJPQ6haz1QMgtId2gtmfktACxIXArw3HM=
 github.com/samber/lo v1.53.0/go.mod h1:4+MXEGsJzbKGaUEQFKBq2xtfuznW9oz/WrgyzMzRoM0=
-github.com/sj14/jellyfin-go v0.4.4 h1:jBjtT0S4Ri7xWQQF9TABY3RCRhdCcEUIl01M2ZVpKXs=
-github.com/sj14/jellyfin-go v0.4.4/go.mod h1:K3ozYgrTZF4403JWijLJyNDlGm+nkNZvfU5YRC+GYYc=
+github.com/sj14/jellyfin-go v0.5.0 h1:/808lPmBJp0y+7LjsDyDObst0rDNO7qNgqjSHKIemHs=
+github.com/sj14/jellyfin-go v0.5.0/go.mod h1:K3ozYgrTZF4403JWijLJyNDlGm+nkNZvfU5YRC+GYYc=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=

@@ -110,8 +110,8 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 
 		if providerIds := jf.GetProviderIds(); providerIds != nil {
 			// Try TVDB ID first
-			if tvdbIdStr, ok := providerIds["Tvdb"]; ok && tvdbIdStr != "" {
-				tvdbId, err := strconv.ParseInt(tvdbIdStr, 10, 32)
+			if tvdbIdStr, ok := providerIds["Tvdb"]; ok && tvdbIdStr != nil && *tvdbIdStr != "" {
+				tvdbId, err := strconv.ParseInt(*tvdbIdStr, 10, 32)
 				if err != nil {
 					log.Warn("Failed to parse TVDB ID from Jellyfin provider IDs", "tvdbId", tvdbIdStr, "error", err)
 				} else {
@@ -125,8 +125,8 @@ func (s *Sonarr) GetItems(ctx context.Context, jellyfinItems []arr.JellyfinItem)
 
 			// Fallback to TMDB ID if TVDB didn't match
 			if !matched {
-				if tmdbIdStr, ok := providerIds["Tmdb"]; ok && tmdbIdStr != "" {
-					tmdbId, err := strconv.ParseInt(tmdbIdStr, 10, 32)
+				if tmdbIdStr, ok := providerIds["Tmdb"]; ok && tmdbIdStr != nil && *tmdbIdStr != "" {
+					tmdbId, err := strconv.ParseInt(*tmdbIdStr, 10, 32)
 					if err != nil {
 						log.Warn("Failed to parse TMDB ID from Jellyfin provider IDs", "tmdbId", tmdbIdStr, "error", err)
 					} else {
