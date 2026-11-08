@@ -114,7 +114,7 @@ func (c *Client) getJellyfinItemsFromLibrary(ctx context.Context, libraryID, lib
 
 	for {
 		// Get items from this library
-		itemsResp, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+		itemsResp, resp, err := c.jellyfin.LibraryAPI.GetItems(ctx).
 			ParentId(libraryID).
 			Recursive(true).
 			// Scan individual titles, including members of leaving collections.
@@ -226,7 +226,7 @@ func (c *Client) GetEpisodes(ctx context.Context, seriesID string) ([]jellyfin.B
 		limit := int32(1000)
 
 		for {
-			episodesResp, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+			episodesResp, resp, err := c.jellyfin.LibraryAPI.GetItems(ctx).
 				ParentId(seasonID).
 				StartIndex(startIndex).
 				Limit(limit).
@@ -280,7 +280,7 @@ func (c *Client) GetSeasons(ctx context.Context, seriesID string) ([]jellyfin.Ba
 	var allSeasons []jellyfin.BaseItemDto
 
 	// Get seasons from this series
-	seasonsResp, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+	seasonsResp, resp, err := c.jellyfin.LibraryAPI.GetItems(ctx).
 		ParentId(seriesID).
 		Fields([]jellyfin.ItemFields{
 			jellyfin.ITEMFIELDS_PATH,
@@ -303,7 +303,7 @@ func (c *Client) GetSeasons(ctx context.Context, seriesID string) ([]jellyfin.Ba
 // FindCollectionByName searches for a collection by name and returns its ID.
 func (c *Client) FindCollectionByName(ctx context.Context, name string) (string, error) {
 	// Get all collections
-	result, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+	result, resp, err := c.jellyfin.LibraryAPI.GetItems(ctx).
 		IncludeItemTypes([]jellyfin.BaseItemKind{jellyfin.BASEITEMKIND_BOX_SET}).
 		Recursive(true).
 		Execute()
@@ -326,7 +326,7 @@ func (c *Client) FindCollectionByName(ctx context.Context, name string) (string,
 // GetCollectionItems returns a map of item IDs currently in the collection.
 func (c *Client) GetCollectionItems(ctx context.Context, collectionID string) (map[string]bool, error) {
 	// Get items in the collection
-	result, resp, err := c.jellyfin.ItemsAPI.GetItems(ctx).
+	result, resp, err := c.jellyfin.LibraryAPI.GetItems(ctx).
 		ParentId(collectionID).
 		Recursive(true).
 		Execute()
@@ -520,7 +520,7 @@ func (c *Client) getAllItemPages(ctx context.Context, configure func(jellyfin.Ap
 	limit := int32(100)
 
 	for {
-		itemsResp, resp, err := configure(c.jellyfin.ItemsAPI.GetItems(ctx)).
+		itemsResp, resp, err := configure(c.jellyfin.LibraryAPI.GetItems(ctx)).
 			StartIndex(startIndex).
 			Limit(limit).
 			Execute()

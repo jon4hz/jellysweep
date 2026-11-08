@@ -11,6 +11,7 @@ import (
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
 	"github.com/jon4hz/jellysweep/internal/httptestutil"
+	"github.com/samber/lo"
 	jellyfinAPI "github.com/sj14/jellyfin-go/api"
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +59,7 @@ func jellyfinMovie(id, name string, year int32, providerIDs map[string]string) a
 	dto.SetType(jellyfinAPI.BASEITEMKIND_MOVIE)
 	dto.SetProductionYear(year)
 	if providerIDs != nil {
-		dto.SetProviderIds(providerIDs)
+		dto.SetProviderIds(lo.MapValues(providerIDs, func(v, _ string) *string { return &v }))
 	}
 	return arr.JellyfinItem{BaseItemDto: *dto, ParentLibraryName: "Movies"}
 }
