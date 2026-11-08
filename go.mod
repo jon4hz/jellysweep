@@ -8,7 +8,7 @@ require (
 	charm.land/fang/v2 v2.0.1
 	charm.land/log/v2 v2.0.1
 	github.com/SherClockHolmes/webpush-go v1.4.0
-	github.com/a-h/templ v0.3.1070
+	github.com/a-h/templ v0.3.1100
 	github.com/ccoveille/go-safecast/v2 v2.0.1
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/devopsarr/radarr-go v1.2.1
