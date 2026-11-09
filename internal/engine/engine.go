@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"charm.land/log/v2"
@@ -74,6 +75,10 @@ type Engine struct {
 
 	// migrate old tag based items to database
 	initialDBMigration bool
+
+	// requesterRefresh ensures the requester backfill for queued items runs
+	// at most once per process instead of on every cleanup run.
+	requesterRefresh sync.Once
 
 	data *data
 }
@@ -278,7 +283,7 @@ func (e *Engine) runCleanupJob(ctx context.Context) (err error) {
 	}
 
 	e.removeItemsWithExcludedTags(ctx, mediaItems)
-	e.refreshMissingRequesterInfo(ctx, mediaItems)
+	e.requesterRefresh.Do(func() { e.refreshMissingRequesterInfo(ctx, mediaItems) })
 
 	if err = e.markForDeletion(ctx, mediaItems); err != nil {
 		log.Error("An error occurred while marking media for deletion")
@@ -535,7 +540,9 @@ func (e *Engine) markForDeletion(ctx context.Context, mediaItems []arr.MediaItem
 }
 
 // refreshMissingRequesterInfo backfills queued items that were added before
-// requester identities without email addresses were retained.
+// requester identities without email addresses were retained. It is invoked
+// once per process (see requesterRefresh) so items without a Jellyseerr
+// request don't trigger repeated lookups on every cleanup run.
 func (e *Engine) refreshMissingRequesterInfo(ctx context.Context, mediaItems []arr.MediaItem) {
 	if e.jellyseerr == nil {
 		return
