@@ -31,6 +31,8 @@ func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.Med
 		item.RequestedBy = requestInfo.UserName
 		if emailRegex.MatchString(requestInfo.UserEmail) {
 			item.RequesterEmail = requestInfo.UserEmail
+		} else {
+			log.Warn("invalid or missing email address for requester, user will not be notified", "title", item.Title, "requestedBy", item.RequestedBy, "email", requestInfo.UserEmail)
 		}
 		log.Debug("populated requester info", "title", item.Title, "requestedBy", item.RequestedBy, "requestTime", requestInfo.RequestTime.Format("2006-01-02"))
 
