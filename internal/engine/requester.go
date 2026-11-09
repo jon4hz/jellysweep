@@ -17,7 +17,8 @@ func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.Med
 		return mediaItems
 	}
 
-	for i, item := range mediaItems {
+	for i := range mediaItems {
+		item := &mediaItems[i]
 		requestInfo, err := e.jellyseerr.GetRequestInfo(ctx, item.TmdbId, string(item.MediaType))
 		if err != nil {
 			log.Error("failed to get request info for item", "title", item.Title, "error", err)
@@ -35,9 +36,6 @@ func (e *Engine) populateRequesterInfo(ctx context.Context, mediaItems []arr.Med
 			log.Warn("invalid or missing email address for requester, user will not be notified", "title", item.Title, "requestedBy", item.RequestedBy, "email", requestInfo.UserEmail)
 		}
 		log.Debug("populated requester info", "title", item.Title, "requestedBy", item.RequestedBy, "requestTime", requestInfo.RequestTime.Format("2006-01-02"))
-
-		// Update the items in the map
-		mediaItems[i] = item
 	}
 
 	return mediaItems
