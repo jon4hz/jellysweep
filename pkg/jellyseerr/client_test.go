@@ -180,6 +180,63 @@ func TestGetRequestTime(t *testing.T) {
 	}
 }
 
+func TestGetUserNotificationSettings(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/user/123/settings/notifications" {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{
+				"emailEnabled": true,
+				"pgpKey": null,
+				"discordEnabled": true,
+				"discordEnabledTypes": 3,
+				"discordId": "123456789",
+				"pushbulletAccessToken": null,
+				"pushoverApplicationToken": null,
+				"pushoverUserKey": null,
+				"pushoverSound": null,
+				"telegramEnabled": false,
+				"telegramBotUsername": "",
+				"telegramChatId": null,
+				"telegramMessageThreadId": null,
+				"telegramSendSilently": null,
+				"webPushEnabled": false
+			}`)
+		} else {
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := New(&config.JellyseerrConfig{
+		URL:    server.URL,
+		APIKey: "test-api-key",
+	})
+
+	settings, err := client.GetUserNotificationSettings(context.Background(), 123)
+	if err != nil {
+		t.Fatalf("GetUserNotificationSettings failed: %v", err)
+	}
+
+	if !settings.EmailEnabled {
+		t.Error("Expected emailEnabled to be true")
+	}
+	if !settings.DiscordEnabled {
+		t.Error("Expected discordEnabled to be true")
+	}
+	if settings.DiscordEnabledTypes != 3 {
+		t.Errorf("Expected discordEnabledTypes 3, got %d", settings.DiscordEnabledTypes)
+	}
+	if settings.DiscordID != "123456789" {
+		t.Errorf("Expected discordId '123456789', got %s", settings.DiscordID)
+	}
+	if settings.TelegramEnabled {
+		t.Error("Expected telegramEnabled to be false")
+	}
+	if settings.WebPushEnabled {
+		t.Error("Expected webPushEnabled to be false")
+	}
+}
+
 func TestGetRequestTimeNoRequests(t *testing.T) {
 	// Create a mock HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
