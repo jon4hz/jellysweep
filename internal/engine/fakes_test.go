@@ -15,6 +15,7 @@ import (
 
 	"github.com/jon4hz/jellysweep/internal/config"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
+	"github.com/jon4hz/jellysweep/internal/engine/stats"
 	jellyfinAPI "github.com/sj14/jellyfin-go/api"
 )
 
@@ -23,6 +24,7 @@ type fakeStats struct {
 	mu         sync.Mutex
 	lastPlayed map[string]time.Time // jellyfinID -> last played; absent = never
 	err        map[string]error     // jellyfinID -> error to return
+	requested  []stats.Item
 }
 
 func newFakeStats() *fakeStats {
@@ -32,13 +34,14 @@ func newFakeStats() *fakeStats {
 	}
 }
 
-func (f *fakeStats) GetItemLastPlayed(_ context.Context, jellyfinID string) (time.Time, error) {
+func (f *fakeStats) GetItemLastPlayed(_ context.Context, item stats.Item) (time.Time, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if err := f.err[jellyfinID]; err != nil {
+	f.requested = append(f.requested, item)
+	if err := f.err[item.JellyfinID]; err != nil {
 		return time.Time{}, err
 	}
-	return f.lastPlayed[jellyfinID], nil
+	return f.lastPlayed[item.JellyfinID], nil
 }
 
 func (f *fakeStats) setLastPlayed(jellyfinID string, when time.Time) {

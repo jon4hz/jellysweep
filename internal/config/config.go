@@ -117,6 +117,8 @@ type Config struct {
 	Jellyfin *JellyfinConfig `yaml:"jellyfin" mapstructure:"jellyfin"`
 	// Streamystats holds the configuration for the Streamystats server.
 	Streamystats *StreamystatsConfig `yaml:"streamystats" mapstructure:"streamystats"`
+	// Tracearr holds the configuration for the Tracearr server.
+	Tracearr *TracearrConfig `yaml:"tracearr" mapstructure:"tracearr"`
 	// Tunarr holds the configuration for the Tunarr server.
 	Tunarr *TunarrConfig `yaml:"tunarr" mapstructure:"tunarr"`
 }
@@ -354,6 +356,16 @@ type StreamystatsConfig struct {
 	Timeout int `yaml:"timeout" mapstructure:"timeout"`
 }
 
+// TracearrConfig holds the configuration for the Tracearr server.
+type TracearrConfig struct {
+	// URL is the base URL of the Tracearr server.
+	URL string `yaml:"url" mapstructure:"url"`
+	// APIKey is the public API key for the Tracearr server.
+	APIKey string `yaml:"api_key" mapstructure:"api_key"`
+	// Timeout is the HTTP client timeout in seconds.
+	Timeout int `yaml:"timeout" mapstructure:"timeout"`
+}
+
 // TunarrConfig holds the configuration for the Tunarr server.
 type TunarrConfig struct {
 	// URL is the base URL of the Tunarr server.
@@ -566,6 +578,11 @@ func bindNestedEnv(v *viper.Viper) {
 	v.MustBindEnv("streamystats.server_id", "JELLYSWEEP_STREAMYSTATS_SERVER_ID")
 	v.MustBindEnv("streamystats.timeout", "JELLYSWEEP_STREAMYSTATS_TIMEOUT")
 
+	// Tracearr
+	v.MustBindEnv("tracearr.url", "JELLYSWEEP_TRACEARR_URL")
+	v.MustBindEnv("tracearr.api_key", "JELLYSWEEP_TRACEARR_API_KEY")
+	v.MustBindEnv("tracearr.timeout", "JELLYSWEEP_TRACEARR_TIMEOUT")
+
 	// Tunarr
 	v.MustBindEnv("tunarr.url", "JELLYSWEEP_TUNARR_URL")
 	v.MustBindEnv("tunarr.timeout", "JELLYSWEEP_TUNARR_TIMEOUT")
@@ -765,12 +782,23 @@ func validateConfig(c *Config) error {
 		}
 	}
 
-	if c.Jellystat != nil && c.Streamystats != nil {
-		return fmt.Errorf("only one of jellystat or streamystats can be configured at a time")
+	statsBackends := 0
+	if c.Jellystat != nil {
+		statsBackends++
+	}
+	if c.Streamystats != nil {
+		statsBackends++
+	}
+	if c.Tracearr != nil {
+		statsBackends++
 	}
 
-	if c.Jellystat == nil && c.Streamystats == nil {
-		return fmt.Errorf("either jellystat or streamystats config must be provided")
+	if statsBackends > 1 {
+		return fmt.Errorf("only one of jellystat, streamystats or tracearr can be configured at a time")
+	}
+
+	if statsBackends == 0 {
+		return fmt.Errorf("one of jellystat, streamystats or tracearr config must be provided")
 	}
 
 	if c.Jellystat != nil {
@@ -788,6 +816,15 @@ func validateConfig(c *Config) error {
 		}
 		if c.Streamystats.ServerID == 0 {
 			return fmt.Errorf("streamystats server ID is required when streamystats is configured")
+		}
+	}
+
+	if c.Tracearr != nil {
+		if c.Tracearr.URL == "" {
+			return fmt.Errorf("tracearr URL is required when tracearr is configured")
+		}
+		if c.Tracearr.APIKey == "" {
+			return fmt.Errorf("tracearr API key is required when tracearr is configured")
 		}
 	}
 
@@ -854,6 +891,10 @@ func sanitizeConfig(c *Config) {
 
 	if c.Streamystats != nil {
 		c.Streamystats.URL = urlSanitize(c.Streamystats.URL)
+	}
+
+	if c.Tracearr != nil {
+		c.Tracearr.URL = urlSanitize(c.Tracearr.URL)
 	}
 
 	if c.Tunarr != nil {

@@ -28,6 +28,15 @@ func TestValidateConfigAcceptsValidConfig(t *testing.T) {
 	require.Equal(t, CacheTypeMemory, cfg.Cache.Type, "cache defaults to memory")
 }
 
+func TestValidateConfigAcceptsTracearrAsOnlyStatsBackend(t *testing.T) {
+	cfg := validConfig()
+	cfg.Jellystat = nil
+	cfg.Tracearr = &TracearrConfig{URL: "http://tracearr:3000/", APIKey: "key"}
+	require.NoError(t, validateConfig(cfg))
+	sanitizeConfig(cfg)
+	require.Equal(t, "http://tracearr:3000", cfg.Tracearr.URL, "trailing slash would break request paths")
+}
+
 func TestValidateConfigRejections(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -73,6 +82,22 @@ func TestValidateConfigRejections(t *testing.T) {
 		{"streamystats without server id", func(c *Config) {
 			c.Jellystat = nil
 			c.Streamystats = &StreamystatsConfig{URL: "http://streamystats"}
+		}},
+		{"jellystat and tracearr", func(c *Config) {
+			c.Tracearr = &TracearrConfig{URL: "http://tracearr", APIKey: "key"}
+		}},
+		{"streamystats and tracearr", func(c *Config) {
+			c.Jellystat = nil
+			c.Streamystats = &StreamystatsConfig{URL: "http://streamystats", ServerID: 1}
+			c.Tracearr = &TracearrConfig{URL: "http://tracearr", APIKey: "key"}
+		}},
+		{"tracearr without url", func(c *Config) {
+			c.Jellystat = nil
+			c.Tracearr = &TracearrConfig{APIKey: "key"}
+		}},
+		{"tracearr without api key", func(c *Config) {
+			c.Jellystat = nil
+			c.Tracearr = &TracearrConfig{URL: "http://tracearr"}
 		}},
 		{"jellyseerr without url", func(c *Config) { c.Jellyseerr = &JellyseerrConfig{APIKey: "key"} }},
 		{"tunarr without url", func(c *Config) { c.Tunarr = &TunarrConfig{} }},

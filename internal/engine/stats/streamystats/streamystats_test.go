@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jon4hz/jellysweep/internal/config"
+	"github.com/jon4hz/jellysweep/internal/engine/stats"
 	"github.com/jon4hz/jellysweep/internal/httptestutil"
 	"github.com/jon4hz/jellysweep/pkg/streamystats"
 	"github.com/stretchr/testify/require"
@@ -23,16 +24,16 @@ func TestGetItemLastPlayed(t *testing.T) {
 	s, err := New(&config.StreamystatsConfig{URL: server.URL, ServerID: 1}, "api-key")
 	require.NoError(t, err)
 
-	got, err := s.GetItemLastPlayed(t.Context(), "watched")
+	got, err := s.GetItemLastPlayed(t.Context(), stats.Item{JellyfinID: "watched"})
 	require.NoError(t, err)
 	require.Equal(t, watched, got)
 	require.Equal(t, "1", server.Requests(http.MethodGet, "/api/get-item-details/watched")[0].Query.Get("serverId"))
 
-	got, err = s.GetItemLastPlayed(t.Context(), "never")
+	got, err = s.GetItemLastPlayed(t.Context(), stats.Item{JellyfinID: "never"})
 	require.NoError(t, err)
 	require.True(t, got.IsZero())
 
-	_, err = s.GetItemLastPlayed(t.Context(), "missing")
+	_, err = s.GetItemLastPlayed(t.Context(), stats.Item{JellyfinID: "missing"})
 	require.ErrorIs(t, err, streamystats.ErrItemNotFound, "not-found must surface as the sentinel the stream filter checks for")
 }
 

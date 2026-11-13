@@ -11,7 +11,9 @@ import (
 	"github.com/jon4hz/jellysweep/internal/database"
 	"github.com/jon4hz/jellysweep/internal/database/databasetest"
 	"github.com/jon4hz/jellysweep/internal/engine/arr"
+	"github.com/jon4hz/jellysweep/internal/engine/stats"
 	"github.com/jon4hz/jellysweep/internal/policy"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,6 +105,29 @@ func TestRemoveRecentlyPlayedItemsSkipsProtected(t *testing.T) {
 	require.NoError(t, gdb.Unscoped().First(&tombstone, unprotected.ID).Error)
 	require.NotNil(t, tombstone.DeletedAt)
 	require.Equal(t, database.DBDeleteReasonStreamed, tombstone.DBDeleteReason)
+}
+
+func TestRemoveRecentlyPlayedItemsPassesProviderIDs(t *testing.T) {
+	// Backends that can't look items up by Jellyfin ID match on these instead.
+	db, _ := databasetest.New(t)
+	fake := newFakeStats()
+	e := &Engine{cfg: testConfig(), db: db, stats: fake}
+	show := createMedia(t, db, database.Media{
+		Title:     "A Show",
+		ArrID:     1,
+		MediaType: database.MediaTypeTV,
+		TmdbId:    lo.ToPtr(int32(1399)),
+		TvdbId:    lo.ToPtr(int32(121361)),
+	})
+
+	e.removeRecentlyPlayedItems(t.Context())
+
+	require.Equal(t, []stats.Item{{
+		JellyfinID: show.JellyfinID,
+		MediaType:  models.MediaTypeTV,
+		TmdbID:     1399,
+		TvdbID:     121361,
+	}}, fake.requested)
 }
 
 func TestSaveMediaItemsToDatabaseRespectsContext(t *testing.T) {

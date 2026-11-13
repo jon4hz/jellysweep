@@ -17,7 +17,7 @@ ______________________________________________________________________
 
 ## ✨ Key Features
 
-- 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat/Streamystats for stats
+- 🧠 **Smart Analytics** - Checks jellyseerr for requests and Jellystat/Streamystats/Tracearr for stats
 - 🏷️ **Tag-Based Control** - Leverage your existing Sonarr/Radarr tags to control jellysweep
 - 💾 **Disk Usage Monitoring** - Adaptive cleanup based on disk usage thresholds
 - 🧹 **Flexible Cleanup Modes** - Choose how much of TV Series should be deleted
@@ -178,7 +178,7 @@ ______________________________________________________________________
 - Access to your Jellyfin ecosystem including:
   - Sonarr
   - Radarr
-  - Jellystat or Streamystats
+  - Jellystat, Streamystats or Tracearr (2.3.0 or later)
   - Jellyseerr
 
 ### Docker Compose
@@ -443,13 +443,15 @@ All configuration options can be set via environment variables with the `JELLYSW
 | `JELLYSWEEP_JELLYSTAT_API_KEY`              | *(optional)*                    | Jellystat API key                                                                      |
 | `JELLYSWEEP_STREAMYSTATS_URL`               | *(optional)*                    | Streamystats server URL                                                                |
 | `JELLYSWEEP_STREAMYSTATS_SERVER_ID`         | *(optional)*                    | Streamystats Jellyfin server ID                                                        |
+| `JELLYSWEEP_TRACEARR_URL`                   | *(optional)*                    | Tracearr server URL                                                                    |
+| `JELLYSWEEP_TRACEARR_API_KEY`               | *(optional)*                    | Tracearr public API key                                                                |
 | `JELLYSWEEP_TUNARR_URL`                     | *(optional)*                    | Tunarr server URL                                                                      |
 | **Cache Configuration**                     |                                 |                                                                                        |
 | `JELLYSWEEP_CACHE_TYPE`                     | `memory`                        | Cache type: `memory` or `redis`                                                        |
 | `JELLYSWEEP_CACHE_REDIS_URL`                | `localhost:6379`                | Redis server URL (when using redis cache)                                              |
 
 > [!TIP]
-> Either Sonarr or Radarr (or both) must be configured. Only one of Jellystat or Streamystats can be configured at a time.
+> Either Sonarr or Radarr (or both) must be configured. Only one of Jellystat, Streamystats or Tracearr can be configured at a time.
 
 > [!IMPORTANT]
 > The library configuration cannot be set via environment variables and must be defined in the configuration file.
@@ -640,6 +642,12 @@ jellystat:
 streamystats:
   url: "http://localhost:3001"
   server_id: 1                         # Jellyfin server ID in Streamystats
+  timeout: 30                          # HTTP client timeout in seconds (default: 30)
+
+# Alternative to Jellystat (configure only one). Requires Tracearr 2.3.0 or later.
+tracearr:
+  url: "http://localhost:3000"
+  api_key: "trr_pub_your-tracearr-api-key"
   timeout: 30                          # HTTP client timeout in seconds (default: 30)
 
 # Tunarr (optional)

@@ -19,8 +19,8 @@ func New(cfg *config.JellystatConfig) stats.Statser {
 	}
 }
 
-func (s *jellystatClient) GetItemLastPlayed(ctx context.Context, jellyfinID string) (time.Time, error) {
-	lastPlayed, err := s.client.GetLastPlayed(ctx, jellyfinID)
+func (s *jellystatClient) GetItemLastPlayed(ctx context.Context, item stats.Item) (time.Time, error) {
+	lastPlayed, err := s.client.GetLastPlayed(ctx, item.JellyfinID)
 	if err != nil {
 		return time.Time{}, err
 	}
