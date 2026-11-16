@@ -18,8 +18,8 @@ require (
 	github.com/eko/gocache/lib/v4 v4.4.0
 	github.com/eko/gocache/store/go_cache/v4 v4.2.10
 	github.com/eko/gocache/store/redis/v4 v4.2.13
-	github.com/gin-contrib/gzip v1.2.9
-	github.com/gin-contrib/sessions v1.1.3
+	github.com/gin-contrib/gzip v1.2.10
+	github.com/gin-contrib/sessions v1.1.4
 	github.com/gin-gonic/gin v1.12.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-co-op/gocron/v2 v2.23.0
@@ -30,11 +30,11 @@ require (
 	github.com/samber/lo v1.53.0
 	github.com/sj14/jellyfin-go v0.5.0
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/pflag v1.1.0
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	github.com/xhit/go-simple-mail/v2 v2.17.0
-	golang.org/x/oauth2 v0.37.0
+	golang.org/x/oauth2 v0.38.0
 	golang.org/x/sync v0.25.0
 	gorm.io/driver/postgres v1.6.3
 	gorm.io/gorm v1.31.2
