@@ -147,6 +147,24 @@ func (c *Client) GetTvShow(ctx context.Context, tmdbID int32) (*TvDetails, error
 	return &tvShow, nil
 }
 
+// GetUserNotificationSettings retrieves user notification settings by user ID.
+func (c *Client) GetUserNotificationSettings(ctx context.Context, userID int) (*RequesterNotificationSettings, error) {
+	endpoint := fmt.Sprintf("/api/v1/user/%d/settings/notifications", userID)
+
+	resp, err := c.doRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	var settings RequesterNotificationSettings
+	if err := json.NewDecoder(resp.Body).Decode(&settings); err != nil {
+		return nil, fmt.Errorf("error decoding user notification settings response: %w", err)
+	}
+
+	return &settings, nil
+}
+
 // GetMediaItem retrieves media details by TMDB ID, trying both movie and TV endpoints.
 func (c *Client) GetMediaItem(ctx context.Context, tmdbID int32, mediaType string) (*MediaItem, error) {
 	var mediaItem MediaItem
@@ -210,9 +228,29 @@ func (c *Client) GetRequestTime(ctx context.Context, tmdbID int32, mediaType str
 
 // RequestInfo contains information about a media request.
 type RequestInfo struct {
-	RequestTime *time.Time
-	UserEmail   string
-	UserName    string
+	RequestTime          *time.Time
+	UserEmail            string
+	UserName             string
+	UserID               int
+	NotificationSettings RequesterNotificationSettings
+}
+
+type RequesterNotificationSettings struct {
+	EmailEnabled             bool   `json:"emailEnabled"`
+	PgpKey                   any    `json:"pgpKey"`
+	DiscordEnabled           bool   `json:"discordEnabled"`
+	DiscordEnabledTypes      int    `json:"discordEnabledTypes"`
+	DiscordID                string `json:"discordId"`
+	PushbulletAccessToken    any    `json:"pushbulletAccessToken"`
+	PushoverApplicationToken any    `json:"pushoverApplicationToken"`
+	PushoverUserKey          any    `json:"pushoverUserKey"`
+	PushoverSound            any    `json:"pushoverSound"`
+	TelegramEnabled          bool   `json:"telegramEnabled"`
+	TelegramBotUsername      string `json:"telegramBotUsername"`
+	TelegramChatID           any    `json:"telegramChatId"`
+	TelegramMessageThreadID  any    `json:"telegramMessageThreadId"`
+	TelegramSendSilently     any    `json:"telegramSendSilently"`
+	WebPushEnabled           bool   `json:"webPushEnabled"`
 }
 
 // GetRequestInfo returns detailed information about who requested specific media and when.
@@ -236,6 +274,7 @@ func (c *Client) GetRequestInfo(ctx context.Context, tmdbID int32, mediaType str
 				RequestTime: &lastRequest.CreatedAt,
 				UserEmail:   lastRequest.RequestedBy.Email,
 				UserName:    getDisplayName(lastRequest.RequestedBy),
+				UserID:      lastRequest.RequestedBy.ID,
 			}, nil
 		}
 	}
