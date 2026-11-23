@@ -42,6 +42,17 @@ func TestCreateMediaItemsEmptySliceIsNoop(t *testing.T) {
 	require.NoError(t, db.CreateMediaItems(t.Context(), []database.Media{}))
 }
 
+func TestSetMediaRequestedBy(t *testing.T) {
+	db, _ := databasetest.New(t)
+	media := createMediaItem(t, db, database.Media{Title: "A Movie", ArrID: 1})
+
+	require.NoError(t, db.SetMediaRequestedBy(t.Context(), media.ID, "Jellyfin User"))
+
+	got, err := db.GetMediaItemByID(t.Context(), media.ID)
+	require.NoError(t, err)
+	require.Equal(t, "Jellyfin User", got.RequestedBy)
+}
+
 func TestSetMediaProtectedUntilClearsUnkeepable(t *testing.T) {
 	db, _ := databasetest.New(t)
 

@@ -39,20 +39,7 @@ func (e *Engine) sendEmailNotifications() {
 			})
 		}
 
-		// Calculate cleanup date (current time + cleanup delay)
-		cleanupDate := time.Now()
-		if len(mediaItems) > 0 {
-			// Use the cleanup delay from the first item's library
-			for _, item := range mediaItems {
-				if item.RequestedBy == userEmail {
-					libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
-					if libraryConfig != nil {
-						cleanupDate = cleanupDate.Add(time.Duration(libraryConfig.GetCleanupDelay()) * 24 * time.Hour)
-					}
-					break
-				}
-			}
-		}
+		cleanupDate := e.notificationCleanupDate(userEmail, mediaItems)
 
 		notification := email.UserNotification{
 			UserEmail:     userEmail,
@@ -69,6 +56,23 @@ func (e *Engine) sendEmailNotifications() {
 			log.Info("sent cleanup notification", "email", userEmail, "items", len(emailMediaItems))
 		}
 	}
+}
+
+// notificationCleanupDate uses the first queued item's library delay for an
+// email recipient. RequestedBy is display-only and must not be used here.
+func (e *Engine) notificationCleanupDate(userEmail string, mediaItems []arr.MediaItem) time.Time {
+	cleanupDate := time.Now()
+	for _, item := range mediaItems {
+		if item.RequesterEmail != userEmail {
+			continue
+		}
+		libraryConfig := e.cfg.GetLibraryConfig(item.LibraryName)
+		if libraryConfig != nil {
+			cleanupDate = cleanupDate.Add(time.Duration(libraryConfig.GetCleanupDelay()) * 24 * time.Hour)
+		}
+		break
+	}
+	return cleanupDate
 }
 
 // sendNtfyDeletionSummary sends a summary notification about media marked for deletion.
